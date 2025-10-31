@@ -1,0 +1,108 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}{{ template.name }} - Hệ thống Mẫu biểu{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Trang chủ</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'category_detail' category.id %}">{{ category.name }}</a></li>
+                <li class="breadcrumb-item active">{{ template.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ template.name }}</h4>
+                {% if template.description %}
+                <p class="mb-0 mt-2"><small>{{ template.description }}</small></p>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'template_form' template.id %}">
+                    {% csrf_token %}
+
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">Có lỗi trong form:</h6>
+                        <ul class="mb-0">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if form.fields %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-bold">
+                                {{ field.label }}
+                                {% if field.field.required %}
+                                <span class="text-danger">*</span>
+                                {% endif %}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in field.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'category_detail' category.id %}" class="btn btn-secondary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+                                </svg>
+                                Quay lại
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-arrow-down-fill" viewBox="0 0 16 16">
+                                    <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1zm-1 4v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 11.293V7.5a.5.5 0 0 1 1 0z"/>
+                                </svg>
+                                Tạo mẫu biểu
+                            </button>
+                        </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <p class="mb-0">Mẫu biểu này chưa có biến nào. Vui lòng liên hệ quản trị viên để cấu hình.</p>
+                    </div>
+                    <a href="{% url 'category_detail' category.id %}" class="btn btn-secondary">Quay lại</a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3 bg-light">
+            <div class="card-body">
+                <h6 class="card-title">Hướng dẫn:</h6>
+                <ul class="mb-0 small">
+                    <li>Điền đầy đủ thông tin vào các trường bắt buộc (có dấu <span class="text-danger">*</span>)</li>
+                    <li>Kiểm tra kỹ thông tin trước khi nhấn "Tạo mẫu biểu"</li>
+                    <li>File Word sẽ được tải xuống tự động sau khi tạo</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
