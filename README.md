@@ -1,6 +1,8 @@
-# Hệ thống Quản lý Mẫu biểu Word
+# Hệ thống Quản lý Mẫu biểu Word - AGRIBANK
 
-Ứng dụng web Django cho phép nhân viên tạo file Microsoft Word (.docx) từ các mẫu có sẵn với cú pháp Jinja2.
+Ứng dụng web Django cho phép nhân viên Agribank tạo file Microsoft Word (.docx) từ các mẫu có sẵn với cú pháp Jinja2.
+
+**Thiết kế giao diện theo chuẩn nhận diện thương hiệu Agribank** với màu xanh lá đặc trưng (#00923F).
 
 ## Tính năng chính
 
@@ -13,6 +15,8 @@
 - Quản lý Mẫu biểu (upload file .docx, gán danh mục)
 - Quản lý Biến (định nghĩa các biến như `ho_ten`, `ngay_sinh`)
 - Gán biến cho từng mẫu biểu
+- **Import/Export Biến** từ CSV/Excel
+- **Import hàng loạt Mẫu biểu** (bulk upload nhiều file .docx)
 
 ### 3. Biến thông minh (Dynamic Forms)
 - Hỗ trợ 4 kiểu dữ liệu:
@@ -243,6 +247,91 @@ MauBieu7202/
 - `template`: Mẫu biểu
 - `variable`: Biến
 - `order`: Thứ tự hiển thị trong form
+
+## Tính năng Import/Export (Mới)
+
+### Import Biến từ CSV/Excel
+
+Quản trị viên có thể import hàng loạt biến từ file CSV hoặc Excel:
+
+#### Cách sử dụng:
+
+1. Vào trang Admin: `/admin/`
+2. Click vào **Biến**
+3. Click nút **"Import Biến"** ở góc phải trên
+4. Upload file CSV hoặc Excel (.xlsx)
+
+#### Định dạng file CSV:
+
+```csv
+name,label,field_type,required,default_value,help_text
+ho_ten,Họ và tên,text,True,,Nhập họ tên đầy đủ
+ngay_sinh,Ngày sinh,date,True,,Nhập ngày sinh
+so_cmnd,Số CMND/CCCD,text,True,,Nhập số CMND hoặc CCCD
+dia_chi,Địa chỉ,textarea,False,,Nhập địa chỉ chi tiết
+```
+
+**Các cột:**
+- `name` (bắt buộc): Tên biến, không dấu, không khoảng trắng
+- `label` (bắt buộc): Nhãn hiển thị
+- `field_type`: text, textarea, date, hoặc number (mặc định: text)
+- `required`: True/False (mặc định: True)
+- `default_value`: Giá trị mặc định (tùy chọn)
+- `help_text`: Gợi ý nhập liệu (tùy chọn)
+
+**File mẫu:** `sample_variables.csv` trong thư mục gốc
+
+#### Export Biến:
+
+Để tạo file mẫu hoặc backup:
+
+1. Vào trang Admin → **Biến**
+2. Click nút **"Export CSV"** hoặc **"Export Excel"**
+3. File sẽ được tải xuống
+
+### Import Nhiều Mẫu biểu (Bulk Upload)
+
+Quản trị viên có thể upload nhiều file Word (.docx) cùng lúc:
+
+#### Cách sử dụng:
+
+1. Vào trang Admin: `/admin/`
+2. Click vào **Mẫu biểu**
+3. Click nút **"Import Nhiều Mẫu biểu"** ở góc phải trên
+4. Chọn **nhiều file .docx** (giữ Ctrl hoặc Cmd)
+5. Chọn **Danh mục** chung cho các mẫu biểu
+6. (Tùy chọn) Chọn **Biến** để gán cho tất cả mẫu biểu
+7. (Tùy chọn) Chọn **Nhóm phân quyền**
+8. Click **"Import"**
+
+#### Ví dụ:
+
+Nếu bạn chọn 3 file:
+- `Mau_phat_hanh_the_tin_dung.docx` → Tạo mẫu biểu tên "Mau phat hanh the tin dung"
+- `Mau_tra_soat_ATM.docx` → Tạo mẫu biểu tên "Mau tra soat ATM"
+- `Mau_mo_tai_khoan.docx` → Tạo mẫu biểu tên "Mau mo tai khoan"
+
+**Lưu ý:**
+- Tên mẫu biểu tự động lấy từ tên file (bỏ `.docx`)
+- Tất cả mẫu biểu sẽ được gán vào cùng 1 danh mục
+- Bạn có thể chỉnh sửa từng mẫu biểu sau khi import
+
+## Giao diện Agribank Branding
+
+Hệ thống được thiết kế theo chuẩn nhận diện thương hiệu Agribank:
+
+- **Màu chủ đạo:** Xanh lá Agribank (#00923F)
+- **Màu phụ:** Xanh đậm (#006838)
+- **Màu nhấn:** Vàng (#FFB81C)
+- **Logo:** Hiển thị trên header và trang login
+- **Font chữ:** Arial, sans-serif (chuẩn Agribank)
+
+### Các file theme:
+
+- `templates_app/static/css/agribank-theme.css`: CSS theme Agribank
+- `templates_app/static/images/agribank-logo.svg`: Logo Agribank (placeholder)
+
+**Lưu ý:** Thay file `agribank-logo.svg` bằng logo chính thức của Agribank nếu có
 
 ## Troubleshooting
 

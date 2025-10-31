@@ -1,0 +1,13 @@
+name,label,field_type,required,default_value,help_text
+ho_ten,Họ và tên,text,True,,Nhập họ tên đầy đủ
+ngay_sinh,Ngày sinh,date,True,,Nhập ngày sinh theo định dạng dd/mm/yyyy
+so_cmnd,Số CMND/CCCD,text,True,,Nhập số CMND hoặc CCCD (9-12 số)
+dia_chi,Địa chỉ,textarea,False,,Nhập địa chỉ chi tiết (số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố)
+so_dien_thoai,Số điện thoại,text,True,,Nhập số điện thoại di động (10 số)
+email,Email,text,False,,Nhập địa chỉ email
+noi_cap_cmnd,Nơi cấp CMND,text,True,,Nhập nơi cấp CMND/CCCD
+ngay_cap_cmnd,Ngày cấp CMND,date,True,,Nhập ngày cấp CMND/CCCD
+nghe_nghiep,Nghề nghiệp,text,False,,Nhập nghề nghiệp hiện tại
+noi_lam_viec,Nơi làm việc,text,False,,Nhập tên công ty/tổ chức đang làm việc
+thu_nhap_hang_thang,Thu nhập hàng tháng,number,False,,Nhập thu nhập hàng tháng (VNĐ)
+ghi_chu,Ghi chú,textarea,False,,Ghi chú thêm (nếu có)

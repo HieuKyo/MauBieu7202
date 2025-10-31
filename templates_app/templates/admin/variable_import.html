@@ -1,0 +1,71 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Trang chủ</a>
+    &rsaquo; <a href="{% url 'admin:templates_app_variable_changelist' %}">Biến</a>
+    &rsaquo; Import Biến
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Import Biến từ CSV/Excel</h1>
+
+    <div class="module">
+        <h2>Hướng dẫn</h2>
+        <p>Định dạng file CSV/Excel cần có các cột sau:</p>
+        <ul>
+            <li><strong>name</strong>: Tên biến (bắt buộc, không dấu, không khoảng trắng). VD: ho_ten, ngay_sinh</li>
+            <li><strong>label</strong>: Nhãn hiển thị (bắt buộc). VD: Họ và tên, Ngày sinh</li>
+            <li><strong>field_type</strong>: Kiểu dữ liệu (text, textarea, date, number). Mặc định: text</li>
+            <li><strong>required</strong>: Bắt buộc nhập (True/False). Mặc định: True</li>
+            <li><strong>default_value</strong>: Giá trị mặc định (tùy chọn)</li>
+            <li><strong>help_text</strong>: Gợi ý nhập liệu (tùy chọn)</li>
+        </ul>
+
+        <h3>Ví dụ CSV:</h3>
+        <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
+name,label,field_type,required,default_value,help_text
+ho_ten,Họ và tên,text,True,,Nhập họ tên đầy đủ
+ngay_sinh,Ngày sinh,date,True,,Nhập ngày sinh
+so_cmnd,Số CMND/CCCD,text,True,,Nhập số CMND hoặc CCCD
+dia_chi,Địa chỉ,textarea,False,,Nhập địa chỉ chi tiết
+        </pre>
+
+        <h3>Download file mẫu:</h3>
+        <p>
+            <a href="{% url 'admin:variable_export_csv' %}" class="button">Download CSV mẫu</a>
+            <a href="{% url 'admin:variable_export_excel' %}" class="button">Download Excel mẫu</a>
+        </p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="module">
+        {% csrf_token %}
+        <h2>Upload File</h2>
+        <div class="form-row">
+            <div>
+                <label for="id_file">Chọn file CSV hoặc Excel (.xlsx):</label>
+                <input type="file" name="file" id="id_file" accept=".csv,.xlsx" required>
+            </div>
+        </div>
+        <div class="submit-row">
+            <input type="submit" value="Import" class="default">
+            <a href="{% url 'admin:templates_app_variable_changelist' %}" class="button">Hủy</a>
+        </div>
+    </form>
+
+    <div class="module">
+        <h2>Lưu ý</h2>
+        <ul>
+            <li>Nếu biến đã tồn tại (trùng tên), hệ thống sẽ cập nhật thông tin của biến đó</li>
+            <li>File CSV phải sử dụng encoding UTF-8</li>
+            <li>File Excel phải là định dạng .xlsx (Excel 2007+)</li>
+            <li>Dòng đầu tiên phải là header (tên các cột)</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

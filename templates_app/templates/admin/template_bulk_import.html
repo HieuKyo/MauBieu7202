@@ -1,0 +1,118 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .form-row {
+        margin-bottom: 20px;
+    }
+    .form-row label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    .form-row select[multiple] {
+        min-height: 150px;
+    }
+    .helptext {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Trang chủ</a>
+    &rsaquo; <a href="{% url 'admin:templates_app_template_changelist' %}">Mẫu biểu</a>
+    &rsaquo; Import Nhiều Mẫu biểu
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Import Nhiều Mẫu biểu Cùng Lúc</h1>
+
+    <div class="module">
+        <h2>Hướng dẫn</h2>
+        <ul>
+            <li>Chọn <strong>một hoặc nhiều</strong> file Word (.docx) để import</li>
+            <li>Chọn <strong>Danh mục</strong> mà các mẫu biểu này thuộc về</li>
+            <li>Tùy chọn: Chọn <strong>Biến</strong> để gán cho tất cả các mẫu biểu (có thể chỉnh sửa sau)</li>
+            <li>Tùy chọn: Chọn <strong>Nhóm phân quyền</strong> cho các mẫu biểu</li>
+            <li>Tên mẫu biểu sẽ tự động lấy từ tên file (bỏ .docx)</li>
+        </ul>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="module">
+        {% csrf_token %}
+        <h2>Thông tin Upload</h2>
+
+        <div class="form-row">
+            <label for="id_files">Chọn file Word (.docx): *</label>
+            <input type="file" name="files" id="id_files" accept=".docx" multiple required>
+            <p class="helptext">Bạn có thể chọn nhiều file cùng lúc bằng cách giữ Ctrl (Windows) hoặc Cmd (Mac)</p>
+        </div>
+
+        <div class="form-row">
+            <label for="id_category">Danh mục: *</label>
+            <select name="category" id="id_category" required>
+                <option value="">--- Chọn danh mục ---</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endfor %}
+            </select>
+            <p class="helptext">Tất cả các mẫu biểu sẽ được gán vào danh mục này</p>
+        </div>
+
+        <div class="form-row">
+            <label for="id_variables">Biến (tùy chọn):</label>
+            <select name="variables" id="id_variables" multiple>
+                {% for variable in variables %}
+                <option value="{{ variable.id }}">{{ variable.name }} - {{ variable.label }}</option>
+                {% endfor %}
+            </select>
+            <p class="helptext">Giữ Ctrl (Windows) hoặc Cmd (Mac) để chọn nhiều biến. Các biến sẽ được gán cho TẤT CẢ các mẫu biểu</p>
+        </div>
+
+        <div class="form-row">
+            <label for="id_groups">Nhóm phân quyền (tùy chọn):</label>
+            <select name="groups" id="id_groups" multiple>
+                {% for group in groups %}
+                <option value="{{ group.id }}">{{ group.name }}</option>
+                {% endfor %}
+            </select>
+            <p class="helptext">Giữ Ctrl (Windows) hoặc Cmd (Mac) để chọn nhiều nhóm. Để trống nếu muốn tất cả user có quyền truy cập</p>
+        </div>
+
+        <div class="submit-row">
+            <input type="submit" value="Import" class="default">
+            <a href="{% url 'admin:templates_app_template_changelist' %}" class="button">Hủy</a>
+        </div>
+    </form>
+
+    <div class="module">
+        <h2>Lưu ý</h2>
+        <ul>
+            <li>Mỗi file .docx sẽ tạo ra một mẫu biểu mới</li>
+            <li>Nếu muốn gán biến khác nhau cho mỗi mẫu biểu, hãy thực hiện sau khi import</li>
+            <li>Các mẫu biểu sẽ được đánh dấu <strong>Kích hoạt</strong> mặc định</li>
+            <li>Bạn có thể chỉnh sửa chi tiết từng mẫu biểu sau khi import</li>
+        </ul>
+    </div>
+
+    <div class="module">
+        <h2>Ví dụ</h2>
+        <p>Nếu bạn chọn 3 file:</p>
+        <ul>
+            <li>Mau_phat_hanh_the_tin_dung.docx → Tên mẫu biểu: "Mau phat hanh the tin dung"</li>
+            <li>Mau_tra_soat_ATM.docx → Tên mẫu biểu: "Mau tra soat ATM"</li>
+            <li>Mau_mo_tai_khoan.docx → Tên mẫu biểu: "Mau mo tai khoan"</li>
+        </ul>
+        <p>Hệ thống sẽ tạo 3 mẫu biểu mới với tên tương ứng</p>
+    </div>
+</div>
+{% endblock %}

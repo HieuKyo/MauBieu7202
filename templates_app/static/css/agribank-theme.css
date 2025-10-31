@@ -1,0 +1,230 @@
+/*
+ * Agribank Brand Colors and Theme
+ * Primary Green: #00923F (Agribank Green)
+ * Secondary Green: #006838
+ * Accent: #FFB81C (Gold/Yellow)
+ */
+
+:root {
+    --agribank-primary: #00923F;
+    --agribank-secondary: #006838;
+    --agribank-accent: #FFB81C;
+    --agribank-light-green: #E8F5E9;
+    --agribank-dark-green: #004D21;
+    --agribank-text: #333333;
+    --agribank-gray: #F5F5F5;
+}
+
+/* Override Bootstrap primary color */
+.btn-primary {
+    background-color: var(--agribank-primary) !important;
+    border-color: var(--agribank-primary) !important;
+}
+
+.btn-primary:hover {
+    background-color: var(--agribank-secondary) !important;
+    border-color: var(--agribank-secondary) !important;
+}
+
+.bg-primary {
+    background-color: var(--agribank-primary) !important;
+}
+
+.text-primary {
+    color: var(--agribank-primary) !important;
+}
+
+.navbar {
+    background: linear-gradient(135deg, var(--agribank-primary) 0%, var(--agribank-secondary) 100%) !important;
+}
+
+/* Brand header */
+.agribank-header {
+    background: linear-gradient(135deg, var(--agribank-primary) 0%, var(--agribank-secondary) 100%);
+    padding: 1rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.agribank-logo {
+    max-height: 50px;
+    margin-right: 1rem;
+}
+
+.agribank-brand-text {
+    color: white;
+    font-weight: bold;
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Cards with Agribank theme */
+.card.category-card:hover,
+.card.template-card:hover {
+    border-color: var(--agribank-primary);
+    box-shadow: 0 0.5rem 1rem rgba(0, 146, 63, 0.2);
+}
+
+.category-card .bg-primary {
+    background-color: var(--agribank-primary) !important;
+}
+
+.template-card .bg-success {
+    background-color: var(--agribank-secondary) !important;
+}
+
+/* Badge colors */
+.badge.bg-secondary {
+    background-color: var(--agribank-secondary) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--agribank-accent) !important;
+}
+
+/* Login page */
+.login-container {
+    background: linear-gradient(135deg, var(--agribank-primary) 0%, var(--agribank-secondary) 100%);
+    min-height: 100vh;
+}
+
+.login-card {
+    border-top: 4px solid var(--agribank-accent);
+}
+
+/* Form controls */
+.form-control:focus {
+    border-color: var(--agribank-primary);
+    box-shadow: 0 0 0 0.2rem rgba(0, 146, 63, 0.25);
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    background-color: var(--agribank-light-green);
+}
+
+.breadcrumb-item.active {
+    color: var(--agribank-secondary);
+}
+
+.breadcrumb-item a {
+    color: var(--agribank-primary);
+}
+
+/* Footer */
+footer {
+    background-color: var(--agribank-gray);
+    border-top: 3px solid var(--agribank-primary);
+}
+
+/* Alert colors */
+.alert-success {
+    background-color: var(--agribank-light-green);
+    border-color: var(--agribank-primary);
+    color: var(--agribank-dark-green);
+}
+
+/* Button success */
+.btn-success {
+    background-color: var(--agribank-primary) !important;
+    border-color: var(--agribank-primary) !important;
+}
+
+.btn-success:hover {
+    background-color: var(--agribank-secondary) !important;
+    border-color: var(--agribank-secondary) !important;
+}
+
+/* Accent elements */
+.text-success {
+    color: var(--agribank-primary) !important;
+}
+
+.border-success {
+    border-color: var(--agribank-primary) !important;
+}
+
+/* Category and Template icons */
+.category-icon,
+.template-icon {
+    background: linear-gradient(135deg, var(--agribank-primary) 0%, var(--agribank-secondary) 100%);
+    border-radius: 12px;
+    padding: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0, 146, 63, 0.2);
+}
+
+/* Card footer accent */
+.card-footer {
+    border-top: 2px solid var(--agribank-light-green);
+}
+
+/* Dropdown hover */
+.dropdown-item:hover {
+    background-color: var(--agribank-light-green);
+    color: var(--agribank-primary);
+}
+
+/* Admin branding */
+.admin-link {
+    color: var(--agribank-accent) !important;
+}
+
+.admin-link:hover {
+    color: white !important;
+}
+
+/* Responsive logo */
+@media (max-width: 768px) {
+    .agribank-logo {
+        max-height: 40px;
+    }
+
+    .agribank-brand-text {
+        font-size: 1.2rem;
+    }
+}
+
+/* Loading indicator */
+.agribank-spinner {
+    border: 3px solid var(--agribank-light-green);
+    border-top: 3px solid var(--agribank-primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Table styling */
+.table thead {
+    background-color: var(--agribank-primary);
+    color: white;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--agribank-light-green);
+}
+
+/* Form labels */
+.form-label {
+    color: var(--agribank-text);
+    font-weight: 600;
+}
+
+/* Required field indicator */
+.text-danger {
+    color: #d32f2f !important;
+}
+
+/* Success message */
+.alert-success .alert-link {
+    color: var(--agribank-dark-green);
+    font-weight: bold;
+}
