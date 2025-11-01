@@ -162,33 +162,29 @@
                 <div class="card shadow-sm">
                     <div class="card-header" style="background-color: var(--agribank-green); color: white;">
                         <h5 class="mb-0">
-                            <i class="bi bi-file-earmark-text"></i> Chọn Mẫu biểu
+                            <i class="bi bi-file-earmark-text"></i> IN MẪU BIỂU
                         </h5>
                     </div>
                     <div class="card-body">
                         {% if categories %}
-                            {% for category in categories %}
-                            <div class="mb-4">
-                                <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">
-                                    <i class="bi bi-folder"></i> {{ category.name }}
-                                </h6>
-                                <div class="row g-2">
-                                    {% for template in category.accessible_templates %}
-                                    <div class="col-md-6">
-                                        <div class="card template-card border border-secondary"
-                                             onclick="selectTemplate({{ template.id }})">
-                                            <div class="card-body p-3">
-                                                <h6 class="mb-1">{{ template.name }}</h6>
-                                                {% if template.description %}
-                                                <small class="text-muted">{{ template.description|truncatewords:10 }}</small>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Chọn mẫu biểu để in:</label>
+                                <select class="form-select form-select-lg" id="template-select" onchange="handleTemplateSelection()">
+                                    <option value="">-- Chọn mẫu biểu --</option>
+                                    {% for category in categories %}
+                                        <optgroup label="{{ category.name }}">
+                                            {% for template in category.accessible_templates %}
+                                                <option value="{{ template.id }}">{{ template.name }}</option>
+                                            {% endfor %}
+                                        </optgroup>
                                     {% endfor %}
-                                </div>
+                                </select>
                             </div>
-                            {% endfor %}
+
+                            <div class="alert alert-info small">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>Hướng dẫn:</strong> Chọn mẫu biểu từ danh sách trên, file Word sẽ tự động được tạo và tải về máy.
+                            </div>
                         {% else %}
                             <p class="text-muted text-center">Không có mẫu biểu nào</p>
                         {% endif %}
@@ -215,11 +211,15 @@
                     <input type="hidden" id="customer-id" name="customer_id">
 
                     <!-- Customer Code -->
-                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Mã khách hàng</h6>
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Mã định danh</h6>
                     <div class="row g-3 mb-4">
-                        <div class="col-12">
+                        <div class="col-md-6">
                             <label class="form-label">Mã khách hàng</label>
                             <input type="text" class="form-control" name="ma_khach_hang" placeholder="Nhập mã khách hàng (tùy chọn)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Mã CIF</label>
+                            <input type="text" class="form-control" name="cif" placeholder="Nhập mã CIF (tùy chọn)">
                         </div>
                     </div>
 
@@ -307,15 +307,41 @@
                     </div>
 
                     <!-- Banking Info -->
-                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin tài khoản</h6>
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin tài khoản & Thẻ</h6>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Số tài khoản</label>
                             <input type="text" class="form-control" name="so_tai_khoan">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Loại tài khoản</label>
                             <input type="text" class="form-control" name="loai_tai_khoan">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Loại tiền tệ <span class="text-danger">*</span></label>
+                            <select class="form-select" name="loai_tien_te" required>
+                                <option value="VND">VND - Việt Nam Đồng</option>
+                                <option value="USD">USD - Đô la Mỹ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Loại thẻ</label>
+                            <select class="form-select" name="loai_the">
+                                <option value="">Chọn loại thẻ...</option>
+                                <option value="Thẻ ATM">Thẻ ATM</option>
+                                <option value="Thẻ Visa">Thẻ Visa</option>
+                                <option value="Thẻ MasterCard">Thẻ MasterCard</option>
+                                <option value="Thẻ JCB">Thẻ JCB</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Hạng thẻ</label>
+                            <select class="form-select" name="hang_the">
+                                <option value="">Chọn hạng thẻ...</option>
+                                <option value="Classic">Classic</option>
+                                <option value="Gold">Gold</option>
+                                <option value="Platinum">Platinum</option>
+                            </select>
                         </div>
                     </div>
 
@@ -456,14 +482,69 @@
         document.getElementById('customer-info').innerHTML = infoHtml;
     }
 
-    function selectTemplate(templateId) {
+    function handleTemplateSelection() {
+        const templateId = document.getElementById('template-select').value;
+
+        if (!templateId) {
+            return; // No template selected
+        }
+
         if (!selectedCustomerId) {
             showNotification('Vui lòng chọn khách hàng trước', 'warning');
+            document.getElementById('template-select').value = ''; // Reset selection
             return;
         }
 
-        // Store customer ID in session and redirect to template form
-        window.location.href = `/template/${templateId}/?customer=${selectedCustomerId}`;
+        // Tự động generate và tải file
+        generateAndDownloadDocument(templateId, selectedCustomerId);
+    }
+
+    function generateAndDownloadDocument(templateId, customerId) {
+        showNotification('Đang tạo file... Vui lòng đợi', 'info');
+
+        // First, send customer data to session
+        fetch(`/template/${templateId}/?customer=${customerId}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            // Now generate the document
+            return fetch(`/template/${templateId}/generate/`, {
+                method: 'GET'
+            });
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Lỗi khi tạo tài liệu');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `mau_bieu_${Date.now()}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            showNotification('Đã tải file thành công!', 'success');
+            // Reset template selection
+            document.getElementById('template-select').value = '';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Lỗi khi tạo file: ' + error.message, 'error');
+            document.getElementById('template-select').value = '';
+        });
     }
 
     function showAddCustomerModal() {
@@ -488,6 +569,7 @@
 
                     // Populate form fields
                     form.querySelector('[name="ma_khach_hang"]').value = customer.ma_khach_hang || '';
+                    form.querySelector('[name="cif"]').value = customer.cif || '';
                     form.querySelector('[name="ho_ten"]').value = customer.ho_ten || '';
                     form.querySelector('[name="ngay_sinh"]').value = customer.ngay_sinh ? formatDateForInput(customer.ngay_sinh) : '';
                     form.querySelector('[name="gioi_tinh"]').value = customer.gioi_tinh || '';
@@ -513,6 +595,9 @@
                     form.querySelector('[name="noi_lam_viec"]').value = customer.noi_lam_viec || '';
                     form.querySelector('[name="so_tai_khoan"]').value = customer.so_tai_khoan || '';
                     form.querySelector('[name="loai_tai_khoan"]').value = customer.loai_tai_khoan || '';
+                    form.querySelector('[name="loai_tien_te"]').value = customer.loai_tien_te || 'VND';
+                    form.querySelector('[name="loai_the"]').value = customer.loai_the || '';
+                    form.querySelector('[name="hang_the"]').value = customer.hang_the || '';
                     form.querySelector('[name="ghi_chu"]').value = customer.ghi_chu || '';
 
                     customerModal.show();

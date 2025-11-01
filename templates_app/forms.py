@@ -125,6 +125,7 @@ class CustomerForm(forms.ModelForm):
         exclude = ['created_at', 'updated_at', 'created_by']
         widgets = {
             'ma_khach_hang': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã khách hàng (tùy chọn)'}),
+            'cif': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã CIF (tùy chọn)'}),
             'ho_ten': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập họ và tên'}),
             'ngay_sinh': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'gioi_tinh': forms.Select(attrs={'class': 'form-select'}),
@@ -139,6 +140,9 @@ class CustomerForm(forms.ModelForm):
             'noi_lam_viec': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi làm việc'}),
             'so_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản'}),
             'loai_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Loại tài khoản'}),
+            'loai_tien_te': forms.Select(attrs={'class': 'form-select'}),
+            'loai_the': forms.Select(attrs={'class': 'form-select'}),
+            'hang_the': forms.Select(attrs={'class': 'form-select'}),
             'ghi_chu': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ghi chú thêm'}),
         }
 

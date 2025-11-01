@@ -92,7 +92,7 @@ def category_detail_view(request, category_id):
 @login_required
 def template_form_view(request, template_id):
     """
-    Hiển thị form nhập liệu cho một template
+    Hiển thị form nhập liệu cho một template hoặc tự động lưu dữ liệu vào session
     Auto-fill từ customer nếu có customer parameter trong URL
     """
     template = get_object_or_404(Template, id=template_id, is_active=True)
@@ -118,6 +118,17 @@ def template_form_view(request, template_id):
             initial_data = customer.get_data_dict()
         except Customer.DoesNotExist:
             messages.warning(request, 'Không tìm thấy thông tin khách hàng')
+
+    # Tự động lưu dữ liệu vào session nếu có customer
+    # (bỏ qua form nhập biến - tất cả biến đến từ customer + global config)
+    if customer_id and customer:
+        session_data = initial_data.copy()
+        session_data['_customer_id'] = customer_id
+        request.session[f'template_{template_id}_data'] = session_data
+
+        # Nếu là AJAX request, return JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': 'Dữ liệu đã được lưu'})
 
     if request.method == 'POST':
         form = DynamicTemplateForm(request.POST, template=template)
@@ -310,6 +321,7 @@ def customer_detail_api(request, customer_id):
             'customer': {
                 'id': customer.id,
                 'ma_khach_hang': customer.ma_khach_hang,
+                'cif': customer.cif,
                 'ho_ten': customer.ho_ten,
                 'ngay_sinh': customer.ngay_sinh.strftime('%d/%m/%Y') if customer.ngay_sinh else '',
                 'gioi_tinh': customer.gioi_tinh,
@@ -325,6 +337,9 @@ def customer_detail_api(request, customer_id):
                 'noi_lam_viec': customer.noi_lam_viec,
                 'so_tai_khoan': customer.so_tai_khoan,
                 'loai_tai_khoan': customer.loai_tai_khoan,
+                'loai_tien_te': customer.loai_tien_te,
+                'loai_the': customer.loai_the,
+                'hang_the': customer.hang_the,
                 'ghi_chu': customer.ghi_chu,
             }
         })
