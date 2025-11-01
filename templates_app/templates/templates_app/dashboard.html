@@ -32,17 +32,27 @@
         margin-bottom: 20px;
     }
     .field-group {
-        margin-bottom: 30px;
-        padding: 20px;
+        margin-bottom: 20px;
+        padding: 15px;
         background-color: #f8f9fa;
         border-radius: 8px;
+        border-left: 3px solid var(--agribank-green);
     }
     .field-group-title {
         color: var(--agribank-red);
-        font-weight: bold;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid var(--agribank-red);
+        font-weight: 600;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 0.95rem;
+    }
+    .form-label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.4rem;
+    }
+    .form-control, .form-select {
+        font-size: 0.9rem;
     }
 </style>
 {% endblock %}
@@ -146,23 +156,19 @@
                 <div class="field-group" data-group="personal_info">
                     <h6 class="field-group-title"><i class="bi bi-person"></i> Thông tin cá nhân</h6>
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Mã khách hàng</label>
-                            <input type="text" class="form-control" name="ma_khach_hang">
+                            <input type="text" class="form-control" name="ma_khach_hang" placeholder="Mã định danh khách hàng">
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Mã CIF</label>
-                            <input type="text" class="form-control" name="cif">
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="ho_ten" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Ngày sinh</label>
                             <input type="date" class="form-control" name="ngay_sinh">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Giới tính</label>
                             <select class="form-select" name="gioi_tinh">
                                 <option value="">Chọn...</option>
@@ -308,21 +314,22 @@
                     <h6 class="field-group-title"><i class="bi bi-app-indicator"></i> Đăng ký dịch vụ</h6>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <strong class="d-block mb-2">Dịch vụ Thu hộ:</strong>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" name="dv_thu_ho_tien_nuoc" id="dv1"><label class="form-check-label" for="dv1">Tiền nước</label></div>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" name="dv_thu_ho_tien_dien" id="dv2"><label class="form-check-label" for="dv2">Tiền điện</label></div>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" name="dv_thu_ho_vien_thong" id="dv3"><label class="form-check-label" for="dv3">Viễn thông</label></div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="dv_sms_banking" id="dv-sms">
+                                <label class="form-check-label" for="dv-sms">SMS Banking</label>
+                            </div>
                         </div>
                         <div class="col-md-4">
-                            <strong class="d-block mb-2">Dịch vụ E-Banking:</strong>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" name="dv_sms_banking" id="dv4"><label class="form-check-label" for="dv4">SMS Banking</label></div>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" name="dv_bankplus" id="dv5"><label class="form-check-label" for="dv5">Agribank Plus</label></div>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" name="dv_e_mobile" id="dv6"><label class="form-check-label" for="dv6">E-Mobile</label></div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="dv_bankplus" id="dv-plus">
+                                <label class="form-check-label" for="dv-plus">Agribank Plus</label>
+                            </div>
                         </div>
                         <div class="col-md-4">
-                            <strong class="d-block mb-2">Kênh giao dịch:</strong>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" name="kenh_mobile" id="kn1"><label class="form-check-label" for="kn1">Mobile</label></div>
-                            <div class="form-check"><input class="form-check-input" type="checkbox" name="kenh_internet" id="kn2"><label class="form-check-label" for="kn2">Internet Banking</label></div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="dv_e_mobile" id="dv-wallet">
+                                <label class="form-check-label" for="dv-wallet">Dịch vụ Liên kết ví</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -571,7 +578,6 @@ function loadCustomerData(customerId) {
 function fillFormWithData(data) {
     // Personal info
     if (data.ma_khach_hang) document.querySelector('[name="ma_khach_hang"]').value = data.ma_khach_hang;
-    if (data.cif) document.querySelector('[name="cif"]').value = data.cif;
     if (data.ho_ten) document.querySelector('[name="ho_ten"]').value = data.ho_ten;
     if (data.ngay_sinh) document.querySelector('[name="ngay_sinh"]').value = data.ngay_sinh;
     if (data.gioi_tinh) document.querySelector('[name="gioi_tinh"]').value = data.gioi_tinh;
@@ -607,10 +613,7 @@ function fillFormWithData(data) {
     // Checkboxes - need to handle boolean values
     const checkboxFields = [
         'phat_hanh_lan_dau', 'phat_hanh_lai',
-        'dv_thu_ho_tien_nuoc', 'dv_thu_ho_tien_dien', 'dv_thu_ho_vien_thong',
-        'dv_thu_ho_truyen_hinh', 'dv_thu_ho_internet', 'dv_sms_banking',
-        'dv_bankplus', 'dv_e_mobile', 'dv_e_internet', 'dv_e_pay',
-        'dv_smart_otp', 'dv_token', 'kenh_mobile', 'kenh_internet'
+        'dv_sms_banking', 'dv_bankplus', 'dv_e_mobile'
     ];
     checkboxFields.forEach(field => {
         const checkbox = document.querySelector(`[name="${field}"]`);

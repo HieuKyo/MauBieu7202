@@ -689,7 +689,7 @@ def generate_document_direct(request, template_id):
 
         # Personal info
         data['ma_khach_hang'] = request.POST.get('ma_khach_hang', '')
-        data['cif'] = request.POST.get('cif', '')
+        data['cif'] = data['ma_khach_hang']  # CIF = Mã khách hàng (for backward compatibility)
         data['ho_ten'] = request.POST.get('ho_ten', '')
         data['ngay_sinh'] = request.POST.get('ngay_sinh', '')
         data['gioi_tinh'] = request.POST.get('gioi_tinh', '')
@@ -725,21 +725,16 @@ def generate_document_direct(request, template_id):
         data['phat_hanh_lan_dau'] = checkbox(request.POST.get('phat_hanh_lan_dau') == 'on')
         data['phat_hanh_lai'] = checkbox(request.POST.get('phat_hanh_lai') == 'on')
 
-        # Service checkboxes
-        data['dv_thu_ho_tien_nuoc'] = checkbox(request.POST.get('dv_thu_ho_tien_nuoc') == 'on')
-        data['dv_thu_ho_tien_dien'] = checkbox(request.POST.get('dv_thu_ho_tien_dien') == 'on')
-        data['dv_thu_ho_vien_thong'] = checkbox(request.POST.get('dv_thu_ho_vien_thong') == 'on')
-        data['dv_thu_ho_truyen_hinh'] = checkbox(request.POST.get('dv_thu_ho_truyen_hinh') == 'on')
-        data['dv_thu_ho_internet'] = checkbox(request.POST.get('dv_thu_ho_internet') == 'on')
+        # Service checkboxes (3 main services only)
         data['dv_sms_banking'] = checkbox(request.POST.get('dv_sms_banking') == 'on')
         data['dv_bankplus'] = checkbox(request.POST.get('dv_bankplus') == 'on')
         data['dv_e_mobile'] = checkbox(request.POST.get('dv_e_mobile') == 'on')
-        data['dv_e_internet'] = checkbox(request.POST.get('dv_e_internet') == 'on')
-        data['dv_e_pay'] = checkbox(request.POST.get('dv_e_pay') == 'on')
-        data['dv_smart_otp'] = checkbox(request.POST.get('dv_smart_otp') == 'on')
-        data['dv_token'] = checkbox(request.POST.get('dv_token') == 'on')
-        data['kenh_mobile'] = checkbox(request.POST.get('kenh_mobile') == 'on')
-        data['kenh_internet'] = checkbox(request.POST.get('kenh_internet') == 'on')
+
+        # Set other service checkboxes to unchecked for compatibility with old templates
+        for field in ['dv_thu_ho_tien_nuoc', 'dv_thu_ho_tien_dien', 'dv_thu_ho_vien_thong',
+                      'dv_thu_ho_truyen_hinh', 'dv_thu_ho_internet', 'dv_e_internet', 'dv_e_pay',
+                      'dv_smart_otp', 'dv_token', 'kenh_mobile', 'kenh_internet']:
+            data[field] = '☐'
 
         # Special checkboxes
         data['the_hang_chuan'] = checkbox(data['hang_the'] == 'Hạng chuẩn')

@@ -194,13 +194,13 @@ class CategoryAdminForm(forms.ModelForm):
 
     # Define all available field groups with descriptions
     FIELD_GROUP_CHOICES = [
-        ('personal_info', 'Thông tin cá nhân (Họ tên, Ngày sinh, Giới tính)'),
+        ('personal_info', 'Thông tin cá nhân (Mã KH, Họ tên, Ngày sinh, Giới tính)'),
         ('id_documents', 'Giấy tờ tùy thân (CMND/CCCD, Ngày cấp, Nơi cấp)'),
         ('contact', 'Thông tin liên hệ (Địa chỉ, SĐT, Email)'),
         ('employment', 'Thông tin nghề nghiệp (Nghề nghiệp, Nơi làm việc)'),
         ('banking', 'Thông tin tài khoản (Số TK, Loại TK, Loại tiền tệ)'),
         ('card', 'Thông tin thẻ (Loại thẻ, Hạng thẻ, Phát hành)'),
-        ('services', 'Đăng ký dịch vụ (Thu hộ, SMS Banking, E-Banking, Kênh giao dịch)'),
+        ('services', 'Đăng ký dịch vụ (SMS Banking, Agribank Plus, Liên kết ví)'),
         ('print_info', 'Thông tin in mẫu biểu (Ngày in)'),
     ]
 
