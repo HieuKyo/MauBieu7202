@@ -256,6 +256,7 @@
 
 {% block extra_js %}
 <script>
+{% verbatim %}
 // Copy variable to clipboard
 function copyVariable(variableName) {
     // Format: {{ variable_name }}
@@ -350,5 +351,6 @@ function showNotification(message, type = 'info') {
         alert.remove();
     }, 3000);
 }
+{% endverbatim %}
 </script>
 {% endblock %}
