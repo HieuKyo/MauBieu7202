@@ -1,15 +1,15 @@
 {% extends 'templates_app/base.html' %}
 {% load static %}
 
-{% block title %}Cấu hình Chi nhánh - Hệ thống Mẫu biểu{% endblock %}
+{% block title %}Cấu hình Toàn cục - Hệ thống Mẫu biểu{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-8">
         <h2 class="fw-bold" style="color: var(--agribank-red);">
-            <i class="bi bi-gear-fill"></i> Cấu hình Thông tin Chi nhánh
+            <i class="bi bi-gear-fill"></i> Cấu hình Toàn cục
         </h2>
-        <p class="text-muted">Thông tin chi nhánh sẽ được tự động chèn vào các mẫu biểu thông qua các biến.</p>
+        <p class="text-muted">Thông tin chi nhánh và biến chung sẽ được tự động chèn vào mọi mẫu biểu.</p>
     </div>
     <div class="col-md-4 text-end">
         <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
@@ -20,6 +20,7 @@
 
 <div class="row">
     <div class="col-lg-8">
+        <!-- Thông tin Chi nhánh -->
         <form method="post">
             {% csrf_token %}
 
@@ -83,19 +84,66 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between">
-                <a href="{% url 'dashboard' %}" class="btn btn-secondary">
-                    <i class="bi bi-x-circle"></i> Hủy
-                </a>
-                <button type="submit" class="btn btn-success btn-lg">
-                    <i class="bi bi-save"></i> Lưu cấu hình
+            <div class="d-flex justify-content-end mb-3">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-save"></i> Lưu thông tin chi nhánh
                 </button>
             </div>
         </form>
+
+        <!-- Biến tùy chỉnh -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background-color: var(--agribank-green); color: white;">
+                <h5 class="mb-0"><i class="bi bi-code-square"></i> Biến Tùy chỉnh</h5>
+                <button class="btn btn-light btn-sm" onclick="showAddVariableModal()">
+                    <i class="bi bi-plus-circle"></i> Thêm biến
+                </button>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Các biến tùy chỉnh sẽ tự động có sẵn trong mọi mẫu biểu. Sử dụng trong template Word với cú pháp <code>{% templatetag openvariable %} ten_bien {% templatetag closevariable %}</code></p>
+
+                <div id="custom-variables-list">
+                    {% if custom_variables %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30%;">Tên biến</th>
+                                        <th style="width: 50%;">Giá trị</th>
+                                        <th style="width: 20%;" class="text-end">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="variables-table-body">
+                                    {% for name, value in custom_variables.items %}
+                                    <tr data-variable-name="{{ name }}">
+                                        <td><code>{% templatetag openvariable %} {{ name }} {% templatetag closevariable %}</code></td>
+                                        <td>{{ value }}</td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editVariable('{{ name }}', '{{ value|escapejs }}')">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteVariable('{{ name }}')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info" id="no-variables-message">
+                            <i class="bi bi-info-circle"></i> Chưa có biến tùy chỉnh nào. Nhấn "Thêm biến" để bắt đầu.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Sidebar: Hướng dẫn -->
     <div class="col-lg-4">
-        <div class="card bg-light">
+        <div class="card bg-light sticky-top" style="top: 20px;">
             <div class="card-body">
                 <h6 class="card-title fw-bold" style="color: var(--agribank-red);">
                     <i class="bi bi-info-circle"></i> Hướng dẫn sử dụng biến
@@ -121,6 +169,15 @@
                     <li><code>{% templatetag openvariable %} y1 {% templatetag closevariable %}</code>, <code>{% templatetag openvariable %} y2 {% templatetag closevariable %}</code>, <code>{% templatetag openvariable %} y3 {% templatetag closevariable %}</code>, <code>{% templatetag openvariable %} y4 {% templatetag closevariable %}</code> - Năm (4 chữ số)</li>
                 </ul>
 
+                <h6 class="mt-3 fw-bold">Biến Khách hàng:</h6>
+                <p class="small mb-1">Tự động có khi chọn khách hàng:</p>
+                <ul class="small">
+                    <li><code>{% templatetag openvariable %} ho_ten {% templatetag closevariable %}</code></li>
+                    <li><code>{% templatetag openvariable %} so_cmnd {% templatetag closevariable %}</code></li>
+                    <li><code>{% templatetag openvariable %} dia_chi {% templatetag closevariable %}</code></li>
+                    <li>... và các trường khác của khách hàng</li>
+                </ul>
+
                 <div class="alert alert-warning mt-3 small">
                     <strong>Lưu ý:</strong> Các biến này tự động có sẵn trong mọi mẫu biểu, không cần cấu hình thêm.
                 </div>
@@ -128,4 +185,166 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Add/Edit Variable -->
+<div class="modal fade" id="variableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--agribank-green); color: white;">
+                <h5 class="modal-title" id="variableModalLabel">
+                    <i class="bi bi-code-square"></i> Thêm Biến Tùy chỉnh
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="variableForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit-mode" value="false">
+                    <input type="hidden" id="original-variable-name">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tên biến <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="variable-name" placeholder="ten_bien_khong_dau" required>
+                        <small class="form-text text-muted">Chỉ sử dụng chữ cái, số và dấu gạch dưới. Không có khoảng trắng, không dấu.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Giá trị</label>
+                        <textarea class="form-control" id="variable-value" rows="3" placeholder="Giá trị của biến"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="saveVariable()">
+                    <i class="bi bi-save"></i> Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let variableModal = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    variableModal = new bootstrap.Modal(document.getElementById('variableModal'));
+});
+
+function showAddVariableModal() {
+    document.getElementById('variableModalLabel').innerHTML = '<i class="bi bi-code-square"></i> Thêm Biến Tùy chỉnh';
+    document.getElementById('variableForm').reset();
+    document.getElementById('edit-mode').value = 'false';
+    document.getElementById('variable-name').readOnly = false;
+    variableModal.show();
+}
+
+function editVariable(name, value) {
+    document.getElementById('variableModalLabel').innerHTML = '<i class="bi bi-pencil"></i> Sửa Biến Tùy chỉnh';
+    document.getElementById('edit-mode').value = 'true';
+    document.getElementById('original-variable-name').value = name;
+    document.getElementById('variable-name').value = name;
+    document.getElementById('variable-name').readOnly = true;
+    document.getElementById('variable-value').value = value;
+    variableModal.show();
+}
+
+function saveVariable() {
+    const editMode = document.getElementById('edit-mode').value === 'true';
+    const variableName = document.getElementById('variable-name').value.trim();
+    const variableValue = document.getElementById('variable-value').value.trim();
+
+    if (!variableName) {
+        alert('Vui lòng nhập tên biến');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', variableName);
+    formData.append('value', variableValue);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    const url = editMode ? '{% url "update_custom_variable" %}' : '{% url "add_custom_variable" %}';
+
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            variableModal.hide();
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Lỗi khi lưu biến', 'error');
+    });
+}
+
+function deleteVariable(name) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa biến "${name}"?`)) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    fetch('{% url "delete_custom_variable" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Lỗi khi xóa biến', 'error');
+    });
+}
+
+function showNotification(message, type = 'info') {
+    const alertClass = {
+        'success': 'alert-success',
+        'error': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    }[type] || 'alert-info';
+
+    const icon = {
+        'success': 'check-circle-fill',
+        'error': 'x-circle-fill',
+        'warning': 'exclamation-triangle-fill',
+        'info': 'info-circle-fill'
+    }[type] || 'info-circle-fill';
+
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+    alert.style.zIndex = '9999';
+    alert.style.minWidth = '400px';
+    alert.innerHTML = `
+        <i class="bi bi-${icon}"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+</script>
 {% endblock %}

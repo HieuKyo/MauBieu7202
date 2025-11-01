@@ -2,7 +2,7 @@
 Dynamic form generation based on Template variables
 """
 from django import forms
-from .models import Template, TemplateVariable, Customer, BranchConfig
+from .models import Template, TemplateVariable, Customer, GlobalConfig
 
 
 class DynamicTemplateForm(forms.Form):
@@ -143,12 +143,12 @@ class CustomerForm(forms.ModelForm):
         }
 
 
-class BranchConfigForm(forms.ModelForm):
-    """Form cho cấu hình thông tin chi nhánh"""
+class GlobalConfigForm(forms.ModelForm):
+    """Form cho cấu hình toàn cục (thông tin chi nhánh + biến chung)"""
 
     class Meta:
-        model = BranchConfig
-        exclude = ['updated_at', 'updated_by']
+        model = GlobalConfig
+        exclude = ['updated_at', 'updated_by', 'custom_variables']  # custom_variables quản lý riêng qua UI động
         widgets = {
             'ten_chi_nhanh': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: Chi nhánh Giá Rai Bạc Liêu'}),
             'ten_chi_nhanh_hoa': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: CHI NHÁNH GIÁ RAI BẠC LIÊU'}),
@@ -158,3 +158,7 @@ class BranchConfigForm(forms.ModelForm):
             'giam_doc': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên giám đốc'}),
             'dia_chi_chi_nhanh': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Địa chỉ đầy đủ chi nhánh'}),
         }
+
+
+# Alias để backward compatibility
+BranchConfigForm = GlobalConfigForm

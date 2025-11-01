@@ -28,6 +28,9 @@ urlpatterns = [
     path('api/customers/<int:customer_id>/update/', views.customer_update_view, name='customer_update'),
     path('api/customers/<int:customer_id>/delete/', views.customer_delete_view, name='customer_delete'),
 
-    # Branch Configuration
+    # Global Configuration (Branch + Custom Variables)
     path('branch-config/', views.branch_config_view, name='branch_config'),
+    path('api/custom-variables/add/', views.add_custom_variable, name='add_custom_variable'),
+    path('api/custom-variables/update/', views.update_custom_variable, name='update_custom_variable'),
+    path('api/custom-variables/delete/', views.delete_custom_variable, name='delete_custom_variable'),
 ]

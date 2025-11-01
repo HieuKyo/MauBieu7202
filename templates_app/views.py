@@ -5,8 +5,8 @@ from django.contrib import messages
 from django.http import HttpResponse, Http404, JsonResponse
 from django.db.models import Q, Exists, OuterRef
 from django.views.decorators.http import require_http_methods
-from .models import Category, Template, Variable, TemplateVariable, Customer, BranchConfig
-from .forms import DynamicTemplateForm, CustomerForm, BranchConfigForm
+from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig
+from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
 from .utils import render_word_template
 import os
 import json
@@ -167,9 +167,9 @@ def generate_document_view(request, template_id):
         # Lấy customer_id từ session data nếu có
         customer_id = data.pop('_customer_id', None)
 
-        # Thêm biến chi nhánh vào data
-        branch = BranchConfig.get_instance()
-        data.update(branch.get_branch_dict())
+        # Thêm TẤT CẢ biến chung (chi nhánh + custom variables) vào data
+        global_config = GlobalConfig.get_instance()
+        data.update(global_config.get_all_variables())
 
         # Thêm date variables nếu có customer
         if customer_id:
@@ -394,26 +394,122 @@ def customer_delete_view(request, customer_id):
 # Branch Configuration views
 @login_required
 def branch_config_view(request):
-    """Trang cấu hình thông tin chi nhánh"""
+    """Trang cấu hình toàn cục (chi nhánh + biến chung)"""
     if not request.user.is_superuser:
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
-    branch = BranchConfig.get_instance()
+    config = GlobalConfig.get_instance()
 
     if request.method == 'POST':
-        form = BranchConfigForm(request.POST, instance=branch)
+        # Xử lý form cập nhật thông tin chi nhánh
+        form = GlobalConfigForm(request.POST, instance=config)
         if form.is_valid():
-            branch_config = form.save(commit=False)
-            branch_config.updated_by = request.user
-            branch_config.save()
-            messages.success(request, 'Đã cập nhật cấu hình chi nhánh thành công')
+            global_config = form.save(commit=False)
+            global_config.updated_by = request.user
+            global_config.save()
+            messages.success(request, 'Đã cập nhật cấu hình thành công')
             return redirect('branch_config')
     else:
-        form = BranchConfigForm(instance=branch)
+        form = GlobalConfigForm(instance=config)
 
     context = {
         'form': form,
-        'branch': branch,
+        'config': config,
+        'custom_variables': config.custom_variables or {},
     }
     return render(request, 'templates_app/branch_config.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def add_custom_variable(request):
+    """API: Thêm biến tùy chỉnh"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Không có quyền'}, status=403)
+
+    variable_name = request.POST.get('name', '').strip()
+    variable_value = request.POST.get('value', '').strip()
+
+    if not variable_name:
+        return JsonResponse({'success': False, 'error': 'Tên biến không được để trống'})
+
+    config = GlobalConfig.get_instance()
+    custom_vars = config.custom_variables or {}
+
+    # Kiểm tra biến đã tồn tại
+    if variable_name in custom_vars:
+        return JsonResponse({'success': False, 'error': f'Biến "{variable_name}" đã tồn tại'})
+
+    # Thêm biến mới
+    custom_vars[variable_name] = variable_value
+    config.custom_variables = custom_vars
+    config.updated_by = request.user
+    config.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Đã thêm biến "{variable_name}"',
+        'variable': {'name': variable_name, 'value': variable_value}
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_custom_variable(request):
+    """API: Cập nhật biến tùy chỉnh"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Không có quyền'}, status=403)
+
+    variable_name = request.POST.get('name', '').strip()
+    variable_value = request.POST.get('value', '').strip()
+
+    if not variable_name:
+        return JsonResponse({'success': False, 'error': 'Tên biến không được để trống'})
+
+    config = GlobalConfig.get_instance()
+    custom_vars = config.custom_variables or {}
+
+    if variable_name not in custom_vars:
+        return JsonResponse({'success': False, 'error': f'Biến "{variable_name}" không tồn tại'})
+
+    # Cập nhật giá trị
+    custom_vars[variable_name] = variable_value
+    config.custom_variables = custom_vars
+    config.updated_by = request.user
+    config.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Đã cập nhật biến "{variable_name}"'
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_custom_variable(request):
+    """API: Xóa biến tùy chỉnh"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Không có quyền'}, status=403)
+
+    variable_name = request.POST.get('name', '').strip()
+
+    if not variable_name:
+        return JsonResponse({'success': False, 'error': 'Tên biến không được để trống'})
+
+    config = GlobalConfig.get_instance()
+    custom_vars = config.custom_variables or {}
+
+    if variable_name not in custom_vars:
+        return JsonResponse({'success': False, 'error': f'Biến "{variable_name}" không tồn tại'})
+
+    # Xóa biến
+    del custom_vars[variable_name]
+    config.custom_variables = custom_vars
+    config.updated_by = request.user
+    config.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Đã xóa biến "{variable_name}"'
+    })

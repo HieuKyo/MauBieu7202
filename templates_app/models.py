@@ -232,10 +232,12 @@ class Customer(models.Model):
         return data
 
 
-class BranchConfig(models.Model):
+class GlobalConfig(models.Model):
     """
-    Cấu hình thông tin chi nhánh (Singleton - chỉ có 1 record duy nhất)
+    Cấu hình toàn cục cho chương trình (Singleton - chỉ có 1 record duy nhất)
+    Bao gồm: thông tin chi nhánh + các biến chung
     """
+    # Thông tin chi nhánh
     ten_chi_nhanh = models.CharField(max_length=200, verbose_name="Tên chi nhánh", default="Chi nhánh Giá Rai Bạc Liêu")
     ten_chi_nhanh_hoa = models.CharField(max_length=200, verbose_name="Tên chi nhánh (IN HOA)", default="CHI NHÁNH GIÁ RAI BẠC LIÊU")
     mst = models.CharField(max_length=50, verbose_name="Mã số thuế", blank=True)
@@ -243,6 +245,15 @@ class BranchConfig(models.Model):
     kiem_soat_vien = models.CharField(max_length=200, verbose_name="Kiểm soát viên", blank=True)
     giam_doc = models.CharField(max_length=200, verbose_name="Giám đốc", blank=True)
     dia_chi_chi_nhanh = models.TextField(verbose_name="Địa chỉ chi nhánh", blank=True)
+
+    # Các biến tùy chỉnh chung (lưu dạng JSON)
+    # Format: {"ten_bien": "gia_tri", "bien_khac": "gia_tri_khac"}
+    custom_variables = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Biến tùy chỉnh",
+        help_text="Các biến tùy chỉnh sẽ tự động có sẵn trong mọi mẫu biểu"
+    )
 
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
     updated_by = models.ForeignKey(
@@ -254,8 +265,8 @@ class BranchConfig(models.Model):
     )
 
     class Meta:
-        verbose_name = "Cấu hình Chi nhánh"
-        verbose_name_plural = "Cấu hình Chi nhánh"
+        verbose_name = "Cấu hình Toàn cục"
+        verbose_name_plural = "Cấu hình Toàn cục"
 
     def __str__(self):
         return f"Cấu hình: {self.ten_chi_nhanh}"
@@ -275,9 +286,13 @@ class BranchConfig(models.Model):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
 
-    def get_branch_dict(self):
-        """Trả về dictionary chứa thông tin chi nhánh để chèn vào template"""
-        return {
+    def get_all_variables(self):
+        """
+        Trả về dictionary chứa TẤT CẢ biến (chi nhánh + biến tùy chỉnh)
+        để chèn vào template
+        """
+        variables = {
+            # Biến chi nhánh
             'ten_chi_nhanh': self.ten_chi_nhanh or '',
             'ten_chi_nhanh_hoa': self.ten_chi_nhanh_hoa or '',
             'mst': self.mst or '',
@@ -286,3 +301,13 @@ class BranchConfig(models.Model):
             'giam_doc': self.giam_doc or '',
             'dia_chi_chi_nhanh': self.dia_chi_chi_nhanh or '',
         }
+
+        # Thêm các biến tùy chỉnh
+        if self.custom_variables:
+            variables.update(self.custom_variables)
+
+        return variables
+
+
+# Alias để backward compatibility
+BranchConfig = GlobalConfig
