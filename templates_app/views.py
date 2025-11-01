@@ -428,10 +428,47 @@ def branch_config_view(request):
     else:
         form = GlobalConfigForm(instance=config)
 
+    # Tạo danh sách biến mẫu từ Customer để hiển thị
+    # (lấy tất cả field names từ Customer model)
+    customer_fields = {}
+    for field in Customer._meta.get_fields():
+        if field.concrete and not field.many_to_many and not field.one_to_many:
+            field_name = field.name
+            if field_name not in ['id', 'created_at', 'updated_at', 'created_by']:
+                # Lấy verbose_name nếu có
+                verbose = getattr(field, 'verbose_name', field_name)
+                customer_fields[field_name] = verbose
+
+    # Thêm các biến ngày tháng
+    date_variables = {
+        'd1': 'Ngày - Chữ số thứ nhất',
+        'd2': 'Ngày - Chữ số thứ hai',
+        'm1': 'Tháng - Chữ số thứ nhất',
+        'm2': 'Tháng - Chữ số thứ hai',
+        'y1': 'Năm - Chữ số thứ nhất',
+        'y2': 'Năm - Chữ số thứ hai',
+        'y3': 'Năm - Chữ số thứ ba',
+        'y4': 'Năm - Chữ số thứ tư',
+    }
+
+    # Biến chi nhánh
+    branch_fields = {
+        'ten_chi_nhanh': 'Tên chi nhánh',
+        'ten_chi_nhanh_hoa': 'Tên chi nhánh (IN HOA)',
+        'mst': 'Mã số thuế',
+        'dia_chi_chi_nhanh': 'Địa chỉ chi nhánh',
+        'giao_dich_vien': 'Giao dịch viên',
+        'kiem_soat_vien': 'Kiểm soát viên',
+        'giam_doc': 'Giám đốc',
+    }
+
     context = {
         'form': form,
         'config': config,
         'custom_variables': config.custom_variables or {},
+        'customer_fields': customer_fields,
+        'date_variables': date_variables,
+        'branch_fields': branch_fields,
     }
     return render(request, 'templates_app/branch_config.html', context)
 
