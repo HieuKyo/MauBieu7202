@@ -23,4 +23,8 @@ urlpatterns = [
     path('customers/', views.customer_list_view, name='customer_list'),
     path('api/customers/search/', views.customer_search_api, name='customer_search_api'),
     path('api/customers/<int:customer_id>/', views.customer_data_api, name='customer_data_api'),
+    path('api/customers/<int:customer_id>/detail/', views.customer_detail_api, name='customer_detail_api'),
+    path('api/customers/create/', views.customer_create_view, name='customer_create'),
+    path('api/customers/<int:customer_id>/update/', views.customer_update_view, name='customer_update'),
+    path('api/customers/<int:customer_id>/delete/', views.customer_delete_view, name='customer_delete'),
 ]

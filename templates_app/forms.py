@@ -2,7 +2,7 @@
 Dynamic form generation based on Template variables
 """
 from django import forms
-from .models import Template, TemplateVariable
+from .models import Template, TemplateVariable, Customer
 
 
 class DynamicTemplateForm(forms.Form):
@@ -115,3 +115,30 @@ class DynamicTemplateForm(forms.Form):
                 cleaned_data[field_name] = str(value)
 
         return cleaned_data
+
+
+class CustomerForm(forms.ModelForm):
+    """Form cho quản lý khách hàng"""
+
+    class Meta:
+        model = Customer
+        exclude = ['created_at', 'updated_at', 'created_by']
+        widgets = {
+            'ho_ten': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập họ và tên'}),
+            'ngay_sinh': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'gioi_tinh': forms.Select(attrs={'class': 'form-select'}),
+            'so_cmnd': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập số CMND/CCCD'}),
+            'ngay_cap_cmnd': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'noi_cap_cmnd': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: Công an TP. HCM'}),
+            'dia_chi': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Địa chỉ thường trú'}),
+            'dia_chi_tam_tru': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Địa chỉ tạm trú (nếu có)'}),
+            'so_dien_thoai': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số điện thoại'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'email@example.com'}),
+            'nghe_nghiep': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nghề nghiệp'}),
+            'noi_lam_viec': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi làm việc'}),
+            'chuc_vu': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Chức vụ'}),
+            'thu_nhap_hang_thang': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Thu nhập (VNĐ)'}),
+            'so_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản'}),
+            'loai_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Loại tài khoản'}),
+            'ghi_chu': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ghi chú thêm'}),
+        }

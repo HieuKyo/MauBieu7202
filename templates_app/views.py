@@ -6,39 +6,51 @@ from django.http import HttpResponse, Http404, JsonResponse
 from django.db.models import Q, Exists, OuterRef
 from django.views.decorators.http import require_http_methods
 from .models import Category, Template, Variable, TemplateVariable, Customer
-from .forms import DynamicTemplateForm
+from .forms import DynamicTemplateForm, CustomerForm
 from .utils import render_word_template
 import os
+import json
 
 
 @login_required
 def dashboard_view(request):
     """
-    Trang chủ - Hiển thị danh sách danh mục
-    Chỉ hiển thị danh mục có ít nhất 1 template mà user có quyền truy cập
+    Trang chủ - Hiển thị danh sách khách hàng và mẫu biểu
+    Layout: Customers (left) | Customer Detail + Templates (right)
     """
     user = request.user
 
-    # Nếu là superuser, hiển thị tất cả danh mục có template active
+    # Lấy danh sách khách hàng
+    customers = Customer.objects.all().order_by('-created_at')
+
+    # Lấy danh mục và templates mà user có quyền truy cập
     if user.is_superuser:
         categories = Category.objects.filter(
             templates__is_active=True
-        ).distinct()
+        ).distinct().prefetch_related('templates')
     else:
-        # Lọc danh mục có ít nhất 1 template mà user có quyền truy cập
-        # Template được phép truy cập khi:
-        # 1. Không có group nào được gán (allowed_groups rỗng)
-        # 2. User thuộc một trong các group được gán
         user_groups = user.groups.all()
-
         categories = Category.objects.filter(
             templates__is_active=True
         ).filter(
             Q(templates__allowed_groups__isnull=True) |
             Q(templates__allowed_groups__in=user_groups)
-        ).distinct()
+        ).distinct().prefetch_related('templates')
+
+    # Lọc templates theo quyền
+    for category in categories:
+        if user.is_superuser:
+            category.accessible_templates = category.templates.filter(is_active=True)
+        else:
+            category.accessible_templates = category.templates.filter(
+                is_active=True
+            ).filter(
+                Q(allowed_groups__isnull=True) |
+                Q(allowed_groups__in=user_groups)
+            ).distinct()
 
     context = {
+        'customers': customers,
         'categories': categories,
         'user': user,
     }
@@ -81,6 +93,7 @@ def category_detail_view(request, category_id):
 def template_form_view(request, template_id):
     """
     Hiển thị form nhập liệu cho một template
+    Auto-fill từ customer nếu có customer parameter trong URL
     """
     template = get_object_or_404(Template, id=template_id, is_active=True)
     user = request.user
@@ -94,6 +107,18 @@ def template_form_view(request, template_id):
         template=template
     ).select_related('variable').order_by('order', 'variable__name')
 
+    # Check if customer ID is provided
+    customer_id = request.GET.get('customer')
+    customer = None
+    initial_data = {}
+
+    if customer_id:
+        try:
+            customer = Customer.objects.get(id=customer_id)
+            initial_data = customer.get_data_dict()
+        except Customer.DoesNotExist:
+            messages.warning(request, 'Không tìm thấy thông tin khách hàng')
+
     if request.method == 'POST':
         form = DynamicTemplateForm(request.POST, template=template)
         if form.is_valid():
@@ -101,12 +126,14 @@ def template_form_view(request, template_id):
             request.session[f'template_{template_id}_data'] = form.cleaned_data
             return redirect('generate_document', template_id=template_id)
     else:
-        form = DynamicTemplateForm(template=template)
+        # Create form with initial data from customer if available
+        form = DynamicTemplateForm(template=template, initial=initial_data)
 
     context = {
         'template': template,
         'form': form,
         'category': template.category,
+        'customer': customer,
     }
     return render(request, 'templates_app/template_form.html', context)
 
@@ -247,3 +274,94 @@ def customer_data_api(request, customer_id):
             'success': False,
             'error': 'Không tìm thấy khách hàng'
         }, status=404)
+
+
+@login_required
+def customer_detail_api(request, customer_id):
+    """API endpoint để lấy thông tin chi tiết khách hàng (cho display)"""
+    try:
+        customer = Customer.objects.get(id=customer_id)
+        return JsonResponse({
+            'success': True,
+            'customer': {
+                'id': customer.id,
+                'ho_ten': customer.ho_ten,
+                'ngay_sinh': customer.ngay_sinh.strftime('%d/%m/%Y') if customer.ngay_sinh else '',
+                'gioi_tinh': customer.gioi_tinh,
+                'so_cmnd': customer.so_cmnd,
+                'ngay_cap_cmnd': customer.ngay_cap_cmnd.strftime('%d/%m/%Y') if customer.ngay_cap_cmnd else '',
+                'noi_cap_cmnd': customer.noi_cap_cmnd,
+                'dia_chi': customer.dia_chi,
+                'dia_chi_tam_tru': customer.dia_chi_tam_tru,
+                'so_dien_thoai': customer.so_dien_thoai,
+                'email': customer.email,
+                'nghe_nghiep': customer.nghe_nghiep,
+                'noi_lam_viec': customer.noi_lam_viec,
+                'chuc_vu': customer.chuc_vu,
+                'thu_nhap_hang_thang': str(customer.thu_nhap_hang_thang) if customer.thu_nhap_hang_thang else '',
+                'so_tai_khoan': customer.so_tai_khoan,
+                'loai_tai_khoan': customer.loai_tai_khoan,
+                'ghi_chu': customer.ghi_chu,
+            }
+        })
+    except Customer.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Không tìm thấy khách hàng'
+        }, status=404)
+
+
+@login_required
+@require_http_methods(["POST"])
+def customer_create_view(request):
+    """Tạo khách hàng mới"""
+    form = CustomerForm(request.POST)
+    if form.is_valid():
+        customer = form.save(commit=False)
+        customer.created_by = request.user
+        customer.save()
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã thêm khách hàng thành công',
+            'customer_id': customer.id,
+            'customer_name': customer.ho_ten
+        })
+    else:
+        errors = {field: error[0] for field, error in form.errors.items()}
+        return JsonResponse({
+            'success': False,
+            'errors': errors
+        }, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def customer_update_view(request, customer_id):
+    """Cập nhật thông tin khách hàng"""
+    customer = get_object_or_404(Customer, id=customer_id)
+    form = CustomerForm(request.POST, instance=customer)
+    if form.is_valid():
+        form.save()
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã cập nhật thông tin khách hàng'
+        })
+    else:
+        errors = {field: error[0] for field, error in form.errors.items()}
+        return JsonResponse({
+            'success': False,
+            'errors': errors
+        }, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def customer_delete_view(request, customer_id):
+    """Xóa khách hàng"""
+    customer = get_object_or_404(Customer, id=customer_id)
+    customer_name = customer.ho_ten
+    customer.delete()
+    return JsonResponse({
+        'success': True,
+        'message': f'Đã xóa khách hàng: {customer_name}'
+    })

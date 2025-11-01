@@ -25,6 +25,21 @@
                 {% endif %}
             </div>
             <div class="card-body">
+                <!-- Customer Info Alert (if customer selected from dashboard) -->
+                {% if customer %}
+                <div class="alert alert-success" role="alert">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-check-circle-fill"></i> Đã tải thông tin khách hàng
+                    </h6>
+                    <p class="mb-0">
+                        <strong>{{ customer.ho_ten }}</strong> - CMND: {{ customer.so_cmnd }}
+                        {% if customer.so_dien_thoai %} | SĐT: {{ customer.so_dien_thoai }}{% endif %}
+                    </p>
+                    <hr>
+                    <small class="text-muted">Thông tin khách hàng đã được tự động điền vào form. Bạn có thể chỉnh sửa nếu cần.</small>
+                </div>
+                {% endif %}
+
                 <!-- Customer Selection & Clipboard Paste -->
                 <div class="mb-4 p-3 bg-light rounded">
                     <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">
