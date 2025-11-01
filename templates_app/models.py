@@ -8,6 +8,16 @@ class Category(models.Model):
     name = models.CharField(max_length=200, verbose_name="Tên danh mục")
     description = models.TextField(blank=True, verbose_name="Mô tả")
     order = models.IntegerField(default=0, verbose_name="Thứ tự hiển thị")
+
+    # Cấu hình các nhóm field hiển thị trong form
+    # Possible values: personal_info, id_documents, contact, employment, banking, card, services, print_info
+    visible_field_groups = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Nhóm trường hiển thị",
+        help_text="Danh sách các nhóm trường cần hiển thị trong form. VD: ['personal_info', 'banking', 'services']"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
 
@@ -18,6 +28,13 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_visible_field_groups(self):
+        """Trả về danh sách field groups, mặc định hiển thị tất cả nếu không cấu hình"""
+        if not self.visible_field_groups:
+            # Mặc định: hiển thị tất cả
+            return ['personal_info', 'id_documents', 'contact', 'employment', 'banking', 'card', 'services', 'print_info']
+        return self.visible_field_groups
 
 
 class Variable(models.Model):
