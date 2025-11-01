@@ -1,0 +1,901 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Hệ thống Mẫu biểu{% endblock %}
+
+{% block extra_css %}
+<style>
+    .customer-list-container {
+        height: calc(100vh - 250px);
+        overflow-y: auto;
+    }
+
+    .customer-item {
+        cursor: pointer;
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
+    }
+
+    .customer-item:hover {
+        background-color: #f8f9fa;
+        border-left-color: var(--agribank-red);
+    }
+
+    .customer-item.active {
+        background-color: #e7f3e7;
+        border-left-color: var(--agribank-green);
+        font-weight: bold;
+    }
+
+    .customer-detail-panel {
+        position: sticky;
+        top: 20px;
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+    }
+
+    .template-card {
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .template-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-color: var(--agribank-red) !important;
+    }
+
+    .info-row {
+        display: flex;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .info-label {
+        font-weight: bold;
+        min-width: 150px;
+        color: var(--agribank-green);
+    }
+
+    .info-value {
+        flex: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <h2 class="fw-bold" style="color: var(--agribank-red);">
+            <i class="bi bi-speedometer2"></i> Dashboard - Quản lý Khách hàng & Mẫu biểu
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Customer List -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background-color: var(--agribank-green); color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-people-fill"></i> Danh sách Khách hàng
+                </h5>
+                <button class="btn btn-light btn-sm" onclick="showAddCustomerModal()">
+                    <i class="bi bi-plus-circle"></i> Thêm mới
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <!-- Search Box -->
+                <div class="p-3 border-bottom">
+                    <input type="text" id="customer-search-input" class="form-control" placeholder="Tìm kiếm khách hàng...">
+                </div>
+
+                <!-- Customer List -->
+                <div class="customer-list-container" id="customer-list">
+                    {% if customers %}
+                        {% for customer in customers %}
+                        <div class="customer-item p-3 border-bottom"
+                             data-customer-id="{{ customer.id }}"
+                             onclick="selectCustomer({{ customer.id }})">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ customer.ho_ten }}</h6>
+                                    <small class="text-muted">
+                                        <i class="bi bi-credit-card"></i> {{ customer.so_cmnd }}
+                                        {% if customer.so_dien_thoai %}
+                                        <br><i class="bi bi-telephone"></i> {{ customer.so_dien_thoai }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group" onclick="event.stopPropagation();">
+                                    <button class="btn btn-outline-primary" onclick="editCustomer({{ customer.id }})" title="Sửa">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteCustomer({{ customer.id }}, '{{ customer.ho_ten|escapejs }}')" title="Xóa">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <p class="mt-2">Chưa có khách hàng nào</p>
+                            <button class="btn btn-primary" onclick="showAddCustomerModal()">
+                                <i class="bi bi-plus-circle"></i> Thêm khách hàng đầu tiên
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Customer Detail + Templates -->
+    <div class="col-lg-7">
+        <div class="customer-detail-panel">
+            <!-- Placeholder when no customer selected -->
+            <div id="no-customer-selected" class="card shadow-sm">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-person-circle" style="font-size: 5rem; color: #ccc;"></i>
+                    <h5 class="mt-3 text-muted">Chọn khách hàng để xem thông tin</h5>
+                    <p class="text-muted">Click vào khách hàng bên trái để hiển thị thông tin chi tiết và chọn mẫu biểu</p>
+                </div>
+            </div>
+
+            <!-- Customer Detail Card (hidden by default) -->
+            <div id="customer-detail-card" style="display: none;">
+                <!-- Customer Info -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header" style="background-color: var(--agribank-red); color: white;">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person-badge"></i> Thông tin Khách hàng
+                        </h5>
+                    </div>
+                    <div class="card-body" id="customer-info">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Template Selection -->
+                <div class="card shadow-sm">
+                    <div class="card-header" style="background-color: var(--agribank-green); color: white;">
+                        <h5 class="mb-0">
+                            <i class="bi bi-file-earmark-text"></i> IN MẪU BIỂU
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if categories %}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Chọn mẫu biểu để in:</label>
+                                <select class="form-select form-select-lg" id="template-select" onchange="handleTemplateSelection()">
+                                    <option value="">-- Chọn mẫu biểu --</option>
+                                    {% for category in categories %}
+                                        <optgroup label="{{ category.name }}">
+                                            {% for template in category.accessible_templates %}
+                                                <option value="{{ template.id }}">{{ template.name }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="alert alert-info small">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>Hướng dẫn:</strong> Chọn mẫu biểu từ danh sách trên, file Word sẽ tự động được tạo và tải về máy.
+                            </div>
+                        {% else %}
+                            <p class="text-muted text-center">Không có mẫu biểu nào</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add/Edit Customer -->
+<div class="modal fade" id="customerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--agribank-green); color: white;">
+                <h5 class="modal-title" id="customerModalLabel">
+                    <i class="bi bi-person-plus"></i> Thêm Khách hàng
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="customerForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="customer-id" name="customer_id">
+
+                    <!-- Customer Code -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Mã định danh</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Mã khách hàng</label>
+                            <input type="text" class="form-control" name="ma_khach_hang" placeholder="Nhập mã khách hàng (tùy chọn)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Mã CIF</label>
+                            <input type="text" class="form-control" name="cif" placeholder="Nhập mã CIF (tùy chọn)">
+                        </div>
+                    </div>
+
+                    <!-- Personal Info -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin cá nhân</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="ho_ten" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Ngày sinh</label>
+                            <input type="date" class="form-control" name="ngay_sinh">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Giới tính</label>
+                            <select class="form-select" name="gioi_tinh">
+                                <option value="">Chọn...</option>
+                                <option value="Nam">Nam</option>
+                                <option value="Nữ">Nữ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- ID Documents -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Giấy tờ tùy thân</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="so_cmnd" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ngày cấp</label>
+                            <input type="date" class="form-control" name="ngay_cap_cmnd">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nơi cấp</label>
+                            <select class="form-select" name="noi_cap_cmnd" id="noi-cap-select">
+                                <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
+                                <option value="Bộ Công An">Bộ Công An</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12" id="noi-cap-custom-container" style="display:none;">
+                            <label class="form-label">Nơi cấp (tùy chỉnh)</label>
+                            <input type="text" class="form-control" name="noi_cap_cmnd_custom" id="noi-cap-custom" placeholder="Nhập nơi cấp khác">
+                        </div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin liên hệ</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="form-label">Địa chỉ thường trú</label>
+                            <textarea class="form-control" name="dia_chi" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Số điện thoại</label>
+                            <input type="text" class="form-control" name="so_dien_thoai">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email">
+                        </div>
+                    </div>
+
+                    <!-- Employment Info -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin nghề nghiệp</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Nghề nghiệp</label>
+                            <select class="form-select" name="nghe_nghiep">
+                                <option value="">Chọn...</option>
+                                <option value="Công chức viên chức">Công chức viên chức</option>
+                                <option value="Kinh doanh tự do">Kinh doanh tự do</option>
+                                <option value="Nội trợ">Nội trợ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nơi làm việc</label>
+                            <input type="text" class="form-control" name="noi_lam_viec">
+                        </div>
+                    </div>
+
+                    <!-- Banking Info -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin tài khoản & Thẻ</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Số tài khoản</label>
+                            <input type="text" class="form-control" name="so_tai_khoan">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Loại tài khoản</label>
+                            <select class="form-select" name="loai_tai_khoan" id="loai-tai-khoan-select">
+                                <option value="">Chọn loại tài khoản...</option>
+                                <option value="Tài khoản ngẫu nhiên">Tài khoản ngẫu nhiên</option>
+                                <option value="Tài khoản số theo yêu cầu">Tài khoản số theo yêu cầu</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Loại tiền tệ <span class="text-danger">*</span></label>
+                            <select class="form-select" name="loai_tien_te" required>
+                                <option value="VND">VND - Việt Nam Đồng</option>
+                                <option value="USD">USD - Đô la Mỹ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12" id="so-tai-khoan-yc-container" style="display:none;">
+                            <label class="form-label">Số tài khoản theo yêu cầu</label>
+                            <input type="text" class="form-control" name="so_tai_khoan_yc" placeholder="Nhập số tài khoản yêu cầu">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Loại thẻ</label>
+                            <select class="form-select" name="loai_the">
+                                <option value="">Chọn loại thẻ...</option>
+                                <option value="Thẻ Ghi nợ nội địa">Thẻ Ghi nợ nội địa</option>
+                                <option value="The Plus Success">The Plus Success</option>
+                                <option value="Agribank Debit Card">Agribank Debit Card</option>
+                                <option value="Thẻ Visa">Thẻ Visa</option>
+                                <option value="Thẻ MasterCard">Thẻ MasterCard</option>
+                                <option value="Thẻ JCB">Thẻ JCB</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Hạng thẻ</label>
+                            <select class="form-select" name="hang_the">
+                                <option value="">Chọn hạng thẻ...</option>
+                                <option value="Hạng chuẩn">Hạng chuẩn</option>
+                                <option value="Hạng vàng">Hạng vàng</option>
+                                <option value="Classic">Classic</option>
+                                <option value="Gold">Gold</option>
+                                <option value="Platinum">Platinum</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="phat_hanh_lan_dau" id="phat-hanh-lan-dau">
+                                <label class="form-check-label" for="phat-hanh-lan-dau">
+                                    Phát hành lần đầu
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="phat_hanh_lai" id="phat-hanh-lai">
+                                <label class="form-check-label" for="phat-hanh-lai">
+                                    Phát hành lại
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Registration -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Đăng ký dịch vụ</h6>
+                    <div class="row g-3 mb-4">
+                        <!-- Dịch vụ thu hộ -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <strong>Dịch vụ Thu hộ</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_tien_nuoc" id="dv-thu-ho-tien-nuoc">
+                                        <label class="form-check-label" for="dv-thu-ho-tien-nuoc">Thu hộ tiền nước</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_tien_dien" id="dv-thu-ho-tien-dien">
+                                        <label class="form-check-label" for="dv-thu-ho-tien-dien">Thu hộ tiền điện</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_vien_thong" id="dv-thu-ho-vien-thong">
+                                        <label class="form-check-label" for="dv-thu-ho-vien-thong">Thu hộ viễn thông</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_hoc_phi" id="dv-thu-ho-hoc-phi">
+                                        <label class="form-check-label" for="dv-thu-ho-hoc-phi">Thu hộ học phí</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_bao_hiem" id="dv-thu-ho-bao-hiem">
+                                        <label class="form-check-label" for="dv-thu-ho-bao-hiem">Thu hộ bảo hiểm</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dịch vụ ngân hàng điện tử -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <strong>Dịch vụ Ngân hàng điện tử</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_sms_banking" id="dv-sms-banking">
+                                        <label class="form-check-label" for="dv-sms-banking">SMS Banking</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_bankplus" id="dv-bankplus">
+                                        <label class="form-check-label" for="dv-bankplus">Agribank Plus / BankPlus</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_e_mobile" id="dv-e-mobile">
+                                        <label class="form-check-label" for="dv-e-mobile">E-Mobile Banking</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_e_commerce" id="dv-e-commerce">
+                                        <label class="form-check-label" for="dv-e-commerce">E-Commerce</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_soft_otp" id="dv-soft-otp">
+                                        <label class="form-check-label" for="dv-soft-otp">Soft OTP</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_smart_otp" id="dv-smart-otp">
+                                        <label class="form-check-label" for="dv-smart-otp">Smart OTP</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dv_retail_ebanking" id="dv-retail-ebanking">
+                                        <label class="form-check-label" for="dv-retail-ebanking">Retail E-banking</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kênh giao dịch -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <strong>Kênh giao dịch</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="kenh_mobile" id="kenh-mobile">
+                                        <label class="form-check-label" for="kenh-mobile">Mobile Banking</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="kenh_internet" id="kenh-internet">
+                                        <label class="form-check-label" for="kenh-internet">Internet Banking</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Print Info -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin in mẫu biểu</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Ngày in mẫu biểu</label>
+                            <input type="date" class="form-control" name="ngay_in" id="ngay-in">
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label class="form-label">Ghi chú</label>
+                        <textarea class="form-control" name="ghi_chu" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="saveCustomer()">
+                    <i class="bi bi-save"></i> Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let selectedCustomerId = null;
+    let customerModal = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
+
+        // Customer search
+        document.getElementById('customer-search-input').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const customerItems = document.querySelectorAll('.customer-item');
+
+            customerItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Handle noi_cap_cmnd custom input visibility
+        const noiCapSelect = document.getElementById('noi-cap-select');
+        const noiCapCustomContainer = document.getElementById('noi-cap-custom-container');
+
+        noiCapSelect.addEventListener('change', function() {
+            if (this.value === 'Khác') {
+                noiCapCustomContainer.style.display = 'block';
+            } else {
+                noiCapCustomContainer.style.display = 'none';
+                document.getElementById('noi-cap-custom').value = '';
+            }
+        });
+
+        // Handle loai_tai_khoan - show/hide so_tai_khoan_yc
+        const loaiTKSelect = document.getElementById('loai-tai-khoan-select');
+        const soTKYCContainer = document.getElementById('so-tai-khoan-yc-container');
+
+        loaiTKSelect.addEventListener('change', function() {
+            if (this.value === 'Tài khoản số theo yêu cầu') {
+                soTKYCContainer.style.display = 'block';
+            } else {
+                soTKYCContainer.style.display = 'none';
+                document.querySelector('[name="so_tai_khoan_yc"]').value = '';
+            }
+        });
+    });
+
+    function selectCustomer(customerId) {
+        selectedCustomerId = customerId;
+
+        // Update active state
+        document.querySelectorAll('.customer-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`.customer-item[data-customer-id="${customerId}"]`).classList.add('active');
+
+        // Fetch and display customer details
+        fetch(`/api/customers/${customerId}/detail/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayCustomerInfo(data.customer);
+                    document.getElementById('no-customer-selected').style.display = 'none';
+                    document.getElementById('customer-detail-card').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Lỗi khi tải thông tin khách hàng', 'error');
+            });
+    }
+
+    function displayCustomerInfo(customer) {
+        const infoHtml = `
+            <div class="info-row">
+                <div class="info-label">Họ và tên:</div>
+                <div class="info-value">${customer.ho_ten || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Ngày sinh:</div>
+                <div class="info-value">${customer.ngay_sinh || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Giới tính:</div>
+                <div class="info-value">${customer.gioi_tinh || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Số CMND/CCCD:</div>
+                <div class="info-value">${customer.so_cmnd || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Ngày cấp:</div>
+                <div class="info-value">${customer.ngay_cap_cmnd || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Nơi cấp:</div>
+                <div class="info-value">${customer.noi_cap_cmnd_display || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Địa chỉ:</div>
+                <div class="info-value">${customer.dia_chi || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Số điện thoại:</div>
+                <div class="info-value">${customer.so_dien_thoai || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Email:</div>
+                <div class="info-value">${customer.email || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Nghề nghiệp:</div>
+                <div class="info-value">${customer.nghe_nghiep || '-'}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Nơi làm việc:</div>
+                <div class="info-value">${customer.noi_lam_viec || '-'}</div>
+            </div>
+            ${customer.ghi_chu ? `
+            <div class="info-row">
+                <div class="info-label">Ghi chú:</div>
+                <div class="info-value">${customer.ghi_chu}</div>
+            </div>
+            ` : ''}
+        `;
+
+        document.getElementById('customer-info').innerHTML = infoHtml;
+    }
+
+    function handleTemplateSelection() {
+        const templateId = document.getElementById('template-select').value;
+
+        if (!templateId) {
+            return; // No template selected
+        }
+
+        if (!selectedCustomerId) {
+            showNotification('Vui lòng chọn khách hàng trước', 'warning');
+            document.getElementById('template-select').value = ''; // Reset selection
+            return;
+        }
+
+        // Tự động generate và tải file
+        generateAndDownloadDocument(templateId, selectedCustomerId);
+    }
+
+    function generateAndDownloadDocument(templateId, customerId) {
+        showNotification('Đang tạo file... Vui lòng đợi', 'info');
+
+        // First, send customer data to session
+        fetch(`/template/${templateId}/?customer=${customerId}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            // Now generate the document
+            return fetch(`/template/${templateId}/generate/`, {
+                method: 'GET'
+            });
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Lỗi khi tạo tài liệu');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `mau_bieu_${Date.now()}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            showNotification('Đã tải file thành công!', 'success');
+            // Reset template selection
+            document.getElementById('template-select').value = '';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Lỗi khi tạo file: ' + error.message, 'error');
+            document.getElementById('template-select').value = '';
+        });
+    }
+
+    function showAddCustomerModal() {
+        document.getElementById('customerModalLabel').innerHTML = '<i class="bi bi-person-plus"></i> Thêm Khách hàng';
+        document.getElementById('customerForm').reset();
+        document.getElementById('customer-id').value = '';
+        document.getElementById('noi-cap-custom-container').style.display = 'none';
+        document.getElementById('so-tai-khoan-yc-container').style.display = 'none';
+
+        // Set ngày in mặc định là hôm nay
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('ngay-in').value = today;
+
+        customerModal.show();
+    }
+
+    function editCustomer(customerId) {
+        document.getElementById('customerModalLabel').innerHTML = '<i class="bi bi-pencil"></i> Sửa Khách hàng';
+        document.getElementById('customer-id').value = customerId;
+
+        // Fetch customer data
+        fetch(`/api/customers/${customerId}/detail/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const customer = data.customer;
+                    const form = document.getElementById('customerForm');
+
+                    // Populate form fields
+                    form.querySelector('[name="ma_khach_hang"]').value = customer.ma_khach_hang || '';
+                    form.querySelector('[name="cif"]').value = customer.cif || '';
+                    form.querySelector('[name="ho_ten"]').value = customer.ho_ten || '';
+                    form.querySelector('[name="ngay_sinh"]').value = customer.ngay_sinh ? formatDateForInput(customer.ngay_sinh) : '';
+                    form.querySelector('[name="gioi_tinh"]').value = customer.gioi_tinh || '';
+                    form.querySelector('[name="so_cmnd"]').value = customer.so_cmnd || '';
+                    form.querySelector('[name="ngay_cap_cmnd"]').value = customer.ngay_cap_cmnd ? formatDateForInput(customer.ngay_cap_cmnd) : '';
+
+                    // Handle noi_cap_cmnd
+                    const noiCapValue = customer.noi_cap_cmnd || 'Cục CSQLHC về TTXH';
+                    form.querySelector('[name="noi_cap_cmnd"]').value = noiCapValue;
+                    form.querySelector('[name="noi_cap_cmnd_custom"]').value = customer.noi_cap_cmnd_custom || '';
+
+                    // Show custom field if "Khác" is selected
+                    if (noiCapValue === 'Khác') {
+                        document.getElementById('noi-cap-custom-container').style.display = 'block';
+                    } else {
+                        document.getElementById('noi-cap-custom-container').style.display = 'none';
+                    }
+
+                    form.querySelector('[name="dia_chi"]').value = customer.dia_chi || '';
+                    form.querySelector('[name="so_dien_thoai"]').value = customer.so_dien_thoai || '';
+                    form.querySelector('[name="email"]').value = customer.email || '';
+                    form.querySelector('[name="nghe_nghiep"]').value = customer.nghe_nghiep || '';
+                    form.querySelector('[name="noi_lam_viec"]').value = customer.noi_lam_viec || '';
+                    form.querySelector('[name="so_tai_khoan"]').value = customer.so_tai_khoan || '';
+                    form.querySelector('[name="loai_tai_khoan"]').value = customer.loai_tai_khoan || '';
+                    form.querySelector('[name="so_tai_khoan_yc"]').value = customer.so_tai_khoan_yc || '';
+
+                    // Show so_tai_khoan_yc field if "Tài khoản số theo yêu cầu" is selected
+                    if (customer.loai_tai_khoan === 'Tài khoản số theo yêu cầu') {
+                        document.getElementById('so-tai-khoan-yc-container').style.display = 'block';
+                    } else {
+                        document.getElementById('so-tai-khoan-yc-container').style.display = 'none';
+                    }
+
+                    form.querySelector('[name="loai_tien_te"]').value = customer.loai_tien_te || 'VND';
+                    form.querySelector('[name="loai_the"]').value = customer.loai_the || '';
+                    form.querySelector('[name="hang_the"]').value = customer.hang_the || '';
+
+                    // Checkbox fields - Card issuance
+                    form.querySelector('[name="phat_hanh_lan_dau"]').checked = customer.phat_hanh_lan_dau || false;
+                    form.querySelector('[name="phat_hanh_lai"]').checked = customer.phat_hanh_lai || false;
+
+                    // Checkbox fields - Service registration (Thu hộ)
+                    form.querySelector('[name="dv_thu_ho_tien_nuoc"]').checked = customer.dv_thu_ho_tien_nuoc || false;
+                    form.querySelector('[name="dv_thu_ho_tien_dien"]').checked = customer.dv_thu_ho_tien_dien || false;
+                    form.querySelector('[name="dv_thu_ho_vien_thong"]').checked = customer.dv_thu_ho_vien_thong || false;
+                    form.querySelector('[name="dv_thu_ho_hoc_phi"]').checked = customer.dv_thu_ho_hoc_phi || false;
+                    form.querySelector('[name="dv_thu_ho_bao_hiem"]').checked = customer.dv_thu_ho_bao_hiem || false;
+
+                    // Checkbox fields - E-banking services
+                    form.querySelector('[name="dv_sms_banking"]').checked = customer.dv_sms_banking || false;
+                    form.querySelector('[name="dv_bankplus"]').checked = customer.dv_bankplus || false;
+                    form.querySelector('[name="dv_e_mobile"]').checked = customer.dv_e_mobile || false;
+                    form.querySelector('[name="dv_e_commerce"]').checked = customer.dv_e_commerce || false;
+                    form.querySelector('[name="dv_soft_otp"]').checked = customer.dv_soft_otp || false;
+                    form.querySelector('[name="dv_smart_otp"]').checked = customer.dv_smart_otp || false;
+                    form.querySelector('[name="dv_retail_ebanking"]').checked = customer.dv_retail_ebanking || false;
+
+                    // Checkbox fields - Transaction channels
+                    form.querySelector('[name="kenh_mobile"]').checked = customer.kenh_mobile || false;
+                    form.querySelector('[name="kenh_internet"]').checked = customer.kenh_internet || false;
+
+                    // Ngày in
+                    form.querySelector('[name="ngay_in"]').value = customer.ngay_in ? formatDateForInput(customer.ngay_in) : '';
+
+                    form.querySelector('[name="ghi_chu"]').value = customer.ghi_chu || '';
+
+                    customerModal.show();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Lỗi khi tải thông tin khách hàng', 'error');
+            });
+    }
+
+    function formatDateForInput(dateStr) {
+        // Convert DD/MM/YYYY to YYYY-MM-DD
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return dateStr;
+    }
+
+    function saveCustomer() {
+        const form = document.getElementById('customerForm');
+        const customerId = document.getElementById('customer-id').value;
+        const formData = new FormData(form);
+
+        const url = customerId ? `/api/customers/${customerId}/update/` : '/api/customers/create/';
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                customerModal.hide();
+                // Reload page to show updated customer list
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                // Show validation errors
+                let errorMsg = 'Có lỗi xảy ra:\n';
+                for (const [field, error] of Object.entries(data.errors)) {
+                    errorMsg += `${field}: ${error}\n`;
+                }
+                showNotification(errorMsg, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Lỗi khi lưu khách hàng', 'error');
+        });
+    }
+
+    function deleteCustomer(customerId, customerName) {
+        if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng "${customerName}"?`)) {
+            return;
+        }
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(`/api/customers/${customerId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                // Reload page to show updated customer list
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Lỗi khi xóa khách hàng', 'error');
+        });
+    }
+
+    function showNotification(message, type = 'info') {
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
+
+        const icon = {
+            'success': 'check-circle-fill',
+            'error': 'x-circle-fill',
+            'warning': 'exclamation-triangle-fill',
+            'info': 'info-circle-fill'
+        }[type] || 'info-circle-fill';
+
+        const alert = document.createElement('div');
+        alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+        alert.style.zIndex = '9999';
+        alert.style.minWidth = '400px';
+        alert.innerHTML = `
+            <i class="bi bi-${icon}"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alert);
+
+        setTimeout(() => {
+            alert.remove();
+        }, 5000);
+    }
+</script>
+{% endblock %}

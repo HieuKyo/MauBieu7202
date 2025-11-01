@@ -19,6 +19,10 @@ urlpatterns = [
     path('template/<int:template_id>/', views.template_form_view, name='template_form'),
     path('template/<int:template_id>/generate/', views.generate_document_view, name='generate_document'),
 
+    # New Dashboard API endpoints
+    path('api/categories/<int:category_id>/templates/', views.category_templates_api, name='category_templates_api'),
+    path('template/<int:template_id>/generate-direct/', views.generate_document_direct, name='generate_document_direct'),
+
     # Customer
     path('customers/', views.customer_list_view, name='customer_list'),
     path('api/customers/search/', views.customer_search_api, name='customer_search_api'),
