@@ -1,0 +1,16 @@
+AGRIBANK LOGO PLACEHOLDER
+
+Vui lòng thay file này bằng logo chính thức của Agribank (định dạng PNG).
+
+Yêu cầu:
+- Tên file: agribank_logo.png
+- Kích thước khuyến nghị: 400x100 pixels hoặc tương tự
+- Format: PNG với nền trong suốt
+- Đường dẫn: templates_app/static/images/agribank_logo.png
+
+Logo chính thức có thể lấy từ:
+- Bộ phận Marketing/Communications Agribank
+- Brand guideline của Agribank
+- Hoặc sử dụng logo từ website chính thức của Agribank
+
+LƯU Ý: File này chỉ là placeholder. Hệ thống cần logo thực để hoạt động đúng.
