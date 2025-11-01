@@ -2,7 +2,7 @@
 Dynamic form generation based on Template variables
 """
 from django import forms
-from .models import Template, TemplateVariable, Customer, GlobalConfig
+from .models import Template, TemplateVariable, Customer, GlobalConfig, Category
 
 
 class DynamicTemplateForm(forms.Form):
@@ -187,3 +187,37 @@ class GlobalConfigForm(forms.ModelForm):
 
 # Alias để backward compatibility
 BranchConfigForm = GlobalConfigForm
+
+
+class CategoryAdminForm(forms.ModelForm):
+    """Form cho admin Category với UI tốt hơn cho visible_field_groups"""
+
+    # Define all available field groups with descriptions
+    FIELD_GROUP_CHOICES = [
+        ('personal_info', 'Thông tin cá nhân (Họ tên, Ngày sinh, Giới tính)'),
+        ('id_documents', 'Giấy tờ tùy thân (CMND/CCCD, Ngày cấp, Nơi cấp)'),
+        ('contact', 'Thông tin liên hệ (Địa chỉ, SĐT, Email)'),
+        ('employment', 'Thông tin nghề nghiệp (Nghề nghiệp, Nơi làm việc)'),
+        ('banking', 'Thông tin tài khoản (Số TK, Loại TK, Loại tiền tệ)'),
+        ('card', 'Thông tin thẻ (Loại thẻ, Hạng thẻ, Phát hành)'),
+        ('services', 'Đăng ký dịch vụ (Thu hộ, SMS Banking, E-Banking, Kênh giao dịch)'),
+        ('print_info', 'Thông tin in mẫu biểu (Ngày in)'),
+    ]
+
+    visible_field_groups = forms.MultipleChoiceField(
+        choices=FIELD_GROUP_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Nhóm trường hiển thị",
+        help_text="Chọn các nhóm trường sẽ hiển thị trong form khi chọn danh mục này. Để trống để hiển thị tất cả."
+    )
+
+    class Meta:
+        model = Category
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Pre-select existing values
+        if self.instance and self.instance.visible_field_groups:
+            self.initial['visible_field_groups'] = self.instance.visible_field_groups

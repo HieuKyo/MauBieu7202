@@ -117,6 +117,31 @@
                 <input type="hidden" id="selected-template-id" name="template_id">
                 <input type="hidden" id="selected-category-id" name="category_id">
 
+                <!-- Quick Actions: Search Customer & Clipboard -->
+                <div class="mb-4 p-3 bg-light border rounded">
+                    <h6 class="text-muted mb-3"><i class="bi bi-lightning-charge"></i> Nhanh chóng điền thông tin</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">Tìm kiếm khách hàng</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="customer-search-input" placeholder="Nhập tên, CMND, hoặc SĐT...">
+                                <button class="btn btn-outline-secondary" type="button" id="search-customer-btn">
+                                    <i class="bi bi-search"></i> Tìm
+                                </button>
+                            </div>
+                            <!-- Search results dropdown -->
+                            <div id="search-results" class="list-group mt-2" style="display:none; max-height:200px; overflow-y:auto;"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Dán từ Clipboard (JSON)</label>
+                            <button type="button" class="btn btn-outline-primary w-100" id="paste-from-clipboard-btn">
+                                <i class="bi bi-clipboard"></i> Paste từ Clipboard
+                            </button>
+                            <small class="text-muted d-block mt-1">Dán dữ liệu JSON khách hàng đã copy trước đó</small>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Personal Info Group -->
                 <div class="field-group" data-group="personal_info">
                     <h6 class="field-group-title"><i class="bi bi-person"></i> Thông tin cá nhân</h6>
@@ -464,6 +489,156 @@ document.getElementById('loai-tk')?.addEventListener('change', function() {
         container.style.display = 'block';
     } else {
         container.style.display = 'none';
+    }
+});
+
+// Customer Search Functionality
+document.getElementById('search-customer-btn')?.addEventListener('click', searchCustomers);
+document.getElementById('customer-search-input')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        searchCustomers();
+    }
+});
+
+function searchCustomers() {
+    const query = document.getElementById('customer-search-input').value.trim();
+    const resultsContainer = document.getElementById('search-results');
+
+    if (query.length < 2) {
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+    // Show loading
+    resultsContainer.innerHTML = '<div class="list-group-item text-center"><span class="spinner-border spinner-border-sm"></span> Đang tìm...</div>';
+    resultsContainer.style.display = 'block';
+
+    fetch(`/api/customers/search/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.customers.length === 0) {
+                resultsContainer.innerHTML = '<div class="list-group-item text-muted">Không tìm thấy khách hàng</div>';
+                return;
+            }
+
+            resultsContainer.innerHTML = data.customers.map(customer => `
+                <a href="#" class="list-group-item list-group-item-action" onclick="loadCustomerData(${customer.id}); return false;">
+                    <strong>${customer.ho_ten}</strong><br>
+                    <small class="text-muted">CMND: ${customer.so_cmnd} | SĐT: ${customer.so_dien_thoai}</small>
+                </a>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            resultsContainer.innerHTML = '<div class="list-group-item text-danger">Lỗi khi tìm kiếm</div>';
+        });
+}
+
+// Load customer data into form
+function loadCustomerData(customerId) {
+    const resultsContainer = document.getElementById('search-results');
+    resultsContainer.innerHTML = '<div class="list-group-item text-center"><span class="spinner-border spinner-border-sm"></span> Đang tải...</div>';
+
+    fetch(`/api/customers/${customerId}/detail/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                fillFormWithData(data.customer);
+                resultsContainer.style.display = 'none';
+                document.getElementById('customer-search-input').value = '';
+
+                // Show success message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    <i class="bi bi-check-circle"></i> Đã tải thông tin khách hàng: <strong>${data.customer.ho_ten}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.getElementById('customerForm').insertBefore(alertDiv, document.getElementById('customerForm').firstChild);
+                setTimeout(() => alertDiv.remove(), 5000);
+            } else {
+                alert('Lỗi: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Load error:', error);
+            alert('Lỗi khi tải thông tin khách hàng');
+        });
+}
+
+// Fill form with data object
+function fillFormWithData(data) {
+    // Personal info
+    if (data.ma_khach_hang) document.querySelector('[name="ma_khach_hang"]').value = data.ma_khach_hang;
+    if (data.cif) document.querySelector('[name="cif"]').value = data.cif;
+    if (data.ho_ten) document.querySelector('[name="ho_ten"]').value = data.ho_ten;
+    if (data.ngay_sinh) document.querySelector('[name="ngay_sinh"]').value = data.ngay_sinh;
+    if (data.gioi_tinh) document.querySelector('[name="gioi_tinh"]').value = data.gioi_tinh;
+
+    // ID documents
+    if (data.so_cmnd) document.querySelector('[name="so_cmnd"]').value = data.so_cmnd;
+    if (data.ngay_cap_cmnd) document.querySelector('[name="ngay_cap_cmnd"]').value = data.ngay_cap_cmnd;
+    if (data.noi_cap_cmnd) document.querySelector('[name="noi_cap_cmnd"]').value = data.noi_cap_cmnd;
+
+    // Contact
+    if (data.dia_chi) document.querySelector('[name="dia_chi"]').value = data.dia_chi;
+    if (data.so_dien_thoai) document.querySelector('[name="so_dien_thoai"]').value = data.so_dien_thoai;
+    if (data.email) document.querySelector('[name="email"]').value = data.email;
+
+    // Employment
+    if (data.nghe_nghiep) document.querySelector('[name="nghe_nghiep"]').value = data.nghe_nghiep;
+    if (data.noi_lam_viec) document.querySelector('[name="noi_lam_viec"]').value = data.noi_lam_viec;
+
+    // Banking
+    if (data.so_tai_khoan) document.querySelector('[name="so_tai_khoan"]').value = data.so_tai_khoan;
+    if (data.loai_tai_khoan) {
+        document.querySelector('[name="loai_tai_khoan"]').value = data.loai_tai_khoan;
+        // Trigger change event
+        document.getElementById('loai-tk').dispatchEvent(new Event('change'));
+    }
+    if (data.so_tai_khoan_yc) document.querySelector('[name="so_tai_khoan_yc"]').value = data.so_tai_khoan_yc;
+    if (data.loai_tien_te) document.querySelector('[name="loai_tien_te"]').value = data.loai_tien_te;
+
+    // Card
+    if (data.loai_the) document.querySelector('[name="loai_the"]').value = data.loai_the;
+    if (data.hang_the) document.querySelector('[name="hang_the"]').value = data.hang_the;
+
+    // Checkboxes - need to handle boolean values
+    const checkboxFields = [
+        'phat_hanh_lan_dau', 'phat_hanh_lai',
+        'dv_thu_ho_tien_nuoc', 'dv_thu_ho_tien_dien', 'dv_thu_ho_vien_thong',
+        'dv_thu_ho_truyen_hinh', 'dv_thu_ho_internet', 'dv_sms_banking',
+        'dv_bankplus', 'dv_e_mobile', 'dv_e_internet', 'dv_e_pay',
+        'dv_smart_otp', 'dv_token', 'kenh_mobile', 'kenh_internet'
+    ];
+    checkboxFields.forEach(field => {
+        const checkbox = document.querySelector(`[name="${field}"]`);
+        if (checkbox && data[field] !== undefined) {
+            checkbox.checked = data[field] === true || data[field] === 'True' || data[field] === 1;
+        }
+    });
+}
+
+// Clipboard Paste Functionality
+document.getElementById('paste-from-clipboard-btn')?.addEventListener('click', async function() {
+    try {
+        const text = await navigator.clipboard.readText();
+        const data = JSON.parse(text);
+        fillFormWithData(data);
+
+        // Show success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <i class="bi bi-check-circle"></i> Đã dán thông tin từ clipboard thành công!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.getElementById('customerForm').insertBefore(alertDiv, document.getElementById('customerForm').firstChild);
+        setTimeout(() => alertDiv.remove(), 5000);
+    } catch (error) {
+        console.error('Clipboard error:', error);
+        alert('Lỗi khi đọc clipboard. Vui lòng đảm bảo dữ liệu là JSON hợp lệ và trình duyệt cho phép truy cập clipboard.');
     }
 });
 

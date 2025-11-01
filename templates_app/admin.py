@@ -63,10 +63,27 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     """Admin cho Danh mục"""
+    from .forms import CategoryAdminForm
+    form = CategoryAdminForm
+
     list_display = ['name', 'order', 'created_at']
     list_editable = ['order']
     search_fields = ['name', 'description']
     ordering = ['order', 'name']
+
+    fieldsets = (
+        ('Thông tin cơ bản', {
+            'fields': ('name', 'description', 'order')
+        }),
+        ('Cấu hình hiển thị form', {
+            'fields': ('visible_field_groups',),
+            'description': '<p><strong>Chọn các nhóm trường sẽ hiển thị trong form nhập liệu</strong></p>'
+                          '<p>Khi người dùng chọn danh mục này, chỉ các nhóm trường được chọn mới hiển thị. '
+                          'Điều này giúp đơn giản hóa form cho từng loại mẫu biểu.</p>'
+                          '<p><em>Ví dụ:</em> Danh mục "Dịch vụ Ngân hàng" có thể chỉ hiển thị: '
+                          'Thông tin cá nhân, Giấy tờ tùy thân, Thông tin tài khoản và Đăng ký dịch vụ.</p>'
+        }),
+    )
 
 
 @admin.register(Variable)
