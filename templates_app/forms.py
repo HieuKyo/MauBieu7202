@@ -139,10 +139,31 @@ class CustomerForm(forms.ModelForm):
             'nghe_nghiep': forms.Select(attrs={'class': 'form-select'}),
             'noi_lam_viec': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi làm việc'}),
             'so_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản'}),
-            'loai_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Loại tài khoản'}),
+            'loai_tai_khoan': forms.Select(attrs={'class': 'form-select'}),
+            'so_tai_khoan_yc': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản theo yêu cầu'}),
             'loai_tien_te': forms.Select(attrs={'class': 'form-select'}),
             'loai_the': forms.Select(attrs={'class': 'form-select'}),
             'hang_the': forms.Select(attrs={'class': 'form-select'}),
+            'phat_hanh_lan_dau': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'phat_hanh_lai': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'ngay_in': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            # Dịch vụ thu hộ
+            'dv_thu_ho_tien_nuoc': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_thu_ho_tien_dien': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_thu_ho_vien_thong': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_thu_ho_hoc_phi': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_thu_ho_bao_hiem': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            # Dịch vụ ngân hàng điện tử
+            'dv_sms_banking': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_e_mobile': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_bankplus': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_e_commerce': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_soft_otp': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_smart_otp': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'dv_retail_ebanking': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            # Kênh giao dịch
+            'kenh_mobile': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'kenh_internet': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'ghi_chu': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ghi chú thêm'}),
         }
 

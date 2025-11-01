@@ -122,6 +122,7 @@ class Customer(models.Model):
     ]
 
     LOAI_THE_CHOICES = [
+        ('Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ nội địa'),
         ('The Plus Success', 'The Plus Success'),
         ('Agribank Debit Card', 'Agribank Debit Card'),
         ('Thẻ Visa', 'Thẻ Visa'),
@@ -130,9 +131,16 @@ class Customer(models.Model):
     ]
 
     HANG_THE_CHOICES = [
+        ('Hạng chuẩn', 'Hạng chuẩn'),
+        ('Hạng vàng', 'Hạng vàng'),
         ('Classic', 'Classic'),
         ('Gold', 'Gold'),
         ('Platinum', 'Platinum'),
+    ]
+
+    LOAI_TAI_KHOAN_CHOICES = [
+        ('Tài khoản ngẫu nhiên', 'Tài khoản ngẫu nhiên'),
+        ('Tài khoản số theo yêu cầu', 'Tài khoản số theo yêu cầu'),
     ]
 
     # Mã khách hàng và CIF
@@ -180,12 +188,15 @@ class Customer(models.Model):
 
     # Thông tin tài khoản
     so_tai_khoan = models.CharField(max_length=30, blank=True, verbose_name="Số tài khoản")
-    loai_tai_khoan = models.CharField(max_length=100, blank=True, verbose_name="Loại tài khoản")
+    loai_tai_khoan = models.CharField(max_length=100, blank=True, choices=LOAI_TAI_KHOAN_CHOICES, verbose_name="Loại tài khoản")
+    so_tai_khoan_yc = models.CharField(max_length=30, blank=True, verbose_name="Số tài khoản theo yêu cầu")
     loai_tien_te = models.CharField(max_length=10, choices=LOAI_TIEN_TE_CHOICES, default='VND', verbose_name="Loại tiền tệ")
 
     # Thông tin thẻ
     loai_the = models.CharField(max_length=50, choices=LOAI_THE_CHOICES, blank=True, verbose_name="Loại thẻ")
     hang_the = models.CharField(max_length=20, choices=HANG_THE_CHOICES, blank=True, verbose_name="Hạng thẻ")
+    phat_hanh_lan_dau = models.BooleanField(default=False, verbose_name="Phát hành lần đầu")
+    phat_hanh_lai = models.BooleanField(default=False, verbose_name="Phát hành lại")
 
     # Đăng ký dịch vụ - Thủ hộ
     dv_thu_ho_tien_nuoc = models.BooleanField(default=False, verbose_name="Thủ hộ: Tiền nước")
@@ -206,6 +217,9 @@ class Customer(models.Model):
     # Kênh giao dịch
     kenh_mobile = models.BooleanField(default=False, verbose_name="Kênh: Mobile")
     kenh_internet = models.BooleanField(default=False, verbose_name="Kênh: Internet Banking")
+
+    # Thông tin in mẫu biểu
+    ngay_in = models.DateField(null=True, blank=True, verbose_name="Ngày in mẫu biểu")
 
     # Metadata
     ghi_chu = models.TextField(blank=True, verbose_name="Ghi chú")
@@ -242,7 +256,12 @@ class Customer(models.Model):
         """
         Trả về dictionary chứa thông tin khách hàng
         Dùng để auto-fill form
+        Checkbox: ☑ (checked) hoặc ☐ (unchecked)
         """
+        # Helper function to convert boolean to checkbox character
+        def checkbox(value):
+            return '☑' if value else '☐'
+
         # Date variables for ngay_sinh
         d1, d2, m1, m2, y1, y2, y3, y4 = '', '', '', '', '', '', '', ''
         if self.ngay_sinh:
@@ -251,6 +270,17 @@ class Customer(models.Model):
                 d1, d2 = date_str[0], date_str[1]
                 m1, m2 = date_str[2], date_str[3]
                 y1, y2, y3, y4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
+        # Checkbox variables for hạng thẻ
+        the_hang_chuan = checkbox(self.hang_the == 'Hạng chuẩn')
+        the_hang_vang = checkbox(self.hang_the == 'Hạng vàng')
+
+        # Checkbox for Thẻ Ghi nợ nội địa
+        the_ghi_no_noi_dia = checkbox(self.loai_the == 'Thẻ Ghi nợ nội địa')
+
+        # Checkbox variables for loại tài khoản
+        tk_ngau_nhien = checkbox(self.loai_tai_khoan == 'Tài khoản ngẫu nhiên')
+        tk_theo_yeu_cau = checkbox(self.loai_tai_khoan == 'Tài khoản số theo yêu cầu')
 
         data = {
             'ma_khach_hang': self.ma_khach_hang or '',
@@ -268,10 +298,12 @@ class Customer(models.Model):
             'noi_lam_viec': self.noi_lam_viec or '',
             'so_tai_khoan': self.so_tai_khoan or '',
             'loai_tai_khoan': self.loai_tai_khoan or '',
+            'so_tai_khoan_yc': self.so_tai_khoan_yc or '',
             'loai_tien_te': self.loai_tien_te or '',
             'loai_the': self.loai_the or '',
             'hang_the': self.hang_the or '',
             'ghi_chu': self.ghi_chu or '',
+            'ngay_in': self.ngay_in.strftime('%d/%m/%Y') if self.ngay_in else '',
             # Date variables (ngày sinh)
             'd1': d1,
             'd2': d2,
@@ -281,6 +313,32 @@ class Customer(models.Model):
             'y2': y2,
             'y3': y3,
             'y4': y4,
+            # Checkbox variables - Dịch vụ thu hộ
+            'dv_thu_ho_tien_nuoc': checkbox(self.dv_thu_ho_tien_nuoc),
+            'dv_thu_ho_tien_dien': checkbox(self.dv_thu_ho_tien_dien),
+            'dv_thu_ho_vien_thong': checkbox(self.dv_thu_ho_vien_thong),
+            'dv_thu_ho_hoc_phi': checkbox(self.dv_thu_ho_hoc_phi),
+            'dv_thu_ho_bao_hiem': checkbox(self.dv_thu_ho_bao_hiem),
+            # Checkbox variables - Dịch vụ ngân hàng điện tử
+            'dv_sms_banking': checkbox(self.dv_sms_banking),
+            'dv_e_mobile': checkbox(self.dv_e_mobile),
+            'dv_bankplus': checkbox(self.dv_bankplus),
+            'dv_e_commerce': checkbox(self.dv_e_commerce),
+            'dv_soft_otp': checkbox(self.dv_soft_otp),
+            'dv_smart_otp': checkbox(self.dv_smart_otp),
+            'dv_retail_ebanking': checkbox(self.dv_retail_ebanking),
+            # Checkbox variables - Kênh giao dịch
+            'kenh_mobile': checkbox(self.kenh_mobile),
+            'kenh_internet': checkbox(self.kenh_internet),
+            # Checkbox variables - Thẻ
+            'phat_hanh_lan_dau': checkbox(self.phat_hanh_lan_dau),
+            'phat_hanh_lai': checkbox(self.phat_hanh_lai),
+            'the_hang_chuan': the_hang_chuan,
+            'the_hang_vang': the_hang_vang,
+            'the_ghi_no_noi_dia': the_ghi_no_noi_dia,
+            # Checkbox variables - Tài khoản
+            'tk_ngau_nhien': tk_ngau_nhien,
+            'tk_theo_yeu_cau': tk_theo_yeu_cau,
         }
         return data
 
