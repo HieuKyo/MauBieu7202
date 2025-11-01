@@ -106,6 +106,12 @@ class Customer(models.Model):
         ('Khác', 'Khác'),
     ]
 
+    NOI_CAP_CHOICES = [
+        ('Cục CSQLHC về TTXH', 'Cục CSQLHC về TTXH'),
+        ('Bộ Công An', 'Bộ Công An'),
+        ('Khác', 'Khác'),
+    ]
+
     # Mã khách hàng
     ma_khach_hang = models.CharField(max_length=50, blank=True, verbose_name="Mã khách hàng", db_index=True)
 
@@ -122,7 +128,17 @@ class Customer(models.Model):
     # Giấy tờ tùy thân
     so_cmnd = models.CharField(max_length=20, unique=True, verbose_name="Số CMND/CCCD", db_index=True)
     ngay_cap_cmnd = models.DateField(null=True, blank=True, verbose_name="Ngày cấp CMND/CCCD")
-    noi_cap_cmnd = models.CharField(max_length=200, blank=True, verbose_name="Nơi cấp CMND/CCCD")
+    noi_cap_cmnd = models.CharField(
+        max_length=50,
+        choices=NOI_CAP_CHOICES,
+        default='Cục CSQLHC về TTXH',
+        verbose_name="Nơi cấp CMND/CCCD"
+    )
+    noi_cap_cmnd_custom = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Nơi cấp CMND/CCCD (tùy chỉnh)"
+    )
 
     # Liên hệ
     dia_chi = models.TextField(blank=True, verbose_name="Địa chỉ thường trú")
@@ -167,11 +183,26 @@ class Customer(models.Model):
     def __str__(self):
         return f"{self.ho_ten} - {self.so_cmnd}"
 
+    def get_noi_cap_display_value(self):
+        """Lấy giá trị nơi cấp để hiển thị (ưu tiên custom nếu chọn 'Khác')"""
+        if self.noi_cap_cmnd == 'Khác' and self.noi_cap_cmnd_custom:
+            return self.noi_cap_cmnd_custom
+        return self.noi_cap_cmnd
+
     def get_data_dict(self):
         """
         Trả về dictionary chứa thông tin khách hàng
         Dùng để auto-fill form
         """
+        # Date variables for ngay_sinh
+        d1, d2, m1, m2, y1, y2, y3, y4 = '', '', '', '', '', '', '', ''
+        if self.ngay_sinh:
+            date_str = self.ngay_sinh.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                d1, d2 = date_str[0], date_str[1]
+                m1, m2 = date_str[2], date_str[3]
+                y1, y2, y3, y4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
         data = {
             'ma_khach_hang': self.ma_khach_hang or '',
             'ho_ten': self.ho_ten or '',
@@ -179,7 +210,7 @@ class Customer(models.Model):
             'gioi_tinh': self.gioi_tinh or '',
             'so_cmnd': self.so_cmnd or '',
             'ngay_cap_cmnd': self.ngay_cap_cmnd.strftime('%d/%m/%Y') if self.ngay_cap_cmnd else '',
-            'noi_cap_cmnd': self.noi_cap_cmnd or '',
+            'noi_cap_cmnd': self.get_noi_cap_display_value(),
             'dia_chi': self.dia_chi or '',
             'so_dien_thoai': self.so_dien_thoai or '',
             'email': self.email or '',
@@ -188,5 +219,70 @@ class Customer(models.Model):
             'so_tai_khoan': self.so_tai_khoan or '',
             'loai_tai_khoan': self.loai_tai_khoan or '',
             'ghi_chu': self.ghi_chu or '',
+            # Date variables (ngày sinh)
+            'd1': d1,
+            'd2': d2,
+            'm1': m1,
+            'm2': m2,
+            'y1': y1,
+            'y2': y2,
+            'y3': y3,
+            'y4': y4,
         }
         return data
+
+
+class BranchConfig(models.Model):
+    """
+    Cấu hình thông tin chi nhánh (Singleton - chỉ có 1 record duy nhất)
+    """
+    ten_chi_nhanh = models.CharField(max_length=200, verbose_name="Tên chi nhánh", default="Chi nhánh Giá Rai Bạc Liêu")
+    ten_chi_nhanh_hoa = models.CharField(max_length=200, verbose_name="Tên chi nhánh (IN HOA)", default="CHI NHÁNH GIÁ RAI BẠC LIÊU")
+    mst = models.CharField(max_length=50, verbose_name="Mã số thuế", blank=True)
+    giao_dich_vien = models.CharField(max_length=200, verbose_name="Giao dịch viên", blank=True)
+    kiem_soat_vien = models.CharField(max_length=200, verbose_name="Kiểm soát viên", blank=True)
+    giam_doc = models.CharField(max_length=200, verbose_name="Giám đốc", blank=True)
+    dia_chi_chi_nhanh = models.TextField(verbose_name="Địa chỉ chi nhánh", blank=True)
+
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+    updated_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Người cập nhật"
+    )
+
+    class Meta:
+        verbose_name = "Cấu hình Chi nhánh"
+        verbose_name_plural = "Cấu hình Chi nhánh"
+
+    def __str__(self):
+        return f"Cấu hình: {self.ten_chi_nhanh}"
+
+    def save(self, *args, **kwargs):
+        """Đảm bảo chỉ có 1 instance duy nhất (Singleton pattern)"""
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Không cho phép xóa"""
+        pass
+
+    @classmethod
+    def get_instance(cls):
+        """Lấy instance duy nhất, tạo mới nếu chưa tồn tại"""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def get_branch_dict(self):
+        """Trả về dictionary chứa thông tin chi nhánh để chèn vào template"""
+        return {
+            'ten_chi_nhanh': self.ten_chi_nhanh or '',
+            'ten_chi_nhanh_hoa': self.ten_chi_nhanh_hoa or '',
+            'mst': self.mst or '',
+            'giao_dich_vien': self.giao_dich_vien or '',
+            'kiem_soat_vien': self.kiem_soat_vien or '',
+            'giam_doc': self.giam_doc or '',
+            'dia_chi_chi_nhanh': self.dia_chi_chi_nhanh or '',
+        }

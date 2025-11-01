@@ -2,7 +2,7 @@
 Dynamic form generation based on Template variables
 """
 from django import forms
-from .models import Template, TemplateVariable, Customer
+from .models import Template, TemplateVariable, Customer, BranchConfig
 
 
 class DynamicTemplateForm(forms.Form):
@@ -130,7 +130,8 @@ class CustomerForm(forms.ModelForm):
             'gioi_tinh': forms.Select(attrs={'class': 'form-select'}),
             'so_cmnd': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập số CMND/CCCD'}),
             'ngay_cap_cmnd': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'noi_cap_cmnd': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: Công an TP. HCM'}),
+            'noi_cap_cmnd': forms.Select(attrs={'class': 'form-select', 'id': 'noi-cap-select'}),
+            'noi_cap_cmnd_custom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập nơi cấp khác', 'id': 'noi-cap-custom', 'style': 'display:none;'}),
             'dia_chi': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Địa chỉ thường trú'}),
             'so_dien_thoai': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số điện thoại'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'email@example.com'}),
@@ -139,4 +140,21 @@ class CustomerForm(forms.ModelForm):
             'so_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản'}),
             'loai_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Loại tài khoản'}),
             'ghi_chu': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ghi chú thêm'}),
+        }
+
+
+class BranchConfigForm(forms.ModelForm):
+    """Form cho cấu hình thông tin chi nhánh"""
+
+    class Meta:
+        model = BranchConfig
+        exclude = ['updated_at', 'updated_by']
+        widgets = {
+            'ten_chi_nhanh': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: Chi nhánh Giá Rai Bạc Liêu'}),
+            'ten_chi_nhanh_hoa': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: CHI NHÁNH GIÁ RAI BẠC LIÊU'}),
+            'mst': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã số thuế'}),
+            'giao_dich_vien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên giao dịch viên'}),
+            'kiem_soat_vien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên kiểm soát viên'}),
+            'giam_doc': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên giám đốc'}),
+            'dia_chi_chi_nhanh': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Địa chỉ đầy đủ chi nhánh'}),
         }

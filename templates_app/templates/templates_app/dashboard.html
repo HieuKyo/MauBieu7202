@@ -258,7 +258,15 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Nơi cấp</label>
-                            <input type="text" class="form-control" name="noi_cap_cmnd">
+                            <select class="form-select" name="noi_cap_cmnd" id="noi-cap-select">
+                                <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
+                                <option value="Bộ Công An">Bộ Công An</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12" id="noi-cap-custom-container" style="display:none;">
+                            <label class="form-label">Nơi cấp (tùy chỉnh)</label>
+                            <input type="text" class="form-control" name="noi_cap_cmnd_custom" id="noi-cap-custom" placeholder="Nhập nơi cấp khác">
                         </div>
                     </div>
 
@@ -351,6 +359,19 @@
                 }
             });
         });
+
+        // Handle noi_cap_cmnd custom input visibility
+        const noiCapSelect = document.getElementById('noi-cap-select');
+        const noiCapCustomContainer = document.getElementById('noi-cap-custom-container');
+
+        noiCapSelect.addEventListener('change', function() {
+            if (this.value === 'Khác') {
+                noiCapCustomContainer.style.display = 'block';
+            } else {
+                noiCapCustomContainer.style.display = 'none';
+                document.getElementById('noi-cap-custom').value = '';
+            }
+        });
     });
 
     function selectCustomer(customerId) {
@@ -402,7 +423,7 @@
             </div>
             <div class="info-row">
                 <div class="info-label">Nơi cấp:</div>
-                <div class="info-value">${customer.noi_cap_cmnd || '-'}</div>
+                <div class="info-value">${customer.noi_cap_cmnd_display || '-'}</div>
             </div>
             <div class="info-row">
                 <div class="info-label">Địa chỉ:</div>
@@ -449,6 +470,7 @@
         document.getElementById('customerModalLabel').innerHTML = '<i class="bi bi-person-plus"></i> Thêm Khách hàng';
         document.getElementById('customerForm').reset();
         document.getElementById('customer-id').value = '';
+        document.getElementById('noi-cap-custom-container').style.display = 'none';
         customerModal.show();
     }
 
@@ -471,7 +493,19 @@
                     form.querySelector('[name="gioi_tinh"]').value = customer.gioi_tinh || '';
                     form.querySelector('[name="so_cmnd"]').value = customer.so_cmnd || '';
                     form.querySelector('[name="ngay_cap_cmnd"]').value = customer.ngay_cap_cmnd ? formatDateForInput(customer.ngay_cap_cmnd) : '';
-                    form.querySelector('[name="noi_cap_cmnd"]').value = customer.noi_cap_cmnd || '';
+
+                    // Handle noi_cap_cmnd
+                    const noiCapValue = customer.noi_cap_cmnd || 'Cục CSQLHC về TTXH';
+                    form.querySelector('[name="noi_cap_cmnd"]').value = noiCapValue;
+                    form.querySelector('[name="noi_cap_cmnd_custom"]').value = customer.noi_cap_cmnd_custom || '';
+
+                    // Show custom field if "Khác" is selected
+                    if (noiCapValue === 'Khác') {
+                        document.getElementById('noi-cap-custom-container').style.display = 'block';
+                    } else {
+                        document.getElementById('noi-cap-custom-container').style.display = 'none';
+                    }
+
                     form.querySelector('[name="dia_chi"]').value = customer.dia_chi || '';
                     form.querySelector('[name="so_dien_thoai"]').value = customer.so_dien_thoai || '';
                     form.querySelector('[name="email"]').value = customer.email || '';

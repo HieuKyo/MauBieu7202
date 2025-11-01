@@ -5,8 +5,8 @@ from django.contrib import messages
 from django.http import HttpResponse, Http404, JsonResponse
 from django.db.models import Q, Exists, OuterRef
 from django.views.decorators.http import require_http_methods
-from .models import Category, Template, Variable, TemplateVariable, Customer
-from .forms import DynamicTemplateForm, CustomerForm
+from .models import Category, Template, Variable, TemplateVariable, Customer, BranchConfig
+from .forms import DynamicTemplateForm, CustomerForm, BranchConfigForm
 from .utils import render_word_template
 import os
 import json
@@ -123,7 +123,11 @@ def template_form_view(request, template_id):
         form = DynamicTemplateForm(request.POST, template=template)
         if form.is_valid():
             # Lưu dữ liệu vào session để generate document
-            request.session[f'template_{template_id}_data'] = form.cleaned_data
+            # Bao gồm cả customer_id để lấy date variables
+            session_data = form.cleaned_data.copy()
+            if customer_id:
+                session_data['_customer_id'] = customer_id
+            request.session[f'template_{template_id}_data'] = session_data
             return redirect('generate_document', template_id=template_id)
     else:
         # Create form with initial data from customer if available
@@ -142,6 +146,7 @@ def template_form_view(request, template_id):
 def generate_document_view(request, template_id):
     """
     Tạo file Word từ template và dữ liệu đã nhập
+    Bao gồm các biến chi nhánh và date variables
     """
     template = get_object_or_404(Template, id=template_id, is_active=True)
     user = request.user
@@ -159,6 +164,25 @@ def generate_document_view(request, template_id):
         return redirect('template_form', template_id=template_id)
 
     try:
+        # Lấy customer_id từ session data nếu có
+        customer_id = data.pop('_customer_id', None)
+
+        # Thêm biến chi nhánh vào data
+        branch = BranchConfig.get_instance()
+        data.update(branch.get_branch_dict())
+
+        # Thêm date variables nếu có customer
+        if customer_id:
+            try:
+                customer = Customer.objects.get(id=customer_id)
+                customer_data = customer.get_data_dict()
+                # Thêm các biến d1, d2, m1, m2, y1, y2, y3, y4
+                for key in ['d1', 'd2', 'm1', 'm2', 'y1', 'y2', 'y3', 'y4']:
+                    if key in customer_data:
+                        data[key] = customer_data[key]
+            except Customer.DoesNotExist:
+                pass
+
         # Render template Word với dữ liệu
         template_path = template.file.path
         output_stream = render_word_template(template_path, data)
@@ -291,7 +315,9 @@ def customer_detail_api(request, customer_id):
                 'gioi_tinh': customer.gioi_tinh,
                 'so_cmnd': customer.so_cmnd,
                 'ngay_cap_cmnd': customer.ngay_cap_cmnd.strftime('%d/%m/%Y') if customer.ngay_cap_cmnd else '',
-                'noi_cap_cmnd': customer.noi_cap_cmnd,
+                'noi_cap_cmnd': customer.noi_cap_cmnd,  # Raw value for form
+                'noi_cap_cmnd_custom': customer.noi_cap_cmnd_custom,  # Custom value for form
+                'noi_cap_cmnd_display': customer.get_noi_cap_display_value(),  # Display value
                 'dia_chi': customer.dia_chi,
                 'so_dien_thoai': customer.so_dien_thoai,
                 'email': customer.email,
@@ -363,3 +389,31 @@ def customer_delete_view(request, customer_id):
         'success': True,
         'message': f'Đã xóa khách hàng: {customer_name}'
     })
+
+
+# Branch Configuration views
+@login_required
+def branch_config_view(request):
+    """Trang cấu hình thông tin chi nhánh"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    branch = BranchConfig.get_instance()
+
+    if request.method == 'POST':
+        form = BranchConfigForm(request.POST, instance=branch)
+        if form.is_valid():
+            branch_config = form.save(commit=False)
+            branch_config.updated_by = request.user
+            branch_config.save()
+            messages.success(request, 'Đã cập nhật cấu hình chi nhánh thành công')
+            return redirect('branch_config')
+    else:
+        form = BranchConfigForm(instance=branch)
+
+    context = {
+        'form': form,
+        'branch': branch,
+    }
+    return render(request, 'templates_app/branch_config.html', context)

@@ -1,0 +1,131 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Cấu hình Chi nhánh - Hệ thống Mẫu biểu{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold" style="color: var(--agribank-red);">
+            <i class="bi bi-gear-fill"></i> Cấu hình Thông tin Chi nhánh
+        </h2>
+        <p class="text-muted">Thông tin chi nhánh sẽ được tự động chèn vào các mẫu biểu thông qua các biến.</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header" style="background-color: var(--agribank-green); color: white;">
+                    <h5 class="mb-0"><i class="bi bi-building"></i> Thông tin Chi nhánh</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Tên chi nhánh</label>
+                            {{ form.ten_chi_nhanh }}
+                            <small class="form-text text-muted">Biến: <code>{{ "{{" }} ten_chi_nhanh {{ "}}" }}</code></small>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Tên chi nhánh (IN HOA)</label>
+                            {{ form.ten_chi_nhanh_hoa }}
+                            <small class="form-text text-muted">Biến: <code>{{ "{{" }} ten_chi_nhanh_hoa {{ "}}" }}</code></small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Mã số thuế</label>
+                            {{ form.mst }}
+                            <small class="form-text text-muted">Biến: <code>{{ "{{" }} mst {{ "}}" }}</code></small>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Địa chỉ chi nhánh</label>
+                            {{ form.dia_chi_chi_nhanh }}
+                            <small class="form-text text-muted">Biến: <code>{{ "{{" }} dia_chi_chi_nhanh {{ "}}" }}</code></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header" style="background-color: var(--agribank-red); color: white;">
+                    <h5 class="mb-0"><i class="bi bi-people"></i> Nhân sự Chi nhánh</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Giao dịch viên</label>
+                            {{ form.giao_dich_vien }}
+                            <small class="form-text text-muted">Biến: <code>{{ "{{" }} giao_dich_vien {{ "}}" }}</code></small>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Kiểm soát viên</label>
+                            {{ form.kiem_soat_vien }}
+                            <small class="form-text text-muted">Biến: <code>{{ "{{" }} kiem_soat_vien {{ "}}" }}</code></small>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Giám đốc</label>
+                            {{ form.giam_doc }}
+                            <small class="form-text text-muted">Biến: <code>{{ "{{" }} giam_doc {{ "}}" }}</code></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Hủy
+                </a>
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-save"></i> Lưu cấu hình
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title fw-bold" style="color: var(--agribank-red);">
+                    <i class="bi bi-info-circle"></i> Hướng dẫn sử dụng biến
+                </h6>
+                <p class="small">Trong file Word template, bạn có thể sử dụng các biến sau:</p>
+
+                <h6 class="mt-3 fw-bold">Biến Chi nhánh:</h6>
+                <ul class="small">
+                    <li><code>{{ "{{" }} ten_chi_nhanh {{ "}}" }}</code></li>
+                    <li><code>{{ "{{" }} ten_chi_nhanh_hoa {{ "}}" }}</code></li>
+                    <li><code>{{ "{{" }} mst {{ "}}" }}</code></li>
+                    <li><code>{{ "{{" }} dia_chi_chi_nhanh {{ "}}" }}</code></li>
+                    <li><code>{{ "{{" }} giao_dich_vien {{ "}}" }}</code></li>
+                    <li><code>{{ "{{" }} kiem_soat_vien {{ "}}" }}</code></li>
+                    <li><code>{{ "{{" }} giam_doc {{ "}}" }}</code></li>
+                </ul>
+
+                <h6 class="mt-3 fw-bold">Biến Ngày tháng năm:</h6>
+                <p class="small mb-1">Từ ngày sinh khách hàng:</p>
+                <ul class="small">
+                    <li><code>{{ "{{" }} d1 {{ "}}" }}</code>, <code>{{ "{{" }} d2 {{ "}}" }}</code> - Ngày (2 chữ số)</li>
+                    <li><code>{{ "{{" }} m1 {{ "}}" }}</code>, <code>{{ "{{" }} m2 {{ "}}" }}</code> - Tháng (2 chữ số)</li>
+                    <li><code>{{ "{{" }} y1 {{ "}}" }}</code>, <code>{{ "{{" }} y2 {{ "}}" }}</code>, <code>{{ "{{" }} y3 {{ "}}" }}</code>, <code>{{ "{{" }} y4 {{ "}}" }}</code> - Năm (4 chữ số)</li>
+                </ul>
+
+                <div class="alert alert-warning mt-3 small">
+                    <strong>Lưu ý:</strong> Các biến này tự động có sẵn trong mọi mẫu biểu, không cần cấu hình thêm.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

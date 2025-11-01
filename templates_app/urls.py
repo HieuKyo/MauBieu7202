@@ -27,4 +27,7 @@ urlpatterns = [
     path('api/customers/create/', views.customer_create_view, name='customer_create'),
     path('api/customers/<int:customer_id>/update/', views.customer_update_view, name='customer_update'),
     path('api/customers/<int:customer_id>/delete/', views.customer_delete_view, name='customer_delete'),
+
+    # Branch Configuration
+    path('branch-config/', views.branch_config_view, name='branch_config'),
 ]
