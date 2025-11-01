@@ -2,10 +2,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, JsonResponse
 from django.db.models import Q, Exists, OuterRef
 from django.views.decorators.http import require_http_methods
-from .models import Category, Template, Variable, TemplateVariable
+from .models import Category, Template, Variable, TemplateVariable, Customer
 from .forms import DynamicTemplateForm
 from .utils import render_word_template
 import os
@@ -181,3 +181,69 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'Đã đăng xuất thành công')
     return redirect('login')
+
+
+# Customer views
+@login_required
+def customer_list_view(request):
+    """Danh sách khách hàng với tìm kiếm"""
+    search_query = request.GET.get('q', '')
+
+    customers = Customer.objects.all()
+
+    if search_query:
+        customers = customers.filter(
+            Q(ho_ten__icontains=search_query) |
+            Q(so_cmnd__icontains=search_query) |
+            Q(so_dien_thoai__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+
+    customers = customers.order_by('-created_at')
+
+    context = {
+        'customers': customers,
+        'search_query': search_query,
+    }
+    return render(request, 'templates_app/customer_list.html', context)
+
+
+@login_required
+def customer_search_api(request):
+    """API endpoint để tìm kiếm khách hàng (cho AJAX)"""
+    search_query = request.GET.get('q', '')
+
+    if len(search_query) < 2:
+        return JsonResponse({'customers': []})
+
+    customers = Customer.objects.filter(
+        Q(ho_ten__icontains=search_query) |
+        Q(so_cmnd__icontains=search_query) |
+        Q(so_dien_thoai__icontains=search_query)
+    ).order_by('ho_ten')[:20]  # Giới hạn 20 kết quả
+
+    customer_list = [{
+        'id': c.id,
+        'ho_ten': c.ho_ten,
+        'so_cmnd': c.so_cmnd,
+        'so_dien_thoai': c.so_dien_thoai,
+        'display': f"{c.ho_ten} - {c.so_cmnd}"
+    } for c in customers]
+
+    return JsonResponse({'customers': customer_list})
+
+
+@login_required
+def customer_data_api(request, customer_id):
+    """API endpoint để lấy dữ liệu khách hàng theo ID (cho auto-fill)"""
+    try:
+        customer = Customer.objects.get(id=customer_id)
+        return JsonResponse({
+            'success': True,
+            'data': customer.get_data_dict()
+        })
+    except Customer.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Không tìm thấy khách hàng'
+        }, status=404)

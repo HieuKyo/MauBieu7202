@@ -1,0 +1,110 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Danh sách Khách hàng - Hệ thống Mẫu biểu{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold" style="color: var(--agribank-red);">
+            <i class="bi bi-people-fill"></i> Danh sách Khách hàng
+        </h2>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<!-- Search form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{% url 'customer_list' %}">
+            <div class="input-group">
+                <input
+                    type="text"
+                    name="q"
+                    class="form-control form-control-lg"
+                    placeholder="Tìm kiếm theo tên, CMND/CCCD, số điện thoại, email..."
+                    value="{{ search_query }}"
+                    autofocus
+                >
+                <button class="btn btn-primary" type="submit">
+                    <i class="bi bi-search"></i> Tìm kiếm
+                </button>
+                {% if search_query %}
+                <a href="{% url 'customer_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Xóa
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results -->
+{% if search_query %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Tìm thấy <strong>{{ customers.count }}</strong> khách hàng phù hợp với từ khóa: <strong>"{{ search_query }}"</strong>
+</div>
+{% endif %}
+
+{% if customers %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Họ và tên</th>
+                        <th>Số CMND/CCCD</th>
+                        <th>Số điện thoại</th>
+                        <th>Ngày sinh</th>
+                        <th>Địa chỉ</th>
+                        <th>Ngày tạo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr>
+                        <td class="fw-bold">{{ customer.ho_ten }}</td>
+                        <td>{{ customer.so_cmnd }}</td>
+                        <td>{{ customer.so_dien_thoai|default:"-" }}</td>
+                        <td>
+                            {% if customer.ngay_sinh %}
+                                {{ customer.ngay_sinh|date:"d/m/Y" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ customer.dia_chi|truncatewords:10|default:"-" }}</td>
+                        <td>{{ customer.created_at|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3 text-muted">
+    <i class="bi bi-info-circle"></i> Tổng số: <strong>{{ customers.count }}</strong> khách hàng
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    {% if search_query %}
+        Không tìm thấy khách hàng nào phù hợp với từ khóa: <strong>"{{ search_query }}"</strong>
+    {% else %}
+        Chưa có khách hàng nào trong hệ thống. Vui lòng thêm khách hàng mới từ trang quản trị.
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="mt-4 text-center">
+    <p class="text-muted">
+        <i class="bi bi-lightbulb"></i> Mẹo: Bạn có thể quản lý khách hàng trong <a href="/admin/templates_app/customer/" class="text-decoration-none">trang quản trị</a>
+    </p>
+</div>
+{% endblock %}

@@ -94,3 +94,96 @@ class TemplateVariable(models.Model):
 
     def __str__(self):
         return f"{self.template.name} - {self.variable.name}"
+
+
+class Customer(models.Model):
+    """Thông tin khách hàng"""
+    # Thông tin cá nhân cơ bản
+    ho_ten = models.CharField(max_length=200, verbose_name="Họ và tên", db_index=True)
+    ngay_sinh = models.DateField(null=True, blank=True, verbose_name="Ngày sinh")
+    gioi_tinh = models.CharField(
+        max_length=10,
+        choices=[('Nam', 'Nam'), ('Nữ', 'Nữ'), ('Khác', 'Khác')],
+        default='Nam',
+        verbose_name="Giới tính"
+    )
+
+    # Giấy tờ tùy thân
+    so_cmnd = models.CharField(max_length=20, unique=True, verbose_name="Số CMND/CCCD", db_index=True)
+    ngay_cap_cmnd = models.DateField(null=True, blank=True, verbose_name="Ngày cấp CMND/CCCD")
+    noi_cap_cmnd = models.CharField(max_length=200, blank=True, verbose_name="Nơi cấp CMND/CCCD")
+
+    # Liên hệ
+    dia_chi = models.TextField(blank=True, verbose_name="Địa chỉ thường trú")
+    dia_chi_tam_tru = models.TextField(blank=True, verbose_name="Địa chỉ tạm trú")
+    so_dien_thoai = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại", db_index=True)
+    email = models.EmailField(blank=True, verbose_name="Email")
+
+    # Thông tin nghề nghiệp
+    nghe_nghiep = models.CharField(max_length=200, blank=True, verbose_name="Nghề nghiệp")
+    noi_lam_viec = models.CharField(max_length=200, blank=True, verbose_name="Nơi làm việc")
+    chuc_vu = models.CharField(max_length=200, blank=True, verbose_name="Chức vụ")
+    thu_nhap_hang_thang = models.DecimalField(
+        max_digits=15,
+        decimal_places=0,
+        null=True,
+        blank=True,
+        verbose_name="Thu nhập hàng tháng (VNĐ)"
+    )
+
+    # Thông tin tài khoản
+    so_tai_khoan = models.CharField(max_length=30, blank=True, verbose_name="Số tài khoản")
+    loai_tai_khoan = models.CharField(max_length=100, blank=True, verbose_name="Loại tài khoản")
+
+    # Metadata
+    ghi_chu = models.TextField(blank=True, verbose_name="Ghi chú")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+    created_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customers',
+        verbose_name="Người tạo"
+    )
+
+    class Meta:
+        verbose_name = "Khách hàng"
+        verbose_name_plural = "Khách hàng"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['ho_ten', 'so_cmnd']),
+            models.Index(fields=['so_dien_thoai']),
+        ]
+
+    def __str__(self):
+        return f"{self.ho_ten} - {self.so_cmnd}"
+
+    def get_data_dict(self):
+        """
+        Trả về dictionary chứa thông tin khách hàng
+        Dùng để auto-fill form
+        """
+        from decimal import Decimal
+
+        data = {
+            'ho_ten': self.ho_ten or '',
+            'ngay_sinh': self.ngay_sinh.strftime('%d/%m/%Y') if self.ngay_sinh else '',
+            'gioi_tinh': self.gioi_tinh or '',
+            'so_cmnd': self.so_cmnd or '',
+            'ngay_cap_cmnd': self.ngay_cap_cmnd.strftime('%d/%m/%Y') if self.ngay_cap_cmnd else '',
+            'noi_cap_cmnd': self.noi_cap_cmnd or '',
+            'dia_chi': self.dia_chi or '',
+            'dia_chi_tam_tru': self.dia_chi_tam_tru or '',
+            'so_dien_thoai': self.so_dien_thoai or '',
+            'email': self.email or '',
+            'nghe_nghiep': self.nghe_nghiep or '',
+            'noi_lam_viec': self.noi_lam_viec or '',
+            'chuc_vu': self.chuc_vu or '',
+            'thu_nhap_hang_thang': str(self.thu_nhap_hang_thang) if self.thu_nhap_hang_thang else '',
+            'so_tai_khoan': self.so_tai_khoan or '',
+            'loai_tai_khoan': self.loai_tai_khoan or '',
+            'ghi_chu': self.ghi_chu or '',
+        }
+        return data

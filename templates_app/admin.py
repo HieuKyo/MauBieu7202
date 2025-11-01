@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
 from django.http import HttpResponse
-from .models import Category, Template, Variable, TemplateVariable
+from .models import Category, Template, Variable, TemplateVariable, Customer
 from .import_helpers import (
     import_variables_from_csv,
     import_variables_from_excel,
@@ -18,6 +18,43 @@ class TemplateVariableInline(admin.TabularInline):
     model = TemplateVariable
     extra = 1
     autocomplete_fields = ['variable']
+
+
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    """Admin cho Khách hàng"""
+    list_display = ['ho_ten', 'so_cmnd', 'so_dien_thoai', 'ngay_sinh', 'created_at', 'created_by']
+    list_filter = ['gioi_tinh', 'created_at', 'created_by']
+    search_fields = ['ho_ten', 'so_cmnd', 'so_dien_thoai', 'email']
+    readonly_fields = ['created_at', 'updated_at', 'created_by']
+    ordering = ['-created_at']
+
+    fieldsets = (
+        ('Thông tin cá nhân', {
+            'fields': ('ho_ten', 'ngay_sinh', 'gioi_tinh')
+        }),
+        ('Giấy tờ tùy thân', {
+            'fields': ('so_cmnd', 'ngay_cap_cmnd', 'noi_cap_cmnd')
+        }),
+        ('Thông tin liên hệ', {
+            'fields': ('dia_chi', 'dia_chi_tam_tru', 'so_dien_thoai', 'email')
+        }),
+        ('Thông tin nghề nghiệp', {
+            'fields': ('nghe_nghiep', 'noi_lam_viec', 'chuc_vu', 'thu_nhap_hang_thang')
+        }),
+        ('Thông tin tài khoản', {
+            'fields': ('so_tai_khoan', 'loai_tai_khoan')
+        }),
+        ('Ghi chú & Metadata', {
+            'fields': ('ghi_chu', 'created_at', 'updated_at', 'created_by')
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        """Tự động gán người tạo khi tạo mới khách hàng"""
+        if not change:  # Chỉ khi tạo mới
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Category)

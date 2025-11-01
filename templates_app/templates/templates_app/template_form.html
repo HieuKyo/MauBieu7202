@@ -25,7 +25,47 @@
                 {% endif %}
             </div>
             <div class="card-body">
-                <form method="post" action="{% url 'template_form' template.id %}">
+                <!-- Customer Selection & Clipboard Paste -->
+                <div class="mb-4 p-3 bg-light rounded">
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">
+                        <i class="bi bi-person-fill"></i> Tự động điền thông tin
+                    </h6>
+
+                    <div class="row g-3">
+                        <!-- Customer Search -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Chọn khách hàng có sẵn:</label>
+                            <div class="input-group">
+                                <input
+                                    type="text"
+                                    id="customer-search"
+                                    class="form-control"
+                                    placeholder="Tìm theo tên, CMND, SĐT..."
+                                    autocomplete="off"
+                                >
+                                <button type="button" class="btn btn-outline-primary" onclick="window.open('{% url 'customer_list' %}', '_blank')">
+                                    <i class="bi bi-list-ul"></i>
+                                </button>
+                            </div>
+                            <div id="customer-search-results" class="list-group mt-2" style="display: none; max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+
+                        <!-- Clipboard Paste -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Dán từ clipboard:</label>
+                            <button type="button" id="paste-from-clipboard" class="btn btn-outline-success w-100">
+                                <i class="bi bi-clipboard-check"></i> Dán dữ liệu từ clipboard
+                            </button>
+                            <small class="form-text text-muted d-block mt-1">
+                                Copy dữ liệu từ Excel/Word rồi nhấn nút này
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <form method="post" action="{% url 'template_form' template.id %}" id="template-form">
                     {% csrf_token %}
 
                     {% if form.errors %}
@@ -105,4 +145,232 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Customer Search Functionality
+    let searchTimeout = null;
+    const searchInput = document.getElementById('customer-search');
+    const searchResults = document.getElementById('customer-search-results');
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            searchResults.style.display = 'none';
+            searchResults.innerHTML = '';
+            return;
+        }
+
+        searchTimeout = setTimeout(() => {
+            fetch(`/api/customers/search/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.customers && data.customers.length > 0) {
+                        searchResults.innerHTML = data.customers.map(customer => `
+                            <button type="button" class="list-group-item list-group-item-action" onclick="loadCustomerData(${customer.id})">
+                                <strong>${customer.ho_ten}</strong><br>
+                                <small class="text-muted">CMND: ${customer.so_cmnd} | SĐT: ${customer.so_dien_thoai || 'N/A'}</small>
+                            </button>
+                        `).join('');
+                        searchResults.style.display = 'block';
+                    } else {
+                        searchResults.innerHTML = '<div class="list-group-item">Không tìm thấy khách hàng</div>';
+                        searchResults.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching customers:', error);
+                    searchResults.style.display = 'none';
+                });
+        }, 300);
+    });
+
+    // Load customer data and auto-fill form
+    function loadCustomerData(customerId) {
+        fetch(`/api/customers/${customerId}/`)
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    fillFormFields(result.data);
+                    searchResults.style.display = 'none';
+                    searchInput.value = '';
+
+                    // Show success message
+                    showNotification('Đã tải thông tin khách hàng thành công!', 'success');
+                } else {
+                    showNotification('Không thể tải thông tin khách hàng', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading customer:', error);
+                showNotification('Lỗi khi tải thông tin khách hàng', 'error');
+            });
+    }
+
+    // Fill form fields with data
+    function fillFormFields(data) {
+        for (const [fieldName, value] of Object.entries(data)) {
+            const field = document.querySelector(`[name="${fieldName}"]`);
+            if (field && value) {
+                field.value = value;
+
+                // Highlight filled field
+                field.classList.add('bg-success-subtle');
+                setTimeout(() => field.classList.remove('bg-success-subtle'), 2000);
+            }
+        }
+    }
+
+    // Clipboard Paste Functionality
+    document.getElementById('paste-from-clipboard').addEventListener('click', async function() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!text.trim()) {
+                showNotification('Clipboard trống hoặc không có dữ liệu', 'warning');
+                return;
+            }
+
+            // Parse clipboard data
+            const parsedData = parseClipboardData(text);
+
+            if (Object.keys(parsedData).length > 0) {
+                fillFormFields(parsedData);
+                showNotification(`Đã điền ${Object.keys(parsedData).length} trường từ clipboard`, 'success');
+            } else {
+                showNotification('Không thể phân tích dữ liệu clipboard', 'warning');
+            }
+        } catch (error) {
+            console.error('Clipboard error:', error);
+            showNotification('Lỗi khi đọc clipboard. Vui lòng cho phép truy cập clipboard.', 'error');
+        }
+    });
+
+    // Parse clipboard data (handles tab-separated values from Excel/Word tables)
+    function parseClipboardData(text) {
+        const data = {};
+        const lines = text.split('\n').filter(line => line.trim());
+
+        // Field name mapping (Vietnamese to English)
+        const fieldMapping = {
+            'họ và tên': 'ho_ten',
+            'họ tên': 'ho_ten',
+            'tên': 'ho_ten',
+            'ngày sinh': 'ngay_sinh',
+            'sinh ngày': 'ngay_sinh',
+            'giới tính': 'gioi_tinh',
+            'số cmnd': 'so_cmnd',
+            'cmnd': 'so_cmnd',
+            'cccd': 'so_cmnd',
+            'số cccd': 'so_cmnd',
+            'ngày cấp': 'ngay_cap_cmnd',
+            'ngày cấp cmnd': 'ngay_cap_cmnd',
+            'nơi cấp': 'noi_cap_cmnd',
+            'nơi cấp cmnd': 'noi_cap_cmnd',
+            'địa chỉ': 'dia_chi',
+            'địa chỉ tạm trú': 'dia_chi_tam_tru',
+            'số điện thoại': 'so_dien_thoai',
+            'điện thoại': 'so_dien_thoai',
+            'sdt': 'so_dien_thoai',
+            'email': 'email',
+            'nghề nghiệp': 'nghe_nghiep',
+            'nơi làm việc': 'noi_lam_viec',
+            'chức vụ': 'chuc_vu',
+            'thu nhập': 'thu_nhap_hang_thang',
+            'thu nhập hàng tháng': 'thu_nhap_hang_thang',
+            'số tài khoản': 'so_tai_khoan',
+            'tài khoản': 'so_tai_khoan',
+            'loại tài khoản': 'loai_tai_khoan',
+            'ghi chú': 'ghi_chu',
+        };
+
+        // Try to parse as key-value pairs
+        for (const line of lines) {
+            // Check for patterns like "Label: Value" or "Label\tValue"
+            const colonMatch = line.match(/^([^:]+):\s*(.+)$/);
+            const tabMatch = line.split('\t');
+
+            if (colonMatch) {
+                const key = colonMatch[1].trim().toLowerCase();
+                const value = colonMatch[2].trim();
+                const fieldName = fieldMapping[key];
+                if (fieldName) {
+                    data[fieldName] = value;
+                }
+            } else if (tabMatch.length === 2) {
+                const key = tabMatch[0].trim().toLowerCase();
+                const value = tabMatch[1].trim();
+                const fieldName = fieldMapping[key];
+                if (fieldName) {
+                    data[fieldName] = value;
+                }
+            }
+        }
+
+        // If no structured data found, try to extract common patterns
+        if (Object.keys(data).length === 0) {
+            const fullText = text.toLowerCase();
+
+            // Try to extract CMND/CCCD (9-12 digits)
+            const cmndMatch = fullText.match(/\b\d{9,12}\b/);
+            if (cmndMatch) {
+                data['so_cmnd'] = cmndMatch[0];
+            }
+
+            // Try to extract phone number (10 digits starting with 0)
+            const phoneMatch = fullText.match(/\b0\d{9}\b/);
+            if (phoneMatch) {
+                data['so_dien_thoai'] = phoneMatch[0];
+            }
+
+            // Try to extract email
+            const emailMatch = fullText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+            if (emailMatch) {
+                data['email'] = emailMatch[0];
+            }
+        }
+
+        return data;
+    }
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
+
+        const icon = {
+            'success': 'check-circle-fill',
+            'error': 'x-circle-fill',
+            'warning': 'exclamation-triangle-fill',
+            'info': 'info-circle-fill'
+        }[type] || 'info-circle-fill';
+
+        const alert = document.createElement('div');
+        alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+        alert.style.zIndex = '9999';
+        alert.style.minWidth = '400px';
+        alert.innerHTML = `
+            <i class="bi bi-${icon}"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alert);
+
+        setTimeout(() => {
+            alert.remove();
+        }, 5000);
+    }
+
+    // Close search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+</script>
 {% endblock %}

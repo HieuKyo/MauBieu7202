@@ -18,4 +18,9 @@ urlpatterns = [
     # Template
     path('template/<int:template_id>/', views.template_form_view, name='template_form'),
     path('template/<int:template_id>/generate/', views.generate_document_view, name='generate_document'),
+
+    # Customer
+    path('customers/', views.customer_list_view, name='customer_list'),
+    path('api/customers/search/', views.customer_search_api, name='customer_search_api'),
+    path('api/customers/<int:customer_id>/', views.customer_data_api, name='customer_data_api'),
 ]
