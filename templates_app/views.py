@@ -697,6 +697,7 @@ def generate_document_direct(request, template_id):
         # ID documents
         data['so_cmnd'] = request.POST.get('so_cmnd', '')
         data['ngay_cap_cmnd'] = request.POST.get('ngay_cap_cmnd', '')
+        data['ngay_het_han_cmnd'] = request.POST.get('ngay_het_han_cmnd', '')
         data['noi_cap_cmnd'] = request.POST.get('noi_cap_cmnd', '')
 
         # Contact
@@ -757,6 +758,47 @@ def generate_document_direct(request, template_id):
                 data['y1'], data['y2'], data['y3'], data['y4'] = date_str[4], date_str[5], date_str[6], date_str[7]
             except:
                 pass
+
+        # Date variables (from ngay_cap_cmnd)
+        if data['ngay_cap_cmnd']:
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(data['ngay_cap_cmnd'], '%Y-%m-%d')
+                date_str = date_obj.strftime('%d%m%Y')
+                data['dcc1'], data['dcc2'] = date_str[0], date_str[1]
+                data['mcc1'], data['mcc2'] = date_str[2], date_str[3]
+                data['ycc1'], data['ycc2'], data['ycc3'], data['ycc4'] = date_str[4], date_str[5], date_str[6], date_str[7]
+            except:
+                pass
+
+        # Date variables (from ngay_het_han_cmnd)
+        if data['ngay_het_han_cmnd']:
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(data['ngay_het_han_cmnd'], '%Y-%m-%d')
+                date_str = date_obj.strftime('%d%m%Y')
+                data['dhh1'], data['dhh2'] = date_str[0], date_str[1]
+                data['mhh1'], data['mhh2'] = date_str[2], date_str[3]
+                data['yhh1'], data['yhh2'], data['yhh3'], data['yhh4'] = date_str[4], date_str[5], date_str[6], date_str[7]
+            except:
+                pass
+
+        # Service-specific account and phone logic
+        # If Agribank Plus is selected but NOT SMS Banking
+        if data['dv_bankplus'] == '☑' and data['dv_sms_banking'] == '☐':
+            data['so_tai_khoan_AP'] = data['so_tai_khoan']
+            data['so_dien_thoai_AP'] = data['so_dien_thoai']
+        else:
+            data['so_tai_khoan_AP'] = ''
+            data['so_dien_thoai_AP'] = ''
+
+        # If SMS Banking is selected but NOT Agribank Plus
+        if data['dv_sms_banking'] == '☑' and data['dv_bankplus'] == '☐':
+            data['so_tai_khoan_SMS'] = data['so_tai_khoan']
+            data['so_dien_thoai_SMS'] = data['so_dien_thoai']
+        else:
+            data['so_tai_khoan_SMS'] = ''
+            data['so_dien_thoai_SMS'] = ''
 
         # Branch data from GlobalConfig
         data['ten_chi_nhanh'] = config.ten_chi_nhanh

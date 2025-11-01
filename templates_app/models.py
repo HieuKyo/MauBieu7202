@@ -177,6 +177,7 @@ class Customer(models.Model):
     # Giấy tờ tùy thân
     so_cmnd = models.CharField(max_length=20, unique=True, verbose_name="Số CMND/CCCD", db_index=True)
     ngay_cap_cmnd = models.DateField(null=True, blank=True, verbose_name="Ngày cấp CMND/CCCD")
+    ngay_het_han_cmnd = models.DateField(null=True, blank=True, verbose_name="Ngày hết hạn CMND/CCCD")
     noi_cap_cmnd = models.CharField(
         max_length=50,
         choices=NOI_CAP_CHOICES,
@@ -288,6 +289,24 @@ class Customer(models.Model):
                 m1, m2 = date_str[2], date_str[3]
                 y1, y2, y3, y4 = date_str[4], date_str[5], date_str[6], date_str[7]
 
+        # Date variables for ngay_cap_cmnd
+        dcc1, dcc2, mcc1, mcc2, ycc1, ycc2, ycc3, ycc4 = '', '', '', '', '', '', '', ''
+        if self.ngay_cap_cmnd:
+            date_str = self.ngay_cap_cmnd.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                dcc1, dcc2 = date_str[0], date_str[1]
+                mcc1, mcc2 = date_str[2], date_str[3]
+                ycc1, ycc2, ycc3, ycc4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
+        # Date variables for ngay_het_han_cmnd
+        dhh1, dhh2, mhh1, mhh2, yhh1, yhh2, yhh3, yhh4 = '', '', '', '', '', '', '', ''
+        if self.ngay_het_han_cmnd:
+            date_str = self.ngay_het_han_cmnd.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                dhh1, dhh2 = date_str[0], date_str[1]
+                mhh1, mhh2 = date_str[2], date_str[3]
+                yhh1, yhh2, yhh3, yhh4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
         # Checkbox variables for hạng thẻ
         the_hang_chuan = checkbox(self.hang_the == 'Hạng chuẩn')
         the_hang_vang = checkbox(self.hang_the == 'Hạng vàng')
@@ -307,6 +326,7 @@ class Customer(models.Model):
             'gioi_tinh': self.gioi_tinh or '',
             'so_cmnd': self.so_cmnd or '',
             'ngay_cap_cmnd': self.ngay_cap_cmnd.strftime('%d/%m/%Y') if self.ngay_cap_cmnd else '',
+            'ngay_het_han_cmnd': self.ngay_het_han_cmnd.strftime('%d/%m/%Y') if self.ngay_het_han_cmnd else '',
             'noi_cap_cmnd': self.get_noi_cap_display_value(),
             'dia_chi': self.dia_chi or '',
             'so_dien_thoai': self.so_dien_thoai or '',
@@ -322,14 +342,14 @@ class Customer(models.Model):
             'ghi_chu': self.ghi_chu or '',
             'ngay_in': self.ngay_in.strftime('%d/%m/%Y') if self.ngay_in else '',
             # Date variables (ngày sinh)
-            'd1': d1,
-            'd2': d2,
-            'm1': m1,
-            'm2': m2,
-            'y1': y1,
-            'y2': y2,
-            'y3': y3,
-            'y4': y4,
+            'd1': d1, 'd2': d2, 'm1': m1, 'm2': m2,
+            'y1': y1, 'y2': y2, 'y3': y3, 'y4': y4,
+            # Date variables (ngày cấp CMND/CCCD)
+            'dcc1': dcc1, 'dcc2': dcc2, 'mcc1': mcc1, 'mcc2': mcc2,
+            'ycc1': ycc1, 'ycc2': ycc2, 'ycc3': ycc3, 'ycc4': ycc4,
+            # Date variables (ngày hết hạn CMND/CCCD)
+            'dhh1': dhh1, 'dhh2': dhh2, 'mhh1': mhh1, 'mhh2': mhh2,
+            'yhh1': yhh1, 'yhh2': yhh2, 'yhh3': yhh3, 'yhh4': yhh4,
             # Checkbox variables - Dịch vụ thu hộ
             'dv_thu_ho_tien_nuoc': checkbox(self.dv_thu_ho_tien_nuoc),
             'dv_thu_ho_tien_dien': checkbox(self.dv_thu_ho_tien_dien),
@@ -357,6 +377,24 @@ class Customer(models.Model):
             'tk_ngau_nhien': tk_ngau_nhien,
             'tk_theo_yeu_cau': tk_theo_yeu_cau,
         }
+
+        # Service-specific account and phone logic
+        # If Agribank Plus is selected but NOT SMS Banking
+        if self.dv_bankplus and not self.dv_sms_banking:
+            data['so_tai_khoan_AP'] = self.so_tai_khoan or ''
+            data['so_dien_thoai_AP'] = self.so_dien_thoai or ''
+        else:
+            data['so_tai_khoan_AP'] = ''
+            data['so_dien_thoai_AP'] = ''
+
+        # If SMS Banking is selected but NOT Agribank Plus
+        if self.dv_sms_banking and not self.dv_bankplus:
+            data['so_tai_khoan_SMS'] = self.so_tai_khoan or ''
+            data['so_dien_thoai_SMS'] = self.so_dien_thoai or ''
+        else:
+            data['so_tai_khoan_SMS'] = ''
+            data['so_dien_thoai_SMS'] = ''
+
         return data
 
 

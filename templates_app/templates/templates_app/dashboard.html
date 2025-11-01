@@ -152,195 +152,208 @@
                     </div>
                 </div>
 
-                <!-- Personal Info Group -->
-                <div class="field-group" data-group="personal_info">
-                    <h6 class="field-group-title"><i class="bi bi-person"></i> Thông tin cá nhân</h6>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Mã khách hàng</label>
-                            <input type="text" class="form-control" name="ma_khach_hang" placeholder="Mã định danh khách hàng">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="ho_ten" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Ngày sinh</label>
-                            <input type="date" class="form-control" name="ngay_sinh">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Giới tính</label>
-                            <select class="form-select" name="gioi_tinh">
-                                <option value="">Chọn...</option>
-                                <option value="Nam">Nam</option>
-                                <option value="Nữ">Nữ</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ID Documents Group -->
-                <div class="field-group" data-group="id_documents">
-                    <h6 class="field-group-title"><i class="bi bi-card-heading"></i> Giấy tờ tùy thân</h6>
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="so_cmnd" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Ngày cấp</label>
-                            <input type="date" class="form-control" name="ngay_cap_cmnd">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Nơi cấp</label>
-                            <select class="form-select" name="noi_cap_cmnd">
-                                <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
-                                <option value="Bộ Công An">Bộ Công An</option>
-                                <option value="Khác">Khác</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Contact Group -->
-                <div class="field-group" data-group="contact">
-                    <h6 class="field-group-title"><i class="bi bi-telephone"></i> Thông tin liên hệ</h6>
-                    <div class="row g-3">
-                        <div class="col-md-12">
-                            <label class="form-label">Địa chỉ thường trú</label>
-                            <textarea class="form-control" name="dia_chi" rows="2"></textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Số điện thoại</label>
-                            <input type="text" class="form-control" name="so_dien_thoai">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Employment Group -->
-                <div class="field-group" data-group="employment">
-                    <h6 class="field-group-title"><i class="bi bi-briefcase"></i> Thông tin nghề nghiệp</h6>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Nghề nghiệp</label>
-                            <select class="form-select" name="nghe_nghiep">
-                                <option value="">Chọn...</option>
-                                <option value="Công chức viên chức">Công chức viên chức</option>
-                                <option value="Nông dân">Nông dân</option>
-                                <option value="Kinh doanh tự do">Kinh doanh tự do</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Nơi làm việc</label>
-                            <input type="text" class="form-control" name="noi_lam_viec">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Banking Group -->
-                <div class="field-group" data-group="banking">
-                    <h6 class="field-group-title"><i class="bi bi-bank"></i> Thông tin tài khoản</h6>
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Số tài khoản</label>
-                            <input type="text" class="form-control" name="so_tai_khoan">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Loại tài khoản</label>
-                            <select class="form-select" name="loai_tai_khoan" id="loai-tk">
-                                <option value="">Chọn...</option>
-                                <option value="Tài khoản ngẫu nhiên">Tài khoản ngẫu nhiên</option>
-                                <option value="Tài khoản số theo yêu cầu">Tài khoản số theo yêu cầu</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Loại tiền tệ</label>
-                            <select class="form-select" name="loai_tien_te">
-                                <option value="VND">VND</option>
-                                <option value="USD">USD</option>
-                            </select>
-                        </div>
-                        <div class="col-md-12" id="so-tk-yc-container" style="display:none;">
-                            <label class="form-label">Số tài khoản theo yêu cầu</label>
-                            <input type="text" class="form-control" name="so_tai_khoan_yc">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Card Group -->
-                <div class="field-group" data-group="card">
-                    <h6 class="field-group-title"><i class="bi bi-credit-card"></i> Thông tin thẻ</h6>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Loại thẻ</label>
-                            <select class="form-select" name="loai_the">
-                                <option value="">Chọn...</option>
-                                <option value="Thẻ Ghi nợ nội địa">Thẻ Ghi nợ nội địa</option>
-                                <option value="The Plus Success">The Plus Success</option>
-                                <option value="Agribank Debit Card">Agribank Debit Card</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Hạng thẻ</label>
-                            <select class="form-select" name="hang_the">
-                                <option value="">Chọn...</option>
-                                <option value="Hạng chuẩn">Hạng chuẩn</option>
-                                <option value="Hạng vàng">Hạng vàng</option>
-                                <option value="Classic">Classic</option>
-                                <option value="Gold">Gold</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="phat_hanh_lan_dau" id="ph-lan-dau">
-                                <label class="form-check-label" for="ph-lan-dau">Phát hành lần đầu</label>
+                <!-- Two-Pane Layout -->
+                <div class="row g-4">
+                    <!-- Left Pane: Personal & ID Info -->
+                    <div class="col-lg-6">
+                        <!-- Personal Info Group -->
+                        <div class="field-group" data-group="personal_info">
+                            <h6 class="field-group-title"><i class="bi bi-person"></i> Thông tin cá nhân</h6>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="ho_ten" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Mã khách hàng</label>
+                                    <input type="text" class="form-control" name="ma_khach_hang">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Ngày sinh</label>
+                                    <input type="date" class="form-control" name="ngay_sinh">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Giới tính</label>
+                                    <select class="form-select" name="gioi_tinh">
+                                        <option value="">Chọn...</option>
+                                        <option value="Nam">Nam</option>
+                                        <option value="Nữ">Nữ</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="phat_hanh_lai" id="ph-lai">
-                                <label class="form-check-label" for="ph-lai">Phát hành lại</label>
+
+                        <!-- ID Documents Group -->
+                        <div class="field-group" data-group="id_documents">
+                            <h6 class="field-group-title"><i class="bi bi-card-heading"></i> Giấy tờ tùy thân</h6>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="so_cmnd" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Nơi cấp</label>
+                                    <select class="form-select" name="noi_cap_cmnd">
+                                        <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
+                                        <option value="Bộ Công An">Bộ Công An</option>
+                                        <option value="Khác">Khác</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Ngày cấp</label>
+                                    <input type="date" class="form-control" name="ngay_cap_cmnd">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Ngày hết hạn</label>
+                                    <input type="date" class="form-control" name="ngay_het_han_cmnd">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Employment Group -->
+                        <div class="field-group" data-group="employment">
+                            <h6 class="field-group-title"><i class="bi bi-briefcase"></i> Nghề nghiệp</h6>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Nghề nghiệp</label>
+                                    <select class="form-select" name="nghe_nghiep">
+                                        <option value="">Chọn...</option>
+                                        <option value="Công chức viên chức">Công chức viên chức</option>
+                                        <option value="Nông dân">Nông dân</option>
+                                        <option value="Kinh doanh tự do">Kinh doanh tự do</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Nơi làm việc</label>
+                                    <input type="text" class="form-control" name="noi_lam_viec">
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Services Group -->
-                <div class="field-group" data-group="services">
-                    <h6 class="field-group-title"><i class="bi bi-app-indicator"></i> Đăng ký dịch vụ</h6>
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="dv_sms_banking" id="dv-sms">
-                                <label class="form-check-label" for="dv-sms">SMS Banking</label>
+                    <!-- Right Pane: Contact & Banking Info -->
+                    <div class="col-lg-6">
+                        <!-- Contact Group -->
+                        <div class="field-group" data-group="contact">
+                            <h6 class="field-group-title"><i class="bi bi-telephone"></i> Thông tin liên hệ</h6>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Địa chỉ thường trú</label>
+                                    <textarea class="form-control" name="dia_chi" rows="2"></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Số điện thoại</label>
+                                    <input type="text" class="form-control" name="so_dien_thoai">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" name="email">
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="dv_bankplus" id="dv-plus">
-                                <label class="form-check-label" for="dv-plus">Agribank Plus</label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="dv_e_mobile" id="dv-wallet">
-                                <label class="form-check-label" for="dv-wallet">Dịch vụ Liên kết ví</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Print Info Group -->
-                <div class="field-group" data-group="print_info">
-                    <h6 class="field-group-title"><i class="bi bi-calendar-date"></i> Thông tin in</h6>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Ngày in mẫu biểu</label>
-                            <input type="date" class="form-control" name="ngay_in" id="ngay-in">
+                        <!-- Banking Group -->
+                        <div class="field-group" data-group="banking">
+                            <h6 class="field-group-title"><i class="bi bi-bank"></i> Tài khoản</h6>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Số tài khoản</label>
+                                    <input type="text" class="form-control" name="so_tai_khoan">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">Loại tài khoản</label>
+                                    <select class="form-select" name="loai_tai_khoan" id="loai-tk">
+                                        <option value="">Chọn...</option>
+                                        <option value="Tài khoản ngẫu nhiên">Tài khoản ngẫu nhiên</option>
+                                        <option value="Tài khoản số theo yêu cầu">Tài khoản số theo yêu cầu</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Loại tiền</label>
+                                    <select class="form-select" name="loai_tien_te">
+                                        <option value="VND">VND</option>
+                                        <option value="USD">USD</option>
+                                    </select>
+                                </div>
+                                <div class="col-12" id="so-tk-yc-container" style="display:none;">
+                                    <label class="form-label">Số TK theo yêu cầu</label>
+                                    <input type="text" class="form-control" name="so_tai_khoan_yc">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Group -->
+                        <div class="field-group" data-group="card">
+                            <h6 class="field-group-title"><i class="bi bi-credit-card"></i> Thẻ</h6>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Loại thẻ</label>
+                                    <select class="form-select" name="loai_the">
+                                        <option value="">Chọn...</option>
+                                        <option value="Thẻ Ghi nợ nội địa">Thẻ Ghi nợ nội địa</option>
+                                        <option value="The Plus Success">The Plus Success</option>
+                                        <option value="Agribank Debit Card">Agribank Debit Card</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Hạng thẻ</label>
+                                    <select class="form-select" name="hang_the">
+                                        <option value="">Chọn...</option>
+                                        <option value="Hạng chuẩn">Hạng chuẩn</option>
+                                        <option value="Hạng vàng">Hạng vàng</option>
+                                        <option value="Classic">Classic</option>
+                                        <option value="Gold">Gold</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="phat_hanh_lan_dau" id="ph-lan-dau">
+                                        <label class="form-check-label" for="ph-lan-dau">Phát hành lần đầu</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="phat_hanh_lai" id="ph-lai">
+                                        <label class="form-check-label" for="ph-lai">Phát hành lại</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Services Group -->
+                        <div class="field-group" data-group="services">
+                            <h6 class="field-group-title"><i class="bi bi-app-indicator"></i> Dịch vụ</h6>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dv_sms_banking" id="dv-sms">
+                                        <label class="form-check-label" for="dv-sms">SMS Banking</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dv_bankplus" id="dv-plus">
+                                        <label class="form-check-label" for="dv-plus">Agribank Plus</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dv_e_mobile" id="dv-wallet">
+                                        <label class="form-check-label" for="dv-wallet">Liên kết ví</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Print Info Group -->
+                        <div class="field-group" data-group="print_info">
+                            <h6 class="field-group-title"><i class="bi bi-calendar-date"></i> Ngày in</h6>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Ngày in mẫu biểu</label>
+                                    <input type="date" class="form-control" name="ngay_in" id="ngay-in">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -585,6 +598,7 @@ function fillFormWithData(data) {
     // ID documents
     if (data.so_cmnd) document.querySelector('[name="so_cmnd"]').value = data.so_cmnd;
     if (data.ngay_cap_cmnd) document.querySelector('[name="ngay_cap_cmnd"]').value = data.ngay_cap_cmnd;
+    if (data.ngay_het_han_cmnd) document.querySelector('[name="ngay_het_han_cmnd"]').value = data.ngay_het_han_cmnd;
     if (data.noi_cap_cmnd) document.querySelector('[name="noi_cap_cmnd"]').value = data.noi_cap_cmnd;
 
     // Contact

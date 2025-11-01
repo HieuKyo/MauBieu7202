@@ -131,6 +131,7 @@ class CustomerForm(forms.ModelForm):
             'gioi_tinh': forms.Select(attrs={'class': 'form-select'}),
             'so_cmnd': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập số CMND/CCCD'}),
             'ngay_cap_cmnd': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'ngay_het_han_cmnd': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'noi_cap_cmnd': forms.Select(attrs={'class': 'form-select', 'id': 'noi-cap-select'}),
             'noi_cap_cmnd_custom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập nơi cấp khác', 'id': 'noi-cap-custom', 'style': 'display:none;'}),
             'dia_chi': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Địa chỉ thường trú'}),
