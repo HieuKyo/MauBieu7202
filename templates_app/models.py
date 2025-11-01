@@ -101,7 +101,11 @@ class Customer(models.Model):
 
     NGHE_NGHIEP_CHOICES = [
         ('Công chức viên chức', 'Công chức viên chức'),
+        ('Nông dân', 'Nông dân'),
+        ('Giáo viên/Bác Sĩ', 'Giáo viên/Bác Sĩ'),
+        ('Công nhân', 'Công nhân'),
         ('Kinh doanh tự do', 'Kinh doanh tự do'),
+        ('Học sinh/Sinh viên', 'Học sinh/Sinh viên'),
         ('Nội trợ', 'Nội trợ'),
         ('Khác', 'Khác'),
     ]
@@ -118,7 +122,8 @@ class Customer(models.Model):
     ]
 
     LOAI_THE_CHOICES = [
-        ('Thẻ ATM', 'Thẻ ATM'),
+        ('The Plus Success', 'The Plus Success'),
+        ('Agribank Debit Card', 'Agribank Debit Card'),
         ('Thẻ Visa', 'Thẻ Visa'),
         ('Thẻ MasterCard', 'Thẻ MasterCard'),
         ('Thẻ JCB', 'Thẻ JCB'),
