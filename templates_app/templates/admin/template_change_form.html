@@ -1,0 +1,334 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Variable sidebar styles */
+    .variable-help-sidebar {
+        position: fixed;
+        right: 20px;
+        top: 100px;
+        width: 320px;
+        max-height: calc(100vh - 120px);
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow-y: auto;
+        z-index: 1000;
+    }
+
+    .variable-help-header {
+        background: #00923f;
+        color: white;
+        padding: 12px 15px;
+        border-radius: 8px 8px 0 0;
+        font-weight: bold;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .variable-help-body {
+        padding: 15px;
+    }
+
+    .variable-section {
+        margin-bottom: 20px;
+    }
+
+    .variable-section-title {
+        font-weight: bold;
+        color: #c41e3a;
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+        border-bottom: 2px solid #c41e3a;
+        font-size: 14px;
+    }
+
+    .variable-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .variable-item {
+        padding: 6px 0;
+        font-size: 12px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .variable-item:last-child {
+        border-bottom: none;
+    }
+
+    .variable-name {
+        font-family: 'Courier New', monospace;
+        background: #fff;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-weight: bold;
+        color: #0066cc;
+        cursor: pointer;
+        border: 1px solid #dee2e6;
+        display: inline-block;
+    }
+
+    .variable-name:hover {
+        background: #e7f3ff;
+        border-color: #0066cc;
+    }
+
+    .variable-desc {
+        color: #666;
+        font-size: 11px;
+        margin-top: 2px;
+    }
+
+    .copy-tooltip {
+        position: fixed;
+        background: #28a745;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 9999;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .copy-tooltip.show {
+        opacity: 1;
+    }
+
+    .variable-search {
+        margin-bottom: 10px;
+    }
+
+    .variable-search input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .variable-badge {
+        background: #007bff;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        margin-left: 5px;
+    }
+
+    .toggle-sidebar-btn {
+        position: fixed;
+        right: 20px;
+        top: 60px;
+        background: #00923f;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 20px;
+        cursor: pointer;
+        z-index: 1001;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .toggle-sidebar-btn:hover {
+        background: #007a33;
+    }
+
+    .variable-help-sidebar.hidden {
+        display: none;
+    }
+
+    /* Adjust main content when sidebar is visible */
+    @media (min-width: 1400px) {
+        .variable-help-sidebar ~ #content-main {
+            margin-right: 340px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<div id="copy-tooltip" class="copy-tooltip">Đã copy!</div>
+{% endblock %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+<!-- Toggle button -->
+<button type="button" class="toggle-sidebar-btn" onclick="toggleVariableSidebar()">
+    <span id="toggle-icon">📖</span> Biến
+</button>
+
+<!-- Variable Help Sidebar -->
+<div class="variable-help-sidebar" id="variable-sidebar">
+    <div class="variable-help-header">
+        📚 Thư viện Biến
+        <span class="variable-badge">{{ total_variables_count }}</span>
+    </div>
+    <div class="variable-help-body">
+        <div class="variable-search">
+            <input type="text" id="variable-search-input" placeholder="🔍 Tìm kiếm biến..." onkeyup="searchVariables()">
+        </div>
+
+        <!-- Customer Variables -->
+        <div class="variable-section">
+            <div class="variable-section-title">
+                👤 Biến Khách hàng
+                <span class="variable-badge">{{ customer_variables|length }}</span>
+            </div>
+            <ul class="variable-list" id="customer-variables">
+                {% for var in customer_variables %}
+                <li class="variable-item" data-name="{{ var.name }}" data-desc="{{ var.description }}">
+                    <code class="variable-name" onclick="copyToClipboard('{{ var.name }}', event)" title="Click để copy">{{ var.name }}</code>
+                    <div class="variable-desc">{{ var.description }}</div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Date Variables -->
+        <div class="variable-section">
+            <div class="variable-section-title">
+                📅 Biến Ngày tháng
+                <span class="variable-badge">{{ date_variables|length }}</span>
+            </div>
+            <ul class="variable-list" id="date-variables">
+                {% for var in date_variables %}
+                <li class="variable-item" data-name="{{ var.name }}" data-desc="{{ var.description }}">
+                    <code class="variable-name" onclick="copyToClipboard('{{ var.name }}', event)" title="Click để copy">{{ var.name }}</code>
+                    <div class="variable-desc">{{ var.description }}</div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Branch Variables -->
+        <div class="variable-section">
+            <div class="variable-section-title">
+                🏢 Biến Chi nhánh
+                <span class="variable-badge">{{ branch_variables|length }}</span>
+            </div>
+            <ul class="variable-list" id="branch-variables">
+                {% for var in branch_variables %}
+                <li class="variable-item" data-name="{{ var.name }}" data-desc="{{ var.description }}">
+                    <code class="variable-name" onclick="copyToClipboard('{{ var.name }}', event)" title="Click để copy">{{ var.name }}</code>
+                    <div class="variable-desc">{{ var.description }}</div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Custom Variables -->
+        {% if custom_variables %}
+        <div class="variable-section">
+            <div class="variable-section-title">
+                ⚙️ Biến Tùy chỉnh
+                <span class="variable-badge">{{ custom_variables|length }}</span>
+            </div>
+            <ul class="variable-list" id="custom-variables">
+                {% for var in custom_variables %}
+                <li class="variable-item" data-name="{{ var.name }}" data-desc="{{ var.example }}">
+                    <code class="variable-name" onclick="copyToClipboard('{{ var.name }}', event)" title="Click để copy">{{ var.name }}</code>
+                    <div class="variable-desc">{{ var.example|default:"Biến tùy chỉnh" }}</div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Usage Guide -->
+        <div class="variable-section" style="background: #fff; padding: 10px; border-radius: 5px; border: 1px solid #dee2e6;">
+            <div style="font-size: 12px; color: #666;">
+                <strong>💡 Cách sử dụng:</strong><br>
+                Click vào tên biến để copy. Trong Word template, dán với cú pháp:<br>
+                <code style="background: #f8f9fa; padding: 3px 6px; border-radius: 3px;">{{ ten_bien }}</code>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle sidebar visibility
+function toggleVariableSidebar() {
+    const sidebar = document.getElementById('variable-sidebar');
+    const icon = document.getElementById('toggle-icon');
+
+    sidebar.classList.toggle('hidden');
+
+    if (sidebar.classList.contains('hidden')) {
+        icon.textContent = '📖';
+    } else {
+        icon.textContent = '✖️';
+    }
+
+    // Save state to localStorage
+    localStorage.setItem('variableSidebarVisible', !sidebar.classList.contains('hidden'));
+}
+
+// Restore sidebar state on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedState = localStorage.getItem('variableSidebarVisible');
+    if (savedState === 'false') {
+        toggleVariableSidebar();
+    }
+});
+
+// Copy variable to clipboard
+function copyToClipboard(variableName, event) {
+    const textToCopy = `{{ ${variableName} }}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        // Show tooltip at cursor position
+        const tooltip = document.getElementById('copy-tooltip');
+        tooltip.style.left = event.pageX + 'px';
+        tooltip.style.top = (event.pageY - 30) + 'px';
+        tooltip.classList.add('show');
+
+        setTimeout(() => {
+            tooltip.classList.remove('show');
+        }, 1500);
+
+        // Visual feedback on the clicked element
+        const element = event.target;
+        const originalBg = element.style.background;
+        element.style.background = '#28a745';
+        element.style.color = 'white';
+
+        setTimeout(() => {
+            element.style.background = originalBg;
+            element.style.color = '';
+        }, 500);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Không thể copy. Vui lòng copy thủ công: ' + textToCopy);
+    });
+}
+
+// Search variables
+function searchVariables() {
+    const searchTerm = document.getElementById('variable-search-input').value.toLowerCase();
+    const allItems = document.querySelectorAll('.variable-item');
+
+    allItems.forEach(item => {
+        const name = item.dataset.name.toLowerCase();
+        const desc = item.dataset.desc.toLowerCase();
+
+        if (name.includes(searchTerm) || desc.includes(searchTerm)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+</script>
+
+{% endblock %}

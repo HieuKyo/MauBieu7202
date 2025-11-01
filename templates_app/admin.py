@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
 from django.http import HttpResponse
-from .models import Category, Template, Variable, TemplateVariable, Customer
+from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig
 from .import_helpers import (
     import_variables_from_csv,
     import_variables_from_excel,
@@ -151,6 +151,7 @@ class TemplateAdmin(admin.ModelAdmin):
     ordering = ['category', 'order', 'name']
 
     change_list_template = 'admin/template_changelist.html'
+    change_form_template = 'admin/template_change_form.html'
 
     fieldsets = (
         ('Thông tin cơ bản', {
@@ -160,6 +161,69 @@ class TemplateAdmin(admin.ModelAdmin):
             'fields': ('is_active', 'order', 'allowed_groups')
         }),
     )
+
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        """Override to add variable context to the change form"""
+        from .models import GlobalConfig
+
+        # Build variable lists for the sidebar
+        # 1. Customer variables
+        customer_variables = []
+        for field in Customer._meta.get_fields():
+            if field.concrete and not field.many_to_many and not field.one_to_many:
+                field_name = field.name
+                if field_name not in ['id', 'created_at', 'updated_at', 'created_by']:
+                    verbose = getattr(field, 'verbose_name', field_name)
+                    customer_variables.append({
+                        'name': field_name,
+                        'description': verbose,
+                    })
+
+        # 2. Date variables
+        date_variables = [
+            {'name': 'd1', 'description': 'Ngày sinh - Chữ số thứ nhất'},
+            {'name': 'd2', 'description': 'Ngày sinh - Chữ số thứ hai'},
+            {'name': 'm1', 'description': 'Tháng sinh - Chữ số thứ nhất'},
+            {'name': 'm2', 'description': 'Tháng sinh - Chữ số thứ hai'},
+            {'name': 'y1', 'description': 'Năm sinh - Chữ số thứ nhất'},
+            {'name': 'y2', 'description': 'Năm sinh - Chữ số thứ hai'},
+            {'name': 'y3', 'description': 'Năm sinh - Chữ số thứ ba'},
+            {'name': 'y4', 'description': 'Năm sinh - Chữ số thứ tư'},
+        ]
+
+        # 3. Branch variables
+        branch_variables = [
+            {'name': 'ten_chi_nhanh', 'description': 'Tên chi nhánh'},
+            {'name': 'ten_chi_nhanh_hoa', 'description': 'Tên chi nhánh (IN HOA)'},
+            {'name': 'mst', 'description': 'Mã số thuế'},
+            {'name': 'giao_dich_vien', 'description': 'Họ tên giao dịch viên'},
+            {'name': 'kiem_soat_vien', 'description': 'Họ tên kiểm soát viên'},
+            {'name': 'giam_doc', 'description': 'Họ tên giám đốc chi nhánh'},
+            {'name': 'dia_chi_chi_nhanh', 'description': 'Địa chỉ chi nhánh'},
+        ]
+
+        # 4. Custom variables
+        config = GlobalConfig.get_instance()
+        custom_variables = []
+        if config.custom_variables:
+            for var_name, var_value in config.custom_variables.items():
+                custom_variables.append({
+                    'name': var_name,
+                    'description': 'Biến tùy chỉnh',
+                    'example': var_value[:50] if var_value else ''
+                })
+
+        # Add to context
+        extra_context = extra_context or {}
+        extra_context.update({
+            'customer_variables': customer_variables,
+            'date_variables': date_variables,
+            'branch_variables': branch_variables,
+            'custom_variables': custom_variables,
+            'total_variables_count': len(customer_variables) + len(date_variables) + len(branch_variables) + len(custom_variables),
+        })
+
+        return super().changeform_view(request, object_id, form_url, extra_context)
 
     def get_urls(self):
         urls = super().get_urls()
