@@ -112,8 +112,27 @@ class Customer(models.Model):
         ('Khác', 'Khác'),
     ]
 
-    # Mã khách hàng
+    LOAI_TIEN_TE_CHOICES = [
+        ('VND', 'VND - Việt Nam Đồng'),
+        ('USD', 'USD - Đô la Mỹ'),
+    ]
+
+    LOAI_THE_CHOICES = [
+        ('Thẻ ATM', 'Thẻ ATM'),
+        ('Thẻ Visa', 'Thẻ Visa'),
+        ('Thẻ MasterCard', 'Thẻ MasterCard'),
+        ('Thẻ JCB', 'Thẻ JCB'),
+    ]
+
+    HANG_THE_CHOICES = [
+        ('Classic', 'Classic'),
+        ('Gold', 'Gold'),
+        ('Platinum', 'Platinum'),
+    ]
+
+    # Mã khách hàng và CIF
     ma_khach_hang = models.CharField(max_length=50, blank=True, verbose_name="Mã khách hàng", db_index=True)
+    cif = models.CharField(max_length=20, blank=True, unique=True, null=True, verbose_name="Mã CIF", db_index=True)
 
     # Thông tin cá nhân cơ bản
     ho_ten = models.CharField(max_length=200, verbose_name="Họ và tên", db_index=True)
@@ -157,6 +176,31 @@ class Customer(models.Model):
     # Thông tin tài khoản
     so_tai_khoan = models.CharField(max_length=30, blank=True, verbose_name="Số tài khoản")
     loai_tai_khoan = models.CharField(max_length=100, blank=True, verbose_name="Loại tài khoản")
+    loai_tien_te = models.CharField(max_length=10, choices=LOAI_TIEN_TE_CHOICES, default='VND', verbose_name="Loại tiền tệ")
+
+    # Thông tin thẻ
+    loai_the = models.CharField(max_length=50, choices=LOAI_THE_CHOICES, blank=True, verbose_name="Loại thẻ")
+    hang_the = models.CharField(max_length=20, choices=HANG_THE_CHOICES, blank=True, verbose_name="Hạng thẻ")
+
+    # Đăng ký dịch vụ - Thủ hộ
+    dv_thu_ho_tien_nuoc = models.BooleanField(default=False, verbose_name="Thủ hộ: Tiền nước")
+    dv_thu_ho_tien_dien = models.BooleanField(default=False, verbose_name="Thủ hộ: Tiền điện")
+    dv_thu_ho_vien_thong = models.BooleanField(default=False, verbose_name="Thủ hộ: Viễn thông")
+    dv_thu_ho_hoc_phi = models.BooleanField(default=False, verbose_name="Thủ hộ: Học phí")
+    dv_thu_ho_bao_hiem = models.BooleanField(default=False, verbose_name="Thủ hộ: Bảo hiểm")
+
+    # Đăng ký dịch vụ - Ngân hàng điện tử
+    dv_sms_banking = models.BooleanField(default=False, verbose_name="Dịch vụ: SMS Banking")
+    dv_e_mobile = models.BooleanField(default=False, verbose_name="Dịch vụ: E-Mobile")
+    dv_bankplus = models.BooleanField(default=False, verbose_name="Dịch vụ: Bankplus")
+    dv_e_commerce = models.BooleanField(default=False, verbose_name="Dịch vụ: E-Commerce")
+    dv_soft_otp = models.BooleanField(default=False, verbose_name="Dịch vụ: Soft OTP")
+    dv_smart_otp = models.BooleanField(default=False, verbose_name="Dịch vụ: Smart OTP")
+    dv_retail_ebanking = models.BooleanField(default=False, verbose_name="Dịch vụ: Retail E-banking")
+
+    # Kênh giao dịch
+    kenh_mobile = models.BooleanField(default=False, verbose_name="Kênh: Mobile")
+    kenh_internet = models.BooleanField(default=False, verbose_name="Kênh: Internet Banking")
 
     # Metadata
     ghi_chu = models.TextField(blank=True, verbose_name="Ghi chú")
@@ -205,6 +249,7 @@ class Customer(models.Model):
 
         data = {
             'ma_khach_hang': self.ma_khach_hang or '',
+            'cif': self.cif or '',
             'ho_ten': self.ho_ten or '',
             'ngay_sinh': self.ngay_sinh.strftime('%d/%m/%Y') if self.ngay_sinh else '',
             'gioi_tinh': self.gioi_tinh or '',
@@ -218,6 +263,9 @@ class Customer(models.Model):
             'noi_lam_viec': self.noi_lam_viec or '',
             'so_tai_khoan': self.so_tai_khoan or '',
             'loai_tai_khoan': self.loai_tai_khoan or '',
+            'loai_tien_te': self.loai_tien_te or '',
+            'loai_the': self.loai_the or '',
+            'hang_the': self.hang_the or '',
             'ghi_chu': self.ghi_chu or '',
             # Date variables (ngày sinh)
             'd1': d1,
