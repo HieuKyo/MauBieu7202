@@ -745,7 +745,26 @@ def generate_document_direct(request, template_id):
         data['tk_theo_yeu_cau'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản số theo yêu cầu')
 
         # Print info
-        data['ngay_in'] = request.POST.get('ngay_in', '')
+        ngay_in_str = request.POST.get('ngay_in', '')
+        if ngay_in_str:
+            try:
+                from datetime import datetime
+                # 1. Parse chuỗi 'YYYY-MM-DD' từ form
+                date_obj = datetime.strptime(ngay_in_str, '%Y-%m-%d')
+                
+                # 2. Định dạng lại thành 'DD/MM/YYYY'
+                formatted_date = date_obj.strftime('%d/%m/%Y')
+                
+                # 3. Gán vào cả 'ngay_in' và 'ngay_lap' (vì template Mau_1a.docx dùng 'ngay_lap')
+                data['ngay_in'] = formatted_date
+                data['ngay_lap'] = formatted_date
+            except ValueError:
+                # Nếu có lỗi, dùng giá trị gốc
+                data['ngay_in'] = ngay_in_str
+                data['ngay_lap'] = ngay_in_str
+        else:
+            data['ngay_in'] = ''
+            data['ngay_lap'] = ''
 
         # Date variables (from ngay_sinh)
         if data['ngay_sinh']:
