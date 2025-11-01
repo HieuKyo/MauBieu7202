@@ -250,13 +250,14 @@
             <div style="font-size: 12px; color: #666;">
                 <strong>💡 Cách sử dụng:</strong><br>
                 Click vào tên biến để copy. Trong Word template, dán với cú pháp:<br>
-                <code style="background: #f8f9fa; padding: 3px 6px; border-radius: 3px;">{{ ten_bien }}</code>
+                <code style="background: #f8f9fa; padding: 3px 6px; border-radius: 3px;">{% templatetag openvariable %} ten_bien {% templatetag closevariable %}</code>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+{% verbatim %}
 // Toggle sidebar visibility
 function toggleVariableSidebar() {
     const sidebar = document.getElementById('variable-sidebar');
@@ -329,6 +330,7 @@ function searchVariables() {
         }
     });
 }
+{% endverbatim %}
 </script>
 
 {% endblock %}
