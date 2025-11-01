@@ -95,13 +95,23 @@ class DynamicTemplateForm(forms.Form):
 
     def clean(self):
         """
-        Custom validation nếu cần
+        Custom validation và convert data types cho serialization
         """
+        from decimal import Decimal
+
         cleaned_data = super().clean()
 
-        # Convert date fields to string format for Word template
-        for field_name, value in cleaned_data.items():
-            if hasattr(value, 'strftime'):  # If it's a date/datetime object
+        # Convert data types to string format for Word template and session storage
+        for field_name, value in list(cleaned_data.items()):
+            if value is None:
+                continue
+
+            # Convert date/datetime to string
+            if hasattr(value, 'strftime'):
                 cleaned_data[field_name] = value.strftime('%d/%m/%Y')
+
+            # Convert Decimal to string (fixes JSON serialization error)
+            elif isinstance(value, Decimal):
+                cleaned_data[field_name] = str(value)
 
         return cleaned_data

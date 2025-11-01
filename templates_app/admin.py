@@ -187,7 +187,7 @@ class TemplateVariableAdmin(admin.ModelAdmin):
     ordering = ['template', 'order']
 
 
-# Tùy chỉnh tiêu đề admin - Agribank branding
-admin.site.site_header = "AGRIBANK - Hệ thống Quản lý Mẫu biểu"
-admin.site.site_title = "Agribank Admin"
+# Tùy chỉnh tiêu đề admin - Agribank Chi nhánh Giá Rai Bạc Liêu
+admin.site.site_header = "Agribank Chi nhánh Giá Rai Bạc Liêu - Hệ thống Quản lý Mẫu biểu"
+admin.site.site_title = "Agribank Giá Rai Admin"
 admin.site.index_title = "Quản lý hệ thống Mẫu biểu"
