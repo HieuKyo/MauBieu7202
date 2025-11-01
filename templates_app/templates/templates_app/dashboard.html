@@ -315,7 +315,11 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Loại tài khoản</label>
-                            <input type="text" class="form-control" name="loai_tai_khoan">
+                            <select class="form-select" name="loai_tai_khoan" id="loai-tai-khoan-select">
+                                <option value="">Chọn loại tài khoản...</option>
+                                <option value="Tài khoản ngẫu nhiên">Tài khoản ngẫu nhiên</option>
+                                <option value="Tài khoản số theo yêu cầu">Tài khoản số theo yêu cầu</option>
+                            </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Loại tiền tệ <span class="text-danger">*</span></label>
@@ -324,11 +328,17 @@
                                 <option value="USD">USD - Đô la Mỹ</option>
                             </select>
                         </div>
+                        <div class="col-md-12" id="so-tai-khoan-yc-container" style="display:none;">
+                            <label class="form-label">Số tài khoản theo yêu cầu</label>
+                            <input type="text" class="form-control" name="so_tai_khoan_yc" placeholder="Nhập số tài khoản yêu cầu">
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Loại thẻ</label>
                             <select class="form-select" name="loai_the">
                                 <option value="">Chọn loại thẻ...</option>
-                                <option value="Thẻ ATM">Thẻ ATM</option>
+                                <option value="Thẻ Ghi nợ nội địa">Thẻ Ghi nợ nội địa</option>
+                                <option value="The Plus Success">The Plus Success</option>
+                                <option value="Agribank Debit Card">Agribank Debit Card</option>
                                 <option value="Thẻ Visa">Thẻ Visa</option>
                                 <option value="Thẻ MasterCard">Thẻ MasterCard</option>
                                 <option value="Thẻ JCB">Thẻ JCB</option>
@@ -338,10 +348,130 @@
                             <label class="form-label">Hạng thẻ</label>
                             <select class="form-select" name="hang_the">
                                 <option value="">Chọn hạng thẻ...</option>
+                                <option value="Hạng chuẩn">Hạng chuẩn</option>
+                                <option value="Hạng vàng">Hạng vàng</option>
                                 <option value="Classic">Classic</option>
                                 <option value="Gold">Gold</option>
                                 <option value="Platinum">Platinum</option>
                             </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="phat_hanh_lan_dau" id="phat-hanh-lan-dau">
+                                <label class="form-check-label" for="phat-hanh-lan-dau">
+                                    Phát hành lần đầu
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="phat_hanh_lai" id="phat-hanh-lai">
+                                <label class="form-check-label" for="phat-hanh-lai">
+                                    Phát hành lại
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Registration -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Đăng ký dịch vụ</h6>
+                    <div class="row g-3 mb-4">
+                        <!-- Dịch vụ thu hộ -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <strong>Dịch vụ Thu hộ</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_tien_nuoc" id="dv-thu-ho-tien-nuoc">
+                                        <label class="form-check-label" for="dv-thu-ho-tien-nuoc">Thu hộ tiền nước</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_tien_dien" id="dv-thu-ho-tien-dien">
+                                        <label class="form-check-label" for="dv-thu-ho-tien-dien">Thu hộ tiền điện</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_vien_thong" id="dv-thu-ho-vien-thong">
+                                        <label class="form-check-label" for="dv-thu-ho-vien-thong">Thu hộ viễn thông</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_hoc_phi" id="dv-thu-ho-hoc-phi">
+                                        <label class="form-check-label" for="dv-thu-ho-hoc-phi">Thu hộ học phí</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dv_thu_ho_bao_hiem" id="dv-thu-ho-bao-hiem">
+                                        <label class="form-check-label" for="dv-thu-ho-bao-hiem">Thu hộ bảo hiểm</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dịch vụ ngân hàng điện tử -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <strong>Dịch vụ Ngân hàng điện tử</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_sms_banking" id="dv-sms-banking">
+                                        <label class="form-check-label" for="dv-sms-banking">SMS Banking</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_bankplus" id="dv-bankplus">
+                                        <label class="form-check-label" for="dv-bankplus">Agribank Plus / BankPlus</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_e_mobile" id="dv-e-mobile">
+                                        <label class="form-check-label" for="dv-e-mobile">E-Mobile Banking</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_e_commerce" id="dv-e-commerce">
+                                        <label class="form-check-label" for="dv-e-commerce">E-Commerce</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_soft_otp" id="dv-soft-otp">
+                                        <label class="form-check-label" for="dv-soft-otp">Soft OTP</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="dv_smart_otp" id="dv-smart-otp">
+                                        <label class="form-check-label" for="dv-smart-otp">Smart OTP</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dv_retail_ebanking" id="dv-retail-ebanking">
+                                        <label class="form-check-label" for="dv-retail-ebanking">Retail E-banking</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kênh giao dịch -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <strong>Kênh giao dịch</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" name="kenh_mobile" id="kenh-mobile">
+                                        <label class="form-check-label" for="kenh-mobile">Mobile Banking</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="kenh_internet" id="kenh-internet">
+                                        <label class="form-check-label" for="kenh-internet">Internet Banking</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Print Info -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin in mẫu biểu</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Ngày in mẫu biểu</label>
+                            <input type="date" class="form-control" name="ngay_in" id="ngay-in">
                         </div>
                     </div>
 
@@ -396,6 +526,19 @@
             } else {
                 noiCapCustomContainer.style.display = 'none';
                 document.getElementById('noi-cap-custom').value = '';
+            }
+        });
+
+        // Handle loai_tai_khoan - show/hide so_tai_khoan_yc
+        const loaiTKSelect = document.getElementById('loai-tai-khoan-select');
+        const soTKYCContainer = document.getElementById('so-tai-khoan-yc-container');
+
+        loaiTKSelect.addEventListener('change', function() {
+            if (this.value === 'Tài khoản số theo yêu cầu') {
+                soTKYCContainer.style.display = 'block';
+            } else {
+                soTKYCContainer.style.display = 'none';
+                document.querySelector('[name="so_tai_khoan_yc"]').value = '';
             }
         });
     });
@@ -552,6 +695,12 @@
         document.getElementById('customerForm').reset();
         document.getElementById('customer-id').value = '';
         document.getElementById('noi-cap-custom-container').style.display = 'none';
+        document.getElementById('so-tai-khoan-yc-container').style.display = 'none';
+
+        // Set ngày in mặc định là hôm nay
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('ngay-in').value = today;
+
         customerModal.show();
     }
 
@@ -595,9 +744,46 @@
                     form.querySelector('[name="noi_lam_viec"]').value = customer.noi_lam_viec || '';
                     form.querySelector('[name="so_tai_khoan"]').value = customer.so_tai_khoan || '';
                     form.querySelector('[name="loai_tai_khoan"]').value = customer.loai_tai_khoan || '';
+                    form.querySelector('[name="so_tai_khoan_yc"]').value = customer.so_tai_khoan_yc || '';
+
+                    // Show so_tai_khoan_yc field if "Tài khoản số theo yêu cầu" is selected
+                    if (customer.loai_tai_khoan === 'Tài khoản số theo yêu cầu') {
+                        document.getElementById('so-tai-khoan-yc-container').style.display = 'block';
+                    } else {
+                        document.getElementById('so-tai-khoan-yc-container').style.display = 'none';
+                    }
+
                     form.querySelector('[name="loai_tien_te"]').value = customer.loai_tien_te || 'VND';
                     form.querySelector('[name="loai_the"]').value = customer.loai_the || '';
                     form.querySelector('[name="hang_the"]').value = customer.hang_the || '';
+
+                    // Checkbox fields - Card issuance
+                    form.querySelector('[name="phat_hanh_lan_dau"]').checked = customer.phat_hanh_lan_dau || false;
+                    form.querySelector('[name="phat_hanh_lai"]').checked = customer.phat_hanh_lai || false;
+
+                    // Checkbox fields - Service registration (Thu hộ)
+                    form.querySelector('[name="dv_thu_ho_tien_nuoc"]').checked = customer.dv_thu_ho_tien_nuoc || false;
+                    form.querySelector('[name="dv_thu_ho_tien_dien"]').checked = customer.dv_thu_ho_tien_dien || false;
+                    form.querySelector('[name="dv_thu_ho_vien_thong"]').checked = customer.dv_thu_ho_vien_thong || false;
+                    form.querySelector('[name="dv_thu_ho_hoc_phi"]').checked = customer.dv_thu_ho_hoc_phi || false;
+                    form.querySelector('[name="dv_thu_ho_bao_hiem"]').checked = customer.dv_thu_ho_bao_hiem || false;
+
+                    // Checkbox fields - E-banking services
+                    form.querySelector('[name="dv_sms_banking"]').checked = customer.dv_sms_banking || false;
+                    form.querySelector('[name="dv_bankplus"]').checked = customer.dv_bankplus || false;
+                    form.querySelector('[name="dv_e_mobile"]').checked = customer.dv_e_mobile || false;
+                    form.querySelector('[name="dv_e_commerce"]').checked = customer.dv_e_commerce || false;
+                    form.querySelector('[name="dv_soft_otp"]').checked = customer.dv_soft_otp || false;
+                    form.querySelector('[name="dv_smart_otp"]').checked = customer.dv_smart_otp || false;
+                    form.querySelector('[name="dv_retail_ebanking"]').checked = customer.dv_retail_ebanking || false;
+
+                    // Checkbox fields - Transaction channels
+                    form.querySelector('[name="kenh_mobile"]').checked = customer.kenh_mobile || false;
+                    form.querySelector('[name="kenh_internet"]').checked = customer.kenh_internet || false;
+
+                    // Ngày in
+                    form.querySelector('[name="ngay_in"]').value = customer.ngay_in ? formatDateForInput(customer.ngay_in) : '';
+
                     form.querySelector('[name="ghi_chu"]').value = customer.ghi_chu || '';
 
                     customerModal.show();
