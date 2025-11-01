@@ -1,0 +1,354 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Thư viện Biến - Hệ thống Mẫu biểu{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold" style="color: var(--agribank-red);">
+            <i class="bi bi-book"></i> Thư viện Biến
+        </h2>
+        <p class="text-muted">Tất cả biến có sẵn trong hệ thống. Click vào nút copy để sao chép tên biến.</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<!-- Search box -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="variable-search" placeholder="Tìm kiếm biến...">
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Biến Khách hàng -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header" style="background-color: var(--agribank-green); color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-fill"></i> Biến Khách hàng
+                    <span class="badge bg-light text-dark">{{ customer_variables|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle"></i> Các biến này tự động có khi chọn khách hàng trong dashboard
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="customer">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 35%;">Tên biến</th>
+                                <th style="width: 50%;">Mô tả</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in customer_variables %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.description }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td class="variable-desc">{{ var.description }}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            onclick="copyVariable('{{ var.name }}')"
+                                            title="Copy {{ var.name }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Biến Ngày tháng -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header" style="background-color: var(--agribank-red); color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar3"></i> Biến Ngày tháng
+                    <span class="badge bg-light text-dark">{{ date_variables|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle"></i> Các biến này tự động tách từ ngày sinh khách hàng
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="date">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%;">Tên biến</th>
+                                <th style="width: 65%;">Mô tả</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in date_variables %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.description }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td>
+                                    <div class="variable-desc">{{ var.description }}</div>
+                                    {% if var.example %}
+                                    <small class="text-muted">{{ var.example }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            onclick="copyVariable('{{ var.name }}')"
+                                            title="Copy {{ var.name }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Biến Chi nhánh -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header" style="background-color: var(--agribank-green); color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-building"></i> Biến Chi nhánh
+                    <span class="badge bg-light text-dark">{{ branch_variables|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle"></i> Các biến này được cấu hình trong <a href="{% url 'branch_config' %}">Cấu hình Toàn cục</a>
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="branch">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 35%;">Tên biến</th>
+                                <th style="width: 50%;">Mô tả</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in branch_variables %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.description }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td>
+                                    <div class="variable-desc">{{ var.description }}</div>
+                                    {% if var.example %}
+                                    <small class="text-muted fst-italic">VD: {{ var.example }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            onclick="copyVariable('{{ var.name }}')"
+                                            title="Copy {{ var.name }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Biến Tùy chỉnh -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"
+                 style="background-color: var(--agribank-red); color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-code-square"></i> Biến Tùy chỉnh
+                    <span class="badge bg-light text-dark">{{ custom_variables|length }}</span>
+                </h5>
+                <a href="{% url 'branch_config' %}" class="btn btn-light btn-sm">
+                    <i class="bi bi-plus-circle"></i> Thêm
+                </a>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                {% if custom_variables %}
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle"></i> Các biến này được tạo bởi người dùng trong <a href="{% url 'branch_config' %}">Cấu hình Toàn cục</a>
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="custom">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 35%;">Tên biến</th>
+                                <th style="width: 50%;">Giá trị</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in custom_variables %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.example }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td class="variable-desc">
+                                    {% if var.example %}
+                                    {{ var.example }}
+                                    {% else %}
+                                    <span class="text-muted fst-italic">(trống)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            onclick="copyVariable('{{ var.name }}')"
+                                            title="Copy {{ var.name }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Chưa có biến tùy chỉnh nào.
+                    <a href="{% url 'branch_config' %}" class="alert-link">Thêm biến mới</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Usage Guide -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title fw-bold" style="color: var(--agribank-red);">
+                    <i class="bi bi-lightbulb"></i> Cách sử dụng biến trong Template Word
+                </h6>
+                <p class="mb-2">Trong file Word template (.docx), sử dụng cú pháp:</p>
+                <div class="bg-white p-3 rounded border">
+                    <code>{% templatetag openvariable %} ten_bien {% templatetag closevariable %}</code>
+                </div>
+                <p class="mt-3 mb-2"><strong>Ví dụ:</strong></p>
+                <ul class="mb-0">
+                    <li>Để hiển thị tên khách hàng: <code>{% templatetag openvariable %} ho_ten {% templatetag closevariable %}</code></li>
+                    <li>Để hiển thị tên chi nhánh: <code>{% templatetag openvariable %} ten_chi_nhanh {% templatetag closevariable %}</code></li>
+                    <li>Để hiển thị số CMND: <code>{% templatetag openvariable %} so_cmnd {% templatetag closevariable %}</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Copy variable to clipboard
+function copyVariable(variableName) {
+    // Format: {{ variable_name }}
+    const textToCopy = `{{ ${variableName} }}`;
+
+    // Use Clipboard API
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        showNotification(`Đã copy: ${textToCopy}`, 'success');
+
+        // Visual feedback on button
+        const buttons = document.querySelectorAll(`button[onclick="copyVariable('${variableName}')"]`);
+        buttons.forEach(btn => {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-success');
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-primary');
+            }, 1500);
+        });
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showNotification('Lỗi khi copy biến', 'error');
+    });
+}
+
+// Search functionality
+document.getElementById('variable-search').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase().trim();
+
+    document.querySelectorAll('.variable-row').forEach(row => {
+        const variableName = row.dataset.variableName.toLowerCase();
+        const description = row.dataset.description.toLowerCase();
+
+        if (variableName.includes(searchTerm) || description.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // Show/hide empty state for each table
+    document.querySelectorAll('.variable-table').forEach(table => {
+        const visibleRows = table.querySelectorAll('tbody .variable-row:not([style*="display: none"])');
+        const tbody = table.querySelector('tbody');
+
+        // Remove existing empty message if any
+        const existingMsg = tbody.querySelector('.no-results-message');
+        if (existingMsg) {
+            existingMsg.remove();
+        }
+
+        if (visibleRows.length === 0 && searchTerm) {
+            const noResultsRow = document.createElement('tr');
+            noResultsRow.className = 'no-results-message';
+            noResultsRow.innerHTML = '<td colspan="3" class="text-center text-muted py-3"><i class="bi bi-search"></i> Không tìm thấy biến nào</td>';
+            tbody.appendChild(noResultsRow);
+        }
+    });
+});
+
+// Notification function (reused from other templates)
+function showNotification(message, type = 'info') {
+    const alertClass = {
+        'success': 'alert-success',
+        'error': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    }[type] || 'alert-info';
+
+    const icon = {
+        'success': 'check-circle-fill',
+        'error': 'x-circle-fill',
+        'warning': 'exclamation-triangle-fill',
+        'info': 'info-circle-fill'
+    }[type] || 'info-circle-fill';
+
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+    alert.style.zIndex = '9999';
+    alert.style.minWidth = '400px';
+    alert.innerHTML = `
+        <i class="bi bi-${icon}"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

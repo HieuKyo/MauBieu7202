@@ -33,4 +33,7 @@ urlpatterns = [
     path('api/custom-variables/add/', views.add_custom_variable, name='add_custom_variable'),
     path('api/custom-variables/update/', views.update_custom_variable, name='update_custom_variable'),
     path('api/custom-variables/delete/', views.delete_custom_variable, name='delete_custom_variable'),
+
+    # Variable Library
+    path('variable-library/', views.variable_library_view, name='variable_library'),
 ]

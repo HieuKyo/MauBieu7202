@@ -565,3 +565,66 @@ def delete_custom_variable(request):
         'success': True,
         'message': f'Đã xóa biến "{variable_name}"'
     })
+
+
+@login_required
+def variable_library_view(request):
+    """
+    Thư viện Biến - Hiển thị tất cả biến có sẵn với nút copy
+    Solution 3: Advanced variable discovery page
+    """
+    # 1. Biến Khách hàng - Extract from Customer model
+    customer_variables = []
+    for field in Customer._meta.get_fields():
+        if field.concrete and not field.many_to_many and not field.one_to_many:
+            field_name = field.name
+            if field_name not in ['id', 'created_at', 'updated_at', 'created_by']:
+                verbose = getattr(field, 'verbose_name', field_name)
+                customer_variables.append({
+                    'name': field_name,
+                    'description': verbose,
+                    'example': ''  # Could add examples later
+                })
+
+    # 2. Biến Ngày tháng - Derived from ngay_sinh
+    date_variables = [
+        {'name': 'd1', 'description': 'Ngày sinh - Chữ số thứ nhất', 'example': 'Nếu ngày sinh là 05/03/1990 → d1 = 0'},
+        {'name': 'd2', 'description': 'Ngày sinh - Chữ số thứ hai', 'example': 'Nếu ngày sinh là 05/03/1990 → d2 = 5'},
+        {'name': 'm1', 'description': 'Tháng sinh - Chữ số thứ nhất', 'example': 'Nếu ngày sinh là 05/03/1990 → m1 = 0'},
+        {'name': 'm2', 'description': 'Tháng sinh - Chữ số thứ hai', 'example': 'Nếu ngày sinh là 05/03/1990 → m2 = 3'},
+        {'name': 'y1', 'description': 'Năm sinh - Chữ số thứ nhất', 'example': 'Nếu ngày sinh là 05/03/1990 → y1 = 1'},
+        {'name': 'y2', 'description': 'Năm sinh - Chữ số thứ hai', 'example': 'Nếu ngày sinh là 05/03/1990 → y2 = 9'},
+        {'name': 'y3', 'description': 'Năm sinh - Chữ số thứ ba', 'example': 'Nếu ngày sinh là 05/03/1990 → y3 = 9'},
+        {'name': 'y4', 'description': 'Năm sinh - Chữ số thứ tư', 'example': 'Nếu ngày sinh là 05/03/1990 → y4 = 0'},
+    ]
+
+    # 3. Biến Chi nhánh - From GlobalConfig
+    branch_variables = [
+        {'name': 'ten_chi_nhanh', 'description': 'Tên chi nhánh', 'example': 'Chi nhánh Giá Rai Bạc Liêu'},
+        {'name': 'ten_chi_nhanh_hoa', 'description': 'Tên chi nhánh (IN HOA)', 'example': 'CHI NHÁNH GIÁ RAI BẠC LIÊU'},
+        {'name': 'mst', 'description': 'Mã số thuế', 'example': '0123456789'},
+        {'name': 'giao_dich_vien', 'description': 'Họ tên giao dịch viên', 'example': 'Nguyễn Văn A'},
+        {'name': 'kiem_soat_vien', 'description': 'Họ tên kiểm soát viên', 'example': 'Trần Thị B'},
+        {'name': 'giam_doc', 'description': 'Họ tên giám đốc chi nhánh', 'example': 'Lê Văn C'},
+        {'name': 'dia_chi_chi_nhanh', 'description': 'Địa chỉ chi nhánh', 'example': 'Số 123 Đường ABC, Phường XYZ'},
+    ]
+
+    # 4. Biến Tùy chỉnh - From GlobalConfig.custom_variables
+    config = GlobalConfig.get_instance()
+    custom_variables = []
+    if config.custom_variables:
+        for var_name, var_value in config.custom_variables.items():
+            custom_variables.append({
+                'name': var_name,
+                'description': 'Biến tùy chỉnh',
+                'example': var_value[:100] if var_value else ''  # Limit example length
+            })
+
+    context = {
+        'customer_variables': customer_variables,
+        'date_variables': date_variables,
+        'branch_variables': branch_variables,
+        'custom_variables': custom_variables,
+    }
+
+    return render(request, 'templates_app/variable_library.html', context)
