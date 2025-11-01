@@ -23,13 +23,16 @@ class TemplateVariableInline(admin.TabularInline):
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     """Admin cho Khách hàng"""
-    list_display = ['ho_ten', 'so_cmnd', 'so_dien_thoai', 'ngay_sinh', 'created_at', 'created_by']
-    list_filter = ['gioi_tinh', 'created_at', 'created_by']
-    search_fields = ['ho_ten', 'so_cmnd', 'so_dien_thoai', 'email']
+    list_display = ['ma_khach_hang', 'ho_ten', 'so_cmnd', 'so_dien_thoai', 'ngay_sinh', 'created_at', 'created_by']
+    list_filter = ['nghe_nghiep', 'gioi_tinh', 'created_at', 'created_by']
+    search_fields = ['ma_khach_hang', 'ho_ten', 'so_cmnd', 'so_dien_thoai', 'email']
     readonly_fields = ['created_at', 'updated_at', 'created_by']
     ordering = ['-created_at']
 
     fieldsets = (
+        ('Mã khách hàng', {
+            'fields': ('ma_khach_hang',)
+        }),
         ('Thông tin cá nhân', {
             'fields': ('ho_ten', 'ngay_sinh', 'gioi_tinh')
         }),
@@ -37,10 +40,10 @@ class CustomerAdmin(admin.ModelAdmin):
             'fields': ('so_cmnd', 'ngay_cap_cmnd', 'noi_cap_cmnd')
         }),
         ('Thông tin liên hệ', {
-            'fields': ('dia_chi', 'dia_chi_tam_tru', 'so_dien_thoai', 'email')
+            'fields': ('dia_chi', 'so_dien_thoai', 'email')
         }),
         ('Thông tin nghề nghiệp', {
-            'fields': ('nghe_nghiep', 'noi_lam_viec', 'chuc_vu', 'thu_nhap_hang_thang')
+            'fields': ('nghe_nghiep', 'noi_lam_viec')
         }),
         ('Thông tin tài khoản', {
             'fields': ('so_tai_khoan', 'loai_tai_khoan')

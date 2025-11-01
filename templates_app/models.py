@@ -98,6 +98,17 @@ class TemplateVariable(models.Model):
 
 class Customer(models.Model):
     """Thông tin khách hàng"""
+
+    NGHE_NGHIEP_CHOICES = [
+        ('Công chức viên chức', 'Công chức viên chức'),
+        ('Kinh doanh tự do', 'Kinh doanh tự do'),
+        ('Nội trợ', 'Nội trợ'),
+        ('Khác', 'Khác'),
+    ]
+
+    # Mã khách hàng
+    ma_khach_hang = models.CharField(max_length=50, blank=True, verbose_name="Mã khách hàng", db_index=True)
+
     # Thông tin cá nhân cơ bản
     ho_ten = models.CharField(max_length=200, verbose_name="Họ và tên", db_index=True)
     ngay_sinh = models.DateField(null=True, blank=True, verbose_name="Ngày sinh")
@@ -115,21 +126,17 @@ class Customer(models.Model):
 
     # Liên hệ
     dia_chi = models.TextField(blank=True, verbose_name="Địa chỉ thường trú")
-    dia_chi_tam_tru = models.TextField(blank=True, verbose_name="Địa chỉ tạm trú")
     so_dien_thoai = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại", db_index=True)
     email = models.EmailField(blank=True, verbose_name="Email")
 
     # Thông tin nghề nghiệp
-    nghe_nghiep = models.CharField(max_length=200, blank=True, verbose_name="Nghề nghiệp")
-    noi_lam_viec = models.CharField(max_length=200, blank=True, verbose_name="Nơi làm việc")
-    chuc_vu = models.CharField(max_length=200, blank=True, verbose_name="Chức vụ")
-    thu_nhap_hang_thang = models.DecimalField(
-        max_digits=15,
-        decimal_places=0,
-        null=True,
+    nghe_nghiep = models.CharField(
+        max_length=200,
         blank=True,
-        verbose_name="Thu nhập hàng tháng (VNĐ)"
+        choices=NGHE_NGHIEP_CHOICES,
+        verbose_name="Nghề nghiệp"
     )
+    noi_lam_viec = models.CharField(max_length=200, blank=True, verbose_name="Nơi làm việc")
 
     # Thông tin tài khoản
     so_tai_khoan = models.CharField(max_length=30, blank=True, verbose_name="Số tài khoản")
@@ -165,9 +172,8 @@ class Customer(models.Model):
         Trả về dictionary chứa thông tin khách hàng
         Dùng để auto-fill form
         """
-        from decimal import Decimal
-
         data = {
+            'ma_khach_hang': self.ma_khach_hang or '',
             'ho_ten': self.ho_ten or '',
             'ngay_sinh': self.ngay_sinh.strftime('%d/%m/%Y') if self.ngay_sinh else '',
             'gioi_tinh': self.gioi_tinh or '',
@@ -175,13 +181,10 @@ class Customer(models.Model):
             'ngay_cap_cmnd': self.ngay_cap_cmnd.strftime('%d/%m/%Y') if self.ngay_cap_cmnd else '',
             'noi_cap_cmnd': self.noi_cap_cmnd or '',
             'dia_chi': self.dia_chi or '',
-            'dia_chi_tam_tru': self.dia_chi_tam_tru or '',
             'so_dien_thoai': self.so_dien_thoai or '',
             'email': self.email or '',
             'nghe_nghiep': self.nghe_nghiep or '',
             'noi_lam_viec': self.noi_lam_viec or '',
-            'chuc_vu': self.chuc_vu or '',
-            'thu_nhap_hang_thang': str(self.thu_nhap_hang_thang) if self.thu_nhap_hang_thang else '',
             'so_tai_khoan': self.so_tai_khoan or '',
             'loai_tai_khoan': self.loai_tai_khoan or '',
             'ghi_chu': self.ghi_chu or '',

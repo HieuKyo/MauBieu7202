@@ -214,6 +214,15 @@
                     {% csrf_token %}
                     <input type="hidden" id="customer-id" name="customer_id">
 
+                    <!-- Customer Code -->
+                    <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Mã khách hàng</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="form-label">Mã khách hàng</label>
+                            <input type="text" class="form-control" name="ma_khach_hang" placeholder="Nhập mã khách hàng (tùy chọn)">
+                        </div>
+                    </div>
+
                     <!-- Personal Info -->
                     <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin cá nhân</h6>
                     <div class="row g-3 mb-4">
@@ -260,10 +269,6 @@
                             <label class="form-label">Địa chỉ thường trú</label>
                             <textarea class="form-control" name="dia_chi" rows="2"></textarea>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label">Địa chỉ tạm trú</label>
-                            <textarea class="form-control" name="dia_chi_tam_tru" rows="2"></textarea>
-                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Số điện thoại</label>
                             <input type="text" class="form-control" name="so_dien_thoai">
@@ -277,21 +282,19 @@
                     <!-- Employment Info -->
                     <h6 class="fw-bold mb-3" style="color: var(--agribank-red);">Thông tin nghề nghiệp</h6>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Nghề nghiệp</label>
-                            <input type="text" class="form-control" name="nghe_nghiep">
+                            <select class="form-select" name="nghe_nghiep">
+                                <option value="">Chọn...</option>
+                                <option value="Công chức viên chức">Công chức viên chức</option>
+                                <option value="Kinh doanh tự do">Kinh doanh tự do</option>
+                                <option value="Nội trợ">Nội trợ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Nơi làm việc</label>
                             <input type="text" class="form-control" name="noi_lam_viec">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Chức vụ</label>
-                            <input type="text" class="form-control" name="chuc_vu">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Thu nhập hàng tháng (VNĐ)</label>
-                            <input type="number" class="form-control" name="thu_nhap_hang_thang">
                         </div>
                     </div>
 
@@ -462,6 +465,7 @@
                     const form = document.getElementById('customerForm');
 
                     // Populate form fields
+                    form.querySelector('[name="ma_khach_hang"]').value = customer.ma_khach_hang || '';
                     form.querySelector('[name="ho_ten"]').value = customer.ho_ten || '';
                     form.querySelector('[name="ngay_sinh"]').value = customer.ngay_sinh ? formatDateForInput(customer.ngay_sinh) : '';
                     form.querySelector('[name="gioi_tinh"]').value = customer.gioi_tinh || '';
@@ -469,13 +473,10 @@
                     form.querySelector('[name="ngay_cap_cmnd"]').value = customer.ngay_cap_cmnd ? formatDateForInput(customer.ngay_cap_cmnd) : '';
                     form.querySelector('[name="noi_cap_cmnd"]').value = customer.noi_cap_cmnd || '';
                     form.querySelector('[name="dia_chi"]').value = customer.dia_chi || '';
-                    form.querySelector('[name="dia_chi_tam_tru"]').value = customer.dia_chi_tam_tru || '';
                     form.querySelector('[name="so_dien_thoai"]').value = customer.so_dien_thoai || '';
                     form.querySelector('[name="email"]').value = customer.email || '';
                     form.querySelector('[name="nghe_nghiep"]').value = customer.nghe_nghiep || '';
                     form.querySelector('[name="noi_lam_viec"]').value = customer.noi_lam_viec || '';
-                    form.querySelector('[name="chuc_vu"]').value = customer.chuc_vu || '';
-                    form.querySelector('[name="thu_nhap_hang_thang"]').value = customer.thu_nhap_hang_thang || '';
                     form.querySelector('[name="so_tai_khoan"]').value = customer.so_tai_khoan || '';
                     form.querySelector('[name="loai_tai_khoan"]').value = customer.loai_tai_khoan || '';
                     form.querySelector('[name="ghi_chu"]').value = customer.ghi_chu || '';
