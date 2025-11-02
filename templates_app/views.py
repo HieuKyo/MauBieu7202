@@ -1025,8 +1025,11 @@ def customer_get(request, customer_id):
             'success': True,
             'customer': {
                 'id': customer.id,
+                'ma_khach_hang': customer.ma_khach_hang,
                 'ho_ten': customer.ho_ten,
                 'so_cmnd': customer.so_cmnd,
+                'ngay_cap_cmnd': customer.ngay_cap_cmnd.isoformat() if customer.ngay_cap_cmnd else '',
+                'noi_cap_cmnd': customer.noi_cap_cmnd,
                 'ngay_sinh': customer.ngay_sinh.isoformat() if customer.ngay_sinh else '',
                 'gioi_tinh': customer.gioi_tinh,
                 'so_dien_thoai': customer.so_dien_thoai,
