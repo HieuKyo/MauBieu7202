@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/customers/<int:customer_id>/update/', views.customer_update_view, name='customer_update'),
     path('api/customers/<int:customer_id>/delete/', views.customer_delete_view, name='customer_delete'),
     path('api/customers/import-excel/', views.customer_import_excel, name='customer_import_excel'),
+    path('api/customers/import/tsv/', views.customer_import_tsv, name='customer_import_tsv'),
 
     # Global Configuration (Branch + Custom Variables)
     path('branch-config/', views.branch_config_view, name='branch_config'),

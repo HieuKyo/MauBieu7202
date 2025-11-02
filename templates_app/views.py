@@ -8,10 +8,12 @@ from django.views.decorators.http import require_http_methods
 from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig
 from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
 from .utils import render_word_template
+from .issueby_mapping import get_issueby_name
 import os
 import json
 import re
 from datetime import date, datetime
+import io
 
 
 @login_required
@@ -1258,3 +1260,227 @@ def customer_get(request, customer_id):
             'success': False,
             'error': f'Không tìm thấy khách hàng: {str(e)}'
         }, status=404)
+
+
+# ============================================
+# TSV Import for AGRIBANK clipboard data
+# ============================================
+
+def parse_tsv_date(date_str):
+    """
+    Convert date from YYYYMMDD to date object
+    Args:
+        date_str: Date string in YYYYMMDD format
+    Returns:
+        date object or None
+    """
+    if not date_str or not date_str.strip() or len(date_str) < 8:
+        return None
+
+    try:
+        date_str = date_str.strip()
+        if len(date_str) == 8:
+            year = int(date_str[:4])
+            month = int(date_str[4:6])
+            day = int(date_str[6:8])
+            return date(year, month, day)
+    except (ValueError, IndexError):
+        pass
+
+    return None
+
+
+@login_required
+@require_http_methods(["POST"])
+def customer_import_tsv(request):
+    """
+    Import khách hàng từ file TSV (clipboard AGRIBANK)
+    """
+    if 'tsv_file' not in request.FILES:
+        return JsonResponse({
+            'success': False,
+            'error': 'Vui lòng chọn file TSV'
+        }, status=400)
+
+    tsv_file = request.FILES['tsv_file']
+
+    # Kiểm tra file extension
+    if not (tsv_file.name.endswith('.tsv') or tsv_file.name.endswith('.txt')):
+        return JsonResponse({
+            'success': False,
+            'error': 'File phải có định dạng .tsv hoặc .txt'
+        }, status=400)
+
+    try:
+        # Read file content
+        content = tsv_file.read().decode('utf-8')
+        lines = content.strip().split('\n')
+
+        if len(lines) < 2:
+            return JsonResponse({
+                'success': False,
+                'error': 'File không có dữ liệu'
+            }, status=400)
+
+        # Parse header
+        header = lines[0].strip().split('\t')
+
+        success_count = 0
+        error_count = 0
+        errors = []
+        updated_count = 0
+
+        # Process each data line
+        for line_num, line in enumerate(lines[1:], start=2):
+            try:
+                values = line.strip().split('\t')
+
+                # Create dict from header and values
+                data = {}
+                for i, field in enumerate(header):
+                    data[field] = values[i] if i < len(values) else ''
+
+                # Clean values
+                def clean(val):
+                    return str(val).strip() if val else ''
+
+                # Extract required fields
+                custno = clean(data.get('custno', ''))
+                nmloc = clean(data.get('nmloc', ''))
+                regno = clean(data.get('regno', ''))
+
+                # Validate required fields
+                if not nmloc:
+                    errors.append(f'Dòng {line_num}: Thiếu họ tên')
+                    error_count += 1
+                    continue
+
+                if not regno:
+                    errors.append(f'Dòng {line_num}: Thiếu số CMND/CCCD')
+                    error_count += 1
+                    continue
+
+                # Check if customer already exists
+                if Customer.objects.filter(so_cmnd=regno).exists():
+                    customer = Customer.objects.get(so_cmnd=regno)
+                    update_mode = True
+                else:
+                    customer = Customer(created_by=request.user)
+                    update_mode = False
+
+                # Map basic fields
+                customer.ma_khach_hang = custno
+                if custno:
+                    customer.cif = custno
+                customer.ho_ten = nmloc
+                customer.so_cmnd = regno
+
+                # Parse dates
+                ngay_sinh_str = clean(data.get('name_1', ''))
+                if ngay_sinh_str:
+                    ngay_sinh = parse_tsv_date(ngay_sinh_str)
+                    if ngay_sinh:
+                        customer.ngay_sinh = ngay_sinh
+
+                ngay_cap_str = clean(data.get('issuedt1', ''))
+                if ngay_cap_str:
+                    ngay_cap = parse_tsv_date(ngay_cap_str)
+                    if ngay_cap:
+                        customer.ngay_cap_cmnd = ngay_cap
+
+                # Gender
+                gioi_tinh = clean(data.get('name_3', ''))
+                if gioi_tinh:
+                    customer.gioi_tinh = gioi_tinh
+
+                # Phone
+                so_dien_thoai = clean(data.get('name_4', ''))
+                if so_dien_thoai:
+                    customer.so_dien_thoai = so_dien_thoai
+
+                # Address
+                dia_chi = clean(data.get('addr1loc', ''))
+                if dia_chi:
+                    customer.dia_chi = dia_chi
+
+                # Issueby - map code to name
+                issueby_code = clean(data.get('issueby1', ''))
+                if issueby_code:
+                    customer.ma_noi_cap_cmnd = issueby_code
+                    issueby_name = get_issueby_name(issueby_code)
+                    # Try to match with existing choices
+                    if 'Cục' in issueby_name or 'CSQLHC' in issueby_name:
+                        customer.noi_cap_cmnd = 'Cục CSQLHC về TTXH'
+                    elif 'Bộ Công An' in issueby_name:
+                        customer.noi_cap_cmnd = 'Bộ Công An'
+                    else:
+                        customer.noi_cap_cmnd = 'Khác'
+                    customer.noi_cap_cmnd_custom = issueby_name
+
+                # Profession
+                profnm = clean(data.get('profnm', ''))
+                if profnm and profnm != 'Khác':
+                    customer.nghe_nghiep = profnm
+
+                # Email
+                email = clean(data.get('emailaddr', ''))
+                if email:
+                    customer.email = email
+
+                # Administrative codes
+                ma_tinh = clean(data.get('province', ''))
+                if ma_tinh:
+                    customer.ma_tinh = ma_tinh
+
+                ma_quan_huyen = clean(data.get('district', ''))
+                if ma_quan_huyen:
+                    customer.ma_quan_huyen = ma_quan_huyen
+
+                ma_phuong_xa = clean(data.get('commune_ward', ''))
+                if ma_phuong_xa:
+                    customer.ma_phuong_xa = ma_phuong_xa
+
+                # Nationality
+                quoc_tich = clean(data.get('ctrycdnatl', ''))
+                if quoc_tich:
+                    customer.quoc_tich = quoc_tich
+
+                # Tax code
+                ma_so_thue = clean(data.get('taxno', ''))
+                if ma_so_thue:
+                    customer.ma_so_thue = ma_so_thue
+
+                # Passport
+                so_ho_chieu = clean(data.get('passno', ''))
+                if so_ho_chieu:
+                    customer.so_ho_chieu = so_ho_chieu
+
+                # Save customer
+                customer.save()
+
+                if update_mode:
+                    updated_count += 1
+                else:
+                    success_count += 1
+
+            except Exception as e:
+                error_count += 1
+                errors.append(f'Dòng {line_num}: {str(e)}')
+                continue
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Import thành công: {success_count} khách hàng mới, {updated_count} cập nhật',
+            'imported': success_count,
+            'updated': updated_count,
+            'errors': error_count,
+            'error_details': errors[:10]  # Chỉ trả về 10 lỗi đầu tiên
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'Lỗi khi xử lý file TSV: {str(e)}'
+        }, status=500)
