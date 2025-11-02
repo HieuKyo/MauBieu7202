@@ -586,8 +586,9 @@ def variable_library_view(request):
                     'example': ''  # Could add examples later
                 })
 
-    # 2. Biến Ngày tháng - Derived from ngay_sinh
+    # 2. Biến Ngày tháng - Derived from dates
     date_variables = [
+        # Ngày sinh
         {'name': 'd1', 'description': 'Ngày sinh - Chữ số thứ nhất', 'example': 'Nếu ngày sinh là 05/03/1990 → d1 = 0'},
         {'name': 'd2', 'description': 'Ngày sinh - Chữ số thứ hai', 'example': 'Nếu ngày sinh là 05/03/1990 → d2 = 5'},
         {'name': 'm1', 'description': 'Tháng sinh - Chữ số thứ nhất', 'example': 'Nếu ngày sinh là 05/03/1990 → m1 = 0'},
@@ -596,6 +597,37 @@ def variable_library_view(request):
         {'name': 'y2', 'description': 'Năm sinh - Chữ số thứ hai', 'example': 'Nếu ngày sinh là 05/03/1990 → y2 = 9'},
         {'name': 'y3', 'description': 'Năm sinh - Chữ số thứ ba', 'example': 'Nếu ngày sinh là 05/03/1990 → y3 = 9'},
         {'name': 'y4', 'description': 'Năm sinh - Chữ số thứ tư', 'example': 'Nếu ngày sinh là 05/03/1990 → y4 = 0'},
+        # Ngày cấp CMND/CCCD
+        {'name': 'dcc1', 'description': 'Ngày cấp CCCD - Chữ số thứ nhất', 'example': 'Nếu ngày cấp là 15/06/2020 → dcc1 = 1'},
+        {'name': 'dcc2', 'description': 'Ngày cấp CCCD - Chữ số thứ hai', 'example': 'Nếu ngày cấp là 15/06/2020 → dcc2 = 5'},
+        {'name': 'mcc1', 'description': 'Tháng cấp CCCD - Chữ số thứ nhất', 'example': 'Nếu ngày cấp là 15/06/2020 → mcc1 = 0'},
+        {'name': 'mcc2', 'description': 'Tháng cấp CCCD - Chữ số thứ hai', 'example': 'Nếu ngày cấp là 15/06/2020 → mcc2 = 6'},
+        {'name': 'ycc1', 'description': 'Năm cấp CCCD - Chữ số thứ nhất', 'example': 'Nếu ngày cấp là 15/06/2020 → ycc1 = 2'},
+        {'name': 'ycc2', 'description': 'Năm cấp CCCD - Chữ số thứ hai', 'example': 'Nếu ngày cấp là 15/06/2020 → ycc2 = 0'},
+        {'name': 'ycc3', 'description': 'Năm cấp CCCD - Chữ số thứ ba', 'example': 'Nếu ngày cấp là 15/06/2020 → ycc3 = 2'},
+        {'name': 'ycc4', 'description': 'Năm cấp CCCD - Chữ số thứ tư', 'example': 'Nếu ngày cấp là 15/06/2020 → ycc4 = 0'},
+        # Ngày hết hạn CMND/CCCD
+        {'name': 'dhh1', 'description': 'Ngày hết hạn CCCD - Chữ số thứ nhất', 'example': 'Nếu ngày hết hạn là 15/06/2035 → dhh1 = 1'},
+        {'name': 'dhh2', 'description': 'Ngày hết hạn CCCD - Chữ số thứ hai', 'example': 'Nếu ngày hết hạn là 15/06/2035 → dhh2 = 5'},
+        {'name': 'mhh1', 'description': 'Tháng hết hạn CCCD - Chữ số thứ nhất', 'example': 'Nếu ngày hết hạn là 15/06/2035 → mhh1 = 0'},
+        {'name': 'mhh2', 'description': 'Tháng hết hạn CCCD - Chữ số thứ hai', 'example': 'Nếu ngày hết hạn là 15/06/2035 → mhh2 = 6'},
+        {'name': 'yhh1', 'description': 'Năm hết hạn CCCD - Chữ số thứ nhất', 'example': 'Nếu ngày hết hạn là 15/06/2035 → yhh1 = 2'},
+        {'name': 'yhh2', 'description': 'Năm hết hạn CCCD - Chữ số thứ hai', 'example': 'Nếu ngày hết hạn là 15/06/2035 → yhh2 = 0'},
+        {'name': 'yhh3', 'description': 'Năm hết hạn CCCD - Chữ số thứ ba', 'example': 'Nếu ngày hết hạn là 15/06/2035 → yhh3 = 3'},
+        {'name': 'yhh4', 'description': 'Năm hết hạn CCCD - Chữ số thứ tư', 'example': 'Nếu ngày hết hạn là 15/06/2035 → yhh4 = 5'},
+    ]
+
+    # 2.5. Biến điều kiện dịch vụ
+    service_variables = [
+        {'name': 'so_tai_khoan_AP', 'description': 'Số tài khoản (chỉ khi chọn Agribank Plus mà không chọn SMS Banking)', 'example': '1234567890'},
+        {'name': 'so_dien_thoai_AP', 'description': 'Số điện thoại (chỉ khi chọn Agribank Plus mà không chọn SMS Banking)', 'example': '0987654321'},
+        {'name': 'so_tai_khoan_SMS', 'description': 'Số tài khoản (chỉ khi chọn SMS Banking mà không chọn Agribank Plus)', 'example': '1234567890'},
+        {'name': 'so_dien_thoai_SMS', 'description': 'Số điện thoại (chỉ khi chọn SMS Banking mà không chọn Agribank Plus)', 'example': '0987654321'},
+        {'name': 'the_hang_chuan', 'description': 'Checkbox ☑/☐ khi chọn Hạng chuẩn', 'example': '☑ hoặc ☐'},
+        {'name': 'the_hang_vang', 'description': 'Checkbox ☑/☐ khi chọn Hạng vàng', 'example': '☑ hoặc ☐'},
+        {'name': 'the_ghi_no_noi_dia', 'description': 'Checkbox ☑/☐ khi chọn Thẻ Ghi nợ nội địa', 'example': '☑ hoặc ☐'},
+        {'name': 'tk_ngau_nhien', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản ngẫu nhiên', 'example': '☑ hoặc ☐'},
+        {'name': 'tk_theo_yeu_cau', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản số theo yêu cầu', 'example': '☑ hoặc ☐'},
     ]
 
     # 3. Biến Chi nhánh - From GlobalConfig
@@ -623,6 +655,7 @@ def variable_library_view(request):
     context = {
         'customer_variables': customer_variables,
         'date_variables': date_variables,
+        'service_variables': service_variables,
         'branch_variables': branch_variables,
         'custom_variables': custom_variables,
     }
