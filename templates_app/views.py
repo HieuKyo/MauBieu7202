@@ -10,6 +10,8 @@ from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
 from .utils import render_word_template
 import os
 import json
+import re
+from datetime import date, datetime
 
 
 @login_required
@@ -327,6 +329,7 @@ def customer_detail_api(request, customer_id):
                 'gioi_tinh': customer.gioi_tinh,
                 'so_cmnd': customer.so_cmnd,
                 'ngay_cap_cmnd': customer.ngay_cap_cmnd.strftime('%d/%m/%Y') if customer.ngay_cap_cmnd else '',
+                'ngay_het_han_cmnd': customer.ngay_het_han_cmnd.strftime('%d/%m/%Y') if customer.ngay_het_han_cmnd else '',
                 'noi_cap_cmnd': customer.noi_cap_cmnd,  # Raw value for form
                 'noi_cap_cmnd_custom': customer.noi_cap_cmnd_custom,  # Custom value for form
                 'noi_cap_cmnd_display': customer.get_noi_cap_display_value(),  # Display value
@@ -350,47 +353,270 @@ def customer_detail_api(request, customer_id):
         }, status=404)
 
 
+# ============================================
+# Customer Validation Functions
+# ============================================
+
+def validate_phone_number(phone):
+    """
+    Validate Vietnamese phone number format
+    Returns: (is_valid, error_message)
+    """
+    if not phone or phone.strip() == '':
+        return True, None  # Optional field
+
+    # Remove spaces and dashes
+    phone = phone.replace(' ', '').replace('-', '')
+
+    # Must be 10 digits and start with 0
+    if not re.match(r'^0\d{9}$', phone):
+        return False, 'Số điện thoại phải có 10 số và bắt đầu bằng 0'
+
+    return True, None
+
+
+def validate_birth_date(date_str):
+    """
+    Validate birth date
+    Returns: (is_valid, error_message)
+    """
+    if not date_str or date_str.strip() == '':
+        return True, None  # Optional field
+
+    try:
+        birth_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return False, 'Ngày sinh không hợp lệ'
+
+    today = date.today()
+
+    # Cannot be in the future
+    if birth_date > today:
+        return False, 'Ngày sinh không thể là ngày trong tương lai'
+
+    # Cannot be more than 150 years old
+    max_age = today.year - 150
+    if birth_date.year < max_age:
+        return False, 'Ngày sinh không hợp lệ'
+
+    return True, None
+
+
+def validate_issuance_date(date_str):
+    """
+    Validate CCCD issuance date
+    Returns: (is_valid, error_message)
+    """
+    if not date_str or date_str.strip() == '':
+        return True, None  # Optional field
+
+    try:
+        issue_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return False, 'Ngày cấp CCCD không hợp lệ'
+
+    today = date.today()
+
+    # Cannot be in the future
+    if issue_date > today:
+        return False, 'Ngày cấp CCCD không thể là ngày trong tương lai'
+
+    return True, None
+
+
+def validate_expiry_date(issue_date_str, expiry_date_str):
+    """
+    Validate CCCD expiry date (must be after issuance date)
+    Returns: (is_valid, error_message)
+    """
+    if not expiry_date_str or expiry_date_str.strip() == '':
+        return True, None  # Optional field
+
+    if not issue_date_str or issue_date_str.strip() == '':
+        return True, None  # Can't validate if no issue date
+
+    try:
+        issue_date = datetime.strptime(issue_date_str, '%Y-%m-%d').date()
+        expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return True, None  # Skip if dates are invalid (will be caught by other validators)
+
+    # Expiry date must be after issue date
+    if expiry_date <= issue_date:
+        return False, 'Ngày hết hạn CCCD phải lớn hơn ngày cấp'
+
+    return True, None
+
+
+def validate_customer_data(request_data):
+    """
+    Validate all customer data fields
+    Returns: (is_valid, error_messages_list)
+    """
+    errors = []
+
+    # Validate phone number
+    phone = request_data.get('so_dien_thoai', '')
+    is_valid, error_msg = validate_phone_number(phone)
+    if not is_valid:
+        errors.append(error_msg)
+
+    # Validate birth date
+    birth_date = request_data.get('ngay_sinh', '')
+    is_valid, error_msg = validate_birth_date(birth_date)
+    if not is_valid:
+        errors.append(error_msg)
+
+    # Validate issuance date
+    issue_date = request_data.get('ngay_cap_cmnd', '')
+    is_valid, error_msg = validate_issuance_date(issue_date)
+    if not is_valid:
+        errors.append(error_msg)
+
+    # Validate expiry date
+    expiry_date = request_data.get('ngay_het_han_cmnd', '')
+    is_valid, error_msg = validate_expiry_date(issue_date, expiry_date)
+    if not is_valid:
+        errors.append(error_msg)
+
+    return len(errors) == 0, errors
+
+
+# ============================================
+# Customer CRUD Views
+# ============================================
+
 @login_required
 @require_http_methods(["POST"])
 def customer_create_view(request):
     """Tạo khách hàng mới"""
-    form = CustomerForm(request.POST)
-    if form.is_valid():
-        customer = form.save(commit=False)
-        customer.created_by = request.user
+    try:
+        # Get form data
+        ho_ten = request.POST.get('ho_ten', '').strip()
+        so_cmnd = request.POST.get('so_cmnd', '').strip()
+
+        # Validate required fields
+        if not ho_ten or not so_cmnd:
+            return JsonResponse({
+                'success': False,
+                'error': 'Họ tên và Số CMND/CCCD là bắt buộc'
+            }, status=400)
+
+        # Check if CMND already exists
+        if Customer.objects.filter(so_cmnd=so_cmnd).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Số CMND/CCCD {so_cmnd} đã tồn tại trong hệ thống'
+            }, status=400)
+
+        # Validate customer data (phone, dates, etc.)
+        is_valid, validation_errors = validate_customer_data(request.POST)
+        if not is_valid:
+            return JsonResponse({
+                'success': False,
+                'error': 'Vui lòng kiểm tra lại thông tin:\n' + '\n'.join(validation_errors)
+            }, status=400)
+
+        # Create customer
+        customer = Customer(
+            ma_khach_hang=request.POST.get('ma_khach_hang', ''),
+            ho_ten=ho_ten,
+            so_cmnd=so_cmnd,
+            ngay_cap_cmnd=request.POST.get('ngay_cap_cmnd') or None,
+            ngay_het_han_cmnd=request.POST.get('ngay_het_han_cmnd') or None,
+            noi_cap_cmnd=request.POST.get('noi_cap_cmnd', 'Cục CSQLHC về TTXH'),
+            ngay_sinh=request.POST.get('ngay_sinh') or None,
+            gioi_tinh=request.POST.get('gioi_tinh', 'Nam'),
+            so_dien_thoai=request.POST.get('so_dien_thoai', ''),
+            email=request.POST.get('email', ''),
+            dia_chi=request.POST.get('dia_chi', ''),
+            nghe_nghiep=request.POST.get('nghe_nghiep', ''),
+            noi_lam_viec=request.POST.get('noi_lam_viec', ''),
+            so_tai_khoan=request.POST.get('so_tai_khoan', ''),
+            ghi_chu=request.POST.get('ghi_chu', ''),
+            created_by=request.user
+        )
         customer.save()
+
         return JsonResponse({
             'success': True,
             'message': 'Đã thêm khách hàng thành công',
             'customer_id': customer.id,
             'customer_name': customer.ho_ten
         })
-    else:
-        errors = {field: error[0] for field, error in form.errors.items()}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'errors': errors
-        }, status=400)
+            'error': f'Lỗi khi tạo khách hàng: {str(e)}'
+        }, status=500)
 
 
 @login_required
 @require_http_methods(["POST"])
 def customer_update_view(request, customer_id):
     """Cập nhật thông tin khách hàng"""
-    customer = get_object_or_404(Customer, id=customer_id)
-    form = CustomerForm(request.POST, instance=customer)
-    if form.is_valid():
-        form.save()
+    try:
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        # Get form data
+        ho_ten = request.POST.get('ho_ten', '').strip()
+        so_cmnd = request.POST.get('so_cmnd', '').strip()
+
+        # Validate required fields
+        if not ho_ten or not so_cmnd:
+            return JsonResponse({
+                'success': False,
+                'error': 'Họ tên và Số CMND/CCCD là bắt buộc'
+            }, status=400)
+
+        # Check if CMND already exists (excluding current customer)
+        if Customer.objects.filter(so_cmnd=so_cmnd).exclude(id=customer_id).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Số CMND/CCCD {so_cmnd} đã tồn tại trong hệ thống'
+            }, status=400)
+
+        # Validate customer data (phone, dates, etc.)
+        is_valid, validation_errors = validate_customer_data(request.POST)
+        if not is_valid:
+            return JsonResponse({
+                'success': False,
+                'error': 'Vui lòng kiểm tra lại thông tin:\n' + '\n'.join(validation_errors)
+            }, status=400)
+
+        # Update customer fields
+        customer.ma_khach_hang = request.POST.get('ma_khach_hang', '')
+        customer.ho_ten = ho_ten
+        customer.so_cmnd = so_cmnd
+        customer.ngay_cap_cmnd = request.POST.get('ngay_cap_cmnd') or None
+        customer.ngay_het_han_cmnd = request.POST.get('ngay_het_han_cmnd') or None
+        customer.noi_cap_cmnd = request.POST.get('noi_cap_cmnd', 'Cục CSQLHC về TTXH')
+        customer.ngay_sinh = request.POST.get('ngay_sinh') or None
+        customer.gioi_tinh = request.POST.get('gioi_tinh', 'Nam')
+        customer.so_dien_thoai = request.POST.get('so_dien_thoai', '')
+        customer.email = request.POST.get('email', '')
+        customer.dia_chi = request.POST.get('dia_chi', '')
+        customer.nghe_nghiep = request.POST.get('nghe_nghiep', '')
+        customer.noi_lam_viec = request.POST.get('noi_lam_viec', '')
+        customer.so_tai_khoan = request.POST.get('so_tai_khoan', '')
+        customer.ghi_chu = request.POST.get('ghi_chu', '')
+        customer.save()
+
         return JsonResponse({
             'success': True,
             'message': 'Đã cập nhật thông tin khách hàng'
         })
-    else:
-        errors = {field: error[0] for field, error in form.errors.items()}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'errors': errors
-        }, status=400)
+            'error': f'Lỗi khi cập nhật khách hàng: {str(e)}'
+        }, status=500)
 
 
 @login_required
@@ -881,3 +1107,170 @@ def generate_document_direct(request, template_id):
         import traceback
         traceback.print_exc()
         return HttpResponse(f"Lỗi: {str(e)}", status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def customer_import_excel(request):
+    """Import khách hàng từ file Excel"""
+    if 'excel_file' not in request.FILES:
+        return JsonResponse({
+            'success': False,
+            'error': 'Vui lòng chọn file Excel'
+        }, status=400)
+
+    excel_file = request.FILES['excel_file']
+
+    # Kiểm tra file extension
+    if not excel_file.name.endswith(('.xlsx', '.xls')):
+        return JsonResponse({
+            'success': False,
+            'error': 'File phải có định dạng .xlsx hoặc .xls'
+        }, status=400)
+
+    try:
+        import openpyxl
+        from datetime import datetime
+
+        wb = openpyxl.load_workbook(excel_file, data_only=True)
+        ws = wb.active
+
+        # Giả sử dòng đầu tiên là header
+        headers = [cell.value for cell in ws[1]]
+
+        # Mapping column names to model fields
+        # Có thể customize mapping này
+        field_mapping = {
+            'Mã KH': 'ma_khach_hang',
+            'CIF': 'cif',
+            'Họ tên': 'ho_ten',
+            'Họ và tên': 'ho_ten',
+            'Ngày sinh': 'ngay_sinh',
+            'Giới tính': 'gioi_tinh',
+            'CMND/CCCD': 'so_cmnd',
+            'Số CMND': 'so_cmnd',
+            'Ngày cấp': 'ngay_cap_cmnd',
+            'Ngày cấp CMND': 'ngay_cap_cmnd',
+            'Nơi cấp': 'noi_cap_cmnd',
+            'Nơi cấp CMND': 'noi_cap_cmnd',
+            'Địa chỉ': 'dia_chi',
+            'Điện thoại': 'so_dien_thoai',
+            'Số điện thoại': 'so_dien_thoai',
+            'Email': 'email',
+            'Nghề nghiệp': 'nghe_nghiep',
+            'Nơi làm việc': 'noi_lam_viec',
+            'Số tài khoản': 'so_tai_khoan',
+            'Loại tài khoản': 'loai_tai_khoan',
+            'Loại tiền tệ': 'loai_tien_te',
+            'Loại thẻ': 'loai_the',
+            'Hạng thẻ': 'hang_the',
+        }
+
+        imported_count = 0
+        skipped_count = 0
+        errors = []
+
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            try:
+                # Build data dict from row
+                data = {}
+                for col_idx, value in enumerate(row):
+                    if col_idx < len(headers):
+                        header = headers[col_idx]
+                        if header and header in field_mapping:
+                            field_name = field_mapping[header]
+
+                            # Handle date fields
+                            if field_name in ['ngay_sinh', 'ngay_cap_cmnd', 'ngay_het_han_cmnd', 'ngay_in']:
+                                if value:
+                                    if isinstance(value, datetime):
+                                        data[field_name] = value.date()
+                                    else:
+                                        # Try parsing string date
+                                        try:
+                                            parsed_date = datetime.strptime(str(value), '%d/%m/%Y')
+                                            data[field_name] = parsed_date.date()
+                                        except:
+                                            try:
+                                                parsed_date = datetime.strptime(str(value), '%Y-%m-%d')
+                                                data[field_name] = parsed_date.date()
+                                            except:
+                                                pass
+                            else:
+                                data[field_name] = value if value else ''
+
+                # Validate required fields
+                if not data.get('ho_ten') or not data.get('so_cmnd'):
+                    skipped_count += 1
+                    errors.append(f"Dòng {row_idx}: Thiếu họ tên hoặc CMND")
+                    continue
+
+                # Check if customer already exists
+                existing_customer = Customer.objects.filter(so_cmnd=data['so_cmnd']).first()
+                if existing_customer:
+                    # Update existing customer
+                    for field, value in data.items():
+                        setattr(existing_customer, field, value)
+                    existing_customer.save()
+                else:
+                    # Create new customer
+                    customer = Customer(**data)
+                    customer.created_by = request.user
+                    customer.save()
+
+                imported_count += 1
+
+            except Exception as e:
+                skipped_count += 1
+                errors.append(f"Dòng {row_idx}: {str(e)}")
+                continue
+
+        return JsonResponse({
+            'success': True,
+            'imported': imported_count,
+            'skipped': skipped_count,
+            'errors': errors[:10]  # Limit errors to 10
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'Lỗi khi xử lý file Excel: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def customer_get(request, customer_id):
+    """Lấy thông tin khách hàng theo ID để hiển thị trong form edit"""
+    try:
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        return JsonResponse({
+            'success': True,
+            'customer': {
+                'id': customer.id,
+                'ma_khach_hang': customer.ma_khach_hang,
+                'ho_ten': customer.ho_ten,
+                'so_cmnd': customer.so_cmnd,
+                'ngay_cap_cmnd': customer.ngay_cap_cmnd.isoformat() if customer.ngay_cap_cmnd else '',
+                'ngay_het_han_cmnd': customer.ngay_het_han_cmnd.isoformat() if customer.ngay_het_han_cmnd else '',
+                'noi_cap_cmnd': customer.noi_cap_cmnd,
+                'ngay_sinh': customer.ngay_sinh.isoformat() if customer.ngay_sinh else '',
+                'gioi_tinh': customer.gioi_tinh,
+                'so_dien_thoai': customer.so_dien_thoai,
+                'email': customer.email,
+                'dia_chi': customer.dia_chi,
+                'nghe_nghiep': customer.nghe_nghiep,
+                'noi_lam_viec': customer.noi_lam_viec,
+                'so_tai_khoan': customer.so_tai_khoan,
+                'ghi_chu': customer.ghi_chu,
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Không tìm thấy khách hàng: {str(e)}'
+        }, status=404)

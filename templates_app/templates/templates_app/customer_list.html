@@ -5,12 +5,18 @@
 
 {% block content %}
 <div class="row mb-4">
-    <div class="col-md-8">
+    <div class="col-md-6">
         <h2 class="fw-bold" style="color: var(--agribank-red);">
             <i class="bi bi-people-fill"></i> Danh sách Khách hàng
         </h2>
     </div>
-    <div class="col-md-4 text-end">
+    <div class="col-md-6 text-end">
+        <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+            <i class="bi bi-plus-circle"></i> Thêm Khách hàng
+        </button>
+        <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+            <i class="bi bi-file-earmark-excel"></i> Import Excel
+        </button>
         <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Quay lại
         </a>
@@ -57,19 +63,38 @@
             <table class="table table-hover">
                 <thead class="table-light">
                     <tr>
+                        <th>Mã KH</th>
                         <th>Họ và tên</th>
                         <th>Số CMND/CCCD</th>
+                        <th>Ngày cấp</th>
+                        <th>Ngày hết hạn</th>
+                        <th>Nơi cấp</th>
                         <th>Số điện thoại</th>
                         <th>Ngày sinh</th>
-                        <th>Địa chỉ</th>
-                        <th>Ngày tạo</th>
+                        <th width="150">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for customer in customers %}
                     <tr>
+                        <td><span class="badge bg-secondary">{{ customer.ma_khach_hang|default:"-" }}</span></td>
                         <td class="fw-bold">{{ customer.ho_ten }}</td>
                         <td>{{ customer.so_cmnd }}</td>
+                        <td>
+                            {% if customer.ngay_cap_cmnd %}
+                                {{ customer.ngay_cap_cmnd|date:"d/m/Y" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if customer.ngay_het_han_cmnd %}
+                                {{ customer.ngay_het_han_cmnd|date:"d/m/Y" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ customer.noi_cap_cmnd|default:"-" }}</td>
                         <td>{{ customer.so_dien_thoai|default:"-" }}</td>
                         <td>
                             {% if customer.ngay_sinh %}
@@ -78,8 +103,14 @@
                                 -
                             {% endif %}
                         </td>
-                        <td>{{ customer.dia_chi|truncatewords:10|default:"-" }}</td>
-                        <td>{{ customer.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning me-1" onclick="editCustomer({{ customer.id }})" title="Sửa">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteCustomer({{ customer.id }}, '{{ customer.ho_ten|escapejs }}')" title="Xóa">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -107,4 +138,696 @@
         <i class="bi bi-lightbulb"></i> Mẹo: Bạn có thể quản lý khách hàng trong <a href="/admin/templates_app/customer/" class="text-decoration-none">trang quản trị</a>
     </p>
 </div>
+
+<!-- Add Customer Modal -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Thêm Khách hàng mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCustomerForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add_ho_ten" class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="add_ho_ten" name="ho_ten" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add_ma_khach_hang" class="form-label">Mã khách hàng</label>
+                            <input type="text" class="form-control" id="add_ma_khach_hang" name="ma_khach_hang">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="add_so_cmnd" class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="add_so_cmnd" name="so_cmnd" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="add_ngay_cap_cmnd" class="form-label">Ngày cấp</label>
+                            <input type="date" class="form-control" id="add_ngay_cap_cmnd" name="ngay_cap_cmnd">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="add_ngay_het_han_cmnd" class="form-label">Ngày hết hạn</label>
+                            <input type="date" class="form-control" id="add_ngay_het_han_cmnd" name="ngay_het_han_cmnd">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="add_noi_cap_cmnd" class="form-label">Nơi cấp</label>
+                            <select class="form-select" id="add_noi_cap_cmnd" name="noi_cap_cmnd">
+                                <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
+                                <option value="Bộ Công An">Bộ Công An</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="add_ngay_sinh" class="form-label">Ngày sinh</label>
+                            <input type="date" class="form-control" id="add_ngay_sinh" name="ngay_sinh">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="add_gioi_tinh" class="form-label">Giới tính</label>
+                            <select class="form-select" id="add_gioi_tinh" name="gioi_tinh">
+                                <option value="Nam">Nam</option>
+                                <option value="Nữ">Nữ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="add_so_dien_thoai" class="form-label">Số điện thoại</label>
+                            <input type="text" class="form-control" id="add_so_dien_thoai" name="so_dien_thoai">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add_email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="add_email" name="email">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add_nghe_nghiep" class="form-label">Nghề nghiệp</label>
+                            <select class="form-select" id="add_nghe_nghiep" name="nghe_nghiep">
+                                <option value="">-- Chọn nghề nghiệp --</option>
+                                <option value="Công chức viên chức">Công chức viên chức</option>
+                                <option value="Nông dân">Nông dân</option>
+                                <option value="Giáo viên/Bác Sĩ">Giáo viên/Bác Sĩ</option>
+                                <option value="Công nhân">Công nhân</option>
+                                <option value="Kinh doanh tự do">Kinh doanh tự do</option>
+                                <option value="Học sinh/Sinh viên">Học sinh/Sinh viên</option>
+                                <option value="Nội trợ">Nội trợ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_dia_chi" class="form-label">Địa chỉ</label>
+                        <textarea class="form-control" id="add_dia_chi" name="dia_chi" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add_noi_lam_viec" class="form-label">Nơi làm việc</label>
+                            <input type="text" class="form-control" id="add_noi_lam_viec" name="noi_lam_viec">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add_so_tai_khoan" class="form-label">Số tài khoản</label>
+                            <input type="text" class="form-control" id="add_so_tai_khoan" name="so_tai_khoan">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_ghi_chu" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="add_ghi_chu" name="ghi_chu" rows="2"></textarea>
+                    </div>
+                    <div id="addResult" style="display:none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddCustomer()">
+                    <i class="bi bi-save"></i> Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Sửa thông tin Khách hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCustomerForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit_customer_id" name="customer_id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_ho_ten" class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_ho_ten" name="ho_ten" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_ma_khach_hang" class="form-label">Mã khách hàng</label>
+                            <input type="text" class="form-control" id="edit_ma_khach_hang" name="ma_khach_hang">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="edit_so_cmnd" class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_so_cmnd" name="so_cmnd" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_ngay_cap_cmnd" class="form-label">Ngày cấp</label>
+                            <input type="date" class="form-control" id="edit_ngay_cap_cmnd" name="ngay_cap_cmnd">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_ngay_het_han_cmnd" class="form-label">Ngày hết hạn</label>
+                            <input type="date" class="form-control" id="edit_ngay_het_han_cmnd" name="ngay_het_han_cmnd">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_noi_cap_cmnd" class="form-label">Nơi cấp</label>
+                            <select class="form-select" id="edit_noi_cap_cmnd" name="noi_cap_cmnd">
+                                <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
+                                <option value="Bộ Công An">Bộ Công An</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_ngay_sinh" class="form-label">Ngày sinh</label>
+                            <input type="date" class="form-control" id="edit_ngay_sinh" name="ngay_sinh">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_gioi_tinh" class="form-label">Giới tính</label>
+                            <select class="form-select" id="edit_gioi_tinh" name="gioi_tinh">
+                                <option value="Nam">Nam</option>
+                                <option value="Nữ">Nữ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_so_dien_thoai" class="form-label">Số điện thoại</label>
+                            <input type="text" class="form-control" id="edit_so_dien_thoai" name="so_dien_thoai">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit_email" name="email">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_nghe_nghiep" class="form-label">Nghề nghiệp</label>
+                            <select class="form-select" id="edit_nghe_nghiep" name="nghe_nghiep">
+                                <option value="">-- Chọn nghề nghiệp --</option>
+                                <option value="Công chức viên chức">Công chức viên chức</option>
+                                <option value="Nông dân">Nông dân</option>
+                                <option value="Giáo viên/Bác Sĩ">Giáo viên/Bác Sĩ</option>
+                                <option value="Công nhân">Công nhân</option>
+                                <option value="Kinh doanh tự do">Kinh doanh tự do</option>
+                                <option value="Học sinh/Sinh viên">Học sinh/Sinh viên</option>
+                                <option value="Nội trợ">Nội trợ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_dia_chi" class="form-label">Địa chỉ</label>
+                        <textarea class="form-control" id="edit_dia_chi" name="dia_chi" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_noi_lam_viec" class="form-label">Nơi làm việc</label>
+                            <input type="text" class="form-control" id="edit_noi_lam_viec" name="noi_lam_viec">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_so_tai_khoan" class="form-label">Số tài khoản</label>
+                            <input type="text" class="form-control" id="edit_so_tai_khoan" name="so_tai_khoan">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_ghi_chu" class="form-label">Ghi chú</label>
+                        <textarea class="form-control" id="edit_ghi_chu" name="ghi_chu" rows="2"></textarea>
+                    </div>
+                    <div id="editResult" style="display:none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditCustomer()">
+                    <i class="bi bi-save"></i> Cập nhật
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteCustomerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Xác nhận xóa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa khách hàng:</p>
+                <p class="fw-bold text-danger" id="deleteCustomerName"></p>
+                <p class="text-muted">Thao tác này không thể hoàn tác!</p>
+                <input type="hidden" id="delete_customer_id">
+                <div id="deleteResult" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteCustomer()">
+                    <i class="bi bi-trash"></i> Xóa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Excel Modal -->
+<div class="modal fade" id="importExcelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Import Khách hàng từ Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importExcelForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Chọn file Excel (.xlsx hoặc .xls)</label>
+                        <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <strong>Định dạng file Excel:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Dòng đầu tiên là tiêu đề cột</li>
+                            <li>Các cột: Họ tên, CMND/CCCD, Ngày sinh, Điện thoại, v.v.</li>
+                            <li>Ngày tháng: DD/MM/YYYY hoặc YYYY-MM-DD</li>
+                        </ul>
+                        <a href="#" class="text-decoration-none" onclick="downloadTemplate(); return false;">
+                            <i class="bi bi-download"></i> Tải file mẫu
+                        </a>
+                    </div>
+                    <div id="importProgress" style="display:none;">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <span>Đang import...</span>
+                    </div>
+                    <div id="importResult" style="display:none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" onclick="submitImport()">
+                    <i class="bi bi-upload"></i> Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function submitImport() {
+    const form = document.getElementById('importExcelForm');
+    const formData = new FormData(form);
+    const fileInput = document.getElementById('excelFile');
+
+    if (!fileInput.files.length) {
+        alert('Vui lòng chọn file Excel');
+        return;
+    }
+
+    // Show progress
+    document.getElementById('importProgress').style.display = 'block';
+    document.getElementById('importResult').style.display = 'none';
+
+    fetch('{% url "customer_import_excel" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('importProgress').style.display = 'none';
+        const resultDiv = document.getElementById('importResult');
+        resultDiv.style.display = 'block';
+
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>Import thành công!</strong><br>
+                    - Đã import: <strong>${data.imported}</strong> khách hàng<br>
+                    - Bỏ qua: <strong>${data.skipped}</strong> dòng
+                    ${data.errors && data.errors.length > 0 ? '<br><br><strong>Lỗi:</strong><ul>' + data.errors.map(e => '<li>' + e + '</li>').join('') + '</ul>' : ''}
+                </div>
+            `;
+
+            // Reload page after 2 seconds
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Lỗi:</strong> ${data.error}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('importProgress').style.display = 'none';
+        document.getElementById('importResult').innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Lỗi:</strong> ${error.message}
+            </div>
+        `;
+        document.getElementById('importResult').style.display = 'block';
+    });
+}
+
+// Validation functions
+function validatePhoneNumber(phone) {
+    if (!phone || phone.trim() === '') return { valid: true }; // Optional
+
+    phone = phone.replace(/[\s-]/g, '');
+
+    if (!/^0\d{9}$/.test(phone)) {
+        return {
+            valid: false,
+            message: 'Số điện thoại phải có 10 số và bắt đầu bằng 0'
+        };
+    }
+
+    return { valid: true };
+}
+
+function validateBirthDate(dateStr) {
+    if (!dateStr || dateStr.trim() === '') return { valid: true };
+
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(date.getTime())) {
+        return { valid: false, message: 'Ngày sinh không hợp lệ' };
+    }
+
+    if (date > today) {
+        return { valid: false, message: 'Ngày sinh không thể là ngày trong tương lai' };
+    }
+
+    const minDate = new Date();
+    minDate.setFullYear(minDate.getFullYear() - 150);
+    if (date < minDate) {
+        return { valid: false, message: 'Ngày sinh không hợp lệ' };
+    }
+
+    return { valid: true };
+}
+
+function validateIssuanceDate(dateStr) {
+    if (!dateStr || dateStr.trim() === '') return { valid: true };
+
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(date.getTime())) {
+        return { valid: false, message: 'Ngày cấp CCCD không hợp lệ' };
+    }
+
+    if (date > today) {
+        return { valid: false, message: 'Ngày cấp CCCD không thể là ngày trong tương lai' };
+    }
+
+    return { valid: true };
+}
+
+function validateExpiryDate(issueDate, expiryDate) {
+    if (!expiryDate || expiryDate.trim() === '') return { valid: true };
+    if (!issueDate || issueDate.trim() === '') return { valid: true };
+
+    const issue = new Date(issueDate);
+    const expiry = new Date(expiryDate);
+
+    if (isNaN(issue.getTime()) || isNaN(expiry.getTime())) {
+        return { valid: true };
+    }
+
+    if (expiry <= issue) {
+        return { valid: false, message: 'Ngày hết hạn CCCD phải lớn hơn ngày cấp' };
+    }
+
+    return { valid: true };
+}
+
+function validateCustomerData(formId) {
+    const errors = [];
+
+    const phone = document.querySelector(`#${formId} [name="so_dien_thoai"]`)?.value;
+    const phoneResult = validatePhoneNumber(phone);
+    if (!phoneResult.valid) errors.push(phoneResult.message);
+
+    const birthDate = document.querySelector(`#${formId} [name="ngay_sinh"]`)?.value;
+    const birthResult = validateBirthDate(birthDate);
+    if (!birthResult.valid) errors.push(birthResult.message);
+
+    const issueDate = document.querySelector(`#${formId} [name="ngay_cap_cmnd"]`)?.value;
+    const issueResult = validateIssuanceDate(issueDate);
+    if (!issueResult.valid) errors.push(issueResult.message);
+
+    const expiryDate = document.querySelector(`#${formId} [name="ngay_het_han_cmnd"]`)?.value;
+    const expiryResult = validateExpiryDate(issueDate, expiryDate);
+    if (!expiryResult.valid) errors.push(expiryResult.message);
+
+    return { valid: errors.length === 0, errors: errors };
+}
+
+function downloadTemplate() {
+    // Create a sample Excel template
+    const csvContent = `Họ tên,CMND/CCCD,Ngày sinh,Giới tính,Điện thoại,Email,Địa chỉ,Nghề nghiệp,Nơi làm việc,Số tài khoản
+Nguyễn Văn A,123456789012,01/01/1990,Nam,0987654321,nguyenvana@email.com,123 Đường ABC,Công chức viên chức,Công ty ABC,1234567890
+Trần Thị B,987654321098,15/05/1985,Nữ,0912345678,tranthib@email.com,456 Đường XYZ,Giáo viên/Bác Sĩ,Trường ABC,9876543210`;
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'mau_import_khach_hang.csv';
+    link.click();
+}
+
+// Add Customer
+function submitAddCustomer() {
+    // Validate form
+    const validation = validateCustomerData('addCustomerForm');
+    if (!validation.valid) {
+        const resultDiv = document.getElementById('addResult');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> <strong>Vui lòng kiểm tra lại:</strong>
+                <ul class="mb-0 mt-2">
+                    ${validation.errors.map(err => '<li>' + err + '</li>').join('')}
+                </ul>
+            </div>
+        `;
+        return;
+    }
+
+    const form = document.getElementById('addCustomerForm');
+    const formData = new FormData(form);
+
+    fetch('{% url "customer_create" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const resultDiv = document.getElementById('addResult');
+        resultDiv.style.display = 'block';
+
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> <strong>Thành công!</strong> Đã thêm khách hàng.
+                </div>
+            `;
+            // Reload page after 1 second
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong> ${data.error}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('addResult').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong> ${error.message}
+            </div>
+        `;
+        document.getElementById('addResult').style.display = 'block';
+    });
+}
+
+// Edit Customer - Load data
+function editCustomer(customerId) {
+    fetch(`/api/customers/${customerId}/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const customer = data.customer;
+            document.getElementById('edit_customer_id').value = customerId;
+            document.getElementById('edit_ma_khach_hang').value = customer.ma_khach_hang || '';
+            document.getElementById('edit_ho_ten').value = customer.ho_ten || '';
+            document.getElementById('edit_so_cmnd').value = customer.so_cmnd || '';
+            document.getElementById('edit_ngay_cap_cmnd').value = customer.ngay_cap_cmnd || '';
+            document.getElementById('edit_ngay_het_han_cmnd').value = customer.ngay_het_han_cmnd || '';
+            document.getElementById('edit_noi_cap_cmnd').value = customer.noi_cap_cmnd || 'Cục CSQLHC về TTXH';
+            document.getElementById('edit_ngay_sinh').value = customer.ngay_sinh || '';
+            document.getElementById('edit_gioi_tinh').value = customer.gioi_tinh || 'Nam';
+            document.getElementById('edit_so_dien_thoai').value = customer.so_dien_thoai || '';
+            document.getElementById('edit_email').value = customer.email || '';
+            document.getElementById('edit_nghe_nghiep').value = customer.nghe_nghiep || '';
+            document.getElementById('edit_dia_chi').value = customer.dia_chi || '';
+            document.getElementById('edit_noi_lam_viec').value = customer.noi_lam_viec || '';
+            document.getElementById('edit_so_tai_khoan').value = customer.so_tai_khoan || '';
+            document.getElementById('edit_ghi_chu').value = customer.ghi_chu || '';
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
+            modal.show();
+        } else {
+            alert('Lỗi: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Lỗi: ' + error.message);
+    });
+}
+
+// Edit Customer - Submit
+function submitEditCustomer() {
+    // Validate form
+    const validation = validateCustomerData('editCustomerForm');
+    if (!validation.valid) {
+        const resultDiv = document.getElementById('editResult');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> <strong>Vui lòng kiểm tra lại:</strong>
+                <ul class="mb-0 mt-2">
+                    ${validation.errors.map(err => '<li>' + err + '</li>').join('')}
+                </ul>
+            </div>
+        `;
+        return;
+    }
+
+    const form = document.getElementById('editCustomerForm');
+    const formData = new FormData(form);
+    const customerId = document.getElementById('edit_customer_id').value;
+
+    fetch(`/api/customers/${customerId}/update/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const resultDiv = document.getElementById('editResult');
+        resultDiv.style.display = 'block';
+
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> <strong>Thành công!</strong> Đã cập nhật thông tin khách hàng.
+                </div>
+            `;
+            // Reload page after 1 second
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            let errorMsg = data.error || 'Có lỗi xảy ra';
+            if (data.errors) {
+                errorMsg += '<ul class="mb-0 mt-2">';
+                for (const [field, error] of Object.entries(data.errors)) {
+                    errorMsg += `<li><strong>${field}:</strong> ${error}</li>`;
+                }
+                errorMsg += '</ul>';
+            }
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong><br>${errorMsg}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('editResult').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong> ${error.message}
+            </div>
+        `;
+        document.getElementById('editResult').style.display = 'block';
+    });
+}
+
+// Delete Customer
+function deleteCustomer(customerId, customerName) {
+    document.getElementById('delete_customer_id').value = customerId;
+    document.getElementById('deleteCustomerName').textContent = customerName;
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('deleteCustomerModal'));
+    modal.show();
+}
+
+// Confirm Delete Customer
+function confirmDeleteCustomer() {
+    const customerId = document.getElementById('delete_customer_id').value;
+
+    fetch(`/api/customers/${customerId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const resultDiv = document.getElementById('deleteResult');
+        resultDiv.style.display = 'block';
+
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> <strong>Thành công!</strong> Đã xóa khách hàng.
+                </div>
+            `;
+            // Reload page after 1 second
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong> ${data.error}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('deleteResult').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong> ${error.message}
+            </div>
+        `;
+        document.getElementById('deleteResult').style.display = 'block';
+    });
+}
+</script>
 {% endblock %}

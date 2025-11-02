@@ -659,9 +659,159 @@ document.getElementById('paste-from-clipboard-btn')?.addEventListener('click', a
     }
 });
 
+// Validation functions
+function validatePhoneNumber(phone) {
+    if (!phone || phone.trim() === '') return { valid: true }; // Optional field
+
+    // Remove spaces and dashes
+    phone = phone.replace(/[\s-]/g, '');
+
+    // Check Vietnamese phone format: 10 digits, starts with 0
+    if (!/^0\d{9}$/.test(phone)) {
+        return {
+            valid: false,
+            message: 'Số điện thoại phải có 10 số và bắt đầu bằng 0'
+        };
+    }
+
+    return { valid: true };
+}
+
+function validateDate(dateStr, fieldName) {
+    if (!dateStr || dateStr.trim() === '') return { valid: true }; // Optional field
+
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(date.getTime())) {
+        return {
+            valid: false,
+            message: `${fieldName} không hợp lệ`
+        };
+    }
+
+    return { valid: true, date: date };
+}
+
+function validateBirthDate(dateStr) {
+    if (!dateStr || dateStr.trim() === '') return { valid: true };
+
+    const result = validateDate(dateStr, 'Ngày sinh');
+    if (!result.valid) return result;
+
+    const date = result.date;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (date > today) {
+        return {
+            valid: false,
+            message: 'Ngày sinh không thể là ngày trong tương lai'
+        };
+    }
+
+    // Check not too old (e.g., 150 years)
+    const minDate = new Date();
+    minDate.setFullYear(minDate.getFullYear() - 150);
+    if (date < minDate) {
+        return {
+            valid: false,
+            message: 'Ngày sinh không hợp lệ'
+        };
+    }
+
+    return { valid: true };
+}
+
+function validateIssuanceDate(dateStr) {
+    if (!dateStr || dateStr.trim() === '') return { valid: true };
+
+    const result = validateDate(dateStr, 'Ngày cấp CCCD');
+    if (!result.valid) return result;
+
+    const date = result.date;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (date > today) {
+        return {
+            valid: false,
+            message: 'Ngày cấp CCCD không thể là ngày trong tương lai'
+        };
+    }
+
+    return { valid: true, date: date };
+}
+
+function validateExpiryDate(issueDate, expiryDate) {
+    if (!expiryDate || expiryDate.trim() === '') return { valid: true };
+    if (!issueDate || issueDate.trim() === '') return { valid: true };
+
+    const issue = new Date(issueDate);
+    const expiry = new Date(expiryDate);
+
+    if (isNaN(issue.getTime()) || isNaN(expiry.getTime())) {
+        return { valid: true }; // Let other validations handle this
+    }
+
+    if (expiry <= issue) {
+        return {
+            valid: false,
+            message: 'Ngày hết hạn CCCD phải lớn hơn ngày cấp'
+        };
+    }
+
+    return { valid: true };
+}
+
+function validateCustomerForm() {
+    const errors = [];
+
+    // Validate phone number
+    const phone = document.querySelector('[name="so_dien_thoai"]')?.value;
+    const phoneResult = validatePhoneNumber(phone);
+    if (!phoneResult.valid) {
+        errors.push(phoneResult.message);
+    }
+
+    // Validate birth date
+    const birthDate = document.querySelector('[name="ngay_sinh"]')?.value;
+    const birthResult = validateBirthDate(birthDate);
+    if (!birthResult.valid) {
+        errors.push(birthResult.message);
+    }
+
+    // Validate issuance date
+    const issueDate = document.querySelector('[name="ngay_cap_cmnd"]')?.value;
+    const issueResult = validateIssuanceDate(issueDate);
+    if (!issueResult.valid) {
+        errors.push(issueResult.message);
+    }
+
+    // Validate expiry date
+    const expiryDate = document.querySelector('[name="ngay_het_han_cmnd"]')?.value;
+    const expiryResult = validateExpiryDate(issueDate, expiryDate);
+    if (!expiryResult.valid) {
+        errors.push(expiryResult.message);
+    }
+
+    return {
+        valid: errors.length === 0,
+        errors: errors
+    };
+}
+
 // Form submission
 document.getElementById('customerForm').addEventListener('submit', function(e) {
     e.preventDefault();
+
+    // Validate form before submission
+    const validation = validateCustomerForm();
+    if (!validation.valid) {
+        alert('Vui lòng kiểm tra lại thông tin:\n\n' + validation.errors.join('\n'));
+        return;
+    }
 
     const formData = new FormData(this);
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
