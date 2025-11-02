@@ -31,6 +31,22 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+### 4. Tải Bootstrap CSS/JS files
+
+**QUAN TRỌNG**: Trước khi chạy ứng dụng lần đầu, cần tải các file Bootstrap:
+
+```cmd
+download_bootstrap_files.bat
+```
+
+Sau đó chạy collectstatic:
+
+```cmd
+python manage.py collectstatic --noinput
+```
+
+> **Lưu ý**: Nếu không có internet hoặc gặp lỗi, xem hướng dẫn chi tiết trong file `STATIC_FILES_SETUP.md`
+
 ## Chạy ứng dụng
 
 ### Cách 1: Sử dụng file .bat (Đơn giản nhất)
@@ -172,6 +188,29 @@ pip install -r requirements.txt
 1. Kiểm tra firewall: Cho phép port 8000
 2. Kiểm tra `host` trong `run_waitress.py` phải là `0.0.0.0`
 3. Kiểm tra máy khác và máy chủ trong cùng mạng LAN
+
+### Lỗi: CSS/JS không load (trang web không có styling)
+
+Các file Bootstrap chưa được tải về. Thấy lỗi:
+```
+Not Found: /static/vendor/bootstrap/css/bootstrap.min.css
+```
+
+**Giải pháp:**
+
+1. Chạy script tải Bootstrap:
+   ```cmd
+   download_bootstrap_files.bat
+   ```
+
+2. Chạy collectstatic:
+   ```cmd
+   python manage.py collectstatic --noinput
+   ```
+
+3. Khởi động lại server
+
+**Xem hướng dẫn chi tiết**: `STATIC_FILES_SETUP.md`
 
 ## Liên hệ hỗ trợ
 
