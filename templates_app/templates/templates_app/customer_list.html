@@ -601,9 +601,17 @@ function submitEditCustomer() {
                 window.location.reload();
             }, 1000);
         } else {
+            let errorMsg = data.error || 'Có lỗi xảy ra';
+            if (data.errors) {
+                errorMsg += '<ul class="mb-0 mt-2">';
+                for (const [field, error] of Object.entries(data.errors)) {
+                    errorMsg += `<li><strong>${field}:</strong> ${error}</li>`;
+                }
+                errorMsg += '</ul>';
+            }
             resultDiv.innerHTML = `
                 <div class="alert alert-danger">
-                    <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong> ${data.error}
+                    <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong><br>${errorMsg}
                 </div>
             `;
         }

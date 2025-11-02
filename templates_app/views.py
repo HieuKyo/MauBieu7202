@@ -354,43 +354,115 @@ def customer_detail_api(request, customer_id):
 @require_http_methods(["POST"])
 def customer_create_view(request):
     """Tạo khách hàng mới"""
-    form = CustomerForm(request.POST)
-    if form.is_valid():
-        customer = form.save(commit=False)
-        customer.created_by = request.user
+    try:
+        # Get form data
+        ho_ten = request.POST.get('ho_ten', '').strip()
+        so_cmnd = request.POST.get('so_cmnd', '').strip()
+
+        # Validate required fields
+        if not ho_ten or not so_cmnd:
+            return JsonResponse({
+                'success': False,
+                'error': 'Họ tên và Số CMND/CCCD là bắt buộc'
+            }, status=400)
+
+        # Check if CMND already exists
+        if Customer.objects.filter(so_cmnd=so_cmnd).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Số CMND/CCCD {so_cmnd} đã tồn tại trong hệ thống'
+            }, status=400)
+
+        # Create customer
+        customer = Customer(
+            ma_khach_hang=request.POST.get('ma_khach_hang', ''),
+            ho_ten=ho_ten,
+            so_cmnd=so_cmnd,
+            ngay_cap_cmnd=request.POST.get('ngay_cap_cmnd') or None,
+            noi_cap_cmnd=request.POST.get('noi_cap_cmnd', 'Cục CSQLHC về TTXH'),
+            ngay_sinh=request.POST.get('ngay_sinh') or None,
+            gioi_tinh=request.POST.get('gioi_tinh', 'Nam'),
+            so_dien_thoai=request.POST.get('so_dien_thoai', ''),
+            email=request.POST.get('email', ''),
+            dia_chi=request.POST.get('dia_chi', ''),
+            nghe_nghiep=request.POST.get('nghe_nghiep', ''),
+            noi_lam_viec=request.POST.get('noi_lam_viec', ''),
+            so_tai_khoan=request.POST.get('so_tai_khoan', ''),
+            ghi_chu=request.POST.get('ghi_chu', ''),
+            created_by=request.user
+        )
         customer.save()
+
         return JsonResponse({
             'success': True,
             'message': 'Đã thêm khách hàng thành công',
             'customer_id': customer.id,
             'customer_name': customer.ho_ten
         })
-    else:
-        errors = {field: error[0] for field, error in form.errors.items()}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'errors': errors
-        }, status=400)
+            'error': f'Lỗi khi tạo khách hàng: {str(e)}'
+        }, status=500)
 
 
 @login_required
 @require_http_methods(["POST"])
 def customer_update_view(request, customer_id):
     """Cập nhật thông tin khách hàng"""
-    customer = get_object_or_404(Customer, id=customer_id)
-    form = CustomerForm(request.POST, instance=customer)
-    if form.is_valid():
-        form.save()
+    try:
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        # Get form data
+        ho_ten = request.POST.get('ho_ten', '').strip()
+        so_cmnd = request.POST.get('so_cmnd', '').strip()
+
+        # Validate required fields
+        if not ho_ten or not so_cmnd:
+            return JsonResponse({
+                'success': False,
+                'error': 'Họ tên và Số CMND/CCCD là bắt buộc'
+            }, status=400)
+
+        # Check if CMND already exists (excluding current customer)
+        if Customer.objects.filter(so_cmnd=so_cmnd).exclude(id=customer_id).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Số CMND/CCCD {so_cmnd} đã tồn tại trong hệ thống'
+            }, status=400)
+
+        # Update customer fields
+        customer.ma_khach_hang = request.POST.get('ma_khach_hang', '')
+        customer.ho_ten = ho_ten
+        customer.so_cmnd = so_cmnd
+        customer.ngay_cap_cmnd = request.POST.get('ngay_cap_cmnd') or None
+        customer.noi_cap_cmnd = request.POST.get('noi_cap_cmnd', 'Cục CSQLHC về TTXH')
+        customer.ngay_sinh = request.POST.get('ngay_sinh') or None
+        customer.gioi_tinh = request.POST.get('gioi_tinh', 'Nam')
+        customer.so_dien_thoai = request.POST.get('so_dien_thoai', '')
+        customer.email = request.POST.get('email', '')
+        customer.dia_chi = request.POST.get('dia_chi', '')
+        customer.nghe_nghiep = request.POST.get('nghe_nghiep', '')
+        customer.noi_lam_viec = request.POST.get('noi_lam_viec', '')
+        customer.so_tai_khoan = request.POST.get('so_tai_khoan', '')
+        customer.ghi_chu = request.POST.get('ghi_chu', '')
+        customer.save()
+
         return JsonResponse({
             'success': True,
             'message': 'Đã cập nhật thông tin khách hàng'
         })
-    else:
-        errors = {field: error[0] for field, error in form.errors.items()}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'errors': errors
-        }, status=400)
+            'error': f'Lỗi khi cập nhật khách hàng: {str(e)}'
+        }, status=500)
 
 
 @login_required
