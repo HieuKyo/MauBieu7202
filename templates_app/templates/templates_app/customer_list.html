@@ -67,6 +67,7 @@
                         <th>Họ và tên</th>
                         <th>Số CMND/CCCD</th>
                         <th>Ngày cấp</th>
+                        <th>Ngày hết hạn</th>
                         <th>Nơi cấp</th>
                         <th>Số điện thoại</th>
                         <th>Ngày sinh</th>
@@ -82,6 +83,13 @@
                         <td>
                             {% if customer.ngay_cap_cmnd %}
                                 {{ customer.ngay_cap_cmnd|date:"d/m/Y" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if customer.ngay_het_han_cmnd %}
+                                {{ customer.ngay_het_han_cmnd|date:"d/m/Y" }}
                             {% else %}
                                 -
                             {% endif %}
@@ -153,13 +161,19 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-12 mb-3">
                             <label for="add_so_cmnd" class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="add_so_cmnd" name="so_cmnd" required>
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="add_ngay_cap_cmnd" class="form-label">Ngày cấp</label>
                             <input type="date" class="form-control" id="add_ngay_cap_cmnd" name="ngay_cap_cmnd">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="add_ngay_het_han_cmnd" class="form-label">Ngày hết hạn</label>
+                            <input type="date" class="form-control" id="add_ngay_het_han_cmnd" name="ngay_het_han_cmnd">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="add_noi_cap_cmnd" class="form-label">Nơi cấp</label>
@@ -262,13 +276,19 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-12 mb-3">
                             <label for="edit_so_cmnd" class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="edit_so_cmnd" name="so_cmnd" required>
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="edit_ngay_cap_cmnd" class="form-label">Ngày cấp</label>
                             <input type="date" class="form-control" id="edit_ngay_cap_cmnd" name="ngay_cap_cmnd">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_ngay_het_han_cmnd" class="form-label">Ngày hết hạn</label>
+                            <input type="date" class="form-control" id="edit_ngay_het_han_cmnd" name="ngay_het_han_cmnd">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="edit_noi_cap_cmnd" class="form-label">Nơi cấp</label>
@@ -549,6 +569,7 @@ function editCustomer(customerId) {
             document.getElementById('edit_ho_ten').value = customer.ho_ten || '';
             document.getElementById('edit_so_cmnd').value = customer.so_cmnd || '';
             document.getElementById('edit_ngay_cap_cmnd').value = customer.ngay_cap_cmnd || '';
+            document.getElementById('edit_ngay_het_han_cmnd').value = customer.ngay_het_han_cmnd || '';
             document.getElementById('edit_noi_cap_cmnd').value = customer.noi_cap_cmnd || 'Cục CSQLHC về TTXH';
             document.getElementById('edit_ngay_sinh').value = customer.ngay_sinh || '';
             document.getElementById('edit_gioi_tinh').value = customer.gioi_tinh || 'Nam';
