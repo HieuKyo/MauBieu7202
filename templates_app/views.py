@@ -10,6 +10,8 @@ from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
 from .utils import render_word_template
 import os
 import json
+import re
+from datetime import date, datetime
 
 
 @login_required
@@ -350,6 +352,139 @@ def customer_detail_api(request, customer_id):
             'error': 'Không tìm thấy khách hàng'
         }, status=404)
 
+
+# ============================================
+# Customer Validation Functions
+# ============================================
+
+def validate_phone_number(phone):
+    """
+    Validate Vietnamese phone number format
+    Returns: (is_valid, error_message)
+    """
+    if not phone or phone.strip() == '':
+        return True, None  # Optional field
+
+    # Remove spaces and dashes
+    phone = phone.replace(' ', '').replace('-', '')
+
+    # Must be 10 digits and start with 0
+    if not re.match(r'^0\d{9}$', phone):
+        return False, 'Số điện thoại phải có 10 số và bắt đầu bằng 0'
+
+    return True, None
+
+
+def validate_birth_date(date_str):
+    """
+    Validate birth date
+    Returns: (is_valid, error_message)
+    """
+    if not date_str or date_str.strip() == '':
+        return True, None  # Optional field
+
+    try:
+        birth_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return False, 'Ngày sinh không hợp lệ'
+
+    today = date.today()
+
+    # Cannot be in the future
+    if birth_date > today:
+        return False, 'Ngày sinh không thể là ngày trong tương lai'
+
+    # Cannot be more than 150 years old
+    max_age = today.year - 150
+    if birth_date.year < max_age:
+        return False, 'Ngày sinh không hợp lệ'
+
+    return True, None
+
+
+def validate_issuance_date(date_str):
+    """
+    Validate CCCD issuance date
+    Returns: (is_valid, error_message)
+    """
+    if not date_str or date_str.strip() == '':
+        return True, None  # Optional field
+
+    try:
+        issue_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return False, 'Ngày cấp CCCD không hợp lệ'
+
+    today = date.today()
+
+    # Cannot be in the future
+    if issue_date > today:
+        return False, 'Ngày cấp CCCD không thể là ngày trong tương lai'
+
+    return True, None
+
+
+def validate_expiry_date(issue_date_str, expiry_date_str):
+    """
+    Validate CCCD expiry date (must be after issuance date)
+    Returns: (is_valid, error_message)
+    """
+    if not expiry_date_str or expiry_date_str.strip() == '':
+        return True, None  # Optional field
+
+    if not issue_date_str or issue_date_str.strip() == '':
+        return True, None  # Can't validate if no issue date
+
+    try:
+        issue_date = datetime.strptime(issue_date_str, '%Y-%m-%d').date()
+        expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return True, None  # Skip if dates are invalid (will be caught by other validators)
+
+    # Expiry date must be after issue date
+    if expiry_date <= issue_date:
+        return False, 'Ngày hết hạn CCCD phải lớn hơn ngày cấp'
+
+    return True, None
+
+
+def validate_customer_data(request_data):
+    """
+    Validate all customer data fields
+    Returns: (is_valid, error_messages_list)
+    """
+    errors = []
+
+    # Validate phone number
+    phone = request_data.get('so_dien_thoai', '')
+    is_valid, error_msg = validate_phone_number(phone)
+    if not is_valid:
+        errors.append(error_msg)
+
+    # Validate birth date
+    birth_date = request_data.get('ngay_sinh', '')
+    is_valid, error_msg = validate_birth_date(birth_date)
+    if not is_valid:
+        errors.append(error_msg)
+
+    # Validate issuance date
+    issue_date = request_data.get('ngay_cap_cmnd', '')
+    is_valid, error_msg = validate_issuance_date(issue_date)
+    if not is_valid:
+        errors.append(error_msg)
+
+    # Validate expiry date
+    expiry_date = request_data.get('ngay_het_han_cmnd', '')
+    is_valid, error_msg = validate_expiry_date(issue_date, expiry_date)
+    if not is_valid:
+        errors.append(error_msg)
+
+    return len(errors) == 0, errors
+
+
+# ============================================
+# Customer CRUD Views
+# ============================================
 
 @login_required
 @require_http_methods(["POST"])
