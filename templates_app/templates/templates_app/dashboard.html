@@ -591,17 +591,38 @@ function loadCustomerData(customerId) {
 }
 
 // Fill form with data object
+// Helper function to convert date from dd/mm/yyyy to yyyy-mm-dd format
+function convertDateFormat(dateStr) {
+    if (!dateStr || dateStr.trim() === '') return '';
+
+    // Check if already in yyyy-mm-dd format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+    }
+
+    // Convert from dd/mm/yyyy to yyyy-mm-dd
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+    }
+
+    return '';
+}
+
 function fillFormWithData(data) {
     // Personal info
     if (data.ma_khach_hang) document.querySelector('[name="ma_khach_hang"]').value = data.ma_khach_hang;
     if (data.ho_ten) document.querySelector('[name="ho_ten"]').value = data.ho_ten;
-    if (data.ngay_sinh) document.querySelector('[name="ngay_sinh"]').value = data.ngay_sinh;
+    if (data.ngay_sinh) document.querySelector('[name="ngay_sinh"]').value = convertDateFormat(data.ngay_sinh);
     if (data.gioi_tinh) document.querySelector('[name="gioi_tinh"]').value = data.gioi_tinh;
 
     // ID documents
     if (data.so_cmnd) document.querySelector('[name="so_cmnd"]').value = data.so_cmnd;
-    if (data.ngay_cap_cmnd) document.querySelector('[name="ngay_cap_cmnd"]').value = data.ngay_cap_cmnd;
-    if (data.ngay_het_han_cmnd) document.querySelector('[name="ngay_het_han_cmnd"]').value = data.ngay_het_han_cmnd;
+    if (data.ngay_cap_cmnd) document.querySelector('[name="ngay_cap_cmnd"]').value = convertDateFormat(data.ngay_cap_cmnd);
+    if (data.ngay_het_han_cmnd) document.querySelector('[name="ngay_het_han_cmnd"]').value = convertDateFormat(data.ngay_het_han_cmnd);
     if (data.noi_cap_cmnd) document.querySelector('[name="noi_cap_cmnd"]').value = data.noi_cap_cmnd;
 
     // Contact
