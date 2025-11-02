@@ -143,11 +143,11 @@
                             <div id="search-results" class="list-group mt-2" style="display:none; max-height:200px; overflow-y:auto;"></div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small">Dán từ Clipboard (JSON)</label>
-                            <button type="button" class="btn btn-outline-primary w-100" id="paste-from-clipboard-btn">
-                                <i class="bi bi-clipboard"></i> Paste từ Clipboard
+                            <label class="form-label small">Import từ AGRIBANK</label>
+                            <button type="button" class="btn btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#dashboardImportAgribankModal">
+                                <i class="bi bi-bank"></i> Paste từ AGRIBANK
                             </button>
-                            <small class="text-muted d-block mt-1">Dán dữ liệu JSON khách hàng đã copy trước đó</small>
+                            <small class="text-muted d-block mt-1">Copy dữ liệu từ AGRIBANK và paste trực tiếp (nhanh nhất!)</small>
                         </div>
                     </div>
                 </div>
@@ -384,6 +384,80 @@
             <button class="btn btn-primary mt-3" onclick="goToStep(1)">
                 <i class="bi bi-arrow-left-circle"></i> Tạo mẫu biểu khác
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Import từ AGRIBANK (Dashboard) -->
+<div class="modal fade" id="dashboardImportAgribankModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-bank"></i> Import từ AGRIBANK</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="dashboardClipboardData" class="form-label fw-bold">
+                        <i class="bi bi-clipboard"></i> Paste dữ liệu từ AGRIBANK
+                    </label>
+                    <textarea
+                        class="form-control font-monospace"
+                        id="dashboardClipboardData"
+                        rows="10"
+                        placeholder="Ctrl+V để paste dữ liệu từ AGRIBANK&#10;&#10;Hướng dẫn:&#10;1. Copy 2 dòng từ AGRIBANK (header + dữ liệu khách hàng)&#10;2. Paste vào đây (Ctrl+V)&#10;3. Nhấn 'Điền vào Form' ở dưới&#10;&#10;Ví dụ:&#10;custno	nmloc	regno	name_1	name_3	name_4...&#10;7202000699174	Trần Ngọc Thủy	022189125	19700101	Nữ	0766939319..."
+                        style="font-size: 12px;"
+                    ></textarea>
+                    <div class="form-text">
+                        <strong>Cách sử dụng:</strong>
+                        <ol class="small mb-0 mt-1">
+                            <li>Trong AGRIBANK: Chọn 2 dòng (header + dữ liệu) → Copy (Ctrl+C)</li>
+                            <li>Click vào textarea ở trên</li>
+                            <li>Paste (Ctrl+V)</li>
+                            <li>Nhấn "Điền vào Form" → Form sẽ tự động điền thông tin!</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="alert alert-success">
+                    <i class="bi bi-lightning-charge-fill"></i> <strong>Siêu nhanh!</strong>
+                    Copy từ AGRIBANK → Paste → Form tự động điền → Tạo mẫu biểu ngay!
+                </div>
+
+                <div class="alert alert-info">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Các trường tự động điền:</strong>
+                            <ul class="small mb-0">
+                                <li>Mã KH, Họ tên, CMND/CCCD</li>
+                                <li>Ngày sinh, Giới tính</li>
+                                <li>Số điện thoại, Email</li>
+                                <li>Địa chỉ, Nghề nghiệp</li>
+                                <li>Ngày cấp CCCD, Nơi cấp</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Lưu ý:</strong>
+                            <ul class="small mb-0">
+                                <li>Phải copy <strong>2 dòng</strong> (header + data)</li>
+                                <li>Phân cách bằng <strong>Tab</strong></li>
+                                <li>Ngày tháng: <strong>YYYYMMDD</strong></li>
+                                <li>Nghề nghiệp: Cột 58 (profnm)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dashboardImportResult" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Đóng
+                </button>
+                <button type="button" class="btn btn-info" onclick="fillFormFromAgribank()">
+                    <i class="bi bi-arrow-down-circle"></i> Điền vào Form
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -661,27 +735,122 @@ function fillFormWithData(data) {
     });
 }
 
-// Clipboard Paste Functionality
-document.getElementById('paste-from-clipboard-btn')?.addEventListener('click', async function() {
-    try {
-        const text = await navigator.clipboard.readText();
-        const data = JSON.parse(text);
-        fillFormWithData(data);
+// ============================================
+// AGRIBANK Import from Clipboard
+// ============================================
 
-        // Show success message
+function fillFormFromAgribank() {
+    const textarea = document.getElementById('dashboardClipboardData');
+    const clipboardData = textarea.value.trim();
+    const resultDiv = document.getElementById('dashboardImportResult');
+
+    if (!clipboardData) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> Vui lòng paste dữ liệu từ AGRIBANK vào textarea!
+            </div>
+        `;
+        return;
+    }
+
+    // Validate minimum 2 lines (header + data)
+    const lines = clipboardData.split('\n');
+    if (lines.length < 2) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> <strong>Lỗi:</strong> Dữ liệu phải có ít nhất 2 dòng (header + dữ liệu khách hàng).
+                <br>Vui lòng copy CẢ 2 DÒNG từ AGRIBANK!
+            </div>
+        `;
+        return;
+    }
+
+    try {
+        // Parse TSV data
+        const header = lines[0].trim().split('\t');
+        const values = lines[1].trim().split('\t');
+
+        // Create data object from header and values
+        const data = {};
+        header.forEach((col, index) => {
+            data[col] = values[index] || '';
+        });
+
+        // Helper function to clean value
+        const clean = (val) => val ? val.trim() : '';
+
+        // Helper function to convert YYYYMMDD to YYYY-MM-DD
+        const parseDate = (dateStr) => {
+            if (!dateStr || dateStr.length < 8) return '';
+            const year = dateStr.substring(0, 4);
+            const month = dateStr.substring(4, 6);
+            const day = dateStr.substring(6, 8);
+            return `${year}-${month}-${day}`;
+        };
+
+        // Mapping AGRIBANK fields to form fields
+        const mappedData = {
+            ma_khach_hang: clean(data.custno),
+            ho_ten: clean(data.nmloc),
+            so_cmnd: clean(data.regno),
+            ngay_sinh: parseDate(clean(data.name_1)),
+            gioi_tinh: clean(data.name_3),
+            so_dien_thoai: clean(data.name_4),
+            dia_chi: clean(data.addr1loc),
+            ngay_cap_cmnd: parseDate(clean(data.issuedt1)),
+            nghe_nghiep: clean(data.profnm),
+            email: clean(data.emailaddr),
+        };
+
+        // Fill form with mapped data
+        fillFormWithData(mappedData);
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('dashboardImportAgribankModal'));
+        if (modal) {
+            modal.hide();
+        }
+
+        // Show success message on form
         const alertDiv = document.createElement('div');
         alertDiv.className = 'alert alert-success alert-dismissible fade show';
         alertDiv.innerHTML = `
-            <i class="bi bi-check-circle"></i> Đã dán thông tin từ clipboard thành công!
+            <i class="bi bi-check-circle-fill"></i> <strong>Thành công!</strong> Đã điền thông tin từ AGRIBANK vào form.
+            <ul class="mb-0 mt-2 small">
+                <li>Họ tên: <strong>${mappedData.ho_ten}</strong></li>
+                <li>CMND: <strong>${mappedData.so_cmnd}</strong></li>
+                <li>Nghề nghiệp: <strong>${mappedData.nghe_nghiep}</strong></li>
+            </ul>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        document.getElementById('customerForm').insertBefore(alertDiv, document.getElementById('customerForm').firstChild);
-        setTimeout(() => alertDiv.remove(), 5000);
+        const form = document.getElementById('customerForm');
+        form.insertBefore(alertDiv, form.firstChild);
+        setTimeout(() => alertDiv.remove(), 8000);
+
+        // Scroll to form
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Clear textarea
+        textarea.value = '';
+
     } catch (error) {
-        console.error('Clipboard error:', error);
-        alert('Lỗi khi đọc clipboard. Vui lòng đảm bảo dữ liệu là JSON hợp lệ và trình duyệt cho phép truy cập clipboard.');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle-fill"></i> <strong>Lỗi:</strong> Không thể xử lý dữ liệu.
+                <br>${error.message}
+                <br><br>Vui lòng kiểm tra:
+                <ul class="small">
+                    <li>Đã copy đúng 2 dòng (header + data)?</li>
+                    <li>Dữ liệu có phân cách bằng Tab?</li>
+                </ul>
+            </div>
+        `;
+        console.error('AGRIBANK import error:', error);
     }
-});
+}
 
 // Validation functions
 function validatePhoneNumber(phone) {
