@@ -14,9 +14,6 @@
         <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
             <i class="bi bi-plus-circle"></i> Thêm Khách hàng
         </button>
-        <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#importExcelModal">
-            <i class="bi bi-file-earmark-excel"></i> Import Excel
-        </button>
         <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#importAgribankModal">
             <i class="bi bi-bank"></i> Import AGRIBANK
         </button>
@@ -396,49 +393,6 @@
     </div>
 </div>
 
-<!-- Import Excel Modal -->
-<div class="modal fade" id="importExcelModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Import Khách hàng từ Excel</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="importExcelForm" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="excelFile" class="form-label">Chọn file Excel (.xlsx hoặc .xls)</label>
-                        <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
-                    </div>
-                    <div class="alert alert-info">
-                        <strong>Định dạng file Excel:</strong>
-                        <ul class="mb-0 mt-2">
-                            <li>Dòng đầu tiên là tiêu đề cột</li>
-                            <li>Các cột: Họ tên, CMND/CCCD, Ngày sinh, Điện thoại, v.v.</li>
-                            <li>Ngày tháng: DD/MM/YYYY hoặc YYYY-MM-DD</li>
-                        </ul>
-                        <a href="#" class="text-decoration-none" onclick="downloadTemplate(); return false;">
-                            <i class="bi bi-download"></i> Tải file mẫu
-                        </a>
-                    </div>
-                    <div id="importProgress" style="display:none;">
-                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                        <span>Đang import...</span>
-                    </div>
-                    <div id="importResult" style="display:none;"></div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                <button type="button" class="btn btn-primary" onclick="submitImport()">
-                    <i class="bi bi-upload"></i> Import
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Modal: Import từ AGRIBANK (TSV) -->
 <div class="modal fade" id="importAgribankModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -571,79 +525,6 @@
 
 {% block extra_js %}
 <script>
-function submitImport() {
-    const form = document.getElementById('importExcelForm');
-    const formData = new FormData(form);
-    const fileInput = document.getElementById('excelFile');
-
-    if (!fileInput.files.length) {
-        alert('Vui lòng chọn file Excel');
-        return;
-    }
-
-    // Show progress
-    document.getElementById('importProgress').style.display = 'block';
-    document.getElementById('importResult').style.display = 'none';
-
-    fetch('{% url "customer_import_excel" %}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        document.getElementById('importProgress').style.display = 'none';
-        const resultDiv = document.getElementById('importResult');
-        resultDiv.style.display = 'block';
-
-        if (data.success) {
-            resultDiv.innerHTML = `
-                <div class="alert alert-success">
-                    <strong>Import thành công!</strong><br>
-                    - Đã import: <strong>${data.imported}</strong> khách hàng<br>
-                    - Bỏ qua: <strong>${data.skipped}</strong> dòng
-                    ${data.errors && data.errors.length > 0 ? '<br><br><strong>Lỗi:</strong><ul>' + data.errors.map(e => '<li>' + e + '</li>').join('') + '</ul>' : ''}
-                </div>
-            `;
-
-            // Reload page after 2 seconds
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        } else {
-            resultDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <strong>Lỗi:</strong> ${data.error}
-                </div>
-            `;
-        }
-    })
-    .catch(error => {
-        document.getElementById('importProgress').style.display = 'none';
-        document.getElementById('importResult').innerHTML = `
-            <div class="alert alert-danger">
-                <strong>Lỗi:</strong> ${error.message}
-            </div>
-        `;
-        document.getElementById('importResult').style.display = 'block';
-    });
-}
-
-function downloadTemplate() {
-    // Create a sample Excel template
-    const csvContent = `Họ tên,CMND/CCCD,Ngày sinh,Giới tính,Điện thoại,Email,Địa chỉ,Nghề nghiệp,Nơi làm việc,Số tài khoản
-Nguyễn Văn A,123456789012,01/01/1990,Nam,0987654321,nguyenvana@email.com,123 Đường ABC,Công chức viên chức,Công ty ABC,1234567890
-Trần Thị B,987654321098,15/05/1985,Nữ,0912345678,tranthib@email.com,456 Đường XYZ,Giáo viên/Bác Sĩ,Trường ABC,9876543210`;
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'mau_import_khach_hang.csv';
-    link.click();
-}
-
 // Add Customer
 function submitAddCustomer() {
     const form = document.getElementById('addCustomerForm');
