@@ -17,6 +17,9 @@
         <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#importExcelModal">
             <i class="bi bi-file-earmark-excel"></i> Import Excel
         </button>
+        <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#importAgribankModal">
+            <i class="bi bi-bank"></i> Import AGRIBANK
+        </button>
         <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Quay lại
         </a>
@@ -435,6 +438,80 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Import từ AGRIBANK (TSV) -->
+<div class="modal fade" id="importAgribankModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-bank"></i> Import Khách hàng từ AGRIBANK</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importAgribankForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="agribankFile" class="form-label fw-bold">
+                            <i class="bi bi-file-earmark-text"></i> Chọn file TSV/TXT
+                        </label>
+                        <input type="file" class="form-control form-control-lg" id="agribankFile" name="tsv_file" accept=".tsv,.txt" required>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading"><i class="bi bi-info-circle"></i> Hướng dẫn sử dụng:</h6>
+                        <ol class="mb-2">
+                            <li><strong>Copy dữ liệu</strong> từ hệ thống AGRIBANK (bao gồm cả header)</li>
+                            <li><strong>Paste vào Notepad</strong> hoặc text editor</li>
+                            <li><strong>Lưu file</strong> với extension <code>.tsv</code> hoặc <code>.txt</code></li>
+                            <li><strong>Chọn file</strong> và nhấn Import</li>
+                        </ol>
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Các trường được import:</strong>
+                                <ul class="small mb-0">
+                                    <li>Mã KH, Họ tên, CMND/CCCD</li>
+                                    <li>Ngày sinh, Giới tính</li>
+                                    <li>Số điện thoại, Email</li>
+                                    <li>Địa chỉ, Nghề nghiệp</li>
+                                    <li>Ngày cấp CCCD, Nơi cấp</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Lưu ý:</strong>
+                                <ul class="small mb-0">
+                                    <li>File phải có encoding <strong>UTF-8</strong></li>
+                                    <li>Phân cách bằng <strong>Tab</strong></li>
+                                    <li>Ngày tháng format: <strong>YYYYMMDD</strong></li>
+                                    <li>Nếu CMND đã tồn tại → <strong>Cập nhật</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="importAgribankProgress" style="display:none;">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Đang import dữ liệu từ AGRIBANK...</p>
+                        </div>
+                    </div>
+
+                    <div id="importAgribankResult" style="display:none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Đóng
+                </button>
+                <button type="button" class="btn btn-info" onclick="submitAgribankImport()">
+                    <i class="bi bi-upload"></i> Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -697,6 +774,129 @@ function confirmDeleteCustomer() {
             </div>
         `;
         document.getElementById('deleteResult').style.display = 'block';
+    });
+}
+
+// ============================================
+// Import từ AGRIBANK (TSV)
+// ============================================
+
+function submitAgribankImport() {
+    const form = document.getElementById('importAgribankForm');
+    const formData = new FormData(form);
+    const fileInput = document.getElementById('agribankFile');
+
+    if (!fileInput.files.length) {
+        alert('Vui lòng chọn file TSV/TXT');
+        return;
+    }
+
+    // Validate file extension
+    const fileName = fileInput.files[0].name.toLowerCase();
+    if (!fileName.endsWith('.tsv') && !fileName.endsWith('.txt')) {
+        alert('Vui lòng chọn file có định dạng .tsv hoặc .txt');
+        return;
+    }
+
+    // Show progress
+    document.getElementById('importAgribankProgress').style.display = 'block';
+    document.getElementById('importAgribankResult').style.display = 'none';
+
+    fetch('{% url "customer_import_tsv" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('importAgribankProgress').style.display = 'none';
+        const resultDiv = document.getElementById('importAgribankResult');
+        resultDiv.style.display = 'block';
+
+        if (data.success) {
+            let htmlContent = `
+                <div class="alert alert-success">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-check-circle-fill"></i> Import thành công!
+                    </h5>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center p-3 bg-light rounded">
+                                <h3 class="text-success mb-0">${data.imported || 0}</h3>
+                                <small class="text-muted">Khách hàng mới</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3 bg-light rounded">
+                                <h3 class="text-info mb-0">${data.updated || 0}</h3>
+                                <small class="text-muted">Đã cập nhật</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3 bg-light rounded">
+                                <h3 class="text-danger mb-0">${data.errors || 0}</h3>
+                                <small class="text-muted">Lỗi</small>
+                            </div>
+                        </div>
+                    </div>
+            `;
+
+            // Show error details if any
+            if (data.error_details && data.error_details.length > 0) {
+                htmlContent += `
+                    <hr>
+                    <div class="mt-3">
+                        <strong class="text-danger">
+                            <i class="bi bi-exclamation-triangle"></i> Chi tiết lỗi:
+                        </strong>
+                        <ul class="small mt-2 mb-0">
+                            ${data.error_details.map(e => '<li>' + e + '</li>').join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            htmlContent += `
+                    <hr>
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-primary" onclick="window.location.reload()">
+                            <i class="bi bi-arrow-clockwise"></i> Tải lại trang
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            resultDiv.innerHTML = htmlContent;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-x-circle-fill"></i> Import thất bại
+                    </h5>
+                    <hr>
+                    <p class="mb-0"><strong>Lỗi:</strong> ${data.error || 'Không xác định'}</p>
+                    ${data.error_details && data.error_details.length > 0 ?
+                        '<ul class="mt-2 mb-0">' + data.error_details.map(e => '<li>' + e + '</li>').join('') + '</ul>'
+                        : ''}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('importAgribankProgress').style.display = 'none';
+        document.getElementById('importAgribankResult').innerHTML = `
+            <div class="alert alert-danger">
+                <h5 class="alert-heading">
+                    <i class="bi bi-x-circle-fill"></i> Lỗi kết nối
+                </h5>
+                <hr>
+                <p class="mb-0">${error.message}</p>
+            </div>
+        `;
+        document.getElementById('importAgribankResult').style.display = 'block';
     });
 }
 </script>
