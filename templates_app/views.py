@@ -509,14 +509,6 @@ def customer_create_view(request):
                 'error': f'Số CMND/CCCD {so_cmnd} đã tồn tại trong hệ thống'
             }, status=400)
 
-        # Validate customer data (phone, dates, etc.)
-        is_valid, validation_errors = validate_customer_data(request.POST)
-        if not is_valid:
-            return JsonResponse({
-                'success': False,
-                'error': 'Vui lòng kiểm tra lại thông tin:\n' + '\n'.join(validation_errors)
-            }, status=400)
-
         # Create customer
         customer = Customer(
             ma_khach_hang=request.POST.get('ma_khach_hang', ''),
@@ -577,14 +569,6 @@ def customer_update_view(request, customer_id):
             return JsonResponse({
                 'success': False,
                 'error': f'Số CMND/CCCD {so_cmnd} đã tồn tại trong hệ thống'
-            }, status=400)
-
-        # Validate customer data (phone, dates, etc.)
-        is_valid, validation_errors = validate_customer_data(request.POST)
-        if not is_valid:
-            return JsonResponse({
-                'success': False,
-                'error': 'Vui lòng kiểm tra lại thông tin:\n' + '\n'.join(validation_errors)
             }, status=400)
 
         # Update customer fields

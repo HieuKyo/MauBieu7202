@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Hệ thống Mẫu biểu - Agribank{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
     <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/css/bootstrap-icons.min.css' %}">
     <link href="{% static 'css/agribank-theme.css' %}" rel="stylesheet">
@@ -41,13 +42,18 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard' %}">
+                            <a class="nav-link" href="{% url 'dashboard' %}"> 
                                 <i class="bi bi-grid"></i> Dịch vụ
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" onclick="showComingSoon('Báo cáo')">
                                 <i class="bi bi-bar-chart"></i> Báo cáo
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'customer_list' %}">
+                                <i class="bi bi-people-fill"></i> Khách hàng
                             </a>
                         </li>
                         <li class="nav-item">

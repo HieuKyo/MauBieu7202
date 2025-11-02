@@ -499,104 +499,6 @@ function submitImport() {
     });
 }
 
-// Validation functions
-function validatePhoneNumber(phone) {
-    if (!phone || phone.trim() === '') return { valid: true }; // Optional
-
-    phone = phone.replace(/[\s-]/g, '');
-
-    if (!/^0\d{9}$/.test(phone)) {
-        return {
-            valid: false,
-            message: 'Số điện thoại phải có 10 số và bắt đầu bằng 0'
-        };
-    }
-
-    return { valid: true };
-}
-
-function validateBirthDate(dateStr) {
-    if (!dateStr || dateStr.trim() === '') return { valid: true };
-
-    const date = new Date(dateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (isNaN(date.getTime())) {
-        return { valid: false, message: 'Ngày sinh không hợp lệ' };
-    }
-
-    if (date > today) {
-        return { valid: false, message: 'Ngày sinh không thể là ngày trong tương lai' };
-    }
-
-    const minDate = new Date();
-    minDate.setFullYear(minDate.getFullYear() - 150);
-    if (date < minDate) {
-        return { valid: false, message: 'Ngày sinh không hợp lệ' };
-    }
-
-    return { valid: true };
-}
-
-function validateIssuanceDate(dateStr) {
-    if (!dateStr || dateStr.trim() === '') return { valid: true };
-
-    const date = new Date(dateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (isNaN(date.getTime())) {
-        return { valid: false, message: 'Ngày cấp CCCD không hợp lệ' };
-    }
-
-    if (date > today) {
-        return { valid: false, message: 'Ngày cấp CCCD không thể là ngày trong tương lai' };
-    }
-
-    return { valid: true };
-}
-
-function validateExpiryDate(issueDate, expiryDate) {
-    if (!expiryDate || expiryDate.trim() === '') return { valid: true };
-    if (!issueDate || issueDate.trim() === '') return { valid: true };
-
-    const issue = new Date(issueDate);
-    const expiry = new Date(expiryDate);
-
-    if (isNaN(issue.getTime()) || isNaN(expiry.getTime())) {
-        return { valid: true };
-    }
-
-    if (expiry <= issue) {
-        return { valid: false, message: 'Ngày hết hạn CCCD phải lớn hơn ngày cấp' };
-    }
-
-    return { valid: true };
-}
-
-function validateCustomerData(formId) {
-    const errors = [];
-
-    const phone = document.querySelector(`#${formId} [name="so_dien_thoai"]`)?.value;
-    const phoneResult = validatePhoneNumber(phone);
-    if (!phoneResult.valid) errors.push(phoneResult.message);
-
-    const birthDate = document.querySelector(`#${formId} [name="ngay_sinh"]`)?.value;
-    const birthResult = validateBirthDate(birthDate);
-    if (!birthResult.valid) errors.push(birthResult.message);
-
-    const issueDate = document.querySelector(`#${formId} [name="ngay_cap_cmnd"]`)?.value;
-    const issueResult = validateIssuanceDate(issueDate);
-    if (!issueResult.valid) errors.push(issueResult.message);
-
-    const expiryDate = document.querySelector(`#${formId} [name="ngay_het_han_cmnd"]`)?.value;
-    const expiryResult = validateExpiryDate(issueDate, expiryDate);
-    if (!expiryResult.valid) errors.push(expiryResult.message);
-
-    return { valid: errors.length === 0, errors: errors };
-}
-
 function downloadTemplate() {
     // Create a sample Excel template
     const csvContent = `Họ tên,CMND/CCCD,Ngày sinh,Giới tính,Điện thoại,Email,Địa chỉ,Nghề nghiệp,Nơi làm việc,Số tài khoản
@@ -612,22 +514,6 @@ Trần Thị B,987654321098,15/05/1985,Nữ,0912345678,tranthib@email.com,456 Đ
 
 // Add Customer
 function submitAddCustomer() {
-    // Validate form
-    const validation = validateCustomerData('addCustomerForm');
-    if (!validation.valid) {
-        const resultDiv = document.getElementById('addResult');
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="bi bi-x-circle"></i> <strong>Vui lòng kiểm tra lại:</strong>
-                <ul class="mb-0 mt-2">
-                    ${validation.errors.map(err => '<li>' + err + '</li>').join('')}
-                </ul>
-            </div>
-        `;
-        return;
-    }
-
     const form = document.getElementById('addCustomerForm');
     const formData = new FormData(form);
 
@@ -709,22 +595,6 @@ function editCustomer(customerId) {
 
 // Edit Customer - Submit
 function submitEditCustomer() {
-    // Validate form
-    const validation = validateCustomerData('editCustomerForm');
-    if (!validation.valid) {
-        const resultDiv = document.getElementById('editResult');
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="bi bi-x-circle"></i> <strong>Vui lòng kiểm tra lại:</strong>
-                <ul class="mb-0 mt-2">
-                    ${validation.errors.map(err => '<li>' + err + '</li>').join('')}
-                </ul>
-            </div>
-        `;
-        return;
-    }
-
     const form = document.getElementById('editCustomerForm');
     const formData = new FormData(form);
     const customerId = document.getElementById('edit_customer_id').value;
