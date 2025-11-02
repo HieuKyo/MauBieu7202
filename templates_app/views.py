@@ -881,3 +881,134 @@ def generate_document_direct(request, template_id):
         import traceback
         traceback.print_exc()
         return HttpResponse(f"Lỗi: {str(e)}", status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def customer_import_excel(request):
+    """Import khách hàng từ file Excel"""
+    if 'excel_file' not in request.FILES:
+        return JsonResponse({
+            'success': False,
+            'error': 'Vui lòng chọn file Excel'
+        }, status=400)
+
+    excel_file = request.FILES['excel_file']
+
+    # Kiểm tra file extension
+    if not excel_file.name.endswith(('.xlsx', '.xls')):
+        return JsonResponse({
+            'success': False,
+            'error': 'File phải có định dạng .xlsx hoặc .xls'
+        }, status=400)
+
+    try:
+        import openpyxl
+        from datetime import datetime
+
+        wb = openpyxl.load_workbook(excel_file, data_only=True)
+        ws = wb.active
+
+        # Giả sử dòng đầu tiên là header
+        headers = [cell.value for cell in ws[1]]
+
+        # Mapping column names to model fields
+        # Có thể customize mapping này
+        field_mapping = {
+            'Mã KH': 'ma_khach_hang',
+            'CIF': 'cif',
+            'Họ tên': 'ho_ten',
+            'Họ và tên': 'ho_ten',
+            'Ngày sinh': 'ngay_sinh',
+            'Giới tính': 'gioi_tinh',
+            'CMND/CCCD': 'so_cmnd',
+            'Số CMND': 'so_cmnd',
+            'Ngày cấp': 'ngay_cap_cmnd',
+            'Ngày cấp CMND': 'ngay_cap_cmnd',
+            'Nơi cấp': 'noi_cap_cmnd',
+            'Nơi cấp CMND': 'noi_cap_cmnd',
+            'Địa chỉ': 'dia_chi',
+            'Điện thoại': 'so_dien_thoai',
+            'Số điện thoại': 'so_dien_thoai',
+            'Email': 'email',
+            'Nghề nghiệp': 'nghe_nghiep',
+            'Nơi làm việc': 'noi_lam_viec',
+            'Số tài khoản': 'so_tai_khoan',
+            'Loại tài khoản': 'loai_tai_khoan',
+            'Loại tiền tệ': 'loai_tien_te',
+            'Loại thẻ': 'loai_the',
+            'Hạng thẻ': 'hang_the',
+        }
+
+        imported_count = 0
+        skipped_count = 0
+        errors = []
+
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            try:
+                # Build data dict from row
+                data = {}
+                for col_idx, value in enumerate(row):
+                    if col_idx < len(headers):
+                        header = headers[col_idx]
+                        if header and header in field_mapping:
+                            field_name = field_mapping[header]
+
+                            # Handle date fields
+                            if field_name in ['ngay_sinh', 'ngay_cap_cmnd', 'ngay_het_han_cmnd', 'ngay_in']:
+                                if value:
+                                    if isinstance(value, datetime):
+                                        data[field_name] = value.date()
+                                    else:
+                                        # Try parsing string date
+                                        try:
+                                            parsed_date = datetime.strptime(str(value), '%d/%m/%Y')
+                                            data[field_name] = parsed_date.date()
+                                        except:
+                                            try:
+                                                parsed_date = datetime.strptime(str(value), '%Y-%m-%d')
+                                                data[field_name] = parsed_date.date()
+                                            except:
+                                                pass
+                            else:
+                                data[field_name] = value if value else ''
+
+                # Validate required fields
+                if not data.get('ho_ten') or not data.get('so_cmnd'):
+                    skipped_count += 1
+                    errors.append(f"Dòng {row_idx}: Thiếu họ tên hoặc CMND")
+                    continue
+
+                # Check if customer already exists
+                existing_customer = Customer.objects.filter(so_cmnd=data['so_cmnd']).first()
+                if existing_customer:
+                    # Update existing customer
+                    for field, value in data.items():
+                        setattr(existing_customer, field, value)
+                    existing_customer.save()
+                else:
+                    # Create new customer
+                    customer = Customer(**data)
+                    customer.created_by = request.user
+                    customer.save()
+
+                imported_count += 1
+
+            except Exception as e:
+                skipped_count += 1
+                errors.append(f"Dòng {row_idx}: {str(e)}")
+                continue
+
+        return JsonResponse({
+            'success': True,
+            'imported': imported_count,
+            'skipped': skipped_count,
+            'errors': errors[:10]  # Limit errors to 10
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'Lỗi khi xử lý file Excel: {str(e)}'
+        }, status=500)
