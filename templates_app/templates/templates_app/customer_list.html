@@ -450,22 +450,77 @@
             <div class="modal-body">
                 <form id="importAgribankForm" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="agribankFile" class="form-label fw-bold">
-                            <i class="bi bi-file-earmark-text"></i> Chọn file TSV/TXT
-                        </label>
-                        <input type="file" class="form-control form-control-lg" id="agribankFile" name="tsv_file" accept=".tsv,.txt" required>
+
+                    <!-- Tabs để chọn phương thức import -->
+                    <ul class="nav nav-tabs mb-3" id="importMethodTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="clipboard-tab" data-bs-toggle="tab" data-bs-target="#clipboard-pane" type="button" role="tab">
+                                <i class="bi bi-clipboard"></i> Paste từ Clipboard
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-pane" type="button" role="tab">
+                                <i class="bi bi-file-earmark-text"></i> Upload File
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="importMethodTabContent">
+                        <!-- Tab 1: Paste từ Clipboard -->
+                        <div class="tab-pane fade show active" id="clipboard-pane" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="clipboardData" class="form-label fw-bold">
+                                    <i class="bi bi-clipboard"></i> Paste dữ liệu từ AGRIBANK
+                                </label>
+                                <textarea
+                                    class="form-control font-monospace"
+                                    id="clipboardData"
+                                    name="clipboard_data"
+                                    rows="8"
+                                    placeholder="Ctrl+V để paste dữ liệu từ AGRIBANK (bao gồm cả dòng header)&#10;&#10;Ví dụ:&#10;custno	nmloc	regno	name_1	name_3	name_4...&#10;7202000699174	Trần Ngọc Thủy	022189125	19700101	Nữ	0766939319..."
+                                    style="font-size: 12px;"
+                                ></textarea>
+                                <div class="form-text">
+                                    <strong>Cách sử dụng:</strong>
+                                    <ol class="small mb-0 mt-1">
+                                        <li>Copy dữ liệu từ AGRIBANK (chọn 2 dòng: header + dữ liệu khách hàng)</li>
+                                        <li>Click vào ô textarea ở trên</li>
+                                        <li>Nhấn <kbd>Ctrl+V</kbd> để paste</li>
+                                        <li>Nhấn nút "Import" ở dưới</li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-success">
+                                <i class="bi bi-lightning-charge-fill"></i> <strong>Nhanh nhất!</strong>
+                                Không cần lưu file, paste trực tiếp từ AGRIBANK.
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Upload File -->
+                        <div class="tab-pane fade" id="file-pane" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="agribankFile" class="form-label fw-bold">
+                                    <i class="bi bi-file-earmark-text"></i> Chọn file TSV/TXT
+                                </label>
+                                <input type="file" class="form-control form-control-lg" id="agribankFile" name="tsv_file" accept=".tsv,.txt">
+                            </div>
+
+                            <div class="alert alert-info">
+                                <strong>Cách sử dụng:</strong>
+                                <ol class="mb-0 mt-2">
+                                    <li>Copy dữ liệu từ AGRIBANK</li>
+                                    <li>Paste vào Notepad</li>
+                                    <li>Lưu file với encoding <strong>UTF-8</strong></li>
+                                    <li>Chọn file và nhấn Import</li>
+                                </ol>
+                            </div>
+                        </div>
                     </div>
 
+                    <hr>
+
                     <div class="alert alert-info">
-                        <h6 class="alert-heading"><i class="bi bi-info-circle"></i> Hướng dẫn sử dụng:</h6>
-                        <ol class="mb-2">
-                            <li><strong>Copy dữ liệu</strong> từ hệ thống AGRIBANK (bao gồm cả header)</li>
-                            <li><strong>Paste vào Notepad</strong> hoặc text editor</li>
-                            <li><strong>Lưu file</strong> với extension <code>.tsv</code> hoặc <code>.txt</code></li>
-                            <li><strong>Chọn file</strong> và nhấn Import</li>
-                        </ol>
-                        <hr>
                         <div class="row">
                             <div class="col-md-6">
                                 <strong>Các trường được import:</strong>
@@ -473,17 +528,17 @@
                                     <li>Mã KH, Họ tên, CMND/CCCD</li>
                                     <li>Ngày sinh, Giới tính</li>
                                     <li>Số điện thoại, Email</li>
-                                    <li>Địa chỉ, Nghề nghiệp</li>
+                                    <li>Địa chỉ, <strong>Nghề nghiệp</strong></li>
                                     <li>Ngày cấp CCCD, Nơi cấp</li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
                                 <strong>Lưu ý:</strong>
                                 <ul class="small mb-0">
-                                    <li>File phải có encoding <strong>UTF-8</strong></li>
                                     <li>Phân cách bằng <strong>Tab</strong></li>
-                                    <li>Ngày tháng format: <strong>YYYYMMDD</strong></li>
-                                    <li>Nếu CMND đã tồn tại → <strong>Cập nhật</strong></li>
+                                    <li>Ngày tháng: <strong>YYYYMMDD</strong></li>
+                                    <li>Nghề nghiệp: Cột 58 (profnm)</li>
+                                    <li>Nếu CMND tồn tại → <strong>Cập nhật</strong></li>
                                 </ul>
                             </div>
                         </div>
@@ -783,20 +838,53 @@ function confirmDeleteCustomer() {
 
 function submitAgribankImport() {
     const form = document.getElementById('importAgribankForm');
-    const formData = new FormData(form);
+    const formData = new FormData();
     const fileInput = document.getElementById('agribankFile');
+    const clipboardTextarea = document.getElementById('clipboardData');
 
-    if (!fileInput.files.length) {
-        alert('Vui lòng chọn file TSV/TXT');
-        return;
+    // Determine which method is being used
+    const activeTab = document.querySelector('#importMethodTab .nav-link.active');
+    const isClipboardMode = activeTab && activeTab.id === 'clipboard-tab';
+
+    if (isClipboardMode) {
+        // Clipboard mode: Get data from textarea
+        const clipboardData = clipboardTextarea.value.trim();
+
+        if (!clipboardData) {
+            alert('Vui lòng paste dữ liệu từ AGRIBANK vào textarea');
+            return;
+        }
+
+        // Validate that it has at least 2 lines (header + data)
+        const lines = clipboardData.split('\n');
+        if (lines.length < 2) {
+            alert('Dữ liệu phải có ít nhất 2 dòng:\n- Dòng 1: Header (tiêu đề cột)\n- Dòng 2+: Dữ liệu khách hàng\n\nVui lòng copy cả header từ AGRIBANK!');
+            return;
+        }
+
+        // Create a Blob from clipboard data and add to formData as file
+        const blob = new Blob([clipboardData], { type: 'text/plain;charset=utf-8' });
+        formData.append('tsv_file', blob, 'clipboard_data.txt');
+
+    } else {
+        // File mode: Get file from input
+        if (!fileInput.files.length) {
+            alert('Vui lòng chọn file TSV/TXT');
+            return;
+        }
+
+        // Validate file extension
+        const fileName = fileInput.files[0].name.toLowerCase();
+        if (!fileName.endsWith('.tsv') && !fileName.endsWith('.txt')) {
+            alert('Vui lòng chọn file có định dạng .tsv hoặc .txt');
+            return;
+        }
+
+        formData.append('tsv_file', fileInput.files[0]);
     }
 
-    // Validate file extension
-    const fileName = fileInput.files[0].name.toLowerCase();
-    if (!fileName.endsWith('.tsv') && !fileName.endsWith('.txt')) {
-        alert('Vui lòng chọn file có định dạng .tsv hoặc .txt');
-        return;
-    }
+    // Add CSRF token
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
 
     // Show progress
     document.getElementById('importAgribankProgress').style.display = 'block';
