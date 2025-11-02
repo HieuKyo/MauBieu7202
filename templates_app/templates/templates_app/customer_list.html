@@ -63,20 +63,30 @@
             <table class="table table-hover">
                 <thead class="table-light">
                     <tr>
+                        <th>Mã KH</th>
                         <th>Họ và tên</th>
                         <th>Số CMND/CCCD</th>
+                        <th>Ngày cấp</th>
+                        <th>Nơi cấp</th>
                         <th>Số điện thoại</th>
                         <th>Ngày sinh</th>
-                        <th>Địa chỉ</th>
-                        <th>Ngày tạo</th>
                         <th width="150">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for customer in customers %}
                     <tr>
+                        <td><span class="badge bg-secondary">{{ customer.ma_khach_hang|default:"-" }}</span></td>
                         <td class="fw-bold">{{ customer.ho_ten }}</td>
                         <td>{{ customer.so_cmnd }}</td>
+                        <td>
+                            {% if customer.ngay_cap_cmnd %}
+                                {{ customer.ngay_cap_cmnd|date:"d/m/Y" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ customer.noi_cap_cmnd|default:"-" }}</td>
                         <td>{{ customer.so_dien_thoai|default:"-" }}</td>
                         <td>
                             {% if customer.ngay_sinh %}
@@ -85,8 +95,6 @@
                                 -
                             {% endif %}
                         </td>
-                        <td>{{ customer.dia_chi|truncatewords:10|default:"-" }}</td>
-                        <td>{{ customer.created_at|date:"d/m/Y H:i" }}</td>
                         <td>
                             <button class="btn btn-sm btn-warning me-1" onclick="editCustomer({{ customer.id }})" title="Sửa">
                                 <i class="bi bi-pencil-square"></i>
@@ -140,8 +148,26 @@
                             <input type="text" class="form-control" id="add_ho_ten" name="ho_ten" required>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="add_ma_khach_hang" class="form-label">Mã khách hàng</label>
+                            <input type="text" class="form-control" id="add_ma_khach_hang" name="ma_khach_hang">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
                             <label for="add_so_cmnd" class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="add_so_cmnd" name="so_cmnd" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="add_ngay_cap_cmnd" class="form-label">Ngày cấp</label>
+                            <input type="date" class="form-control" id="add_ngay_cap_cmnd" name="ngay_cap_cmnd">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="add_noi_cap_cmnd" class="form-label">Nơi cấp</label>
+                            <select class="form-select" id="add_noi_cap_cmnd" name="noi_cap_cmnd">
+                                <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
+                                <option value="Bộ Công An">Bộ Công An</option>
+                                <option value="Khác">Khác</option>
+                            </select>
                         </div>
                     </div>
                     <div class="row">
@@ -231,8 +257,26 @@
                             <input type="text" class="form-control" id="edit_ho_ten" name="ho_ten" required>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="edit_ma_khach_hang" class="form-label">Mã khách hàng</label>
+                            <input type="text" class="form-control" id="edit_ma_khach_hang" name="ma_khach_hang">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
                             <label for="edit_so_cmnd" class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="edit_so_cmnd" name="so_cmnd" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_ngay_cap_cmnd" class="form-label">Ngày cấp</label>
+                            <input type="date" class="form-control" id="edit_ngay_cap_cmnd" name="ngay_cap_cmnd">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_noi_cap_cmnd" class="form-label">Nơi cấp</label>
+                            <select class="form-select" id="edit_noi_cap_cmnd" name="noi_cap_cmnd">
+                                <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
+                                <option value="Bộ Công An">Bộ Công An</option>
+                                <option value="Khác">Khác</option>
+                            </select>
                         </div>
                     </div>
                     <div class="row">
@@ -501,8 +545,11 @@ function editCustomer(customerId) {
         if (data.success) {
             const customer = data.customer;
             document.getElementById('edit_customer_id').value = customerId;
+            document.getElementById('edit_ma_khach_hang').value = customer.ma_khach_hang || '';
             document.getElementById('edit_ho_ten').value = customer.ho_ten || '';
             document.getElementById('edit_so_cmnd').value = customer.so_cmnd || '';
+            document.getElementById('edit_ngay_cap_cmnd').value = customer.ngay_cap_cmnd || '';
+            document.getElementById('edit_noi_cap_cmnd').value = customer.noi_cap_cmnd || 'Cục CSQLHC về TTXH';
             document.getElementById('edit_ngay_sinh').value = customer.ngay_sinh || '';
             document.getElementById('edit_gioi_tinh').value = customer.gioi_tinh || 'Nam';
             document.getElementById('edit_so_dien_thoai').value = customer.so_dien_thoai || '';
