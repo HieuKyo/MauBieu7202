@@ -1012,3 +1012,35 @@ def customer_import_excel(request):
             'success': False,
             'error': f'Lỗi khi xử lý file Excel: {str(e)}'
         }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def customer_get(request, customer_id):
+    """Lấy thông tin khách hàng theo ID để hiển thị trong form edit"""
+    try:
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        return JsonResponse({
+            'success': True,
+            'customer': {
+                'id': customer.id,
+                'ho_ten': customer.ho_ten,
+                'so_cmnd': customer.so_cmnd,
+                'ngay_sinh': customer.ngay_sinh.isoformat() if customer.ngay_sinh else '',
+                'gioi_tinh': customer.gioi_tinh,
+                'so_dien_thoai': customer.so_dien_thoai,
+                'email': customer.email,
+                'dia_chi': customer.dia_chi,
+                'nghe_nghiep': customer.nghe_nghiep,
+                'noi_lam_viec': customer.noi_lam_viec,
+                'so_tai_khoan': customer.so_tai_khoan,
+                'ghi_chu': customer.ghi_chu,
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Không tìm thấy khách hàng: {str(e)}'
+        }, status=404)
