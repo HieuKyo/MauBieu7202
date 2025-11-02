@@ -1,3 +1,12 @@
+/* Bootstrap Icons Placeholder */
+/* Please run scripts/download_bootstrap_files.bat to download full Bootstrap Icons */
+@font-face {
+    font-family: "bootstrap-icons";
+    src: url("../../bootstrap-icons/fonts/bootstrap-icons.woff2") format("woff2"),
+         url("../../bootstrap-icons/fonts/bootstrap-icons.woff") format("woff");
+}
+
+/* Placeholder - download full icons from https://icons.getbootstrap.com/ */
 /*!
  * Bootstrap Icons v1.10.5 (https://icons.getbootstrap.com/)
  * Copyright 2019-2023 The Bootstrap Authors
