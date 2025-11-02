@@ -83,7 +83,7 @@
             </div>
             <div class="card-body" style="max-height: 600px; overflow-y: auto;">
                 <p class="small text-muted mb-3">
-                    <i class="bi bi-info-circle"></i> Các biến này tự động tách từ ngày sinh khách hàng
+                    <i class="bi bi-info-circle"></i> Các biến này tự động tách từ ngày sinh, ngày cấp CCCD, và ngày hết hạn CCCD
                 </p>
                 <div class="table-responsive">
                     <table class="table table-hover variable-table" data-category="date">
@@ -102,6 +102,54 @@
                                     <div class="variable-desc">{{ var.description }}</div>
                                     {% if var.example %}
                                     <small class="text-muted">{{ var.example }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            onclick="copyVariable('{{ var.name }}')"
+                                            title="Copy {{ var.name }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Biến Dịch vụ & Điều kiện -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header" style="background-color: #0d6efd; color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-sliders"></i> Biến Điều kiện & Dịch vụ
+                    <span class="badge bg-light text-dark">{{ service_variables|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle"></i> Các biến này có giá trị tùy thuộc vào checkbox/lựa chọn dịch vụ
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="service">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 30%;">Tên biến</th>
+                                <th style="width: 55%;">Mô tả</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in service_variables %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.description }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td>
+                                    <div class="variable-desc small">{{ var.description }}</div>
+                                    {% if var.example %}
+                                    <small class="text-muted">VD: {{ var.example }}</small>
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
