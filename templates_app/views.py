@@ -327,6 +327,7 @@ def customer_detail_api(request, customer_id):
                 'gioi_tinh': customer.gioi_tinh,
                 'so_cmnd': customer.so_cmnd,
                 'ngay_cap_cmnd': customer.ngay_cap_cmnd.strftime('%d/%m/%Y') if customer.ngay_cap_cmnd else '',
+                'ngay_het_han_cmnd': customer.ngay_het_han_cmnd.strftime('%d/%m/%Y') if customer.ngay_het_han_cmnd else '',
                 'noi_cap_cmnd': customer.noi_cap_cmnd,  # Raw value for form
                 'noi_cap_cmnd_custom': customer.noi_cap_cmnd_custom,  # Custom value for form
                 'noi_cap_cmnd_display': customer.get_noi_cap_display_value(),  # Display value
@@ -379,6 +380,7 @@ def customer_create_view(request):
             ho_ten=ho_ten,
             so_cmnd=so_cmnd,
             ngay_cap_cmnd=request.POST.get('ngay_cap_cmnd') or None,
+            ngay_het_han_cmnd=request.POST.get('ngay_het_han_cmnd') or None,
             noi_cap_cmnd=request.POST.get('noi_cap_cmnd', 'Cục CSQLHC về TTXH'),
             ngay_sinh=request.POST.get('ngay_sinh') or None,
             gioi_tinh=request.POST.get('gioi_tinh', 'Nam'),
@@ -439,6 +441,7 @@ def customer_update_view(request, customer_id):
         customer.ho_ten = ho_ten
         customer.so_cmnd = so_cmnd
         customer.ngay_cap_cmnd = request.POST.get('ngay_cap_cmnd') or None
+        customer.ngay_het_han_cmnd = request.POST.get('ngay_het_han_cmnd') or None
         customer.noi_cap_cmnd = request.POST.get('noi_cap_cmnd', 'Cục CSQLHC về TTXH')
         customer.ngay_sinh = request.POST.get('ngay_sinh') or None
         customer.gioi_tinh = request.POST.get('gioi_tinh', 'Nam')
@@ -1101,6 +1104,7 @@ def customer_get(request, customer_id):
                 'ho_ten': customer.ho_ten,
                 'so_cmnd': customer.so_cmnd,
                 'ngay_cap_cmnd': customer.ngay_cap_cmnd.isoformat() if customer.ngay_cap_cmnd else '',
+                'ngay_het_han_cmnd': customer.ngay_het_han_cmnd.isoformat() if customer.ngay_het_han_cmnd else '',
                 'noi_cap_cmnd': customer.noi_cap_cmnd,
                 'ngay_sinh': customer.ngay_sinh.isoformat() if customer.ngay_sinh else '',
                 'gioi_tinh': customer.gioi_tinh,
