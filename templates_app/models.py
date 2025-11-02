@@ -189,11 +189,30 @@ class Customer(models.Model):
         blank=True,
         verbose_name="Nơi cấp CMND/CCCD (tùy chỉnh)"
     )
+    ma_noi_cap_cmnd = models.CharField(
+        max_length=10,
+        blank=True,
+        verbose_name="Mã nơi cấp CMND/CCCD"
+    )
+    so_ho_chieu = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Số hộ chiếu"
+    )
 
     # Liên hệ
     dia_chi = models.TextField(blank=True, verbose_name="Địa chỉ thường trú")
     so_dien_thoai = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại", db_index=True)
     email = models.EmailField(blank=True, verbose_name="Email")
+
+    # Địa chỉ hành chính (mã)
+    ma_tinh = models.CharField(max_length=10, blank=True, verbose_name="Mã tỉnh/thành phố")
+    ma_quan_huyen = models.CharField(max_length=10, blank=True, verbose_name="Mã quận/huyện")
+    ma_phuong_xa = models.CharField(max_length=10, blank=True, verbose_name="Mã phường/xã")
+
+    # Thông tin quốc tịch và thuế
+    quoc_tich = models.CharField(max_length=10, blank=True, default='VN', verbose_name="Quốc tịch")
+    ma_so_thue = models.CharField(max_length=20, blank=True, verbose_name="Mã số thuế")
 
     # Thông tin nghề nghiệp
     nghe_nghiep = models.CharField(
