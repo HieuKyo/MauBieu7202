@@ -874,13 +874,13 @@ def variable_library_view(request):
 
     # 3.7. Jinja2 Syntax Examples
     jinja_syntax = [
-        {'name': 'if/else', 'description': 'Điều kiện if/else', 'example': '{% if tuoi >= 18 %}Đủ điều kiện{% else %}Chưa đủ{% endif %}'},
+        {'name': 'if/else', 'description': 'Điều kiện if/else', 'example': '{% if tuoi >= 15 %}Đủ điều kiện{% else %}Chưa đủ{% endif %}'},
         {'name': 'set', 'description': 'Gán biến', 'example': '{% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai) %}'},
         {'name': 'for loop', 'description': 'Vòng lặp', 'example': '{% for item in danh_sach %}{{ item }}{% endfor %}'},
         {'name': 'comment', 'description': 'Ghi chú (không hiển thị)', 'example': '{# Đây là comment #}'},
         {'name': 'toán tử', 'description': 'Các phép toán: +, -, *, /, %', 'example': '{% set tong = phi_1 + phi_2 %}'},
-        {'name': 'so sánh', 'description': 'So sánh: ==, !=, <, >, <=, >=', 'example': '{% if tuoi >= 18 %}'},
-        {'name': 'logic', 'description': 'Logic: and, or, not', 'example': '{% if tuoi >= 18 and cccd_con_han %}'},
+        {'name': 'so sánh', 'description': 'So sánh: ==, !=, <, >, <=, >=', 'example': '{% if tuoi >= 15 %}'},
+        {'name': 'logic', 'description': 'Logic: and, or, not', 'example': '{% if tuoi >= 15 and cccd_con_han %}'},
     ]
 
     # 4. Biến Tùy chỉnh - From GlobalConfig.custom_variables
