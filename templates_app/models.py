@@ -166,6 +166,7 @@ class Customer(models.Model):
 
     # Thông tin cá nhân cơ bản
     ho_ten = models.CharField(max_length=200, verbose_name="Họ và tên", db_index=True)
+    ho_ten_tieng_anh = models.CharField(max_length=200, blank=True, verbose_name="Họ và tên tiếng Anh")
     ngay_sinh = models.DateField(null=True, blank=True, verbose_name="Ngày sinh")
     gioi_tinh = models.CharField(
         max_length=10,
@@ -173,6 +174,7 @@ class Customer(models.Model):
         default='Nam',
         verbose_name="Giới tính"
     )
+    dan_toc = models.CharField(max_length=50, blank=True, default='Kinh', verbose_name="Dân tộc")
 
     # Giấy tờ tùy thân
     so_cmnd = models.CharField(max_length=20, unique=True, verbose_name="Số CMND/CCCD", db_index=True)
@@ -202,6 +204,7 @@ class Customer(models.Model):
 
     # Liên hệ
     dia_chi = models.TextField(blank=True, verbose_name="Địa chỉ thường trú")
+    ho_khau = models.TextField(blank=True, verbose_name="Hộ khẩu thường trú")
     so_dien_thoai = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại", db_index=True)
     email = models.EmailField(blank=True, verbose_name="Email")
 
@@ -232,6 +235,10 @@ class Customer(models.Model):
     # Thông tin thẻ
     loai_the = models.CharField(max_length=50, choices=LOAI_THE_CHOICES, blank=True, verbose_name="Loại thẻ")
     hang_the = models.CharField(max_length=20, choices=HANG_THE_CHOICES, blank=True, verbose_name="Hạng thẻ")
+    so_the_atm = models.CharField(max_length=20, blank=True, verbose_name="Số thẻ ATM")
+    thoi_han_the = models.CharField(max_length=50, blank=True, verbose_name="Thời hạn thẻ")
+    ngay_tra_the = models.DateField(null=True, blank=True, verbose_name="Ngày trả thẻ")
+    loai_phi = models.CharField(max_length=100, blank=True, verbose_name="Loại phí")
     phat_hanh_lan_dau = models.BooleanField(default=False, verbose_name="Phát hành lần đầu")
     phat_hanh_lai = models.BooleanField(default=False, verbose_name="Phát hành lại")
 
@@ -341,13 +348,16 @@ class Customer(models.Model):
             'ma_khach_hang': self.ma_khach_hang or '',
             'cif': self.cif or '',
             'ho_ten': self.ho_ten or '',
+            'ho_ten_tieng_anh': self.ho_ten_tieng_anh or '',
             'ngay_sinh': self.ngay_sinh.strftime('%d/%m/%Y') if self.ngay_sinh else '',
             'gioi_tinh': self.gioi_tinh or '',
+            'dan_toc': self.dan_toc or '',
             'so_cmnd': self.so_cmnd or '',
             'ngay_cap_cmnd': self.ngay_cap_cmnd.strftime('%d/%m/%Y') if self.ngay_cap_cmnd else '',
             'ngay_het_han_cmnd': self.ngay_het_han_cmnd.strftime('%d/%m/%Y') if self.ngay_het_han_cmnd else '',
             'noi_cap_cmnd': self.get_noi_cap_display_value(),
             'dia_chi': self.dia_chi or '',
+            'ho_khau': self.ho_khau or '',
             'so_dien_thoai': self.so_dien_thoai or '',
             'email': self.email or '',
             'nghe_nghiep': self.nghe_nghiep or '',
@@ -358,6 +368,10 @@ class Customer(models.Model):
             'loai_tien_te': self.loai_tien_te or '',
             'loai_the': self.loai_the or '',
             'hang_the': self.hang_the or '',
+            'so_the_atm': self.so_the_atm or '',
+            'thoi_han_the': self.thoi_han_the or '',
+            'ngay_tra_the': self.ngay_tra_the.strftime('%d/%m/%Y') if self.ngay_tra_the else '',
+            'loai_phi': self.loai_phi or '',
             'ghi_chu': self.ghi_chu or '',
             'ngay_in': self.ngay_in.strftime('%d/%m/%Y') if self.ngay_in else '',
             # Date variables (ngày sinh)
@@ -425,11 +439,17 @@ class GlobalConfig(models.Model):
     # Thông tin chi nhánh
     ten_chi_nhanh = models.CharField(max_length=200, verbose_name="Tên chi nhánh", default="Chi nhánh Giá Rai Bạc Liêu")
     ten_chi_nhanh_hoa = models.CharField(max_length=200, verbose_name="Tên chi nhánh (IN HOA)", default="CHI NHÁNH GIÁ RAI BẠC LIÊU")
+    ma_chi_nhanh = models.CharField(max_length=20, verbose_name="Mã chi nhánh", blank=True)
     mst = models.CharField(max_length=50, verbose_name="Mã số thuế", blank=True)
+    dia_chi_chi_nhanh = models.TextField(verbose_name="Địa chỉ chi nhánh", blank=True)
+    dien_thoai_chi_nhanh = models.CharField(max_length=50, verbose_name="Điện thoại chi nhánh", blank=True)
+    so_fax = models.CharField(max_length=50, verbose_name="Số Fax", blank=True)
+    dia_danh = models.CharField(max_length=200, verbose_name="Địa danh", blank=True, help_text="Ví dụ: Bạc Liêu, Đồng Tháp")
+
+    # Nhân sự
     giao_dich_vien = models.CharField(max_length=200, verbose_name="Giao dịch viên", blank=True)
     kiem_soat_vien = models.CharField(max_length=200, verbose_name="Kiểm soát viên", blank=True)
     giam_doc = models.CharField(max_length=200, verbose_name="Giám đốc", blank=True)
-    dia_chi_chi_nhanh = models.TextField(verbose_name="Địa chỉ chi nhánh", blank=True)
 
     # Các biến tùy chỉnh chung (lưu dạng JSON)
     # Format: {"ten_bien": "gia_tri", "bien_khac": "gia_tri_khac"}
@@ -480,11 +500,15 @@ class GlobalConfig(models.Model):
             # Biến chi nhánh
             'ten_chi_nhanh': self.ten_chi_nhanh or '',
             'ten_chi_nhanh_hoa': self.ten_chi_nhanh_hoa or '',
+            'ma_chi_nhanh': self.ma_chi_nhanh or '',
             'mst': self.mst or '',
+            'dia_chi_chi_nhanh': self.dia_chi_chi_nhanh or '',
+            'dien_thoai_chi_nhanh': self.dien_thoai_chi_nhanh or '',
+            'so_fax': self.so_fax or '',
+            'dia_danh': self.dia_danh or '',
             'giao_dich_vien': self.giao_dich_vien or '',
             'kiem_soat_vien': self.kiem_soat_vien or '',
             'giam_doc': self.giam_doc or '',
-            'dia_chi_chi_nhanh': self.dia_chi_chi_nhanh or '',
         }
 
         # Thêm các biến tùy chỉnh
