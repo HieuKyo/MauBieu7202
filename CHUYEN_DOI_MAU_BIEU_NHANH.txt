@@ -1,0 +1,92 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║   CHUYỂN ĐỔI MẪU BIỂU CŨ SANG MỚI - HƯỚNG DẪN NHANH                 ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+📌 VẤN ĐỀ:
+   Bạn có nhiều mẫu biểu Word dùng biến cũ kiểu: [HotenKhachhangVN]
+   Cần chuyển sang biến mới kiểu: {{ ho_ten }}
+
+✅ GIẢI PHÁP:
+   Dùng script TỰ ĐỘNG convert hàng loạt file
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 CÁCH SỬ DỤNG CƠ BẢN:
+
+   1. Đặt tất cả file .docx cần convert vào 1 folder (ví dụ: mau_bieu_cu/)
+
+   2. Mở terminal/cmd tại folder chứa script
+
+   3. Chạy lệnh:
+
+      python convert_old_templates.py mau_bieu_cu/
+
+   4. Nhấn Enter để xác nhận
+
+   5. Script sẽ:
+      ✓ Tự động backup file gốc
+      ✓ Thay thế TẤT CẢ biến cũ → biến mới
+      ✓ Báo cáo chi tiết những gì đã làm
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 BẢNG CHUYỂN ĐỔI THƯỜNG DÙNG:
+
+   [HotenKhachhangVN]    →  {{ ho_ten }}
+   [DiaChiKhachHang]     →  {{ dia_chi }}
+   [SoCMT]               →  {{ so_cmnd }}
+   [NgayCMT]             →  {{ ngay_cap_cmnd }}
+   [NoiCapCMT]           →  {{ noi_cap_cmnd }}
+   [SoDienThoai]         →  {{ so_dien_thoai }}
+   [SoTaiKhoan]          →  {{ so_tai_khoan }}
+   [TenChiNhanh]         →  {{ ten_chi_nhanh }}
+   [GiaoDichVien]        →  {{ giao_dich_vien }}
+
+   → Xem đầy đủ 50+ biến trong HUONG_DAN_CHUYEN_DOI_MAU_BIEU.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ CÁC LỆNH NHANH:
+
+   # Ghi đè file gốc (có backup tự động)
+   python convert_old_templates.py ./mau_bieu_cu
+
+   # Tạo file mới vào folder khác (giữ nguyên file gốc)
+   python convert_old_templates.py ./mau_bieu_cu ./mau_bieu_moi
+
+   # Xem bảng mapping đầy đủ
+   python convert_old_templates.py --mapping
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  LƯU Ý QUAN TRỌNG:
+
+   ✓ Đóng TẤT CẢ file Word trước khi chạy
+   ✓ Test với 1-2 file trước khi convert hàng loạt
+   ✓ Kiểm tra file backup được tạo ra
+   ✓ Mở file sau khi convert để xác nhận
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 TÀI LIỆU:
+
+   • HUONG_DAN_CHUYEN_DOI_MAU_BIEU.md  →  Hướng dẫn chi tiết
+   • convert_old_templates.py          →  Script chuyển đổi
+   • CHUYEN_DOI_MAU_BIEU_NHANH.txt    →  File này (tham khảo nhanh)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 HỖ TRỢ:
+
+   Nếu gặp lỗi:
+   1. Kiểm tra Python đã cài chưa: python --version
+   2. Kiểm tra python-docx: pip install python-docx
+   3. Xem log lỗi trong output
+   4. Đọc HUONG_DAN_CHUYEN_DOI_MAU_BIEU.md
+
+╚═══════════════════════════════════════════════════════════════════════╝
+   Agribank - Chi nhánh Giá Rai Bạc Liêu
+   Phiên bản: 1.0 | Ngày: 2025-11-03
+╚═══════════════════════════════════════════════════════════════════════╝
