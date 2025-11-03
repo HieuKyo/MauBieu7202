@@ -236,6 +236,57 @@
 
                     <!-- Right Pane: Contact & Banking Info -->
                     <div class="col-lg-6">
+                        <!-- Auto-Calculation Info Card -->
+                        <div class="card mb-3 border-info" id="auto-calc-card" style="display: none;">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-calculator"></i> Thông tin Tự động
+                                </h6>
+                            </div>
+                            <div class="card-body p-3">
+                                <!-- Age Info -->
+                                <div id="age-info" style="display: none;" class="mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-person-badge me-2"></i>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">Tuổi</small>
+                                            <strong id="age-value" class="d-block"></strong>
+                                        </div>
+                                        <span id="age-badge" class="badge"></span>
+                                    </div>
+                                </div>
+
+                                <!-- CCCD Expiry Info -->
+                                <div id="cccd-info" style="display: none;" class="mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-card-checklist me-2"></i>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">CCCD</small>
+                                            <strong id="cccd-value" class="d-block"></strong>
+                                        </div>
+                                        <span id="cccd-badge" class="badge"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Estimated Fee Info -->
+                                <div id="fee-info" style="display: none;">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-cash-coin me-2"></i>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">Phí dự kiến</small>
+                                            <div id="fee-details"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Help text -->
+                                <div class="alert alert-light p-2 mb-0 mt-2" style="font-size: 0.85rem;">
+                                    <i class="bi bi-info-circle"></i>
+                                    Thông tin này được tính tự động và cũng sẽ xuất hiện trong mẫu biểu Word khi sử dụng cú pháp Jinja2.
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Contact Group -->
                         <div class="field-group" data-group="contact">
                             <h6 class="field-group-title"><i class="bi bi-telephone"></i> Thông tin liên hệ</h6>
@@ -294,8 +345,10 @@
                                     <select class="form-select" name="loai_the">
                                         <option value="">Chọn...</option>
                                         <option value="Thẻ Ghi nợ nội địa">Thẻ Ghi nợ nội địa</option>
-                                        <option value="The Plus Success">The Plus Success</option>
-                                        <option value="Agribank Debit Card">Agribank Debit Card</option>
+                                        <option value="Thẻ Visa">Thẻ Visa</option>
+                                        <option value="Thẻ MasterCard">Thẻ MasterCard</option>
+                                        <option value="Thẻ JCB">Thẻ JCB</option>
+                                        <option value="Thẻ liên kết chung">Thẻ liên kết chung</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -304,8 +357,7 @@
                                         <option value="">Chọn...</option>
                                         <option value="Hạng chuẩn">Hạng chuẩn</option>
                                         <option value="Hạng vàng">Hạng vàng</option>
-                                        <option value="Classic">Classic</option>
-                                        <option value="Gold">Gold</option>
+                                        <option value="Bạch kim">Bạch kim</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -968,11 +1020,17 @@ function validateCustomerForm() {
         errors.push(phoneResult.message);
     }
 
-    // Validate birth date
+    // Validate birth date and age
     const birthDate = document.querySelector('[name="ngay_sinh"]')?.value;
     const birthResult = validateBirthDate(birthDate);
     if (!birthResult.valid) {
         errors.push(birthResult.message);
+    } else if (birthResult.date) {
+        // Check age >= 15
+        const age = calculateAge(birthResult.date);
+        if (age < 15) {
+            errors.push(`Khách hàng phải từ 15 tuổi trở lên (hiện tại: ${age} tuổi)`);
+        }
     }
 
     // Validate issuance date
@@ -1053,5 +1111,162 @@ document.getElementById('customerForm').addEventListener('submit', function(e) {
         submitBtn.disabled = false;
     });
 });
+
+// ==========================================
+// AUTO-CALCULATION Functions
+// ==========================================
+
+function calculateAge(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    return age;
+}
+
+function calculateDaysRemaining(expiryDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(expiryDate);
+    expiry.setHours(0, 0, 0, 0);
+    const diffTime = expiry - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+}
+
+function calculateFee(loaiThe, hangThe) {
+    let phiPhatHanh = 0;
+    let phiThuongNien = 0;
+
+    if (loaiThe === 'Thẻ Visa' || loaiThe === 'Thẻ MasterCard') {
+        phiPhatHanh = 165000;
+        phiThuongNien = 82500;
+    } else if (loaiThe === 'Thẻ Ghi nợ nội địa') {
+        if (hangThe === 'Hạng vàng') {
+            phiPhatHanh = 110000;
+            phiThuongNien = 55000;
+        } else if (hangThe === 'Hạng chuẩn') {
+            phiPhatHanh = 55000;
+            phiThuongNien = 27500;
+        }
+    }
+
+    return { phiPhatHanh, phiThuongNien };
+}
+
+function formatNumber(num) {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function updateAutoCalcCard() {
+    const card = document.getElementById('auto-calc-card');
+    const ageInfo = document.getElementById('age-info');
+    const cccdInfo = document.getElementById('cccd-info');
+    const feeInfo = document.getElementById('fee-info');
+
+    let hasAnyInfo = false;
+
+    // Update age info
+    const ngaySinh = document.querySelector('[name="ngay_sinh"]')?.value;
+    if (ngaySinh) {
+        const age = calculateAge(ngaySinh);
+        document.getElementById('age-value').textContent = `${age} tuổi`;
+
+        const ageBadge = document.getElementById('age-badge');
+        if (age < 15) {
+            ageBadge.textContent = 'Chưa đủ 15 tuổi';
+            ageBadge.className = 'badge bg-danger';
+        } else if (age < 18) {
+            ageBadge.textContent = 'Cần giám hộ';
+            ageBadge.className = 'badge bg-warning';
+        } else {
+            ageBadge.textContent = 'Đủ điều kiện';
+            ageBadge.className = 'badge bg-success';
+        }
+
+        ageInfo.style.display = 'block';
+        hasAnyInfo = true;
+    } else {
+        ageInfo.style.display = 'none';
+    }
+
+    // Update CCCD expiry info
+    const ngayHetHan = document.querySelector('[name="ngay_het_han_cmnd"]')?.value;
+    if (ngayHetHan) {
+        const daysRemaining = calculateDaysRemaining(ngayHetHan);
+        const cccdBadge = document.getElementById('cccd-badge');
+
+        if (daysRemaining < 0) {
+            document.getElementById('cccd-value').textContent = `Đã hết hạn (${Math.abs(daysRemaining)} ngày trước)`;
+            cccdBadge.textContent = 'Hết hạn';
+            cccdBadge.className = 'badge bg-danger';
+        } else if (daysRemaining < 30) {
+            document.getElementById('cccd-value').textContent = `Sắp hết hạn (còn ${daysRemaining} ngày)`;
+            cccdBadge.textContent = 'Cảnh báo';
+            cccdBadge.className = 'badge bg-warning';
+        } else if (daysRemaining < 90) {
+            document.getElementById('cccd-value').textContent = `Còn ${daysRemaining} ngày`;
+            cccdBadge.textContent = 'Còn hạn';
+            cccdBadge.className = 'badge bg-info';
+        } else {
+            const years = Math.floor(daysRemaining / 365);
+            document.getElementById('cccd-value').textContent = `Còn ~${years} năm`;
+            cccdBadge.textContent = 'Còn hạn';
+            cccdBadge.className = 'badge bg-success';
+        }
+
+        cccdInfo.style.display = 'block';
+        hasAnyInfo = true;
+    } else {
+        cccdInfo.style.display = 'none';
+    }
+
+    // Update fee info
+    const loaiThe = document.querySelector('[name="loai_the"]')?.value;
+    const hangThe = document.querySelector('[name="hang_the"]')?.value;
+    if (loaiThe) {
+        const { phiPhatHanh, phiThuongNien } = calculateFee(loaiThe, hangThe);
+
+        if (phiPhatHanh > 0) {
+            const feeHtml = `
+                <div class="small">
+                    <div><strong>Phí phát hành:</strong> ${formatNumber(phiPhatHanh)} VND</div>
+                    <div><strong>Phí thường niên:</strong> ${formatNumber(phiThuongNien)} VND</div>
+                    <div class="text-success"><strong>Tổng năm đầu:</strong> ${formatNumber(phiPhatHanh + phiThuongNien)} VND</div>
+                </div>
+            `;
+            document.getElementById('fee-details').innerHTML = feeHtml;
+            feeInfo.style.display = 'block';
+            hasAnyInfo = true;
+        } else {
+            feeInfo.style.display = 'none';
+        }
+    } else {
+        feeInfo.style.display = 'none';
+    }
+
+    // Show/hide card
+    card.style.display = hasAnyInfo ? 'block' : 'none';
+}
+
+// Add event listeners for auto-calculation
+document.querySelector('[name="ngay_sinh"]')?.addEventListener('change', updateAutoCalcCard);
+document.querySelector('[name="ngay_het_han_cmnd"]')?.addEventListener('change', updateAutoCalcCard);
+document.querySelector('[name="loai_the"]')?.addEventListener('change', updateAutoCalcCard);
+document.querySelector('[name="hang_the"]')?.addEventListener('change', updateAutoCalcCard);
+
+// Also update when customer is selected (if fillFormWithData is called)
+const originalFillFormWithData = window.fillFormWithData;
+if (originalFillFormWithData) {
+    window.fillFormWithData = function(data) {
+        originalFillFormWithData(data);
+        // Trigger update after a short delay to ensure form is filled
+        setTimeout(updateAutoCalcCard, 100);
+    };
+}
+
 </script>
 {% endblock %}

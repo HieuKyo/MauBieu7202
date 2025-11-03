@@ -290,6 +290,110 @@ class Customer(models.Model):
     def __str__(self):
         return f"{self.ho_ten} - {self.so_cmnd}"
 
+    def clean(self):
+        """Validate customer data"""
+        from django.core.exceptions import ValidationError
+        from datetime import datetime, date
+        from dateutil.relativedelta import relativedelta
+
+        errors = {}
+
+        # Validate age (must be at least 15 years old)
+        if self.ngay_sinh:
+            today = date.today()
+            age = relativedelta(today, self.ngay_sinh).years
+
+            if age < 15:
+                errors['ngay_sinh'] = f'Khách hàng phải từ 15 tuổi trở lên (hiện tại: {age} tuổi)'
+            elif age > 120:
+                errors['ngay_sinh'] = f'Ngày sinh không hợp lệ (tuổi tính được: {age})'
+
+        # Validate CCCD expiry date
+        if self.ngay_cap_cmnd and self.ngay_het_han_cmnd:
+            if self.ngay_het_han_cmnd <= self.ngay_cap_cmnd:
+                errors['ngay_het_han_cmnd'] = 'Ngày hết hạn phải sau ngày cấp'
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        """Override save to call clean()"""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def get_age(self):
+        """Tính tuổi khách hàng"""
+        if not self.ngay_sinh:
+            return None
+        from datetime import date
+        from dateutil.relativedelta import relativedelta
+        return relativedelta(date.today(), self.ngay_sinh).years
+
+    def get_cccd_days_remaining(self):
+        """Tính số ngày CCCD còn hiệu lực"""
+        if not self.ngay_het_han_cmnd:
+            return None
+        from datetime import date
+        delta = self.ngay_het_han_cmnd - date.today()
+        return delta.days
+
+    def get_cccd_status(self):
+        """Trả về trạng thái CCCD"""
+        days = self.get_cccd_days_remaining()
+        if days is None:
+            return {'status': 'unknown', 'message': 'Chưa có thông tin', 'class': 'secondary'}
+
+        if days < 0:
+            return {
+                'status': 'expired',
+                'message': f'Đã hết hạn ({abs(days)} ngày trước)',
+                'class': 'danger'
+            }
+        elif days < 30:
+            return {
+                'status': 'expiring_soon',
+                'message': f'Sắp hết hạn (còn {days} ngày)',
+                'class': 'warning'
+            }
+        elif days < 90:
+            return {
+                'status': 'valid',
+                'message': f'Còn hiệu lực ({days} ngày)',
+                'class': 'info'
+            }
+        else:
+            years = days // 365
+            return {
+                'status': 'valid',
+                'message': f'Còn hiệu lực (~{years} năm)',
+                'class': 'success'
+            }
+
+    def get_age_status(self):
+        """Trả về trạng thái độ tuổi"""
+        age = self.get_age()
+        if age is None:
+            return {'status': 'unknown', 'message': 'Chưa có thông tin', 'class': 'secondary'}
+
+        if age < 15:
+            return {
+                'status': 'too_young',
+                'message': f'Chưa đủ 15 tuổi ({age} tuổi)',
+                'class': 'danger'
+            }
+        elif age < 18:
+            return {
+                'status': 'minor',
+                'message': f'{age} tuổi - Cần người giám hộ',
+                'class': 'warning'
+            }
+        else:
+            return {
+                'status': 'adult',
+                'message': f'{age} tuổi - Đủ điều kiện',
+                'class': 'success'
+            }
+
     def get_noi_cap_display_value(self):
         """Lấy giá trị nơi cấp để hiển thị (ưu tiên custom nếu chọn 'Khác')"""
         if self.noi_cap_cmnd == 'Khác' and self.noi_cap_cmnd_custom:
@@ -344,17 +448,22 @@ class Customer(models.Model):
         tk_ngau_nhien = checkbox(self.loai_tai_khoan == 'Tài khoản ngẫu nhiên')
         tk_theo_yeu_cau = checkbox(self.loai_tai_khoan == 'Tài khoản số theo yêu cầu')
 
+        from datetime import datetime, date
+
         data = {
             'ma_khach_hang': self.ma_khach_hang or '',
             'cif': self.cif or '',
             'ho_ten': self.ho_ten or '',
             'ho_ten_tieng_anh': self.ho_ten_tieng_anh or '',
             'ngay_sinh': self.ngay_sinh.strftime('%d/%m/%Y') if self.ngay_sinh else '',
+            'ngay_sinh_obj': self.ngay_sinh,  # Date object cho Jinja2 calculations
             'gioi_tinh': self.gioi_tinh or '',
             'dan_toc': self.dan_toc or '',
             'so_cmnd': self.so_cmnd or '',
             'ngay_cap_cmnd': self.ngay_cap_cmnd.strftime('%d/%m/%Y') if self.ngay_cap_cmnd else '',
+            'ngay_cap_cmnd_obj': self.ngay_cap_cmnd,  # Date object cho Jinja2 calculations
             'ngay_het_han_cmnd': self.ngay_het_han_cmnd.strftime('%d/%m/%Y') if self.ngay_het_han_cmnd else '',
+            'ngay_het_han_cmnd_obj': self.ngay_het_han_cmnd,  # Date object cho Jinja2 calculations
             'noi_cap_cmnd': self.get_noi_cap_display_value(),
             'dia_chi': self.dia_chi or '',
             'ho_khau': self.ho_khau or '',
@@ -374,6 +483,9 @@ class Customer(models.Model):
             'loai_phi': self.loai_phi or '',
             'ghi_chu': self.ghi_chu or '',
             'ngay_in': self.ngay_in.strftime('%d/%m/%Y') if self.ngay_in else '',
+            'ngay_in_obj': self.ngay_in,  # Date object cho Jinja2 calculations
+            # Ngày hiện tại cho tính toán
+            'ngay_hien_tai': datetime.now().date(),
             # Date variables (ngày sinh)
             'd1': d1, 'd2': d2, 'm1': m1, 'm2': m2,
             'y1': y1, 'y2': y2, 'y3': y3, 'y4': y4,

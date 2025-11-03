@@ -275,6 +275,155 @@
             </div>
         </div>
     </div>
+
+    <!-- Biến Auto-Calculation -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100 border-warning">
+            <div class="card-header" style="background-color: #ff9800; color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-calculator"></i> Biến Tính toán (Date Objects)
+                    <span class="badge bg-light text-dark">{{ calc_variables|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle"></i> Các biến dạng Date object dùng cho tính toán tuổi, thời hạn, v.v.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="calc">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 30%;">Tên biến</th>
+                                <th style="width: 55%;">Mô tả & Ví dụ</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in calc_variables %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.description }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td>
+                                    <div class="variable-desc small">{{ var.description }}</div>
+                                    {% if var.example %}
+                                    <small class="text-muted font-monospace">{{ var.example }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            onclick="copyVariable('{{ var.name }}')"
+                                            title="Copy {{ var.name }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jinja2 Filters -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100 border-success">
+            <div class="card-header" style="background-color: #28a745; color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-funnel"></i> Jinja2 Filters & Functions
+                    <span class="badge bg-light text-dark">{{ jinja_filters|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle"></i> Các filter dùng để format và tính toán trong template
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="filters">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 30%;">Filter</th>
+                                <th style="width: 55%;">Mô tả & Ví dụ</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in jinja_filters %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.description }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td>
+                                    <div class="variable-desc small">{{ var.description }}</div>
+                                    {% if var.example %}
+                                    <small class="text-muted font-monospace">{{ var.example }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            onclick="copyVariable('{{ var.name }}')"
+                                            title="Copy {{ var.name }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jinja2 Syntax Examples -->
+    <div class="col-lg-12 mb-4">
+        <div class="card shadow-sm border-info">
+            <div class="card-header" style="background-color: #17a2b8; color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-code-slash"></i> Jinja2 Syntax & Control Structures
+                    <span class="badge bg-light text-dark">{{ jinja_syntax|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-lightbulb"></i> <strong>Tính năng AUTO-CALCULATION:</strong>
+                    Hệ thống hỗ trợ đầy đủ cú pháp Jinja2 để tính toán tự động trong template.
+                    <a href="/static/AUTO_CALCULATION_GUIDE.md" target="_blank" class="alert-link">
+                        <i class="bi bi-file-text"></i> Xem hướng dẫn chi tiết
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="syntax">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%;">Cấu trúc</th>
+                                <th style="width: 30%;">Mô tả</th>
+                                <th style="width: 40%;">Ví dụ sử dụng</th>
+                                <th style="width: 10%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in jinja_syntax %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.description }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td class="variable-desc small">{{ var.description }}</td>
+                                <td>
+                                    {% if var.example %}
+                                    <code class="small">{{ var.example }}</code>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            onclick="copyJinjaCode('{{ var.example }}')"
+                                            title="Copy example">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Usage Guide -->
@@ -331,6 +480,16 @@ function copyVariable(variableName) {
     }).catch(err => {
         console.error('Failed to copy:', err);
         showNotification('Lỗi khi copy biến', 'error');
+    });
+}
+
+// Copy Jinja2 code to clipboard (for syntax examples)
+function copyJinjaCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        showNotification(`Đã copy: ${code}`, 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showNotification('Lỗi khi copy code', 'error');
     });
 }
 

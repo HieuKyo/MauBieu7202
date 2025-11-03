@@ -853,6 +853,36 @@ def variable_library_view(request):
         {'name': 'dia_chi_chi_nhanh', 'description': 'Địa chỉ chi nhánh', 'example': 'Số 123 Đường ABC, Phường XYZ'},
     ]
 
+    # 3.5. Biến Auto-Calculation (Date objects & special variables)
+    calc_variables = [
+        {'name': 'ngay_hien_tai', 'description': 'Ngày hiện tại (Date object) - Tự động thêm vào mọi template', 'example': 'Dùng cho tính toán: {% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai) %}'},
+        {'name': 'ngay_sinh_obj', 'description': 'Ngày sinh dạng Date object - Dùng cho tính toán tuổi', 'example': 'Tính tuổi: {{ ngay_sinh_obj|date_diff_years(ngay_hien_tai) }}'},
+        {'name': 'ngay_cap_cmnd_obj', 'description': 'Ngày cấp CCCD dạng Date object - Dùng cho tính toán', 'example': 'Tính số năm đã cấp: {{ ngay_cap_cmnd_obj|date_diff_years(ngay_hien_tai) }}'},
+        {'name': 'ngay_het_han_cmnd_obj', 'description': 'Ngày hết hạn CCCD dạng Date object - Dùng cho tính toán', 'example': 'Tính số ngày còn lại: {{ ngay_het_han_cmnd_obj|date_diff_days(ngay_hien_tai) }}'},
+        {'name': 'ngay_in_obj', 'description': 'Ngày in dạng Date object - Dùng cho tính toán', 'example': 'Dùng trong calculations'},
+    ]
+
+    # 3.6. Jinja2 Filters & Functions
+    jinja_filters = [
+        {'name': 'number_format', 'description': 'Format số tiền theo định dạng VN (thêm dấu phẩy)', 'example': '{{ 165000|number_format }} → 165,000'},
+        {'name': 'date_diff_years', 'description': 'Tính số năm giữa 2 ngày', 'example': '{% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai) %}'},
+        {'name': 'date_diff_days', 'description': 'Tính số ngày giữa 2 ngày', 'example': '{% set ngay_con_lai = ngay_het_han_cmnd_obj|date_diff_days(ngay_hien_tai) %}'},
+        {'name': 'round', 'description': 'Làm tròn số (built-in Jinja2)', 'example': '{{ 2.567|round(2) }} → 2.57'},
+        {'name': 'abs', 'description': 'Giá trị tuyệt đối (built-in Jinja2)', 'example': '{{ -5|abs }} → 5'},
+        {'name': 'length', 'description': 'Độ dài danh sách/chuỗi (built-in Jinja2)', 'example': '{% if danh_sach|length > 0 %}'},
+    ]
+
+    # 3.7. Jinja2 Syntax Examples
+    jinja_syntax = [
+        {'name': 'if/else', 'description': 'Điều kiện if/else', 'example': '{% if tuoi >= 18 %}Đủ điều kiện{% else %}Chưa đủ{% endif %}'},
+        {'name': 'set', 'description': 'Gán biến', 'example': '{% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai) %}'},
+        {'name': 'for loop', 'description': 'Vòng lặp', 'example': '{% for item in danh_sach %}{{ item }}{% endfor %}'},
+        {'name': 'comment', 'description': 'Ghi chú (không hiển thị)', 'example': '{# Đây là comment #}'},
+        {'name': 'toán tử', 'description': 'Các phép toán: +, -, *, /, %', 'example': '{% set tong = phi_1 + phi_2 %}'},
+        {'name': 'so sánh', 'description': 'So sánh: ==, !=, <, >, <=, >=', 'example': '{% if tuoi >= 18 %}'},
+        {'name': 'logic', 'description': 'Logic: and, or, not', 'example': '{% if tuoi >= 18 and cccd_con_han %}'},
+    ]
+
     # 4. Biến Tùy chỉnh - From GlobalConfig.custom_variables
     config = GlobalConfig.get_instance()
     custom_variables = []
@@ -868,6 +898,9 @@ def variable_library_view(request):
         'customer_variables': customer_variables,
         'date_variables': date_variables,
         'service_variables': service_variables,
+        'calc_variables': calc_variables,
+        'jinja_filters': jinja_filters,
+        'jinja_syntax': jinja_syntax,
         'branch_variables': branch_variables,
         'custom_variables': custom_variables,
     }
@@ -1016,36 +1049,49 @@ def generate_document_direct(request, template_id):
             try:
                 from datetime import datetime
                 date_obj = datetime.strptime(data['ngay_sinh'], '%Y-%m-%d')
+                # Store both formatted string and date object
+                data['ngay_sinh'] = date_obj.strftime('%d/%m/%Y')
+                data['ngay_sinh_obj'] = date_obj.date()  # Date object for Jinja2 calculations
                 date_str = date_obj.strftime('%d%m%Y')
                 data['d1'], data['d2'] = date_str[0], date_str[1]
                 data['m1'], data['m2'] = date_str[2], date_str[3]
                 data['y1'], data['y2'], data['y3'], data['y4'] = date_str[4], date_str[5], date_str[6], date_str[7]
             except:
-                pass
+                data['ngay_sinh_obj'] = None
 
         # Date variables (from ngay_cap_cmnd)
         if data['ngay_cap_cmnd']:
             try:
                 from datetime import datetime
                 date_obj = datetime.strptime(data['ngay_cap_cmnd'], '%Y-%m-%d')
+                # Store both formatted string and date object
+                data['ngay_cap_cmnd'] = date_obj.strftime('%d/%m/%Y')
+                data['ngay_cap_cmnd_obj'] = date_obj.date()  # Date object for Jinja2 calculations
                 date_str = date_obj.strftime('%d%m%Y')
                 data['dcc1'], data['dcc2'] = date_str[0], date_str[1]
                 data['mcc1'], data['mcc2'] = date_str[2], date_str[3]
                 data['ycc1'], data['ycc2'], data['ycc3'], data['ycc4'] = date_str[4], date_str[5], date_str[6], date_str[7]
             except:
-                pass
+                data['ngay_cap_cmnd_obj'] = None
 
         # Date variables (from ngay_het_han_cmnd)
         if data['ngay_het_han_cmnd']:
             try:
                 from datetime import datetime
                 date_obj = datetime.strptime(data['ngay_het_han_cmnd'], '%Y-%m-%d')
+                # Store both formatted string and date object
+                data['ngay_het_han_cmnd'] = date_obj.strftime('%d/%m/%Y')
+                data['ngay_het_han_cmnd_obj'] = date_obj.date()  # Date object for Jinja2 calculations
                 date_str = date_obj.strftime('%d%m%Y')
                 data['dhh1'], data['dhh2'] = date_str[0], date_str[1]
                 data['mhh1'], data['mhh2'] = date_str[2], date_str[3]
                 data['yhh1'], data['yhh2'], data['yhh3'], data['yhh4'] = date_str[4], date_str[5], date_str[6], date_str[7]
             except:
-                pass
+                data['ngay_het_han_cmnd_obj'] = None
+
+        # Ngày hiện tại cho tính toán
+        from datetime import datetime
+        data['ngay_hien_tai'] = datetime.now().date()
 
         # Service-specific account and phone logic
         # If Agribank Plus is selected but NOT SMS Banking
