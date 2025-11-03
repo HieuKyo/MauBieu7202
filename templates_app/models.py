@@ -337,15 +337,20 @@ class Customer(models.Model):
         tk_ngau_nhien = checkbox(self.loai_tai_khoan == 'Tài khoản ngẫu nhiên')
         tk_theo_yeu_cau = checkbox(self.loai_tai_khoan == 'Tài khoản số theo yêu cầu')
 
+        from datetime import datetime, date
+
         data = {
             'ma_khach_hang': self.ma_khach_hang or '',
             'cif': self.cif or '',
             'ho_ten': self.ho_ten or '',
             'ngay_sinh': self.ngay_sinh.strftime('%d/%m/%Y') if self.ngay_sinh else '',
+            'ngay_sinh_obj': self.ngay_sinh,  # Date object cho Jinja2 calculations
             'gioi_tinh': self.gioi_tinh or '',
             'so_cmnd': self.so_cmnd or '',
             'ngay_cap_cmnd': self.ngay_cap_cmnd.strftime('%d/%m/%Y') if self.ngay_cap_cmnd else '',
+            'ngay_cap_cmnd_obj': self.ngay_cap_cmnd,  # Date object cho Jinja2 calculations
             'ngay_het_han_cmnd': self.ngay_het_han_cmnd.strftime('%d/%m/%Y') if self.ngay_het_han_cmnd else '',
+            'ngay_het_han_cmnd_obj': self.ngay_het_han_cmnd,  # Date object cho Jinja2 calculations
             'noi_cap_cmnd': self.get_noi_cap_display_value(),
             'dia_chi': self.dia_chi or '',
             'so_dien_thoai': self.so_dien_thoai or '',
@@ -360,6 +365,9 @@ class Customer(models.Model):
             'hang_the': self.hang_the or '',
             'ghi_chu': self.ghi_chu or '',
             'ngay_in': self.ngay_in.strftime('%d/%m/%Y') if self.ngay_in else '',
+            'ngay_in_obj': self.ngay_in,  # Date object cho Jinja2 calculations
+            # Ngày hiện tại cho tính toán
+            'ngay_hien_tai': datetime.now().date(),
             # Date variables (ngày sinh)
             'd1': d1, 'd2': d2, 'm1': m1, 'm2': m2,
             'y1': y1, 'y2': y2, 'y3': y3, 'y4': y4,
