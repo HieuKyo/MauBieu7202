@@ -178,11 +178,15 @@ class GlobalConfigForm(forms.ModelForm):
         widgets = {
             'ten_chi_nhanh': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: Chi nhánh Giá Rai Bạc Liêu'}),
             'ten_chi_nhanh_hoa': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: CHI NHÁNH GIÁ RAI BẠC LIÊU'}),
+            'ma_chi_nhanh': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: 100'}),
             'mst': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã số thuế'}),
+            'dia_chi_chi_nhanh': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Địa chỉ đầy đủ chi nhánh'}),
+            'dien_thoai_chi_nhanh': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: 0291.3822.079'}),
+            'so_fax': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: 0291.3822.080'}),
+            'dia_danh': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: Bạc Liêu, Đồng Tháp'}),
             'giao_dich_vien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên giao dịch viên'}),
             'kiem_soat_vien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên kiểm soát viên'}),
             'giam_doc': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên giám đốc'}),
-            'dia_chi_chi_nhanh': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Địa chỉ đầy đủ chi nhánh'}),
         }
 
 
