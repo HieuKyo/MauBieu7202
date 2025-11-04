@@ -667,11 +667,17 @@ def branch_config_view(request):
     branch_fields = {
         'ten_chi_nhanh': 'Tên chi nhánh',
         'ten_chi_nhanh_hoa': 'Tên chi nhánh (IN HOA)',
+        'ma_chi_nhanh': 'Mã chi nhánh',
         'mst': 'Mã số thuế',
         'dia_chi_chi_nhanh': 'Địa chỉ chi nhánh',
+        'dien_thoai_chi_nhanh': 'Điện thoại chi nhánh',
+        'so_fax': 'Số Fax',
+        'dia_danh': 'Địa danh (Bạc Liêu, Đồng Tháp...)',
         'giao_dich_vien': 'Giao dịch viên',
         'kiem_soat_vien': 'Kiểm soát viên',
         'giam_doc': 'Giám đốc',
+        'ngay_hien_tai': 'Ngày hiện tại (dd/mm/yyyy) - Tự động',
+        'ngay_thang_nam_text': 'Ngày tháng năm (văn bản) - Tự động',
     }
 
     context = {

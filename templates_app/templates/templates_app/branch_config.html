@@ -43,6 +43,12 @@
                         </div>
 
                         <div class="col-md-6">
+                            <label class="form-label fw-bold">Mã chi nhánh</label>
+                            {{ form.ma_chi_nhanh }}
+                            <small class="form-text text-muted">Biến: <code>{% templatetag openvariable %} ma_chi_nhanh {% templatetag closevariable %}</code></small>
+                        </div>
+
+                        <div class="col-md-6">
                             <label class="form-label fw-bold">Mã số thuế</label>
                             {{ form.mst }}
                             <small class="form-text text-muted">Biến: <code>{% templatetag openvariable %} mst {% templatetag closevariable %}</code></small>
@@ -52,6 +58,24 @@
                             <label class="form-label fw-bold">Địa chỉ chi nhánh</label>
                             {{ form.dia_chi_chi_nhanh }}
                             <small class="form-text text-muted">Biến: <code>{% templatetag openvariable %} dia_chi_chi_nhanh {% templatetag closevariable %}</code></small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Điện thoại chi nhánh</label>
+                            {{ form.dien_thoai_chi_nhanh }}
+                            <small class="form-text text-muted">Biến: <code>{% templatetag openvariable %} dien_thoai_chi_nhanh {% templatetag closevariable %}</code></small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Số Fax</label>
+                            {{ form.so_fax }}
+                            <small class="form-text text-muted">Biến: <code>{% templatetag openvariable %} so_fax {% templatetag closevariable %}</code></small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Địa danh</label>
+                            {{ form.dia_danh }}
+                            <small class="form-text text-muted">Ví dụ: Bạc Liêu, Đồng Tháp. Biến: <code>{% templatetag openvariable %} dia_danh {% templatetag closevariable %}</code></small>
                         </div>
                     </div>
                 </div>
