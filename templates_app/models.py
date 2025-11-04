@@ -605,9 +605,17 @@ class GlobalConfig(models.Model):
 
     def get_all_variables(self):
         """
-        Trả về dictionary chứa TẤT CẢ biến (chi nhánh + biến tùy chỉnh)
+        Trả về dictionary chứa TẤT CẢ biến (chi nhánh + biến tùy chỉnh + biến tự động)
         để chèn vào template
         """
+        from datetime import date
+
+        # Ngày hiện tại
+        today = date.today()
+        day = today.day
+        month = today.month
+        year = today.year
+
         variables = {
             # Biến chi nhánh
             'ten_chi_nhanh': self.ten_chi_nhanh or '',
@@ -621,6 +629,14 @@ class GlobalConfig(models.Model):
             'giao_dich_vien': self.giao_dich_vien or '',
             'kiem_soat_vien': self.kiem_soat_vien or '',
             'giam_doc': self.giam_doc or '',
+
+            # Biến tự động - Ngày giờ
+            'ngay_hien_tai': today.strftime('%d/%m/%Y'),  # Format: dd/mm/yyyy
+            'ngay_thang_nam_text': f"ngày {day:02d} tháng {month:02d} năm {year}",  # Format: ngày DD tháng MM năm YYYY
+            'date_month_year': f"Date {day:02d} Month {month:02d} Year {year}",  # English format
+            'nam_hien_tai': year,
+            'thang_hien_tai': month,
+            'ngay_hien_tai_day': day,
         }
 
         # Thêm các biến tùy chỉnh
