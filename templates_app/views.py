@@ -861,18 +861,18 @@ def variable_library_view(request):
 
     # 3.5. Biến Auto-Calculation (Date objects & special variables)
     calc_variables = [
-        {'name': 'ngay_hien_tai', 'description': 'Ngày hiện tại (Date object) - Tự động thêm vào mọi template', 'example': 'Dùng cho tính toán: {% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai) %}'},
-        {'name': 'ngay_sinh_obj', 'description': 'Ngày sinh dạng Date object - Dùng cho tính toán tuổi', 'example': 'Tính tuổi: {{ ngay_sinh_obj|date_diff_years(ngay_hien_tai) }}'},
-        {'name': 'ngay_cap_cmnd_obj', 'description': 'Ngày cấp CCCD dạng Date object - Dùng cho tính toán', 'example': 'Tính số năm đã cấp: {{ ngay_cap_cmnd_obj|date_diff_years(ngay_hien_tai) }}'},
-        {'name': 'ngay_het_han_cmnd_obj', 'description': 'Ngày hết hạn CCCD dạng Date object - Dùng cho tính toán', 'example': 'Tính số ngày còn lại: {{ ngay_het_han_cmnd_obj|date_diff_days(ngay_hien_tai) }}'},
+        {'name': 'ngay_hien_tai_obj', 'description': 'Ngày hiện tại (Date object) - Tự động thêm vào mọi template', 'example': 'Dùng cho tính toán: {% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai_obj) %}'},
+        {'name': 'ngay_sinh_obj', 'description': 'Ngày sinh dạng Date object - Dùng cho tính toán tuổi', 'example': 'Tính tuổi: {{ ngay_sinh_obj|date_diff_years(ngay_hien_tai_obj) }}'},
+        {'name': 'ngay_cap_cmnd_obj', 'description': 'Ngày cấp CCCD dạng Date object - Dùng cho tính toán', 'example': 'Tính số năm đã cấp: {{ ngay_cap_cmnd_obj|date_diff_years(ngay_hien_tai_obj) }}'},
+        {'name': 'ngay_het_han_cmnd_obj', 'description': 'Ngày hết hạn CCCD dạng Date object - Dùng cho tính toán', 'example': 'Tính số ngày còn lại: {{ ngay_het_han_cmnd_obj|date_diff_days(ngay_hien_tai_obj) }}'},
         {'name': 'ngay_in_obj', 'description': 'Ngày in dạng Date object - Dùng cho tính toán', 'example': 'Dùng trong calculations'},
     ]
 
     # 3.6. Jinja2 Filters & Functions
     jinja_filters = [
         {'name': 'number_format', 'description': 'Format số tiền theo định dạng VN (thêm dấu phẩy)', 'example': '{{ 165000|number_format }} → 165,000'},
-        {'name': 'date_diff_years', 'description': 'Tính số năm giữa 2 ngày', 'example': '{% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai) %}'},
-        {'name': 'date_diff_days', 'description': 'Tính số ngày giữa 2 ngày', 'example': '{% set ngay_con_lai = ngay_het_han_cmnd_obj|date_diff_days(ngay_hien_tai) %}'},
+        {'name': 'date_diff_years', 'description': 'Tính số năm giữa 2 ngày', 'example': '{% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai_obj) %}'},
+        {'name': 'date_diff_days', 'description': 'Tính số ngày giữa 2 ngày', 'example': '{% set ngay_con_lai = ngay_het_han_cmnd_obj|date_diff_days(ngay_hien_tai_obj) %}'},
         {'name': 'round', 'description': 'Làm tròn số (built-in Jinja2)', 'example': '{{ 2.567|round(2) }} → 2.57'},
         {'name': 'abs', 'description': 'Giá trị tuyệt đối (built-in Jinja2)', 'example': '{{ -5|abs }} → 5'},
         {'name': 'length', 'description': 'Độ dài danh sách/chuỗi (built-in Jinja2)', 'example': '{% if danh_sach|length > 0 %}'},
@@ -881,7 +881,7 @@ def variable_library_view(request):
     # 3.7. Jinja2 Syntax Examples
     jinja_syntax = [
         {'name': 'if/else', 'description': 'Điều kiện if/else', 'example': '{% if tuoi >= 18 %}Đủ điều kiện{% else %}Chưa đủ{% endif %}'},
-        {'name': 'set', 'description': 'Gán biến', 'example': '{% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai) %}'},
+        {'name': 'set', 'description': 'Gán biến', 'example': '{% set tuoi = ngay_sinh_obj|date_diff_years(ngay_hien_tai_obj) %}'},
         {'name': 'for loop', 'description': 'Vòng lặp', 'example': '{% for item in danh_sach %}{{ item }}{% endfor %}'},
         {'name': 'comment', 'description': 'Ghi chú (không hiển thị)', 'example': '{# Đây là comment #}'},
         {'name': 'toán tử', 'description': 'Các phép toán: +, -, *, /, %', 'example': '{% set tong = phi_1 + phi_2 %}'},
@@ -1095,9 +1095,9 @@ def generate_document_direct(request, template_id):
             except:
                 data['ngay_het_han_cmnd_obj'] = None
 
-        # Ngày hiện tại cho tính toán
+        # Ngày hiện tại cho tính toán (Date object)
         from datetime import datetime
-        data['ngay_hien_tai'] = datetime.now().date()
+        data['ngay_hien_tai_obj'] = datetime.now().date()  # Date object for calculations
 
         # Service-specific account and phone logic
         # If Agribank Plus is selected but NOT SMS Banking
@@ -1116,18 +1116,8 @@ def generate_document_direct(request, template_id):
             data['so_tai_khoan_SMS'] = ''
             data['so_dien_thoai_SMS'] = ''
 
-        # Branch data from GlobalConfig
-        data['ten_chi_nhanh'] = config.ten_chi_nhanh
-        data['ten_chi_nhanh_hoa'] = config.ten_chi_nhanh_hoa
-        data['mst'] = config.mst
-        data['giao_dich_vien'] = config.giao_dich_vien
-        data['kiem_soat_vien'] = config.kiem_soat_vien
-        data['giam_doc'] = config.giam_doc
-        data['dia_chi_chi_nhanh'] = config.dia_chi_chi_nhanh
-
-        # Custom variables
-        if config.custom_variables:
-            data.update(config.custom_variables)
+        # Add ALL GlobalConfig variables (branch info + custom variables + auto-generated date variables)
+        data.update(config.get_all_variables())
 
         # Generate document
         output_file = render_word_template(template.file.path, data)

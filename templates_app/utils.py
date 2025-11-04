@@ -77,9 +77,10 @@ class JinjaWordTemplateProcessor:
         Returns:
             Document object đã được render
         """
-        # Thêm các helper functions vào context
-        if 'ngay_hien_tai' not in context:
-            context['ngay_hien_tai'] = datetime.now().date()
+        # Thêm Date object cho calculations nếu chưa có
+        # NOTE: ngay_hien_tai (string dd/mm/yyyy) đã có trong GlobalConfig.get_all_variables()
+        if 'ngay_hien_tai_obj' not in context:
+            context['ngay_hien_tai_obj'] = datetime.now().date()
 
         # Process paragraphs
         for paragraph in self.document.paragraphs:
