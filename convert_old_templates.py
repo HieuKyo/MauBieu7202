@@ -36,8 +36,11 @@ VARIABLE_MAPPING = {
 
     # Cán bộ
     '[GiaoDichVien]': '{{ giao_dich_vien }}',
+    '[GDichVien]': '{{ giao_dich_vien }}',  # Alias
     '[KiemSoatVien]': '{{ kiem_soat_vien }}',
+    '[KiemSoat]': '{{ kiem_soat_vien }}',  # Alias
     '[GiamDoc]': '{{ giam_doc }}',
+    '[LanhDao]': '{{ giam_doc }}',  # Alias
 
     # ===== BIẾN TỰ ĐỘNG (Auto-generated) =====
     '[Ngay//]': '{{ ngay_hien_tai }}',
@@ -403,7 +406,8 @@ def print_mapping_table():
     categories = {
         'CHI NHÁNH': ['[ChiNhanh]', '[ChiNhanhHOA]', '[DiaChi]', '[DienThoai]', '[SoFax]',
                       '[DiaDanh]', '[MaSoThue]', '[MaCN]', '[USER]',
-                      '[GiaoDichVien]', '[KiemSoatVien]', '[GiamDoc]'],
+                      '[GiaoDichVien]', '[GDichVien]', '[KiemSoatVien]', '[KiemSoat]',
+                      '[GiamDoc]', '[LanhDao]'],
         'TỰ ĐỘNG': ['[Ngay//]', '[NgayThangNam]', '[DateMonthYear]', '[So_HopDong]'],
         'KHÁCH HÀNG': ['[HotenKhachhangVN]', '[HotenKhachhangE]', '[NamSinh]', '[GioiTinh]',
                        '[DanToc]', '[SoDienThoai]', '[Email]', '[DiaChiKhachHang]', '[HoKhau]',
