@@ -233,6 +233,144 @@ DATE_DIGIT_MAPPING = {
 ALL_MAPPINGS = {**VARIABLE_MAPPING, **DATE_DIGIT_MAPPING}
 
 
+# =====================================================
+# BẢNG MAPPING: Checkbox Tag Cũ → Checkbox Tag Mới
+# Ánh xạ các Tag names từ template cũ sang biến mới
+# =====================================================
+CHECKBOX_TAG_MAPPING = {
+    # ===== GIỚI TÍNH =====
+    'Check_NAM': 'gioi_tinh_nam',
+    'Check_NU': 'gioi_tinh_nu',
+    'Check_Nam': 'gioi_tinh_nam',
+    'Check_Nu': 'gioi_tinh_nu',
+
+    # ===== LOẠI TÀI KHOẢN =====
+    'LoaiTK_Auto': 'tk_ngau_nhien',
+    'LoaiTK_Chon': 'tk_theo_yeu_cau',
+    'LoaiTK_ChDung': 'tk_theo_yeu_cau',  # Alias
+    'Check_TK_Auto': 'tk_ngau_nhien',
+    'Check_TK_Chon': 'tk_theo_yeu_cau',
+
+    # ===== LOẠI TIỀN TỆ =====
+    'Check_VND': 'loai_tien_vnd',
+    'Check_USD': 'loai_tien_usd',
+    'Check_EUR': 'loai_tien_eur',
+
+    # ===== HẠNG THẺ =====
+    'Check_C': 'the_hang_chuan',
+    'Check_Chuan': 'the_hang_chuan',
+    'Check_V': 'the_hang_vang',
+    'Check_Vang': 'the_hang_vang',
+    'Check_P': 'the_hang_bach_kim',
+    'Check_BachKim': 'the_hang_bach_kim',
+
+    # ===== LOẠI THẺ =====
+    'Check_ND': 'the_ghi_no_noi_dia',
+    'Check_GN_ND': 'the_ghi_no_noi_dia',
+    'Check_LN': 'the_ghi_no_quoc_te',
+    'Check_GN_QT': 'the_ghi_no_quoc_te',
+    'Check_TH': 'the_tin_dung',
+    'Check_TD': 'the_tin_dung',
+    'Check_JCB': 'loai_the_jcb',
+    'Check_VS': 'loai_the_visa',
+    'Check_Visa': 'loai_the_visa',
+    'Check_MT': 'loai_the_mastercard',
+    'Check_Mastercard': 'loai_the_mastercard',
+    'Check_KHAC': 'loai_the_khac',
+
+    # ===== PHÁT HÀNH THẺ =====
+    'Check_LD': 'phat_hanh_lan_dau',
+    'Check_LanDau': 'phat_hanh_lan_dau',
+    'Check_PHL': 'phat_hanh_lai',
+    'Check_PhatHanhLai': 'phat_hanh_lai',
+
+    # ===== DỊCH VỤ NGÂN HÀNG ĐIỆN TỬ =====
+    'Check_S': 'dv_sms_banking',
+    'Check_SMS': 'dv_sms_banking',
+    'Check_E': 'dv_e_mobile',
+    'Check_EMobile': 'dv_e_mobile',
+    'Check_B': 'dv_bankplus',
+    'Check_BankPlus': 'dv_bankplus',
+    'Check_AP': 'dv_bankplus',  # Agribank Plus
+    'Check_EC': 'dv_e_commerce',
+    'Check_ECommerce': 'dv_e_commerce',
+    'Check_IB': 'dv_retail_ebanking',
+    'Check_Retail': 'dv_retail_ebanking',
+    'Check_RetailEB': 'dv_retail_ebanking',
+    'Check_OTPI': 'dv_soft_otp',
+    'Check_OTP_SI': 'dv_soft_otp',
+    'Check_SoftOTP': 'dv_soft_otp',
+    'Check_OTP_TI': 'dv_smart_otp',
+    'Check_SmartOTP': 'dv_smart_otp',
+
+    # ===== DỊCH VỤ THU HỘ =====
+    'Check_Nuoc': 'dv_thu_ho_tien_nuoc',
+    'Check_TienNuoc': 'dv_thu_ho_tien_nuoc',
+    'Check_Dien': 'dv_thu_ho_tien_dien',
+    'Check_TienDien': 'dv_thu_ho_tien_dien',
+    'Check_VT': 'dv_thu_ho_vien_thong',
+    'Check_VienT': 'dv_thu_ho_vien_thong',
+    'Check_VienThong': 'dv_thu_ho_vien_thong',
+    'Check_HP': 'dv_thu_ho_hoc_phi',
+    'Check_HocP': 'dv_thu_ho_hoc_phi',
+    'Check_HocPhi': 'dv_thu_ho_hoc_phi',
+    'Check_BH': 'dv_thu_ho_bao_hiem',
+    'Check_BaoHiem': 'dv_thu_ho_bao_hiem',
+
+    # ===== KÊNH GIAO DỊCH =====
+    'Check_Mobile': 'kenh_mobile',
+    'Check_Internet': 'kenh_internet',
+    'Check_IB_Kenh': 'kenh_internet',
+}
+
+
+def convert_checkbox_tags(doc):
+    """
+    Chuyển đổi Tag names của Content Control checkboxes
+
+    Args:
+        doc: Document object
+
+    Returns:
+        dict: Thống kê số lượng checkbox tags đã thay thế
+    """
+    # Namespace cho Word XML
+    NSMAP = {
+        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+        'w14': 'http://schemas.microsoft.com/office/word/2010/wordml'
+    }
+
+    tag_replacements = {}
+
+    # Tìm tất cả Content Controls
+    for sdt in doc.element.findall('.//w:sdt', namespaces=NSMAP):
+        # Lấy tag element
+        tag_element = sdt.find('.//w:tag', namespaces=NSMAP)
+        if tag_element is None:
+            continue
+
+        old_tag = tag_element.get(f'{{{NSMAP["w"]}}}val')
+        if not old_tag:
+            continue
+
+        # Kiểm tra xem có trong mapping không
+        if old_tag in CHECKBOX_TAG_MAPPING:
+            new_tag = CHECKBOX_TAG_MAPPING[old_tag]
+
+            # Set tag mới
+            tag_element.set(f'{{{NSMAP["w"]}}}val', new_tag)
+
+            # Update alias/title (optional)
+            alias_element = sdt.find('.//w:alias', namespaces=NSMAP)
+            if alias_element is not None:
+                alias_element.set(f'{{{NSMAP["w"]}}}val', new_tag)
+
+            # Thống kê
+            tag_replacements[old_tag] = tag_replacements.get(old_tag, 0) + 1
+
+    return tag_replacements
+
+
 def convert_document(input_path, output_path, backup=True):
     """
     Chuyển đổi một file Word từ placeholder cũ sang biến mới
@@ -303,10 +441,19 @@ def convert_document(input_path, output_path, backup=True):
         for paragraph in section.footer.paragraphs:
             replace_text_in_paragraph(paragraph)
 
+    # Convert checkbox tags
+    checkbox_replacements = convert_checkbox_tags(doc)
+
     # Save document
     doc.save(output_path)
 
-    return replacements
+    # Combine statistics
+    combined_stats = {
+        'text_variables': replacements,
+        'checkbox_tags': checkbox_replacements
+    }
+
+    return combined_stats
 
 
 def process_folder(folder_path, output_folder=None, backup=True):
@@ -338,7 +485,8 @@ def process_folder(folder_path, output_folder=None, backup=True):
     print(f"{'='*60}\n")
 
     # Process từng file
-    total_replacements = {}
+    total_text_replacements = {}
+    total_checkbox_replacements = {}
     successful = 0
     failed = 0
 
@@ -355,43 +503,67 @@ def process_folder(folder_path, output_folder=None, backup=True):
                 output_path = input_path
 
             # Convert
-            replacements = convert_document(input_path, output_path, backup)
+            stats = convert_document(input_path, output_path, backup)
 
             # Update statistics
-            for var, count in replacements.items():
-                total_replacements[var] = total_replacements.get(var, 0) + count
+            text_vars = stats.get('text_variables', {})
+            checkbox_tags = stats.get('checkbox_tags', {})
 
-            if replacements:
-                print(f"  ✓ Đã thay thế {sum(replacements.values())} biến")
-            else:
+            for var, count in text_vars.items():
+                total_text_replacements[var] = total_text_replacements.get(var, 0) + count
+
+            for tag, count in checkbox_tags.items():
+                total_checkbox_replacements[tag] = total_checkbox_replacements.get(tag, 0) + count
+
+            # Print summary for this file
+            text_count = sum(text_vars.values())
+            checkbox_count = sum(checkbox_tags.values())
+
+            if text_count > 0:
+                print(f"  ✓ Đã thay thế {text_count} biến text")
+            if checkbox_count > 0:
+                print(f"  ✓ Đã thay thế {checkbox_count} checkbox tags")
+            if text_count == 0 and checkbox_count == 0:
                 print(f"  ℹ Không tìm thấy biến cũ nào")
 
             successful += 1
 
         except Exception as e:
             print(f"  ❌ Lỗi: {str(e)}")
+            import traceback
+            traceback.print_exc()
             failed += 1
 
         print()
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'='*80}")
     print(f"KẾT QUẢ CHUYỂN ĐỔI")
-    print(f"{'='*60}")
+    print(f"{'='*80}")
     print(f"✓ Thành công: {successful} file")
     if failed > 0:
         print(f"❌ Thất bại: {failed} file")
 
-    if total_replacements:
-        print(f"\nCHI TIẾT CÁC BIẾN ĐÃ THAY THẾ:")
-        print(f"{'-'*60}")
-        for old_var, count in sorted(total_replacements.items(), key=lambda x: x[1], reverse=True):
-            new_var = ALL_MAPPINGS[old_var]
-            print(f"  {old_var:30s} → {new_var:25s} ({count} lần)")
-    else:
-        print(f"\nℹ Không tìm thấy biến cũ nào cần thay thế")
+    # Print text variables
+    if total_text_replacements:
+        print(f"\nCHI TIẾT BIẾN TEXT ĐÃ THAY THẾ:")
+        print(f"{'-'*80}")
+        for old_var, count in sorted(total_text_replacements.items(), key=lambda x: x[1], reverse=True):
+            new_var = ALL_MAPPINGS.get(old_var, '???')
+            print(f"  {old_var:30s} → {new_var:35s} ({count} lần)")
 
-    print(f"{'='*60}\n")
+    # Print checkbox tags
+    if total_checkbox_replacements:
+        print(f"\nCHI TIẾT CHECKBOX TAGS ĐÃ THAY THẾ:")
+        print(f"{'-'*80}")
+        for old_tag, count in sorted(total_checkbox_replacements.items(), key=lambda x: x[1], reverse=True):
+            new_tag = CHECKBOX_TAG_MAPPING.get(old_tag, '???')
+            print(f"  {old_tag:30s} → {new_tag:35s} ({count} lần)")
+
+    if not total_text_replacements and not total_checkbox_replacements:
+        print(f"\nℹ Không tìm thấy biến cũ hoặc checkbox tags nào cần thay thế")
+
+    print(f"{'='*80}\n")
 
 
 def print_mapping_table():
