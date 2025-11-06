@@ -184,10 +184,6 @@ class JinjaWordTemplateProcessor:
             else:
                 return False
 
-        # Đếm số checkbox tìm thấy và xử lý
-        checkboxes_found = 0
-        checkboxes_processed = 0
-
         # Tìm tất cả Structured Document Tags (Content Controls)
         for sdt in self.document.element.findall('.//w:sdt', namespaces=NSMAP):
             # Lấy tag name từ properties
@@ -199,20 +195,13 @@ class JinjaWordTemplateProcessor:
             if not tag_name:
                 continue
 
-            checkboxes_found += 1
-            print(f"[DEBUG] Found Content Control with Tag: '{tag_name}'")
-
             # Kiểm tra xem tag có trong context không
             if tag_name not in context:
-                print(f"[DEBUG] Tag '{tag_name}' NOT found in context")
-                print(f"[DEBUG] Available keys in context: {list(context.keys())[:20]}...")
                 continue
 
             # Parse giá trị checkbox
             value = context[tag_name]
-            print(f"[DEBUG] Tag '{tag_name}' found in context with value: {repr(value)} (type: {type(value).__name__})")
             is_checked = parse_checkbox_value(value)
-            print(f"[DEBUG] Parsed as checked: {is_checked}")
 
             # Tìm checkbox element trong Content Control
             # Checkbox có thể là w14:checkbox hoặc w:sym (Wingdings)
@@ -220,33 +209,21 @@ class JinjaWordTemplateProcessor:
             # Phương pháp 1: Word 2010+ checkbox (w14:checkbox)
             checkbox_element = sdt.find('.//w14:checkbox', namespaces=NSMAP)
             if checkbox_element is not None:
-                print(f"[DEBUG] Found w14:checkbox element for '{tag_name}'")
                 # Tìm checked state element
                 checked_element = checkbox_element.find('.//w14:checked', namespaces=NSMAP)
                 if checked_element is not None:
                     # Set giá trị: 1 = checked, 0 = unchecked
                     checked_element.set(f'{{{NSMAP["w14"]}}}val', '1' if is_checked else '0')
-                    checkboxes_processed += 1
-                    print(f"[DEBUG] Set w14:checked to {'1' if is_checked else '0'}")
-                else:
-                    print(f"[DEBUG] WARNING: w14:checked element not found!")
                 continue
 
             # Phương pháp 2: Legacy checkbox sử dụng Wingdings font
             sym_element = sdt.find('.//w:sym', namespaces=NSMAP)
             if sym_element is not None:
-                print(f"[DEBUG] Found w:sym (Wingdings) element for '{tag_name}'")
                 # Wingdings font codes:
                 # F0FE (&#xF0FE;) = checked box ☑
                 # F0A3 (&#xF0A3;) = unchecked box ☐
                 char_code = 'F0FE' if is_checked else 'F0A3'
                 sym_element.set(f'{{{NSMAP["w"]}}}char', char_code)
-                checkboxes_processed += 1
-                print(f"[DEBUG] Set w:sym char to {char_code}")
-            else:
-                print(f"[DEBUG] WARNING: No checkbox element found (neither w14:checkbox nor w:sym)")
-
-        print(f"[DEBUG] Summary: Found {checkboxes_found} Content Controls, processed {checkboxes_processed} checkboxes")
 
     def save(self, output_path):
         """

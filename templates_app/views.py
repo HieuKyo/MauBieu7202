@@ -1010,21 +1010,50 @@ def generate_document_direct(request, template_id):
         data['phat_hanh_lan_dau'] = checkbox(request.POST.get('phat_hanh_lan_dau') == 'on')
         data['phat_hanh_lai'] = checkbox(request.POST.get('phat_hanh_lai') == 'on')
 
-        # Service checkboxes (3 main services only)
+        # Service checkboxes - Dịch vụ ngân hàng điện tử
         data['dv_sms_banking'] = checkbox(request.POST.get('dv_sms_banking') == 'on')
         data['dv_bankplus'] = checkbox(request.POST.get('dv_bankplus') == 'on')
         data['dv_e_mobile'] = checkbox(request.POST.get('dv_e_mobile') == 'on')
+        data['dv_e_commerce'] = checkbox(request.POST.get('dv_e_commerce') == 'on')
+        data['dv_soft_otp'] = checkbox(request.POST.get('dv_soft_otp') == 'on')
+        data['dv_smart_otp'] = checkbox(request.POST.get('dv_smart_otp') == 'on')
+        data['dv_retail_ebanking'] = checkbox(request.POST.get('dv_retail_ebanking') == 'on')
 
-        # Set other service checkboxes to unchecked for compatibility with old templates
-        for field in ['dv_thu_ho_tien_nuoc', 'dv_thu_ho_tien_dien', 'dv_thu_ho_vien_thong',
-                      'dv_thu_ho_truyen_hinh', 'dv_thu_ho_internet', 'dv_e_internet', 'dv_e_pay',
-                      'dv_smart_otp', 'dv_token', 'kenh_mobile', 'kenh_internet']:
-            data[field] = '☐'
+        # Service checkboxes - Dịch vụ thu hộ
+        data['dv_thu_ho_tien_nuoc'] = checkbox(request.POST.get('dv_thu_ho_tien_nuoc') == 'on')
+        data['dv_thu_ho_tien_dien'] = checkbox(request.POST.get('dv_thu_ho_tien_dien') == 'on')
+        data['dv_thu_ho_vien_thong'] = checkbox(request.POST.get('dv_thu_ho_vien_thong') == 'on')
+        data['dv_thu_ho_hoc_phi'] = checkbox(request.POST.get('dv_thu_ho_hoc_phi') == 'on')
+        data['dv_thu_ho_bao_hiem'] = checkbox(request.POST.get('dv_thu_ho_bao_hiem') == 'on')
 
-        # Special checkboxes
+        # Service checkboxes - Kênh giao dịch
+        data['kenh_mobile'] = checkbox(request.POST.get('kenh_mobile') == 'on')
+        data['kenh_internet'] = checkbox(request.POST.get('kenh_internet') == 'on')
+
+        # Checkbox - Giới tính
+        data['gioi_tinh_nam'] = checkbox(data['gioi_tinh'] == 'Nam')
+        data['gioi_tinh_nu'] = checkbox(data['gioi_tinh'] == 'Nữ')
+
+        # Checkbox - Hạng thẻ
         data['the_hang_chuan'] = checkbox(data['hang_the'] == 'Hạng chuẩn')
         data['the_hang_vang'] = checkbox(data['hang_the'] == 'Hạng vàng')
+        data['the_hang_bach_kim'] = checkbox(data['hang_the'] == 'Hạng bạch kim')
+
+        # Checkbox - Loại thẻ
         data['the_ghi_no_noi_dia'] = checkbox(data['loai_the'] == 'Thẻ Ghi nợ nội địa')
+        data['the_ghi_no_quoc_te'] = checkbox(data['loai_the'] == 'Thẻ Ghi nợ quốc tế')
+        data['the_tin_dung'] = checkbox(data['loai_the'] == 'Thẻ tín dụng')
+        data['loai_the_jcb'] = checkbox(data['loai_the'] == 'JCB')
+        data['loai_the_visa'] = checkbox(data['loai_the'] == 'Visa')
+        data['loai_the_mastercard'] = checkbox(data['loai_the'] == 'Mastercard')
+        data['loai_the_khac'] = checkbox(data['loai_the'] not in ['Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ quốc tế', 'Thẻ tín dụng', 'JCB', 'Visa', 'Mastercard'])
+
+        # Checkbox - Loại tiền
+        data['loai_tien_vnd'] = checkbox(data['loai_tien_te'] == 'VND')
+        data['loai_tien_usd'] = checkbox(data['loai_tien_te'] == 'USD')
+        data['loai_tien_eur'] = checkbox(data['loai_tien_te'] == 'EUR')
+
+        # Checkbox - Loại tài khoản
         data['tk_ngau_nhien'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản ngẫu nhiên')
         data['tk_theo_yeu_cau'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản số theo yêu cầu')
 
