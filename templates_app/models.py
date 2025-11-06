@@ -440,9 +440,25 @@ class Customer(models.Model):
         # Checkbox variables for hạng thẻ
         the_hang_chuan = checkbox(self.hang_the == 'Hạng chuẩn')
         the_hang_vang = checkbox(self.hang_the == 'Hạng vàng')
+        the_hang_bach_kim = checkbox(self.hang_the == 'Hạng bạch kim')
 
-        # Checkbox for Thẻ Ghi nợ nội địa
+        # Checkbox for loại thẻ
         the_ghi_no_noi_dia = checkbox(self.loai_the == 'Thẻ Ghi nợ nội địa')
+        the_ghi_no_quoc_te = checkbox(self.loai_the == 'Thẻ Ghi nợ quốc tế')
+        the_tin_dung = checkbox(self.loai_the == 'Thẻ tín dụng')
+        loai_the_jcb = checkbox(self.loai_the == 'JCB')
+        loai_the_visa = checkbox(self.loai_the == 'Visa')
+        loai_the_mastercard = checkbox(self.loai_the == 'Mastercard')
+        loai_the_khac = checkbox(self.loai_the not in ['Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ quốc tế', 'Thẻ tín dụng', 'JCB', 'Visa', 'Mastercard'])
+
+        # Checkbox variables for giới tính
+        gioi_tinh_nam = checkbox(self.gioi_tinh == 'Nam')
+        gioi_tinh_nu = checkbox(self.gioi_tinh == 'Nữ')
+
+        # Checkbox variables for loại tiền
+        loai_tien_vnd = checkbox(self.loai_tien_te == 'VND')
+        loai_tien_usd = checkbox(self.loai_tien_te == 'USD')
+        loai_tien_eur = checkbox(self.loai_tien_te == 'EUR')
 
         # Checkbox variables for loại tài khoản
         tk_ngau_nhien = checkbox(self.loai_tai_khoan == 'Tài khoản ngẫu nhiên')
@@ -513,12 +529,26 @@ class Customer(models.Model):
             # Checkbox variables - Kênh giao dịch
             'kenh_mobile': checkbox(self.kenh_mobile),
             'kenh_internet': checkbox(self.kenh_internet),
+            # Checkbox variables - Giới tính
+            'gioi_tinh_nam': gioi_tinh_nam,
+            'gioi_tinh_nu': gioi_tinh_nu,
             # Checkbox variables - Thẻ
             'phat_hanh_lan_dau': checkbox(self.phat_hanh_lan_dau),
             'phat_hanh_lai': checkbox(self.phat_hanh_lai),
             'the_hang_chuan': the_hang_chuan,
             'the_hang_vang': the_hang_vang,
+            'the_hang_bach_kim': the_hang_bach_kim,
             'the_ghi_no_noi_dia': the_ghi_no_noi_dia,
+            'the_ghi_no_quoc_te': the_ghi_no_quoc_te,
+            'the_tin_dung': the_tin_dung,
+            'loai_the_jcb': loai_the_jcb,
+            'loai_the_visa': loai_the_visa,
+            'loai_the_mastercard': loai_the_mastercard,
+            'loai_the_khac': loai_the_khac,
+            # Checkbox variables - Loại tiền
+            'loai_tien_vnd': loai_tien_vnd,
+            'loai_tien_usd': loai_tien_usd,
+            'loai_tien_eur': loai_tien_eur,
             # Checkbox variables - Tài khoản
             'tk_ngau_nhien': tk_ngau_nhien,
             'tk_theo_yeu_cau': tk_theo_yeu_cau,
