@@ -5,9 +5,12 @@ Script test để kiểm tra Content Control checkbox rendering
 import os
 import django
 import sys
+from pathlib import Path
 
-# Setup Django
-sys.path.insert(0, '/home/user/MauBieu7202')
+# Setup Django - tự động detect project root
+# Script phải nằm trong thư mục gốc của project
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'agribank_project.settings')
 django.setup()
 
