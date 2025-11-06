@@ -102,6 +102,9 @@ class JinjaWordTemplateProcessor:
             for paragraph in section.footer.paragraphs:
                 self._render_paragraph(paragraph, context)
 
+        # Process Content Control checkboxes
+        self._render_content_control_checkboxes(context)
+
         return self.document
 
     def _render_paragraph(self, paragraph, context):
@@ -138,6 +141,89 @@ class JinjaWordTemplateProcessor:
             # Nếu có lỗi syntax, giữ nguyên text và thêm warning
             print(f"Jinja2 syntax error in paragraph: {e}")
             # Giữ nguyên text gốc
+
+    def _render_content_control_checkboxes(self, context):
+        """
+        Render Content Control checkboxes trong document
+        Tìm tất cả checkbox có Tag và set trạng thái dựa vào context
+
+        Hỗ trợ nhiều loại giá trị:
+        - Boolean: True/False
+        - String: '☑'/'☐'
+        - Integer: 1/0
+
+        Args:
+            context: Dictionary chứa các biến checkbox
+        """
+        # Namespace cho Word XML
+        NSMAP = {
+            'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+            'w14': 'http://schemas.microsoft.com/office/word/2010/wordml'
+        }
+
+        def parse_checkbox_value(value):
+            """
+            Parse giá trị checkbox từ nhiều định dạng
+            Returns: True nếu checked, False nếu unchecked
+            """
+            if isinstance(value, bool):
+                return value
+            elif isinstance(value, str):
+                # Unicode checkbox characters
+                if value == '☑':
+                    return True
+                elif value == '☐':
+                    return False
+                # String representation
+                elif value.lower() in ('true', 'yes', '1', 'checked'):
+                    return True
+                else:
+                    return False
+            elif isinstance(value, (int, float)):
+                return value != 0
+            else:
+                return False
+
+        # Tìm tất cả Structured Document Tags (Content Controls)
+        for sdt in self.document.element.findall('.//w:sdt', namespaces=NSMAP):
+            # Lấy tag name từ properties
+            tag_element = sdt.find('.//w:tag', namespaces=NSMAP)
+            if tag_element is None:
+                continue
+
+            tag_name = tag_element.get(f'{{{NSMAP["w"]}}}val')
+            if not tag_name:
+                continue
+
+            # Kiểm tra xem tag có trong context không
+            if tag_name not in context:
+                continue
+
+            # Parse giá trị checkbox
+            value = context[tag_name]
+            is_checked = parse_checkbox_value(value)
+
+            # Tìm checkbox element trong Content Control
+            # Checkbox có thể là w14:checkbox hoặc w:sym (Wingdings)
+
+            # Phương pháp 1: Word 2010+ checkbox (w14:checkbox)
+            checkbox_element = sdt.find('.//w14:checkbox', namespaces=NSMAP)
+            if checkbox_element is not None:
+                # Tìm checked state element
+                checked_element = checkbox_element.find('.//w14:checked', namespaces=NSMAP)
+                if checked_element is not None:
+                    # Set giá trị: 1 = checked, 0 = unchecked
+                    checked_element.set(f'{{{NSMAP["w14"]}}}val', '1' if is_checked else '0')
+                continue
+
+            # Phương pháp 2: Legacy checkbox sử dụng Wingdings font
+            sym_element = sdt.find('.//w:sym', namespaces=NSMAP)
+            if sym_element is not None:
+                # Wingdings font codes:
+                # F0FE (&#xF0FE;) = checked box ☑
+                # F0A3 (&#xF0A3;) = unchecked box ☐
+                char_code = 'F0FE' if is_checked else 'F0A3'
+                sym_element.set(f'{{{NSMAP["w"]}}}char', char_code)
 
     def save(self, output_path):
         """
