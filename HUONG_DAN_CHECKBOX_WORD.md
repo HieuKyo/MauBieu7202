@@ -737,6 +737,405 @@ Hạng thẻ:
 
 ---
 
+## 🎓 VÍ DỤ THỰC TẾ HOÀN CHỈNH
+
+### **Kịch bản: Khách hàng Nguyễn Văn A đăng ký tài khoản + thẻ ATM tại AGRIBANK Bạc Liêu**
+
+---
+
+### **📋 BƯỚC 1: Dữ liệu mẫu (Sample Input Data)**
+
+```python
+# Dữ liệu khách hàng nhập vào hệ thống
+customer_data = {
+    'ho_ten': 'NGUYỄN VĂN A',
+    'gioi_tinh': 'Nam',
+    'ngay_sinh': '15/03/1985',
+    'cmnd': '123456789',
+    'dien_thoai': '0912345678',
+    'email': 'nguyenvana@gmail.com',
+    'nghe_nghiep': 'Kinh doanh',
+    'dia_chi': 'Số 123, Đường Trần Hưng Đạo, TP. Bạc Liêu',
+
+    # Thông tin tài khoản
+    'loai_tai_khoan': 'Tài khoản theo yêu cầu',
+    'so_tai_khoan_yc': '1234567890',
+    'loai_tien_te': 'VND',
+
+    # Thông tin thẻ
+    'loai_the': 'Thẻ Ghi nợ nội địa',
+    'hang_the': 'Hạng vàng',
+    'phat_hanh': 'Phát hành lần đầu',
+
+    # Dịch vụ ngân hàng điện tử
+    'dv_sms_banking': True,
+    'dv_e_mobile': True,
+    'dv_bankplus': False,
+    'dv_soft_otp': True,
+
+    # Dịch vụ thu hộ
+    'dv_thu_ho_tien_dien': True,
+    'dv_thu_ho_tien_nuoc': True,
+    'dv_thu_ho_vien_thong': False,
+}
+
+# Biến toàn cục (GlobalConfig)
+branch_data = {
+    'ten_chi_nhanh': 'AGRIBANK CHI NHÁNH BẠC LIÊU',
+    'dia_danh': 'Bạc Liêu',
+    'dia_chi_chi_nhanh': 'Số 456, Đường Trần Phú, TP. Bạc Liêu',
+    'dien_thoai_chi_nhanh': '0291.3822.079',
+    'ngay_hien_tai': '06/11/2025',
+}
+```
+
+---
+
+### **📄 BƯỚC 2: Template Word (Jinja2)**
+
+```jinja
+{# ==================== CẤU HÌNH ==================== #}
+{% set jobs = ["Nông dân", "Công nhân viên chức", "Kinh doanh", "Học sinh/Sinh viên", "Hưu trí"] %}
+{% set currencies = ["VND", "USD", "EUR"] %}
+
+{# ==================== MACRO ==================== #}
+{% macro cb(condition) %}{% if condition %}☑{% else %}☐{% endif %}{% endmacro %}
+
+{# ==================== NỘI DUNG ==================== #}
+
+                    NGÂN HÀNG NÔNG NGHIỆP VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM
+                           {{ ten_chi_nhanh }}
+             ------------------------------------------
+
+                  ĐƠN ĐĂNG KÝ TÀI KHOẢN VÀ THẺ ATM
+
+{{ dia_danh }}, ngày {{ ngay_hien_tai }}
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN I: THÔNG TIN KHÁCH HÀNG
+
+Họ và tên: {{ ho_ten }}                                CMND/CCCD: {{ cmnd }}
+Ngày sinh: {{ ngay_sinh }}                              Giới tính: {{ cb(gioi_tinh == "Nam") }} Nam   {{ cb(gioi_tinh == "Nữ") }} Nữ
+
+Điện thoại: {{ dien_thoai }}                            Email: {{ email }}
+
+Địa chỉ thường trú: {{ dia_chi }}
+
+Nghề nghiệp:
+{% for job in jobs %}
+  {{ cb(nghe_nghiep == job) }} {{ job }}
+{% endfor %}
+{% set is_other = nghe_nghiep not in jobs %}
+  {{ cb(is_other) }} Khác: {{ nghe_nghiep if is_other else "_________________" }}
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN II: ĐĂNG KÝ TÀI KHOẢN THANH TOÁN
+
+Loại tài khoản:
+  {{ cb(loai_tai_khoan == "Tài khoản ngẫu nhiên") }} Tài khoản ngẫu nhiên (do ngân hàng cấp)
+  {{ cb(loai_tai_khoan == "Tài khoản theo yêu cầu") }} Tài khoản theo yêu cầu: {{ so_tai_khoan_yc if loai_tai_khoan == "Tài khoản theo yêu cầu" else "_________________" }}
+
+Loại tiền tệ:
+{% for currency in currencies %}
+  {{ cb(loai_tien_te == currency) }} {{ currency }}
+{% endfor %}
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN III: ĐĂNG KÝ THẺ ATM
+
+Loại thẻ:
+  {{ cb(loai_the == "Thẻ tín dụng") }} Thẻ tín dụng
+  {{ cb(loai_the == "Thẻ Ghi nợ nội địa") }} Thẻ Ghi nợ nội địa (ATM)
+  {{ cb(loai_the == "Thẻ Ghi nợ quốc tế") }} Thẻ Ghi nợ quốc tế (Visa/Mastercard)
+
+Hạng thẻ:
+  {{ cb(hang_the == "Hạng chuẩn") }} Hạng chuẩn (Standard)       {{ cb(hang_the == "Hạng vàng") }} Hạng vàng (Gold)       {{ cb(hang_the == "Hạng bạch kim") }} Hạng bạch kim (Platinum)
+
+Hình thức phát hành:
+  {{ cb(phat_hanh == "Phát hành lần đầu") }} Phát hành lần đầu       {{ cb(phat_hanh == "Phát hành lại") }} Phát hành lại (do mất/hỏng)
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN IV: ĐĂNG KÝ DỊCH VỤ NGÂN HÀNG ĐIỆN TỬ
+
+Kính đề nghị Ngân hàng đăng ký các dịch vụ sau:
+
+  {{ cb(dv_sms_banking) }} SMS Banking (Thông báo số dư, giao dịch qua SMS)
+  {{ cb(dv_e_mobile) }} E-Mobile Banking (Ứng dụng di động)
+  {{ cb(dv_bankplus) }} Agribank Plus (Thanh toán không tiếp xúc)
+  {{ cb(dv_e_commerce) }} E-Commerce (Thanh toán trực tuyến)
+  {{ cb(dv_soft_otp) }} Soft OTP (Mã xác thực qua ứng dụng)
+  {{ cb(dv_smart_otp) }} Smart OTP (Thiết bị tạo mã)
+  {{ cb(dv_retail_ebanking) }} Internet Banking (Giao dịch qua web)
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN V: ĐĂNG KÝ DỊCH VỤ THU HỘ TỰ ĐỘNG
+
+Tôi đồng ý cho Ngân hàng tự động trích tài khoản để thanh toán:
+
+  {{ cb(dv_thu_ho_tien_dien) }} Tiền điện (EVN)
+  {{ cb(dv_thu_ho_tien_nuoc) }} Tiền nước
+  {{ cb(dv_thu_ho_vien_thong) }} Cước viễn thông (điện thoại, internet)
+  {{ cb(dv_thu_ho_hoc_phi) }} Học phí
+  {{ cb(dv_thu_ho_bao_hiem) }} Bảo hiểm
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN VI: CAM KẾT
+
+Tôi xin cam đoan các thông tin trên là đúng sự thật và chịu trách nhiệm trước pháp luật về tính chính xác của các thông tin đã cung cấp.
+
+Tôi đã đọc, hiểu rõ và đồng ý với các điều khoản và điều kiện mở tài khoản, phát hành thẻ và sử dụng dịch vụ của AGRIBANK.
+
+
+                                                    Ngày {{ ngay_hien_tai }}
+                                                  Người đề nghị
+                                                 (Ký và ghi rõ họ tên)
+
+
+
+
+                                                  {{ ho_ten }}
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN DÀNH CHO NGÂN HÀNG (Không điền)
+
+Số tài khoản đã mở: _____________________     Ngày mở: ___________
+Số thẻ: _____________________                 Ngày phát hành: ___________
+
+Giao dịch viên                                Kiểm soát viên
+(Ký và ghi rõ họ tên)                        (Ký và ghi rõ họ tên)
+
+
+════════════════════════════════════════════════════════════════════
+{{ ten_chi_nhanh }}
+Địa chỉ: {{ dia_chi_chi_nhanh }}
+Điện thoại: {{ dien_thoai_chi_nhanh }}
+```
+
+---
+
+### **✅ BƯỚC 3: Kết quả sinh ra (Generated Output)**
+
+```
+                    NGÂN HÀNG NÔNG NGHIỆP VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM
+                           AGRIBANK CHI NHÁNH BẠC LIÊU
+             ------------------------------------------
+
+                  ĐƠN ĐĂNG KÝ TÀI KHOẢN VÀ THẺ ATM
+
+Bạc Liêu, ngày 06/11/2025
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN I: THÔNG TIN KHÁCH HÀNG
+
+Họ và tên: NGUYỄN VĂN A                         CMND/CCCD: 123456789
+Ngày sinh: 15/03/1985                            Giới tính: ☑ Nam   ☐ Nữ
+
+Điện thoại: 0912345678                           Email: nguyenvana@gmail.com
+
+Địa chỉ thường trú: Số 123, Đường Trần Hưng Đạo, TP. Bạc Liêu
+
+Nghề nghiệp:
+  ☐ Nông dân
+  ☐ Công nhân viên chức
+  ☑ Kinh doanh
+  ☐ Học sinh/Sinh viên
+  ☐ Hưu trí
+  ☐ Khác: _________________
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN II: ĐĂNG KÝ TÀI KHOẢN THANH TOÁN
+
+Loại tài khoản:
+  ☐ Tài khoản ngẫu nhiên (do ngân hàng cấp)
+  ☑ Tài khoản theo yêu cầu: 1234567890
+
+Loại tiền tệ:
+  ☑ VND
+  ☐ USD
+  ☐ EUR
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN III: ĐĂNG KÝ THẺ ATM
+
+Loại thẻ:
+  ☐ Thẻ tín dụng
+  ☑ Thẻ Ghi nợ nội địa (ATM)
+  ☐ Thẻ Ghi nợ quốc tế (Visa/Mastercard)
+
+Hạng thẻ:
+  ☐ Hạng chuẩn (Standard)       ☑ Hạng vàng (Gold)       ☐ Hạng bạch kim (Platinum)
+
+Hình thức phát hành:
+  ☑ Phát hành lần đầu       ☐ Phát hành lại (do mất/hỏng)
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN IV: ĐĂNG KÝ DỊCH VỤ NGÂN HÀNG ĐIỆN TỬ
+
+Kính đề nghị Ngân hàng đăng ký các dịch vụ sau:
+
+  ☑ SMS Banking (Thông báo số dư, giao dịch qua SMS)
+  ☑ E-Mobile Banking (Ứng dụng di động)
+  ☐ Agribank Plus (Thanh toán không tiếp xúc)
+  ☐ E-Commerce (Thanh toán trực tuyến)
+  ☑ Soft OTP (Mã xác thực qua ứng dụng)
+  ☐ Smart OTP (Thiết bị tạo mã)
+  ☐ Internet Banking (Giao dịch qua web)
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN V: ĐĂNG KÝ DỊCH VỤ THU HỘ TỰ ĐỘNG
+
+Tôi đồng ý cho Ngân hàng tự động trích tài khoản để thanh toán:
+
+  ☑ Tiền điện (EVN)
+  ☑ Tiền nước
+  ☐ Cước viễn thông (điện thoại, internet)
+  ☐ Học phí
+  ☐ Bảo hiểm
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN VI: CAM KẾT
+
+Tôi xin cam đoan các thông tin trên là đúng sự thật và chịu trách nhiệm trước pháp luật về tính chính xác của các thông tin đã cung cấp.
+
+Tôi đã đọc, hiểu rõ và đồng ý với các điều khoản và điều kiện mở tài khoản, phát hành thẻ và sử dụng dịch vụ của AGRIBANK.
+
+
+                                                    Ngày 06/11/2025
+                                                  Người đề nghị
+                                                 (Ký và ghi rõ họ tên)
+
+
+
+
+                                                  NGUYỄN VĂN A
+
+════════════════════════════════════════════════════════════════════
+
+PHẦN DÀNH CHO NGÂN HÀNG (Không điền)
+
+Số tài khoản đã mở: _____________________     Ngày mở: ___________
+Số thẻ: _____________________                 Ngày phát hành: ___________
+
+Giao dịch viên                                Kiểm soát viên
+(Ký và ghi rõ họ tên)                        (Ký và ghi rõ họ tên)
+
+
+════════════════════════════════════════════════════════════════════
+AGRIBANK CHI NHÁNH BẠC LIÊU
+Địa chỉ: Số 456, Đường Trần Phú, TP. Bạc Liêu
+Điện thoại: 0291.3822.079
+```
+
+---
+
+### **📊 PHÂN TÍCH CHI TIẾT**
+
+#### **1. Checkbox động theo dữ liệu:**
+
+| Trường dữ liệu | Giá trị | Checkbox nào được tích |
+|----------------|---------|------------------------|
+| `gioi_tinh` | "Nam" | ☑ Nam, ☐ Nữ |
+| `nghe_nghiep` | "Kinh doanh" | ☑ Kinh doanh, các nghề khác ☐ |
+| `loai_tai_khoan` | "Tài khoản theo yêu cầu" | ☑ Theo yêu cầu, ☐ Ngẫu nhiên |
+| `loai_tien_te` | "VND" | ☑ VND, ☐ USD, ☐ EUR |
+| `hang_the` | "Hạng vàng" | ☑ Vàng, ☐ Chuẩn, ☐ Bạch kim |
+
+#### **2. Checkbox từ biến boolean:**
+
+| Biến | Giá trị | Hiển thị |
+|------|---------|----------|
+| `dv_sms_banking` | `True` | ☑ SMS Banking |
+| `dv_e_mobile` | `True` | ☑ E-Mobile Banking |
+| `dv_bankplus` | `False` | ☐ Agribank Plus |
+| `dv_thu_ho_tien_dien` | `True` | ☑ Tiền điện |
+| `dv_thu_ho_vien_thong` | `False` | ☐ Cước viễn thông |
+
+#### **3. Logic điều kiện cho "Khác":**
+
+```jinja
+{% set is_other = nghe_nghiep not in jobs %}
+{{ cb(is_other) }} Khác: {{ nghe_nghiep if is_other else "_________________" }}
+```
+
+- Nếu `nghe_nghiep = "Kinh doanh"` (nằm trong danh sách) → ☐ Khác: _______
+- Nếu `nghe_nghiep = "Lập trình viên"` (không trong danh sách) → ☑ Khác: Lập trình viên
+
+---
+
+### **💡 ĐIỂM QUAN TRỌNG**
+
+#### **✅ Clean Code được áp dụng:**
+1. **Macro `cb()`**: Rút gọn `{% if condition %}☑{% else %}☐{% endif %}` thành `{{ cb(condition) }}`
+2. **Biến đầu template**: `jobs`, `currencies` định nghĩa ở đầu
+3. **Biến trung gian**: `is_other` để tránh lặp logic
+4. **Loop cho danh sách**: Dùng `{% for %}` thay vì lặp lại code
+
+#### **✅ Các kỹ thuật Jinja2 sử dụng:**
+- `{{ cb(gioi_tinh == "Nam") }}` - So sánh chuỗi
+- `{% for job in jobs %}` - Loop qua danh sách
+- `{% set is_other = ... %}` - Định nghĩa biến trung gian
+- `{{ nghe_nghiep if is_other else "_____" }}` - Ternary operator
+- `{% macro cb(condition) %}` - Định nghĩa macro
+
+#### **✅ Tích hợp với hệ thống:**
+- Tất cả biến đều từ `Customer.get_data_dict()` và `GlobalConfig.get_all_variables()`
+- Không cần code thêm, chỉ cần tạo template Word với Jinja2
+- In ra PDF → checkbox vẫn hiển thị rõ ràng
+
+---
+
+### **🎯 CÁCH SỬ DỤNG VÍ DỤ NÀY**
+
+1. **Copy template Jinja2** từ Bước 2 vào file Word của bạn
+2. **Upload template** lên hệ thống (menu "Mẫu biểu")
+3. **Nhập dữ liệu khách hàng** vào form
+4. **Tích chọn dịch vụ** mong muốn
+5. **Nhấn "Tạo mẫu biểu"** → Hệ thống tự động điền checkbox
+6. **Kết quả** giống như Bước 3
+
+---
+
+### **🔄 THAY ĐỔI DỮ LIỆU → THAY ĐỔI CHECKBOX**
+
+**Ví dụ: Nếu thay đổi khách hàng:**
+
+```python
+# Khách hàng mới
+customer_data = {
+    'ho_ten': 'TRẦN THỊ B',
+    'gioi_tinh': 'Nữ',  # ← Thay đổi
+    'nghe_nghiep': 'Học sinh/Sinh viên',  # ← Thay đổi
+    'loai_tien_te': 'USD',  # ← Thay đổi
+    'hang_the': 'Hạng chuẩn',  # ← Thay đổi
+    'dv_sms_banking': False,  # ← Thay đổi
+    'dv_bankplus': True,  # ← Thay đổi
+    # ... các trường khác ...
+}
+```
+
+**Kết quả tự động thay đổi:**
+- Giới tính: ☐ Nam   ☑ Nữ
+- Nghề nghiệp: ☑ Học sinh/Sinh viên
+- Loại tiền: ☐ VND   ☑ USD   ☐ EUR
+- Hạng thẻ: ☑ Hạng chuẩn   ☐ Hạng vàng
+- SMS Banking: ☐ (không tích)
+- Agribank Plus: ☑ (tích)
+
+---
+
 ## 📞 HỖ TRỢ
 
 Nếu cần thêm biến checkbox mới, liên hệ:
@@ -745,6 +1144,6 @@ Nếu cần thêm biến checkbox mới, liên hệ:
 
 ---
 
-**Phiên bản:** 1.0
-**Ngày cập nhật:** 05/11/2025
+**Phiên bản:** 2.0
+**Ngày cập nhật:** 06/11/2025
 **Người viết:** Claude AI Assistant
