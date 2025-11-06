@@ -65,15 +65,55 @@ def checkbox(value):
 ☐ Hưu trí           ☐ Khác: ______________
 ```
 
-**Cách dùng Jinja2:**
+**Cách dùng Jinja2 (Cách 1 - Đơn giản):**
 ```jinja
 {% if nghe_nghiep == "Nông dân" %}☑{% else %}☐{% endif %} Nông dân
 {% if nghe_nghiep == "Công nhân viên chức" %}☑{% else %}☐{% endif %} Công nhân viên chức
 {% if nghe_nghiep == "Kinh doanh" %}☑{% else %}☐{% endif %} Kinh doanh
 {% if nghe_nghiep == "Học sinh/Sinh viên" %}☑{% else %}☐{% endif %} Học sinh/Sinh viên
 {% if nghe_nghiep == "Hưu trí" %}☑{% else %}☐{% endif %} Hưu trí
-{% if nghe_nghiep not in ["Nông dân", "Công nhân viên chức", "Kinh doanh", "Học sinh/Sinh viên", "Hưu trí"] %}☑{% else %}☐{% endif %} Khác: {{ nghe_nghiep if nghe_nghiep not in ["Nông dân", "Công nhân viên chức", "Kinh doanh", "Học sinh/Sinh viên", "Hưu trí"] else "" }}
+{% if nghe_nghiep == "Khác" %}☑{% else %}☐{% endif %} Khác: _______________
 ```
+
+**Cách 2 - Clean Code (Khuyến nghị) ⭐:**
+```jinja
+{# Định nghĩa danh sách nghề nghiệp chuẩn #}
+{% set known_jobs = ["Nông dân", "Công nhân viên chức", "Kinh doanh", "Học sinh/Sinh viên", "Hưu trí"] %}
+
+{% if nghe_nghiep == "Nông dân" %}☑{% else %}☐{% endif %} Nông dân
+{% if nghe_nghiep == "Công nhân viên chức" %}☑{% else %}☐{% endif %} Công nhân viên chức
+{% if nghe_nghiep == "Kinh doanh" %}☑{% else %}☐{% endif %} Kinh doanh
+{% if nghe_nghiep == "Học sinh/Sinh viên" %}☑{% else %}☐{% endif %} Học sinh/Sinh viên
+{% if nghe_nghiep == "Hưu trí" %}☑{% else %}☐{% endif %} Hưu trí
+
+{# Kiểm tra nghề nghiệp khác #}
+{% set is_other_job = nghe_nghiep not in known_jobs %}
+{% if is_other_job %}☑{% else %}☐{% endif %} Khác: {{ nghe_nghiep if is_other_job else "" }}
+```
+
+**Cách 3 - Dùng Loop (Ngắn gọn nhất) 🚀:**
+```jinja
+{% set jobs = [
+    "Nông dân",
+    "Công nhân viên chức",
+    "Kinh doanh",
+    "Học sinh/Sinh viên",
+    "Hưu trí"
+] %}
+
+{% for job in jobs %}
+{% if nghe_nghiep == job %}☑{% else %}☐{% endif %} {{ job }}
+{% endfor %}
+
+{# Nghề khác #}
+{% set is_other = nghe_nghiep not in jobs %}
+{% if is_other %}☑{% else %}☐{% endif %} Khác: {{ nghe_nghiep if is_other else "" }}
+```
+
+💡 **Lợi ích của Cách 2 và 3:**
+- ✅ Dễ bảo trì: Chỉ sửa 1 chỗ khi cần thêm/bớt nghề nghiệp
+- ✅ Tránh lặp code: Không lặp lại danh sách nghề nghiệp
+- ✅ Dễ đọc: Logic rõ ràng hơn
 
 ---
 
@@ -411,11 +451,12 @@ Giới tính: {{ gioi_tinh_nam }} Nam     {{ gioi_tinh_nu }} Nữ
 Ngày sinh: {{ ngay_sinh }}
 
 Nghề nghiệp:
-{% if nghe_nghiep == "Nông dân" %}☑{% else %}☐{% endif %} Nông dân
-{% if nghe_nghiep == "Công nhân viên chức" %}☑{% else %}☐{% endif %} Công nhân viên chức
-{% if nghe_nghiep == "Kinh doanh" %}☑{% else %}☐{% endif %} Kinh doanh
-{% if nghe_nghiep == "Học sinh/Sinh viên" %}☑{% else %}☐{% endif %} Học sinh/Sinh viên
-{% if nghe_nghiep == "Hưu trí" %}☑{% else %}☐{% endif %} Hưu trí
+{% set jobs = ["Nông dân", "Công nhân viên chức", "Kinh doanh", "Học sinh/Sinh viên", "Hưu trí"] %}
+{% for job in jobs %}
+{% if nghe_nghiep == job %}☑{% else %}☐{% endif %} {{ job }}
+{% endfor %}
+{% set is_other = nghe_nghiep not in jobs %}
+{% if is_other %}☑{% else %}☐{% endif %} Khác: {{ nghe_nghiep if is_other else "" }}
 
 ---
 
@@ -487,6 +528,212 @@ PHẦN V: DỊCH VỤ THU HỘ
 def checkbox(value):
     return '■' if value else '□'  # Hoặc ký tự khác
 ```
+
+---
+
+## 🎨 BEST PRACTICES - KỸ THUẬT VIẾT CODE JINJA2 CLEAN
+
+### **1. Tránh lặp lại danh sách** ⭐
+
+**❌ Không tốt:**
+```jinja
+{% if nghe_nghiep == "Nông dân" %}☑{% else %}☐{% endif %} Nông dân
+{% if nghe_nghiep == "Công nhân viên chức" %}☑{% else %}☐{% endif %} Công nhân viên chức
+{% if nghe_nghiep not in ["Nông dân", "Công nhân viên chức", ...] %}☑{% else %}☐{% endif %} Khác
+```
+
+**✅ Tốt:**
+```jinja
+{% set known_jobs = ["Nông dân", "Công nhân viên chức", "Kinh doanh"] %}
+{% for job in known_jobs %}
+{% if nghe_nghiep == job %}☑{% else %}☐{% endif %} {{ job }}
+{% endfor %}
+{% if nghe_nghiep not in known_jobs %}☑{% else %}☐{% endif %} Khác
+```
+
+---
+
+### **2. Dùng biến trung gian cho logic phức tạp** ⭐
+
+**❌ Không tốt:**
+```jinja
+{% if nghe_nghiep not in ["Nông dân", "Công nhân viên chức", "Kinh doanh"] %}☑{% else %}☐{% endif %} Khác: {{ nghe_nghiep if nghe_nghiep not in ["Nông dân", "Công nhân viên chức", "Kinh doanh"] else "" }}
+```
+
+**✅ Tốt:**
+```jinja
+{% set known_jobs = ["Nông dân", "Công nhân viên chức", "Kinh doanh"] %}
+{% set is_other = nghe_nghiep not in known_jobs %}
+{% if is_other %}☑{% else %}☐{% endif %} Khác: {{ nghe_nghiep if is_other else "" }}
+```
+
+---
+
+### **3. Sử dụng comment để giải thích** ⭐
+
+**✅ Tốt:**
+```jinja
+{# Định nghĩa danh sách loại tiền tệ hỗ trợ #}
+{% set currencies = ["VND", "USD", "EUR", "JPY"] %}
+
+{# Render checkbox cho từng loại tiền #}
+{% for currency in currencies %}
+{% if loai_tien_te == currency %}☑{% else %}☐{% endif %} {{ currency }}
+{% endfor %}
+```
+
+---
+
+### **4. Tạo macro cho code lặp lại nhiều lần** 🚀
+
+**Nếu dùng nhiều checkbox tương tự:**
+
+```jinja
+{# Macro để tạo checkbox #}
+{% macro checkbox_for_value(current_value, expected_value, label) %}
+{% if current_value == expected_value %}☑{% else %}☐{% endif %} {{ label }}
+{% endmacro %}
+
+{# Sử dụng macro #}
+{{ checkbox_for_value(gioi_tinh, "Nam", "Nam") }}
+{{ checkbox_for_value(gioi_tinh, "Nữ", "Nữ") }}
+
+{{ checkbox_for_value(loai_tien_te, "VND", "VND") }}
+{{ checkbox_for_value(loai_tien_te, "USD", "USD") }}
+```
+
+---
+
+### **5. Định nghĩa biến ở đầu template** ⭐
+
+**✅ Tốt:**
+```jinja
+{# ==================== ĐỊNH NGHĨA BIẾN ==================== #}
+{% set jobs = ["Nông dân", "Công nhân viên chức", "Kinh doanh"] %}
+{% set currencies = ["VND", "USD", "EUR"] %}
+{% set card_types = ["Thẻ tín dụng", "Thẻ Ghi nợ nội địa", "Thẻ Ghi nợ quốc tế"] %}
+
+{# ==================== NỘI DUNG TEMPLATE ==================== #}
+Nghề nghiệp:
+{% for job in jobs %}
+{% if nghe_nghiep == job %}☑{% else %}☐{% endif %} {{ job }}
+{% endfor %}
+
+Loại tiền:
+{% for currency in currencies %}
+{% if loai_tien_te == currency %}☑{% else %}☐{% endif %} {{ currency }}
+{% endfor %}
+```
+
+---
+
+### **6. Tách logic phức tạp thành nhiều bước** ⭐
+
+**❌ Khó đọc:**
+```jinja
+{% if (nghe_nghiep != "Nông dân" and nghe_nghiep != "Công nhân viên chức" and nghe_nghiep != "Kinh doanh") %}☑{% else %}☐{% endif %}
+```
+
+**✅ Dễ đọc:**
+```jinja
+{% set standard_jobs = ["Nông dân", "Công nhân viên chức", "Kinh doanh"] %}
+{% set is_custom_job = nghe_nghiep not in standard_jobs %}
+{% if is_custom_job %}☑{% else %}☐{% endif %} Khác: {{ nghe_nghiep if is_custom_job else "" }}
+```
+
+---
+
+### **7. Sử dụng dictionary cho mapping phức tạp** 🚀
+
+**Ví dụ: Map nghề nghiệp sang mã số**
+
+```jinja
+{% set job_codes = {
+    "Nông dân": "ND",
+    "Công nhân viên chức": "CNVC",
+    "Kinh doanh": "KD",
+    "Học sinh/Sinh viên": "HS",
+    "Hưu trí": "HT"
+} %}
+
+Nghề nghiệp:
+{% for job, code in job_codes.items() %}
+{% if nghe_nghiep == job %}☑{% else %}☐{% endif %} {{ job }} ({{ code }})
+{% endfor %}
+```
+
+---
+
+### **8. Format code Jinja2 đúng cách** ⭐
+
+**✅ Tốt - Có indent và spacing:**
+```jinja
+{% set jobs = [
+    "Nông dân",
+    "Công nhân viên chức",
+    "Kinh doanh"
+] %}
+
+{% for job in jobs %}
+    {% if nghe_nghiep == job %}☑{% else %}☐{% endif %} {{ job }}
+{% endfor %}
+```
+
+**❌ Không tốt - Khó đọc:**
+```jinja
+{% set jobs=["Nông dân","Công nhân viên chức","Kinh doanh"]%}{% for job in jobs%}{%if nghe_nghiep==job%}☑{%else%}☐{%endif%} {{job}}{%endfor%}
+```
+
+---
+
+### **9. Tổng hợp: Template mẫu hoàn chỉnh** 🎯
+
+```jinja
+{# ==================== CẤU HÌNH ==================== #}
+{% set jobs = ["Nông dân", "Công nhân viên chức", "Kinh doanh", "Học sinh/Sinh viên", "Hưu trí"] %}
+{% set currencies = ["VND", "USD", "EUR"] %}
+{% set card_ranks = {"Hạng chuẩn": "the_hang_chuan", "Hạng vàng": "the_hang_vang"} %}
+
+{# ==================== MACRO ==================== #}
+{% macro checkbox(condition) %}{% if condition %}☑{% else %}☐{% endif %}{% endmacro %}
+
+{# ==================== NỘI DUNG ==================== #}
+PHẦN I: THÔNG TIN CÁ NHÂN
+
+Họ tên: {{ ho_ten }}
+Giới tính: {{ checkbox(gioi_tinh == "Nam") }} Nam   {{ checkbox(gioi_tinh == "Nữ") }} Nữ
+
+Nghề nghiệp:
+{% for job in jobs %}
+{{ checkbox(nghe_nghiep == job) }} {{ job }}
+{% endfor %}
+{% set is_other = nghe_nghiep not in jobs %}
+{{ checkbox(is_other) }} Khác: {{ nghe_nghiep if is_other else "" }}
+
+---
+
+PHẦN II: TÀI KHOẢN & DỊCH VỤ
+
+Loại tiền tệ:
+{% for currency in currencies %}
+{{ checkbox(loai_tien_te == currency) }} {{ currency }}
+{% endfor %}
+
+Hạng thẻ:
+{% for rank, var_name in card_ranks.items() %}
+{{ checkbox(hang_the == rank) }} {{ rank }}
+{% endfor %}
+```
+
+---
+
+### **💡 Lợi ích của Clean Code:**
+
+1. **Dễ bảo trì**: Chỉ sửa 1 chỗ khi cần thay đổi
+2. **Tránh lỗi**: Không lặp lại logic → ít bug
+3. **Dễ đọc**: Người khác hiểu code nhanh hơn
+4. **Mở rộng dễ**: Thêm option mới chỉ cần sửa list
+5. **Performance tốt**: Jinja2 optimize code clean tốt hơn
 
 ---
 
