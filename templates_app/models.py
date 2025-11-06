@@ -484,8 +484,9 @@ class Customer(models.Model):
             'ghi_chu': self.ghi_chu or '',
             'ngay_in': self.ngay_in.strftime('%d/%m/%Y') if self.ngay_in else '',
             'ngay_in_obj': self.ngay_in,  # Date object cho Jinja2 calculations
-            # Ngày hiện tại cho tính toán
-            'ngay_hien_tai': datetime.now().date(),
+            # Ngày hiện tại cho tính toán (Date object)
+            # NOTE: Không dùng key 'ngay_hien_tai' vì đã có trong GlobalConfig với format dd/mm/yyyy
+            'ngay_hien_tai_obj': datetime.now().date(),  # Date object for calculations only
             # Date variables (ngày sinh)
             'd1': d1, 'd2': d2, 'm1': m1, 'm2': m2,
             'y1': y1, 'y2': y2, 'y3': y3, 'y4': y4,
