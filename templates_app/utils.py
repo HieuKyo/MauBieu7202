@@ -105,6 +105,9 @@ class JinjaWordTemplateProcessor:
         # Process Content Control checkboxes
         self._render_content_control_checkboxes(context)
 
+        # Process Content Control textboxes
+        self._render_content_control_textboxes(context)
+
         return self.document
 
     def _render_paragraph(self, paragraph, context):
@@ -184,6 +187,9 @@ class JinjaWordTemplateProcessor:
             else:
                 return False
 
+        # Count checkboxes processed
+        checkboxes_updated = 0
+
         # Tìm tất cả Structured Document Tags (Content Controls)
         for sdt in self.document.element.findall('.//w:sdt', namespaces=NSMAP):
             # Lấy tag name từ properties
@@ -214,6 +220,7 @@ class JinjaWordTemplateProcessor:
                 if checked_element is not None:
                     # Set giá trị: 1 = checked, 0 = unchecked
                     checked_element.set(f'{{{NSMAP["w14"]}}}val', '1' if is_checked else '0')
+                    checkboxes_updated += 1
                 continue
 
             # Phương pháp 2: Legacy checkbox sử dụng Wingdings font
@@ -224,6 +231,80 @@ class JinjaWordTemplateProcessor:
                 # F0A3 (&#xF0A3;) = unchecked box ☐
                 char_code = 'F0FE' if is_checked else 'F0A3'
                 sym_element.set(f'{{{NSMAP["w"]}}}char', char_code)
+                checkboxes_updated += 1
+
+        # Debug: print số checkboxes đã update
+        if checkboxes_updated > 0:
+            print(f"[DEBUG] Updated {checkboxes_updated} checkboxes")
+
+    def _render_content_control_textboxes(self, context):
+        """
+        Render Content Control textboxes (Plain Text, Rich Text, etc.) trong document
+        Tìm tất cả Content Control có Tag và điền text từ context
+
+        Args:
+            context: Dictionary chứa các biến textbox
+        """
+        # Namespace cho Word XML
+        NSMAP = {
+            'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+            'w14': 'http://schemas.microsoft.com/office/word/2010/wordml'
+        }
+
+        # Count textboxes processed
+        textboxes_updated = 0
+
+        # Tìm tất cả Structured Document Tags (Content Controls)
+        for sdt in self.document.element.findall('.//w:sdt', namespaces=NSMAP):
+            # Lấy tag name từ properties
+            tag_element = sdt.find('.//w:tag', namespaces=NSMAP)
+            if tag_element is None:
+                continue
+
+            tag_name = tag_element.get(f'{{{NSMAP["w"]}}}val')
+            if not tag_name:
+                continue
+
+            # Kiểm tra xem tag có trong context không
+            if tag_name not in context:
+                continue
+
+            # Kiểm tra xem đây có phải là checkbox không (skip nếu là checkbox)
+            checkbox_element = sdt.find('.//w14:checkbox', namespaces=NSMAP)
+            sym_element = sdt.find('.//w:sym', namespaces=NSMAP)
+            if checkbox_element is not None or sym_element is not None:
+                # Đây là checkbox, skip (đã xử lý ở _render_content_control_checkboxes)
+                continue
+
+            # Lấy giá trị từ context
+            value = context[tag_name]
+
+            # Convert to string
+            if value is None:
+                value = ''
+            else:
+                value = str(value)
+
+            # Tìm tất cả text elements (w:t) trong Content Control
+            # Content Control có structure: w:sdt -> w:sdtContent -> w:p -> w:r -> w:t
+            text_elements = sdt.findall('.//w:t', namespaces=NSMAP)
+
+            if text_elements:
+                # Nếu có text elements, update text element đầu tiên và xóa các text elements khác
+                text_elements[0].text = value
+
+                # Xóa text của các elements còn lại (nếu có)
+                for text_elem in text_elements[1:]:
+                    text_elem.text = ''
+
+                textboxes_updated += 1
+            else:
+                # Nếu không có text element nào, log warning
+                print(f"[WARNING] Content Control '{tag_name}' không có text element")
+
+        # Debug: print số textboxes đã update
+        if textboxes_updated > 0:
+            print(f"[DEBUG] Updated {textboxes_updated} textboxes")
 
     def save(self, output_path):
         """
