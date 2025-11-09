@@ -1068,6 +1068,19 @@ def generate_document_direct(request, template_id):
         data['tk_ngau_nhien'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản ngẫu nhiên')
         data['tk_theo_yeu_cau'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản số theo yêu cầu')
 
+        # Auto-generate character variables for card name (tên trên thẻ)
+        # Split name into individual characters for table cells
+        ho_ten_tieng_anh = request.POST.get('ho_ten_tieng_anh', '')
+        ten_the = ho_ten_tieng_anh or data.get('ho_ten', '')
+        ten_the = ten_the.upper()  # Uppercase for card name
+
+        # Generate up to 30 character variables (ten_the_1 to ten_the_30)
+        for i in range(1, 31):
+            if i <= len(ten_the):
+                data[f'ten_the_{i}'] = ten_the[i-1]
+            else:
+                data[f'ten_the_{i}'] = ''  # Empty for remaining cells
+
         # Print info
         ngay_in_str = request.POST.get('ngay_in', '')
         if ngay_in_str:
