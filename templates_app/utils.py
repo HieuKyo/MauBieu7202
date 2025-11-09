@@ -108,6 +108,9 @@ class JinjaWordTemplateProcessor:
         # Process Content Control textboxes
         self._render_content_control_textboxes(context)
 
+        # Process card name tables (tên trên thẻ)
+        self._render_card_name_tables(context)
+
         return self.document
 
     def _render_paragraph(self, paragraph, context):
@@ -340,6 +343,47 @@ class JinjaWordTemplateProcessor:
         if textboxes_updated > 0:
             print(f"[DEBUG] Updated {textboxes_updated} textboxes")
 
+    def _render_card_name_tables(self, context):
+        """
+        Tìm và điền tên thẻ vào tables (tên trên thẻ)
+        Tìm tables có 20+ columns và điền từng ký tự vào từng cell
+
+        Args:
+            context: Dictionary chứa biến ho_ten_tieng_anh hoặc ho_ten
+        """
+        # Get card name from context
+        card_name = context.get('ho_ten_tieng_anh') or context.get('ho_ten', '')
+        if not card_name:
+            return
+
+        card_name = str(card_name).upper()  # Uppercase for card name
+        tables_filled = 0
+
+        # Find and fill all tables with 20+ columns (likely card name tables)
+        for table in self.document.tables:
+            if not table.rows:
+                continue
+
+            # Check if this is a card name table (20+ columns)
+            if len(table.columns) >= 20:
+                # Fill first row with card name characters
+                row = table.rows[0]
+
+                for i, char in enumerate(card_name):
+                    if i >= len(row.cells):
+                        break  # Card name longer than table
+                    row.cells[i].text = char
+
+                # Clear remaining cells
+                for i in range(len(card_name), len(row.cells)):
+                    row.cells[i].text = ''
+
+                tables_filled += 1
+
+        # Debug
+        if tables_filled > 0:
+            print(f"[DEBUG] Filled {tables_filled} card name table(s) with '{card_name}'")
+
     def save(self, output_path):
         """
         Lưu document đã render ra file
@@ -412,6 +456,9 @@ class WordTemplateProcessor:
 
         # Process Content Control textboxes (IMPORTANT!)
         self._render_content_control_textboxes(context)
+
+        # Process card name tables (tên trên thẻ)
+        self._render_card_name_tables(context)
 
         return self.document
 
@@ -645,6 +692,47 @@ class WordTemplateProcessor:
         # Debug: print số textboxes đã update
         if textboxes_updated > 0:
             print(f"[DEBUG] Updated {textboxes_updated} textboxes")
+
+    def _render_card_name_tables(self, context):
+        """
+        Tìm và điền tên thẻ vào tables (tên trên thẻ)
+        Tìm tables có 20+ columns và điền từng ký tự vào từng cell
+
+        Args:
+            context: Dictionary chứa biến ho_ten_tieng_anh hoặc ho_ten
+        """
+        # Get card name from context
+        card_name = context.get('ho_ten_tieng_anh') or context.get('ho_ten', '')
+        if not card_name:
+            return
+
+        card_name = str(card_name).upper()  # Uppercase for card name
+        tables_filled = 0
+
+        # Find and fill all tables with 20+ columns (likely card name tables)
+        for table in self.document.tables:
+            if not table.rows:
+                continue
+
+            # Check if this is a card name table (20+ columns)
+            if len(table.columns) >= 20:
+                # Fill first row with card name characters
+                row = table.rows[0]
+
+                for i, char in enumerate(card_name):
+                    if i >= len(row.cells):
+                        break  # Card name longer than table
+                    row.cells[i].text = char
+
+                # Clear remaining cells
+                for i in range(len(card_name), len(row.cells)):
+                    row.cells[i].text = ''
+
+                tables_filled += 1
+
+        # Debug
+        if tables_filled > 0:
+            print(f"[DEBUG] Filled {tables_filled} card name table(s) with '{card_name}'")
 
     def save(self, output_path):
         """
