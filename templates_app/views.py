@@ -804,6 +804,13 @@ def variable_library_view(request):
                     'example': ''  # Could add examples later
                 })
 
+    # Thêm biến tự động sinh (auto-generated)
+    customer_variables.append({
+        'name': 'ten_tieng_anh',
+        'description': 'Tên tiếng Anh tự động (loại bỏ dấu tiếng Việt và UPPER CASE từ ho_ten)',
+        'example': 'TRUONG TRUNG HIEU (từ Trương Trung Hiếu)'
+    })
+
     # 2. Biến Ngày tháng - Derived from dates
     date_variables = [
         # Ngày sinh
@@ -835,17 +842,74 @@ def variable_library_view(request):
         {'name': 'yhh4', 'description': 'Năm hết hạn CCCD - Chữ số thứ tư', 'example': 'Nếu ngày hết hạn là 15/06/2035 → yhh4 = 5'},
     ]
 
-    # 2.5. Biến điều kiện dịch vụ
+    # 2.5. Biến điều kiện dịch vụ & Checkbox
     service_variables = [
+        # Dịch vụ điều kiện
         {'name': 'so_tai_khoan_AP', 'description': 'Số tài khoản (chỉ khi chọn Agribank Plus mà không chọn SMS Banking)', 'example': '1234567890'},
         {'name': 'so_dien_thoai_AP', 'description': 'Số điện thoại (chỉ khi chọn Agribank Plus mà không chọn SMS Banking)', 'example': '0987654321'},
         {'name': 'so_tai_khoan_SMS', 'description': 'Số tài khoản (chỉ khi chọn SMS Banking mà không chọn Agribank Plus)', 'example': '1234567890'},
         {'name': 'so_dien_thoai_SMS', 'description': 'Số điện thoại (chỉ khi chọn SMS Banking mà không chọn Agribank Plus)', 'example': '0987654321'},
+
+        # Hạng thẻ
         {'name': 'the_hang_chuan', 'description': 'Checkbox ☑/☐ khi chọn Hạng chuẩn', 'example': '☑ hoặc ☐'},
         {'name': 'the_hang_vang', 'description': 'Checkbox ☑/☐ khi chọn Hạng vàng', 'example': '☑ hoặc ☐'},
+        {'name': 'the_hang_bach_kim', 'description': 'Checkbox ☑/☐ khi chọn Hạng bạch kim', 'example': '☑ hoặc ☐'},
+
+        # Loại thẻ
         {'name': 'the_ghi_no_noi_dia', 'description': 'Checkbox ☑/☐ khi chọn Thẻ Ghi nợ nội địa', 'example': '☑ hoặc ☐'},
+        {'name': 'the_ghi_no_quoc_te', 'description': 'Checkbox ☑/☐ khi chọn Thẻ Ghi nợ quốc tế', 'example': '☑ hoặc ☐'},
+        {'name': 'the_tin_dung', 'description': 'Checkbox ☑/☐ khi chọn Thẻ tín dụng', 'example': '☑ hoặc ☐'},
+        {'name': 'loai_the_visa', 'description': 'Checkbox ☑/☐ khi chọn thẻ Visa', 'example': '☑ hoặc ☐'},
+        {'name': 'loai_the_mastercard', 'description': 'Checkbox ☑/☐ khi chọn thẻ Mastercard', 'example': '☑ hoặc ☐'},
+        {'name': 'loai_the_jcb', 'description': 'Checkbox ☑/☐ khi chọn thẻ JCB', 'example': '☑ hoặc ☐'},
+        {'name': 'loai_the_khac', 'description': 'Checkbox ☑/☐ khi chọn loại thẻ khác', 'example': '☑ hoặc ☐'},
+
+        # Loại tài khoản
         {'name': 'tk_ngau_nhien', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản ngẫu nhiên', 'example': '☑ hoặc ☐'},
         {'name': 'tk_theo_yeu_cau', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản số theo yêu cầu', 'example': '☑ hoặc ☐'},
+
+        # Loại tiền
+        {'name': 'loai_tien_vnd', 'description': 'Checkbox ☑/☐ khi chọn loại tiền VND', 'example': '☑ hoặc ☐'},
+        {'name': 'loai_tien_usd', 'description': 'Checkbox ☑/☐ khi chọn loại tiền USD', 'example': '☑ hoặc ☐'},
+        {'name': 'loai_tien_eur', 'description': 'Checkbox ☑/☐ khi chọn loại tiền EUR', 'example': '☑ hoặc ☐'},
+
+        # Giới tính
+        {'name': 'gioi_tinh_nam', 'description': 'Checkbox ☑/☐ khi chọn giới tính Nam', 'example': '☑ hoặc ☐'},
+        {'name': 'gioi_tinh_nu', 'description': 'Checkbox ☑/☐ khi chọn giới tính Nữ', 'example': '☑ hoặc ☐'},
+
+        # Nghề nghiệp
+        {'name': 'nghe_nghiep_cong_chuc', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Công chức viên chức', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_nong_dan', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Nông dân', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_giao_vien_bac_si', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Giáo viên/Bác sĩ', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_cong_nhan', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Công nhân', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_kinh_doanh', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Kinh doanh tự do', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_hoc_sinh_sinh_vien', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Học sinh/Sinh viên', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_noi_tro', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Nội trợ', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_khac', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Khác', 'example': '☑ hoặc ☐'},
+
+        # Dịch vụ ngân hàng điện tử
+        {'name': 'dv_sms_banking', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ SMS Banking', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_e_mobile', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ E-Mobile/Agribank Plus', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_bankplus', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ BankPlus', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_e_commerce', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ E-Commerce', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_soft_otp', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Soft OTP', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_smart_otp', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Smart OTP', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_retail_ebanking', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Retail eBanking', 'example': '☑ hoặc ☐'},
+
+        # Dịch vụ thu hộ
+        {'name': 'dv_thu_ho_tien_nuoc', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Thu hộ tiền nước', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_thu_ho_tien_dien', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Thu hộ tiền điện', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_thu_ho_vien_thong', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Thu hộ viễn thông', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_thu_ho_hoc_phi', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Thu hộ học phí', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_thu_ho_bao_hiem', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Thu hộ bảo hiểm', 'example': '☑ hoặc ☐'},
+
+        # Kênh giao dịch
+        {'name': 'kenh_mobile', 'description': 'Checkbox ☑/☐ khi chọn kênh giao dịch Mobile', 'example': '☑ hoặc ☐'},
+        {'name': 'kenh_internet', 'description': 'Checkbox ☑/☐ khi chọn kênh giao dịch Internet', 'example': '☑ hoặc ☐'},
+
+        # Phát hành thẻ
+        {'name': 'phat_hanh_lan_dau', 'description': 'Checkbox ☑/☐ khi chọn phát hành lần đầu', 'example': '☑ hoặc ☐'},
+        {'name': 'phat_hanh_lai', 'description': 'Checkbox ☑/☐ khi chọn phát hành lại', 'example': '☑ hoặc ☐'},
     ]
 
     # 3. Biến Chi nhánh - From GlobalConfig
