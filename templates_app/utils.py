@@ -349,17 +349,24 @@ class JinjaWordTemplateProcessor:
         Tìm tables có 20+ columns và điền từng ký tự vào từng cell
 
         Args:
-            context: Dictionary chứa biến ho_ten_tieng_anh hoặc ho_ten
+            context: Dictionary chứa biến ho_ten_tieng_anh, ten_tieng_anh, hoặc ho_ten
         """
-        # Get card name from context (prefer English name for card)
+        # Get card name from context with priority:
+        # 1. ho_ten_tieng_anh (manually entered English name)
+        # 2. ten_tieng_anh (auto-generated from ho_ten, already uppercase without diacritics)
+        # 3. ho_ten (fallback)
         ho_ten_tieng_anh = (context.get('ho_ten_tieng_anh') or '').strip()
-        card_name = ho_ten_tieng_anh if ho_ten_tieng_anh else context.get('ho_ten', '')
+        ten_tieng_anh = (context.get('ten_tieng_anh') or '').strip()
 
+        if ho_ten_tieng_anh:
+            card_name = ho_ten_tieng_anh.upper()
+        elif ten_tieng_anh:
+            card_name = ten_tieng_anh  # Already uppercase from auto-generation
+        else:
+            card_name = (context.get('ho_ten', '') or '').upper()
+
+        card_name = str(card_name).strip()
         if not card_name:
-            return
-
-        card_name = str(card_name).upper().strip()  # Uppercase and trim for card name
-        if not card_name:  # Double check after strip
             return
 
         tables_filled = 0
@@ -704,17 +711,24 @@ class WordTemplateProcessor:
         Tìm tables có 20+ columns và điền từng ký tự vào từng cell
 
         Args:
-            context: Dictionary chứa biến ho_ten_tieng_anh hoặc ho_ten
+            context: Dictionary chứa biến ho_ten_tieng_anh, ten_tieng_anh, hoặc ho_ten
         """
-        # Get card name from context (prefer English name for card)
+        # Get card name from context with priority:
+        # 1. ho_ten_tieng_anh (manually entered English name)
+        # 2. ten_tieng_anh (auto-generated from ho_ten, already uppercase without diacritics)
+        # 3. ho_ten (fallback)
         ho_ten_tieng_anh = (context.get('ho_ten_tieng_anh') or '').strip()
-        card_name = ho_ten_tieng_anh if ho_ten_tieng_anh else context.get('ho_ten', '')
+        ten_tieng_anh = (context.get('ten_tieng_anh') or '').strip()
 
+        if ho_ten_tieng_anh:
+            card_name = ho_ten_tieng_anh.upper()
+        elif ten_tieng_anh:
+            card_name = ten_tieng_anh  # Already uppercase from auto-generation
+        else:
+            card_name = (context.get('ho_ten', '') or '').upper()
+
+        card_name = str(card_name).strip()
         if not card_name:
-            return
-
-        card_name = str(card_name).upper().strip()  # Uppercase and trim for card name
-        if not card_name:  # Double check after strip
             return
 
         tables_filled = 0

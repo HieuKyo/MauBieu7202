@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import HttpResponse, Http404, JsonResponse
 from django.db.models import Q, Exists, OuterRef
 from django.views.decorators.http import require_http_methods
-from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig
+from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig, remove_vietnamese_diacritics
 from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
 from .utils import render_word_template
 from .issueby_mapping import get_issueby_name
@@ -975,6 +975,9 @@ def generate_document_direct(request, template_id):
         data['ma_khach_hang'] = request.POST.get('ma_khach_hang', '')
         data['cif'] = data['ma_khach_hang']  # CIF = Mã khách hàng (for backward compatibility)
         data['ho_ten'] = request.POST.get('ho_ten', '')
+        data['ho_ten_tieng_anh'] = request.POST.get('ho_ten_tieng_anh', '')
+        # Auto-generate ten_tieng_anh from ho_ten (remove diacritics and uppercase)
+        data['ten_tieng_anh'] = remove_vietnamese_diacritics(data['ho_ten'])
         data['ngay_sinh'] = request.POST.get('ngay_sinh', '')
         data['gioi_tinh'] = request.POST.get('gioi_tinh', '')
 
