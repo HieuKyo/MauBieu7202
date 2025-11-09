@@ -284,14 +284,33 @@ CHECKBOX_TAG_MAPPING = {
     'Check_PHL': 'phat_hanh_lai',
     'Check_PhatHanhLai': 'phat_hanh_lai',
 
+    # ===== NGHỀ NGHIỆP =====
+    'Check_CongChuc': 'nghe_nghiep_cong_chuc',
+    'Check_CC': 'nghe_nghiep_cong_chuc',
+    'Check_NongDan': 'nghe_nghiep_nong_dan',
+    'Check_ND': 'nghe_nghiep_nong_dan',
+    'Check_GiaoVien': 'nghe_nghiep_giao_vien_bac_si',
+    'Check_BacSi': 'nghe_nghiep_giao_vien_bac_si',
+    'Check_GV': 'nghe_nghiep_giao_vien_bac_si',
+    'Check_CongNhan': 'nghe_nghiep_cong_nhan',
+    'Check_CN': 'nghe_nghiep_cong_nhan',
+    'Check_KinhDoanh': 'nghe_nghiep_kinh_doanh',
+    'Check_KD': 'nghe_nghiep_kinh_doanh',
+    'Check_HocSinh': 'nghe_nghiep_hoc_sinh_sinh_vien',
+    'Check_SinhVien': 'nghe_nghiep_hoc_sinh_sinh_vien',
+    'Check_HS': 'nghe_nghiep_hoc_sinh_sinh_vien',
+    'Check_NoiTro': 'nghe_nghiep_noi_tro',
+    'Check_NT': 'nghe_nghiep_noi_tro',
+    'Check_NgheNghiepKhac': 'nghe_nghiep_khac',
+
     # ===== DỊCH VỤ NGÂN HÀNG ĐIỆN TỬ =====
     'Check_S': 'dv_sms_banking',
     'Check_SMS': 'dv_sms_banking',
     'Check_E': 'dv_e_mobile',
     'Check_EMobile': 'dv_e_mobile',
+    'Check_AP': 'dv_e_mobile',  # Agribank Plus → E-Mobile (dịch vụ chính)
     'Check_B': 'dv_bankplus',
     'Check_BankPlus': 'dv_bankplus',
-    'Check_AP': 'dv_bankplus',  # Agribank Plus
     'Check_EC': 'dv_e_commerce',
     'Check_ECommerce': 'dv_e_commerce',
     'Check_IB': 'dv_retail_ebanking',
