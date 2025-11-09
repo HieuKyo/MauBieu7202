@@ -867,6 +867,7 @@ def variable_library_view(request):
         # Loại tài khoản
         {'name': 'tk_ngau_nhien', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản ngẫu nhiên', 'example': '☑ hoặc ☐'},
         {'name': 'tk_theo_yeu_cau', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản số theo yêu cầu', 'example': '☑ hoặc ☐'},
+        {'name': 'tk_chuyen_dung', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản chuyên dụng', 'example': '☑ hoặc ☐'},
 
         # Loại tiền
         {'name': 'loai_tien_vnd', 'description': 'Checkbox ☑/☐ khi chọn loại tiền VND', 'example': '☑ hoặc ☐'},
