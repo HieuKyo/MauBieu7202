@@ -573,17 +573,9 @@ class Customer(models.Model):
             'tk_theo_yeu_cau': tk_theo_yeu_cau,
         }
 
-        # Auto-generate character variables for card name (tên trên thẻ)
-        # Split name into individual characters for table cells
-        ten_the = self.ho_ten_tieng_anh or self.ho_ten or ''
-        ten_the = ten_the.upper()  # Uppercase for card name
-
-        # Generate up to 30 character variables (ten_the_1 to ten_the_30)
-        for i in range(1, 31):
-            if i <= len(ten_the):
-                data[f'ten_the_{i}'] = ten_the[i-1]
-            else:
-                data[f'ten_the_{i}'] = ''  # Empty for remaining cells
+        # Note: Card name (tên trên thẻ) is auto-filled into tables
+        # by _render_card_name_tables() in utils.py
+        # No need to generate individual character variables
 
         # Service-specific account and phone logic
         # If Agribank Plus is selected but NOT SMS Banking
