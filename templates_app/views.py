@@ -956,7 +956,8 @@ def category_templates_api(request, category_id):
 @require_http_methods(["POST"])
 def generate_document_direct(request, template_id):
     """
-    Generate document trực tiếp từ form data (không cần lưu customer)
+    Generate document trực tiếp từ form data
+    Nếu có customer_id trong POST data, sẽ cập nhật thông tin khách hàng trước khi tạo document
     """
     try:
         template = get_object_or_404(Template, pk=template_id)
@@ -1162,6 +1163,84 @@ def generate_document_direct(request, template_id):
         else:
             data['so_tai_khoan_SMS'] = ''
             data['so_dien_thoai_SMS'] = ''
+
+        # Check if this is updating an existing customer
+        customer_id = request.POST.get('customer_id', '').strip()
+        if customer_id:
+            try:
+                customer = Customer.objects.get(pk=int(customer_id))
+
+                # Update customer fields from form data
+                customer.ma_khach_hang = data.get('ma_khach_hang', '')
+                customer.ho_ten = data.get('ho_ten', '')
+                customer.ho_ten_tieng_anh = data.get('ho_ten_tieng_anh', '')
+
+                # Parse and update dates
+                if data.get('ngay_sinh'):
+                    try:
+                        from datetime import datetime
+                        customer.ngay_sinh = datetime.strptime(data['ngay_sinh'], '%d/%m/%Y').date()
+                    except:
+                        pass
+
+                if data.get('ngay_cap_cmnd'):
+                    try:
+                        from datetime import datetime
+                        customer.ngay_cap_cmnd = datetime.strptime(data['ngay_cap_cmnd'], '%d/%m/%Y').date()
+                    except:
+                        pass
+
+                if data.get('ngay_het_han_cmnd'):
+                    try:
+                        from datetime import datetime
+                        customer.ngay_het_han_cmnd = datetime.strptime(data['ngay_het_han_cmnd'], '%d/%m/%Y').date()
+                    except:
+                        pass
+
+                customer.gioi_tinh = data.get('gioi_tinh', '')
+                customer.dan_toc = data.get('dan_toc', '')
+                customer.so_cmnd = data.get('so_cmnd', '')
+                customer.noi_cap_cmnd = data.get('noi_cap_cmnd', '')
+                customer.dia_chi = data.get('dia_chi', '')
+                customer.ho_khau = data.get('ho_khau', '')
+                customer.so_dien_thoai = data.get('so_dien_thoai', '')
+                customer.email = data.get('email', '')
+                customer.nghe_nghiep = data.get('nghe_nghiep', '')
+                customer.noi_lam_viec = data.get('noi_lam_viec', '')
+                customer.so_tai_khoan = data.get('so_tai_khoan', '')
+                customer.loai_tai_khoan = data.get('loai_tai_khoan', '')
+                customer.so_tai_khoan_yc = data.get('so_tai_khoan_yc', '')
+                customer.loai_tien_te = data.get('loai_tien_te', 'VND')
+                customer.loai_the = data.get('loai_the', '')
+                customer.hang_the = data.get('hang_the', '')
+                customer.so_the_atm = data.get('so_the_atm', '')
+
+                # Update service checkboxes (convert from ☑/☐ back to boolean)
+                customer.phat_hanh_lan_dau = (request.POST.get('phat_hanh_lan_dau') == 'on')
+                customer.phat_hanh_lai = (request.POST.get('phat_hanh_lai') == 'on')
+                customer.dv_sms_banking = (request.POST.get('dv_sms_banking') == 'on')
+                customer.dv_bankplus = (request.POST.get('dv_bankplus') == 'on')
+                customer.dv_e_mobile = (request.POST.get('dv_e_mobile') == 'on')
+                customer.dv_e_commerce = (request.POST.get('dv_e_commerce') == 'on')
+                customer.dv_soft_otp = (request.POST.get('dv_soft_otp') == 'on')
+                customer.dv_smart_otp = (request.POST.get('dv_smart_otp') == 'on')
+                customer.dv_retail_ebanking = (request.POST.get('dv_retail_ebanking') == 'on')
+                customer.dv_thu_ho_tien_nuoc = (request.POST.get('dv_thu_ho_tien_nuoc') == 'on')
+                customer.dv_thu_ho_tien_dien = (request.POST.get('dv_thu_ho_tien_dien') == 'on')
+                customer.dv_thu_ho_vien_thong = (request.POST.get('dv_thu_ho_vien_thong') == 'on')
+                customer.dv_thu_ho_hoc_phi = (request.POST.get('dv_thu_ho_hoc_phi') == 'on')
+                customer.dv_thu_ho_bao_hiem = (request.POST.get('dv_thu_ho_bao_hiem') == 'on')
+                customer.kenh_mobile = (request.POST.get('kenh_mobile') == 'on')
+                customer.kenh_internet = (request.POST.get('kenh_internet') == 'on')
+
+                # Save updated customer
+                customer.save()
+                print(f"[INFO] Updated customer ID {customer_id}: {customer.ho_ten}")
+
+            except Customer.DoesNotExist:
+                print(f"[WARNING] Customer ID {customer_id} not found, generating document without saving")
+            except Exception as e:
+                print(f"[ERROR] Failed to update customer ID {customer_id}: {e}")
 
         # Add ALL GlobalConfig variables (branch info + custom variables + auto-generated date variables)
         data.update(config.get_all_variables())

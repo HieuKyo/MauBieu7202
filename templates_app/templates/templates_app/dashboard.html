@@ -126,6 +126,7 @@
                 {% csrf_token %}
                 <input type="hidden" id="selected-template-id" name="template_id">
                 <input type="hidden" id="selected-category-id" name="category_id">
+                <input type="hidden" id="selected-customer-id" name="customer_id" value="">
 
                 <!-- Quick Actions: Search Customer & Clipboard -->
                 <div class="mb-4 p-3 bg-light border rounded">
@@ -694,6 +695,10 @@ function loadCustomerData(customerId) {
         .then(data => {
             if (data.success) {
                 fillFormWithData(data.customer);
+
+                // Store customer ID for later update when generating document
+                document.getElementById('selected-customer-id').value = customerId;
+
                 resultsContainer.style.display = 'none';
                 document.getElementById('customer-search-input').value = '';
 
@@ -702,6 +707,9 @@ function loadCustomerData(customerId) {
                 alertDiv.className = 'alert alert-success alert-dismissible fade show';
                 alertDiv.innerHTML = `
                     <i class="bi bi-check-circle"></i> Đã tải thông tin khách hàng: <strong>${data.customer.ho_ten}</strong>
+                    <small class="d-block mt-1 text-muted">
+                        <i class="bi bi-info-circle"></i> Thay đổi thông tin sẽ được tự động lưu khi in mẫu biểu
+                    </small>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 `;
                 document.getElementById('customerForm').insertBefore(alertDiv, document.getElementById('customerForm').firstChild);
@@ -1102,6 +1110,8 @@ document.getElementById('customerForm').addEventListener('submit', function(e) {
 
         // Reset form for next use
         this.reset();
+        // Clear customer_id as well
+        document.getElementById('selected-customer-id').value = '';
         goToStep(1);
     })
     .catch(error => {
