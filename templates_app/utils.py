@@ -220,7 +220,41 @@ class JinjaWordTemplateProcessor:
                 if checked_element is not None:
                     # Set giá trị: 1 = checked, 0 = unchecked
                     checked_element.set(f'{{{NSMAP["w14"]}}}val', '1' if is_checked else '0')
-                    checkboxes_updated += 1
+
+                # IMPORTANT: Cũng phải update text content và font!
+                # Lấy thông tin từ checkedState/uncheckedState
+                if is_checked:
+                    state_element = checkbox_element.find('.//w14:checkedState', namespaces=NSMAP)
+                else:
+                    state_element = checkbox_element.find('.//w14:uncheckedState', namespaces=NSMAP)
+
+                if state_element is not None:
+                    # Lấy character code và font
+                    char_code = state_element.get(f'{{{NSMAP["w14"]}}}val')
+                    font_name = state_element.get(f'{{{NSMAP["w14"]}}}font')
+
+                    if char_code and font_name:
+                        # Convert hex code to character
+                        char = chr(int(char_code, 16))
+
+                        # Update text content
+                        text_elements = sdt.findall('.//w:t', namespaces=NSMAP)
+                        if text_elements:
+                            text_elements[0].text = char
+
+                            # Update font in run properties
+                            run_element = text_elements[0].getparent()  # w:r
+                            if run_element is not None:
+                                rPr = run_element.find('.//w:rPr', namespaces=NSMAP)
+                                if rPr is not None:
+                                    rFonts = rPr.find('.//w:rFonts', namespaces=NSMAP)
+                                    if rFonts is not None:
+                                        # Update all font attributes
+                                        rFonts.set(f'{{{NSMAP["w"]}}}ascii', font_name)
+                                        rFonts.set(f'{{{NSMAP["w"]}}}eastAsia', font_name)
+                                        rFonts.set(f'{{{NSMAP["w"]}}}hAnsi', font_name)
+
+                checkboxes_updated += 1
                 continue
 
             # Phương pháp 2: Legacy checkbox sử dụng Wingdings font
@@ -492,7 +526,41 @@ class WordTemplateProcessor:
                 if checked_element is not None:
                     # Set giá trị: 1 = checked, 0 = unchecked
                     checked_element.set(f'{{{NSMAP["w14"]}}}val', '1' if is_checked else '0')
-                    checkboxes_updated += 1
+
+                # IMPORTANT: Cũng phải update text content và font!
+                # Lấy thông tin từ checkedState/uncheckedState
+                if is_checked:
+                    state_element = checkbox_element.find('.//w14:checkedState', namespaces=NSMAP)
+                else:
+                    state_element = checkbox_element.find('.//w14:uncheckedState', namespaces=NSMAP)
+
+                if state_element is not None:
+                    # Lấy character code và font
+                    char_code = state_element.get(f'{{{NSMAP["w14"]}}}val')
+                    font_name = state_element.get(f'{{{NSMAP["w14"]}}}font')
+
+                    if char_code and font_name:
+                        # Convert hex code to character
+                        char = chr(int(char_code, 16))
+
+                        # Update text content
+                        text_elements = sdt.findall('.//w:t', namespaces=NSMAP)
+                        if text_elements:
+                            text_elements[0].text = char
+
+                            # Update font in run properties
+                            run_element = text_elements[0].getparent()  # w:r
+                            if run_element is not None:
+                                rPr = run_element.find('.//w:rPr', namespaces=NSMAP)
+                                if rPr is not None:
+                                    rFonts = rPr.find('.//w:rFonts', namespaces=NSMAP)
+                                    if rFonts is not None:
+                                        # Update all font attributes
+                                        rFonts.set(f'{{{NSMAP["w"]}}}ascii', font_name)
+                                        rFonts.set(f'{{{NSMAP["w"]}}}eastAsia', font_name)
+                                        rFonts.set(f'{{{NSMAP["w"]}}}hAnsi', font_name)
+
+                checkboxes_updated += 1
                 continue
 
             # Phương pháp 2: Legacy checkbox sử dụng Wingdings font
