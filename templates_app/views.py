@@ -1034,6 +1034,17 @@ def generate_document_direct(request, template_id):
         data['gioi_tinh_nam'] = checkbox(data['gioi_tinh'] == 'Nam')
         data['gioi_tinh_nu'] = checkbox(data['gioi_tinh'] == 'Nữ')
 
+        # Checkbox - Nghề nghiệp
+        nghe_nghiep = data.get('nghe_nghiep', '')
+        data['nghe_nghiep_cong_chuc'] = checkbox(nghe_nghiep == 'Công chức viên chức')
+        data['nghe_nghiep_nong_dan'] = checkbox(nghe_nghiep == 'Nông dân')
+        data['nghe_nghiep_giao_vien_bac_si'] = checkbox(nghe_nghiep == 'Giáo viên/Bác Sĩ')
+        data['nghe_nghiep_cong_nhan'] = checkbox(nghe_nghiep == 'Công nhân')
+        data['nghe_nghiep_kinh_doanh'] = checkbox(nghe_nghiep == 'Kinh doanh tự do')
+        data['nghe_nghiep_hoc_sinh_sinh_vien'] = checkbox(nghe_nghiep == 'Học sinh/Sinh viên')
+        data['nghe_nghiep_noi_tro'] = checkbox(nghe_nghiep == 'Nội trợ')
+        data['nghe_nghiep_khac'] = checkbox(nghe_nghiep == 'Khác')
+
         # Checkbox - Hạng thẻ
         data['the_hang_chuan'] = checkbox(data['hang_the'] == 'Hạng chuẩn')
         data['the_hang_vang'] = checkbox(data['hang_the'] == 'Hạng vàng')

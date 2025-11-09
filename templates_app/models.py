@@ -455,6 +455,16 @@ class Customer(models.Model):
         gioi_tinh_nam = checkbox(self.gioi_tinh == 'Nam')
         gioi_tinh_nu = checkbox(self.gioi_tinh == 'Nữ')
 
+        # Checkbox variables for nghề nghiệp
+        nghe_nghiep_cong_chuc = checkbox(self.nghe_nghiep == 'Công chức viên chức')
+        nghe_nghiep_nong_dan = checkbox(self.nghe_nghiep == 'Nông dân')
+        nghe_nghiep_giao_vien_bac_si = checkbox(self.nghe_nghiep == 'Giáo viên/Bác Sĩ')
+        nghe_nghiep_cong_nhan = checkbox(self.nghe_nghiep == 'Công nhân')
+        nghe_nghiep_kinh_doanh = checkbox(self.nghe_nghiep == 'Kinh doanh tự do')
+        nghe_nghiep_hoc_sinh_sinh_vien = checkbox(self.nghe_nghiep == 'Học sinh/Sinh viên')
+        nghe_nghiep_noi_tro = checkbox(self.nghe_nghiep == 'Nội trợ')
+        nghe_nghiep_khac = checkbox(self.nghe_nghiep == 'Khác')
+
         # Checkbox variables for loại tiền
         loai_tien_vnd = checkbox(self.loai_tien_te == 'VND')
         loai_tien_usd = checkbox(self.loai_tien_te == 'USD')
@@ -532,6 +542,15 @@ class Customer(models.Model):
             # Checkbox variables - Giới tính
             'gioi_tinh_nam': gioi_tinh_nam,
             'gioi_tinh_nu': gioi_tinh_nu,
+            # Checkbox variables - Nghề nghiệp
+            'nghe_nghiep_cong_chuc': nghe_nghiep_cong_chuc,
+            'nghe_nghiep_nong_dan': nghe_nghiep_nong_dan,
+            'nghe_nghiep_giao_vien_bac_si': nghe_nghiep_giao_vien_bac_si,
+            'nghe_nghiep_cong_nhan': nghe_nghiep_cong_nhan,
+            'nghe_nghiep_kinh_doanh': nghe_nghiep_kinh_doanh,
+            'nghe_nghiep_hoc_sinh_sinh_vien': nghe_nghiep_hoc_sinh_sinh_vien,
+            'nghe_nghiep_noi_tro': nghe_nghiep_noi_tro,
+            'nghe_nghiep_khac': nghe_nghiep_khac,
             # Checkbox variables - Thẻ
             'phat_hanh_lan_dau': checkbox(self.phat_hanh_lan_dau),
             'phat_hanh_lai': checkbox(self.phat_hanh_lai),
