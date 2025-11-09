@@ -221,9 +221,13 @@
                                         <option value="">Chọn...</option>
                                         <option value="Công chức viên chức">Công chức viên chức</option>
                                         <option value="Nông dân">Nông dân</option>
+                                        <option value="Giáo viên/Bác Sĩ">Giáo viên/Bác Sĩ</option>
                                         <option value="Công nhân">Công nhân</option>
+                                        <option value="Kinh doanh tự do">Kinh doanh tự do</option>
                                         <option value="Học sinh/Sinh viên">Học sinh/Sinh viên</option>
                                         <option value="Nội trợ">Nội trợ</option>
+                                        <option value="Công an/Bộ đội">Công an/Bộ đội</option>
+                                        <option value="Kỹ sư">Kỹ sư</option>
                                         <option value="Khác">Khác</option>
                                     </select>
                                 </div>
@@ -373,6 +377,28 @@
                                         <label class="form-check-label" for="ph-lai">Phát hành lại</label>
                                     </div>
                                 </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="the_lap_nghiep" id="the-lap-nghiep">
+                                        <label class="form-check-label" for="the-lap-nghiep">Thẻ lập nghiệp</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="the_lien_ket" id="the-lien-ket">
+                                        <label class="form-check-label" for="the-lien-ket">Thẻ liên kết</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="the_dong_thuong_hieu" id="the-dong-th">
+                                        <label class="form-check-label" for="the-dong-th">Thẻ đồng thương hiệu</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Tên thẻ 1</label>
+                                    <input type="text" class="form-control" name="ten_the_1" placeholder="Nhập tên in trên thẻ">
+                                </div>
                             </div>
                         </div>
 
@@ -396,6 +422,12 @@
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="dv_e_mobile" id="dv-wallet">
                                         <label class="form-check-label" for="dv-wallet">Liên kết ví</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dv_abic" id="dv-abic">
+                                        <label class="form-check-label" for="dv-abic">ABIC</label>
                                     </div>
                                 </div>
                             </div>
@@ -781,11 +813,13 @@ function fillFormWithData(data) {
     // Card
     if (data.loai_the) document.querySelector('[name="loai_the"]').value = data.loai_the;
     if (data.hang_the) document.querySelector('[name="hang_the"]').value = data.hang_the;
+    if (data.ten_the_1) document.querySelector('[name="ten_the_1"]').value = data.ten_the_1;
 
     // Checkboxes - need to handle boolean values
     const checkboxFields = [
         'phat_hanh_lan_dau', 'phat_hanh_lai',
-        'dv_sms_banking', 'dv_bankplus', 'dv_e_mobile'
+        'dv_sms_banking', 'dv_bankplus', 'dv_e_mobile', 'dv_abic',
+        'the_lap_nghiep', 'the_lien_ket', 'the_dong_thuong_hieu'
     ];
     checkboxFields.forEach(field => {
         const checkbox = document.querySelector(`[name="${field}"]`);

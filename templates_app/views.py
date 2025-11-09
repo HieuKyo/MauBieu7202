@@ -886,6 +886,8 @@ def variable_library_view(request):
         {'name': 'nghe_nghiep_kinh_doanh', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Kinh doanh tự do', 'example': '☑ hoặc ☐'},
         {'name': 'nghe_nghiep_hoc_sinh_sinh_vien', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Học sinh/Sinh viên', 'example': '☑ hoặc ☐'},
         {'name': 'nghe_nghiep_noi_tro', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Nội trợ', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_cong_an_bo_doi', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Công an/Bộ đội', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_ky_su', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Kỹ sư', 'example': '☑ hoặc ☐'},
         {'name': 'nghe_nghiep_khac', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Khác', 'example': '☑ hoặc ☐'},
 
         # Dịch vụ ngân hàng điện tử
@@ -896,6 +898,7 @@ def variable_library_view(request):
         {'name': 'dv_soft_otp', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Soft OTP', 'example': '☑ hoặc ☐'},
         {'name': 'dv_smart_otp', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Smart OTP', 'example': '☑ hoặc ☐'},
         {'name': 'dv_retail_ebanking', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Retail eBanking', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_abic', 'description': 'Checkbox ☑/☐ khi khách hàng đăng ký dịch vụ ABIC', 'example': '☑ hoặc ☐'},
 
         # Dịch vụ thu hộ
         {'name': 'dv_thu_ho_tien_nuoc', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Thu hộ tiền nước', 'example': '☑ hoặc ☐'},
@@ -911,6 +914,20 @@ def variable_library_view(request):
         # Phát hành thẻ
         {'name': 'phat_hanh_lan_dau', 'description': 'Checkbox ☑/☐ khi chọn phát hành lần đầu', 'example': '☑ hoặc ☐'},
         {'name': 'phat_hanh_lai', 'description': 'Checkbox ☑/☐ khi chọn phát hành lại', 'example': '☑ hoặc ☐'},
+
+        # Loại thẻ bổ sung
+        {'name': 'the_lap_nghiep', 'description': 'Checkbox ☑/☐ khi chọn thẻ lập nghiệp', 'example': '☑ hoặc ☐'},
+        {'name': 'the_lien_ket', 'description': 'Checkbox ☑/☐ khi chọn thẻ liên kết', 'example': '☑ hoặc ☐'},
+        {'name': 'the_dong_thuong_hieu', 'description': 'Checkbox ☑/☐ khi chọn thẻ đồng thương hiệu', 'example': '☑ hoặc ☐'},
+
+        # Thông tin thẻ
+        {'name': 'ten_the_1', 'description': 'Tên in trên thẻ 1', 'example': 'NGUYEN VAN A'},
+
+        # Biến tài khoản điều kiện
+        {'name': 'stk_theo_yeu_cau', 'description': 'Số tài khoản (chỉ hiển thị khi chọn "Tài khoản số theo yêu cầu")', 'example': '1234567890'},
+
+        # Ngày tính toán
+        {'name': 'ngay_tra_the_tinh', 'description': 'Ngày trả thẻ (tự động tính = ngày in + 7 ngày)', 'example': '15/12/2024'},
     ]
 
     # 3. Biến Chi nhánh - From GlobalConfig
@@ -1279,6 +1296,7 @@ def generate_document_direct(request, template_id):
                 customer.loai_the = data.get('loai_the', '')
                 customer.hang_the = data.get('hang_the', '')
                 customer.so_the_atm = data.get('so_the_atm', '')
+                customer.ten_the_1 = data.get('ten_the_1', '')
 
                 # Update service checkboxes (convert from ☑/☐ back to boolean)
                 customer.phat_hanh_lan_dau = (request.POST.get('phat_hanh_lan_dau') == 'on')
@@ -1295,8 +1313,12 @@ def generate_document_direct(request, template_id):
                 customer.dv_thu_ho_vien_thong = (request.POST.get('dv_thu_ho_vien_thong') == 'on')
                 customer.dv_thu_ho_hoc_phi = (request.POST.get('dv_thu_ho_hoc_phi') == 'on')
                 customer.dv_thu_ho_bao_hiem = (request.POST.get('dv_thu_ho_bao_hiem') == 'on')
+                customer.dv_abic = (request.POST.get('dv_abic') == 'on')
                 customer.kenh_mobile = (request.POST.get('kenh_mobile') == 'on')
                 customer.kenh_internet = (request.POST.get('kenh_internet') == 'on')
+                customer.the_lap_nghiep = (request.POST.get('the_lap_nghiep') == 'on')
+                customer.the_lien_ket = (request.POST.get('the_lien_ket') == 'on')
+                customer.the_dong_thuong_hieu = (request.POST.get('the_dong_thuong_hieu') == 'on')
 
                 # Save updated customer
                 customer.save()
