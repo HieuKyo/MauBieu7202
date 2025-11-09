@@ -351,12 +351,17 @@ class JinjaWordTemplateProcessor:
         Args:
             context: Dictionary chứa biến ho_ten_tieng_anh hoặc ho_ten
         """
-        # Get card name from context
-        card_name = context.get('ho_ten_tieng_anh') or context.get('ho_ten', '')
+        # Get card name from context (prefer English name for card)
+        ho_ten_tieng_anh = (context.get('ho_ten_tieng_anh') or '').strip()
+        card_name = ho_ten_tieng_anh if ho_ten_tieng_anh else context.get('ho_ten', '')
+
         if not card_name:
             return
 
-        card_name = str(card_name).upper()  # Uppercase for card name
+        card_name = str(card_name).upper().strip()  # Uppercase and trim for card name
+        if not card_name:  # Double check after strip
+            return
+
         tables_filled = 0
 
         # Find and fill all tables with 20+ columns (likely card name tables)
@@ -701,12 +706,17 @@ class WordTemplateProcessor:
         Args:
             context: Dictionary chứa biến ho_ten_tieng_anh hoặc ho_ten
         """
-        # Get card name from context
-        card_name = context.get('ho_ten_tieng_anh') or context.get('ho_ten', '')
+        # Get card name from context (prefer English name for card)
+        ho_ten_tieng_anh = (context.get('ho_ten_tieng_anh') or '').strip()
+        card_name = ho_ten_tieng_anh if ho_ten_tieng_anh else context.get('ho_ten', '')
+
         if not card_name:
             return
 
-        card_name = str(card_name).upper()  # Uppercase for card name
+        card_name = str(card_name).upper().strip()  # Uppercase and trim for card name
+        if not card_name:  # Double check after strip
+            return
+
         tables_filled = 0
 
         # Find and fill all tables with 20+ columns (likely card name tables)
