@@ -477,7 +477,8 @@ def convert_document(input_path, output_path, backup=True):
 
 def process_folder(folder_path, output_folder=None, backup=True):
     """
-    Xử lý tất cả file .docx trong folder
+    Xử lý tất cả file .docx trong folder (bao gồm cả subfolder)
+    Giữ nguyên cấu trúc thư mục khi convert
 
     Args:
         folder_path: Đường dẫn folder chứa file cần convert
@@ -488,11 +489,16 @@ def process_folder(folder_path, output_folder=None, backup=True):
         print(f"❌ Không tìm thấy folder: {folder_path}")
         return
 
-    # Tìm tất cả file .docx
+    # Normalize paths
+    folder_path = os.path.abspath(folder_path)
+    if output_folder:
+        output_folder = os.path.abspath(output_folder)
+
+    # Tìm tất cả file .docx (bao gồm subfolder)
     docx_files = []
     for root, dirs, files in os.walk(folder_path):
         for file in files:
-            if file.endswith('.docx') and not file.startswith('~$'):
+            if file.endswith('.docx') and not file.startswith('~$') and '_backup_' not in file:
                 docx_files.append(os.path.join(root, file))
 
     if not docx_files:
@@ -510,14 +516,18 @@ def process_folder(folder_path, output_folder=None, backup=True):
     failed = 0
 
     for i, input_path in enumerate(docx_files, 1):
-        filename = os.path.basename(input_path)
-        print(f"[{i}/{len(docx_files)}] Đang xử lý: {filename}")
+        # Tính relative path để giữ cấu trúc thư mục
+        relative_path = os.path.relpath(input_path, folder_path)
+
+        print(f"[{i}/{len(docx_files)}] Đang xử lý: {relative_path}")
 
         try:
-            # Determine output path
+            # Determine output path - GIỮ NGUYÊN CẤU TRÚC THƯ MỤC
             if output_folder:
-                os.makedirs(output_folder, exist_ok=True)
-                output_path = os.path.join(output_folder, filename)
+                output_path = os.path.join(output_folder, relative_path)
+                # Tạo thư mục con nếu cần
+                output_dir = os.path.dirname(output_path)
+                os.makedirs(output_dir, exist_ok=True)
             else:
                 output_path = input_path
 
@@ -679,8 +689,15 @@ def main():
     print(f"Folder input:  {os.path.abspath(input_folder)}")
     if output_folder:
         print(f"Folder output: {os.path.abspath(output_folder)}")
+        print(f"Cấu trúc thư mục: GIỮ NGUYÊN (subfolder sẽ được tạo tự động)")
     else:
         print(f"Folder output: GHI ĐÈ FILE GỐC (có backup)")
+
+    print(f"\n⚠️  LƯU Ý:")
+    print(f"  - Script sẽ xử lý TẤT CẢ file .docx trong folder (bao gồm subfolder)")
+    print(f"  - File backup sẽ bị bỏ qua (file có '_backup_' trong tên)")
+    if output_folder:
+        print(f"  - Cấu trúc thư mục gốc sẽ được GIỮ NGUYÊN trong folder output")
 
     print(f"\nNhấn Enter để bắt đầu, hoặc Ctrl+C để hủy...")
     try:
