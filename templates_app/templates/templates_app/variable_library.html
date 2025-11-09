@@ -19,12 +19,60 @@
 </div>
 
 <!-- Search box -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" class="form-control" id="variable-search" placeholder="Tìm kiếm biến...">
+<div class="row mb-3">
+    <div class="col-md-8">
+        <div class="input-group input-group-lg">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control border-start-0" id="variable-search" placeholder="Nhập tên biến hoặc mô tả để tìm kiếm..." autofocus>
+            <button class="btn btn-outline-secondary" type="button" id="clear-search">
+                <i class="bi bi-x-lg"></i>
+            </button>
         </div>
+        <small class="text-muted">
+            <i class="bi bi-lightbulb"></i> Ví dụ: nhập "visa", "checkbox", "giới tính", "ngày sinh"...
+        </small>
+    </div>
+</div>
+
+<!-- Search Results Area -->
+<div id="search-results-area" class="row mb-4" style="display: none;">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-search"></i> <strong>Kết quả tìm kiếm:</strong>
+                    <span id="search-query-text" class="fw-bold"></span>
+                </div>
+                <span class="badge bg-light text-dark" id="search-count">0 kết quả</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 25%;">Tên biến</th>
+                                <th style="width: 40%;">Mô tả</th>
+                                <th style="width: 20%;">Nhóm</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody id="search-results-tbody">
+                            <!-- Results will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Separator -->
+<div id="all-variables-separator" class="row mb-3">
+    <div class="col-12">
+        <hr class="my-4">
+        <h4 class="text-center text-muted">
+            <i class="bi bi-list-ul"></i> Tất cả biến trong hệ thống
+        </h4>
     </div>
 </div>
 
@@ -493,39 +541,104 @@ function copyJinjaCode(code) {
     });
 }
 
+// Category names mapping
+const categoryNames = {
+    'customer': 'Khách hàng',
+    'date': 'Ngày tháng',
+    'service': 'Dịch vụ & Checkbox',
+    'branch': 'Chi nhánh',
+    'custom': 'Tùy chỉnh',
+    'calc': 'Tính toán',
+    'filters': 'Jinja2 Filters',
+    'syntax': 'Jinja2 Syntax'
+};
+
 // Search functionality
 document.getElementById('variable-search').addEventListener('input', function(e) {
     const searchTerm = e.target.value.toLowerCase().trim();
 
+    if (searchTerm.length === 0) {
+        // Clear search - hide results area, show all variables
+        document.getElementById('search-results-area').style.display = 'none';
+        document.getElementById('all-variables-separator').style.display = 'block';
+        document.querySelectorAll('.variable-row').forEach(row => {
+            row.style.display = '';
+        });
+        return;
+    }
+
+    // Show search results area
+    document.getElementById('search-results-area').style.display = 'block';
+    document.getElementById('all-variables-separator').style.display = 'none';
+    document.getElementById('search-query-text').textContent = `"${searchTerm}"`;
+
+    // Collect matching results
+    const results = [];
     document.querySelectorAll('.variable-row').forEach(row => {
         const variableName = row.dataset.variableName.toLowerCase();
         const description = row.dataset.description.toLowerCase();
+        const table = row.closest('.variable-table');
+        const category = table ? table.dataset.category : 'unknown';
 
         if (variableName.includes(searchTerm) || description.includes(searchTerm)) {
+            results.push({
+                name: row.dataset.variableName,
+                description: row.dataset.description,
+                category: category,
+                categoryName: categoryNames[category] || category,
+                element: row
+            });
             row.style.display = '';
         } else {
             row.style.display = 'none';
         }
     });
 
-    // Show/hide empty state for each table
-    document.querySelectorAll('.variable-table').forEach(table => {
-        const visibleRows = table.querySelectorAll('tbody .variable-row:not([style*="display: none"])');
-        const tbody = table.querySelector('tbody');
+    // Update search count
+    document.getElementById('search-count').textContent = `${results.length} kết quả`;
 
-        // Remove existing empty message if any
-        const existingMsg = tbody.querySelector('.no-results-message');
-        if (existingMsg) {
-            existingMsg.remove();
-        }
+    // Render search results
+    const searchResultsTbody = document.getElementById('search-results-tbody');
+    searchResultsTbody.innerHTML = '';
 
-        if (visibleRows.length === 0 && searchTerm) {
-            const noResultsRow = document.createElement('tr');
-            noResultsRow.className = 'no-results-message';
-            noResultsRow.innerHTML = '<td colspan="3" class="text-center text-muted py-3"><i class="bi bi-search"></i> Không tìm thấy biến nào</td>';
-            tbody.appendChild(noResultsRow);
-        }
-    });
+    if (results.length === 0) {
+        searchResultsTbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">
+                    <i class="bi bi-search" style="font-size: 2rem;"></i>
+                    <div class="mt-2">Không tìm thấy biến nào với từ khóa "<strong>${searchTerm}</strong>"</div>
+                    <small class="text-muted">Thử tìm với từ khóa khác</small>
+                </td>
+            </tr>
+        `;
+    } else {
+        results.forEach(result => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><code class="text-primary">${result.name}</code></td>
+                <td>${result.description}</td>
+                <td><span class="badge bg-secondary">${result.categoryName}</span></td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                            onclick="copyVariable('${result.name}')"
+                            title="Copy ${result.name}">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </td>
+            `;
+            searchResultsTbody.appendChild(row);
+        });
+    }
+
+    // Scroll to search results
+    document.getElementById('search-results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+// Clear search button
+document.getElementById('clear-search').addEventListener('click', function() {
+    document.getElementById('variable-search').value = '';
+    document.getElementById('variable-search').dispatchEvent(new Event('input'));
+    document.getElementById('variable-search').focus();
 });
 
 // Notification function (reused from other templates)
