@@ -869,6 +869,11 @@ def variable_library_view(request):
         {'name': 'tk_theo_yeu_cau', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản số theo yêu cầu', 'example': '☑ hoặc ☐'},
         {'name': 'tk_chuyen_dung', 'description': 'Checkbox ☑/☐ khi chọn Tài khoản chuyên dụng', 'example': '☑ hoặc ☐'},
 
+        # Kết quả phân loại KH
+        {'name': 'pl_cao', 'description': 'Checkbox ☑/☐ khi chọn Kết quả phân loại KH là Cao', 'example': '☑ hoặc ☐'},
+        {'name': 'pl_trungbinh', 'description': 'Checkbox ☑/☐ khi chọn Kết quả phân loại KH là Trung bình', 'example': '☑ hoặc ☐'},
+        {'name': 'pl_thap', 'description': 'Checkbox ☑/☐ khi chọn Kết quả phân loại KH là Thấp', 'example': '☑ hoặc ☐'},
+
         # Loại tiền
         {'name': 'loai_tien_vnd', 'description': 'Checkbox ☑/☐ khi chọn loại tiền VND', 'example': '☑ hoặc ☐'},
         {'name': 'loai_tien_usd', 'description': 'Checkbox ☑/☐ khi chọn loại tiền USD', 'example': '☑ hoặc ☐'},
@@ -1140,10 +1145,10 @@ def generate_document_direct(request, template_id):
         data['the_ghi_no_noi_dia'] = checkbox(data['loai_the'] == 'Thẻ Ghi nợ nội địa')
         data['the_ghi_no_quoc_te'] = checkbox(data['loai_the'] == 'Thẻ Ghi nợ quốc tế')
         data['the_tin_dung'] = checkbox(data['loai_the'] == 'Thẻ tín dụng')
-        data['loai_the_jcb'] = checkbox(data['loai_the'] == 'JCB')
-        data['loai_the_visa'] = checkbox(data['loai_the'] == 'Visa')
-        data['loai_the_mastercard'] = checkbox(data['loai_the'] == 'Mastercard')
-        data['loai_the_khac'] = checkbox(data['loai_the'] not in ['Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ quốc tế', 'Thẻ tín dụng', 'JCB', 'Visa', 'Mastercard'])
+        data['loai_the_jcb'] = checkbox(data['loai_the'] == 'Thẻ JCB')
+        data['loai_the_visa'] = checkbox(data['loai_the'] == 'Thẻ Visa')
+        data['loai_the_mastercard'] = checkbox(data['loai_the'] == 'Thẻ MasterCard')
+        data['loai_the_khac'] = checkbox(data['loai_the'] not in ['Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ quốc tế', 'Thẻ tín dụng', 'Thẻ JCB', 'Thẻ Visa', 'Thẻ MasterCard', 'The Plus Success', 'Agribank Debit Card'])
 
         # Checkbox - Loại tiền
         data['loai_tien_vnd'] = checkbox(data['loai_tien_te'] == 'VND')
@@ -1153,6 +1158,13 @@ def generate_document_direct(request, template_id):
         # Checkbox - Loại tài khoản
         data['tk_ngau_nhien'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản ngẫu nhiên')
         data['tk_theo_yeu_cau'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản số theo yêu cầu')
+        data['tk_chuyen_dung'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản chuyên dụng')
+
+        # Checkbox - Kết quả phân loại KH
+        ket_qua_phan_loai_kh = data.get('ket_qua_phan_loai_kh', '')
+        data['pl_cao'] = checkbox(ket_qua_phan_loai_kh == 'Cao')
+        data['pl_trungbinh'] = checkbox(ket_qua_phan_loai_kh == 'Trung bình')
+        data['pl_thap'] = checkbox(ket_qua_phan_loai_kh == 'Thấp')
 
         # Note: Card name (tên trên thẻ) is auto-filled into tables
         # by _render_card_name_tables() in utils.py
@@ -1296,7 +1308,7 @@ def generate_document_direct(request, template_id):
                 customer.loai_the = data.get('loai_the', '')
                 customer.hang_the = data.get('hang_the', '')
                 customer.so_the_atm = data.get('so_the_atm', '')
-                customer.ten_the_1 = data.get('ten_the_1', '')
+                customer.ten_the_1 = (data.get('ten_the_1', '') or '').strip()
 
                 # Update service checkboxes (convert from ☑/☐ back to boolean)
                 customer.phat_hanh_lan_dau = (request.POST.get('phat_hanh_lan_dau') == 'on')
@@ -1319,6 +1331,9 @@ def generate_document_direct(request, template_id):
                 customer.the_lap_nghiep = (request.POST.get('the_lap_nghiep') == 'on')
                 customer.the_lien_ket = (request.POST.get('the_lien_ket') == 'on')
                 customer.the_dong_thuong_hieu = (request.POST.get('the_dong_thuong_hieu') == 'on')
+
+                # Update kết quả phân loại KH
+                customer.ket_qua_phan_loai_kh = data.get('ket_qua_phan_loai_kh', '')
 
                 # Save updated customer
                 customer.save()
