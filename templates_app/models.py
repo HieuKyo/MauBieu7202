@@ -173,6 +173,8 @@ class Customer(models.Model):
         ('Kinh doanh tự do', 'Kinh doanh tự do'),
         ('Học sinh/Sinh viên', 'Học sinh/Sinh viên'),
         ('Nội trợ', 'Nội trợ'),
+        ('Công an/Bộ đội', 'Công an/Bộ đội'),
+        ('Kỹ sư', 'Kỹ sư'),
         ('Khác', 'Khác'),
     ]
 
@@ -310,6 +312,15 @@ class Customer(models.Model):
     # Kênh giao dịch
     kenh_mobile = models.BooleanField(default=False, verbose_name="Kênh: Mobile")
     kenh_internet = models.BooleanField(default=False, verbose_name="Kênh: Internet Banking")
+
+    # Thông tin thẻ bổ sung
+    the_lap_nghiep = models.BooleanField(default=False, verbose_name="Thẻ lập nghiệp")
+    the_lien_ket = models.BooleanField(default=False, verbose_name="Thẻ liên kết")
+    the_dong_thuong_hieu = models.BooleanField(default=False, verbose_name="Thẻ đồng thương hiệu")
+    ten_the_1 = models.CharField(max_length=200, blank=True, verbose_name="Tên thẻ 1")
+
+    # Dịch vụ ABIC
+    dv_abic = models.BooleanField(default=False, verbose_name="Dịch vụ: ABIC")
 
     # Thông tin in mẫu biểu
     ngay_in = models.DateField(null=True, blank=True, verbose_name="Ngày in mẫu biểu")
@@ -512,6 +523,8 @@ class Customer(models.Model):
         nghe_nghiep_kinh_doanh = checkbox(self.nghe_nghiep == 'Kinh doanh tự do')
         nghe_nghiep_hoc_sinh_sinh_vien = checkbox(self.nghe_nghiep == 'Học sinh/Sinh viên')
         nghe_nghiep_noi_tro = checkbox(self.nghe_nghiep == 'Nội trợ')
+        nghe_nghiep_cong_an_bo_doi = checkbox(self.nghe_nghiep == 'Công an/Bộ đội')
+        nghe_nghiep_ky_su = checkbox(self.nghe_nghiep == 'Kỹ sư')
         nghe_nghiep_khac = checkbox(self.nghe_nghiep == 'Khác')
 
         # Checkbox variables for loại tiền
@@ -603,6 +616,8 @@ class Customer(models.Model):
             'nghe_nghiep_kinh_doanh': nghe_nghiep_kinh_doanh,
             'nghe_nghiep_hoc_sinh_sinh_vien': nghe_nghiep_hoc_sinh_sinh_vien,
             'nghe_nghiep_noi_tro': nghe_nghiep_noi_tro,
+            'nghe_nghiep_cong_an_bo_doi': nghe_nghiep_cong_an_bo_doi,
+            'nghe_nghiep_ky_su': nghe_nghiep_ky_su,
             'nghe_nghiep_khac': nghe_nghiep_khac,
             # Checkbox variables - Thẻ
             'phat_hanh_lan_dau': checkbox(self.phat_hanh_lan_dau),
@@ -624,6 +639,14 @@ class Customer(models.Model):
             # Checkbox variables - Tài khoản
             'tk_ngau_nhien': tk_ngau_nhien,
             'tk_theo_yeu_cau': tk_theo_yeu_cau,
+            # Checkbox variables - Thẻ bổ sung
+            'the_lap_nghiep': checkbox(self.the_lap_nghiep),
+            'the_lien_ket': checkbox(self.the_lien_ket),
+            'the_dong_thuong_hieu': checkbox(self.the_dong_thuong_hieu),
+            # Checkbox variables - Dịch vụ ABIC
+            'dv_abic': checkbox(self.dv_abic),
+            # Tên thẻ
+            'ten_the_1': self.ten_the_1 or '',
         }
 
         # Note: Card name (tên trên thẻ) is auto-filled into tables
@@ -646,6 +669,24 @@ class Customer(models.Model):
         else:
             data['so_tai_khoan_SMS'] = ''
             data['so_dien_thoai_SMS'] = ''
+
+        # Conditional account number logic
+        # If "Tài khoản số theo yêu cầu" is selected, use so_tai_khoan_yc
+        if self.loai_tai_khoan == 'Tài khoản số theo yêu cầu':
+            data['stk_theo_yeu_cau'] = self.so_tai_khoan_yc or ''
+        else:
+            data['stk_theo_yeu_cau'] = ''
+
+        # Calculate ngay_tra_the (card return date) = ngay_in (print date) + 7 days
+        # Note: ngay_lap (creation date) is assumed to be ngay_in in this context
+        from datetime import timedelta
+        if self.ngay_in:
+            ngay_tra_the_calculated = self.ngay_in + timedelta(days=7)
+            data['ngay_tra_the_tinh'] = ngay_tra_the_calculated.strftime('%d/%m/%Y')
+            data['ngay_tra_the_tinh_obj'] = ngay_tra_the_calculated  # Date object
+        else:
+            data['ngay_tra_the_tinh'] = ''
+            data['ngay_tra_the_tinh_obj'] = None
 
         return data
 
