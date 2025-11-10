@@ -209,6 +209,7 @@ class Customer(models.Model):
     LOAI_TAI_KHOAN_CHOICES = [
         ('Tài khoản ngẫu nhiên', 'Tài khoản ngẫu nhiên'),
         ('Tài khoản số theo yêu cầu', 'Tài khoản số theo yêu cầu'),
+        ('Tài khoản chuyên dụng', 'Tài khoản chuyên dụng'),
     ]
 
     # Mã khách hàng và CIF
@@ -321,6 +322,15 @@ class Customer(models.Model):
 
     # Dịch vụ ABIC
     dv_abic = models.BooleanField(default=False, verbose_name="Dịch vụ: ABIC")
+
+    # Kết quả phân loại khách hàng
+    KET_QUA_PHAN_LOAI_CHOICES = [
+        ('', '--- Chọn ---'),
+        ('Cao', 'Cao'),
+        ('Trung bình', 'Trung bình'),
+        ('Thấp', 'Thấp'),
+    ]
+    ket_qua_phan_loai_kh = models.CharField(max_length=20, blank=True, choices=KET_QUA_PHAN_LOAI_CHOICES, verbose_name="Kết quả phân loại KH")
 
     # Thông tin in mẫu biểu
     ngay_in = models.DateField(null=True, blank=True, verbose_name="Ngày in mẫu biểu")
@@ -506,10 +516,10 @@ class Customer(models.Model):
         the_ghi_no_noi_dia = checkbox(self.loai_the == 'Thẻ Ghi nợ nội địa')
         the_ghi_no_quoc_te = checkbox(self.loai_the == 'Thẻ Ghi nợ quốc tế')
         the_tin_dung = checkbox(self.loai_the == 'Thẻ tín dụng')
-        loai_the_jcb = checkbox(self.loai_the == 'JCB')
-        loai_the_visa = checkbox(self.loai_the == 'Visa')
-        loai_the_mastercard = checkbox(self.loai_the == 'Mastercard')
-        loai_the_khac = checkbox(self.loai_the not in ['Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ quốc tế', 'Thẻ tín dụng', 'JCB', 'Visa', 'Mastercard'])
+        loai_the_jcb = checkbox(self.loai_the == 'Thẻ JCB')
+        loai_the_visa = checkbox(self.loai_the == 'Thẻ Visa')
+        loai_the_mastercard = checkbox(self.loai_the == 'Thẻ MasterCard')
+        loai_the_khac = checkbox(self.loai_the not in ['Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ quốc tế', 'Thẻ tín dụng', 'Thẻ JCB', 'Thẻ Visa', 'Thẻ MasterCard', 'The Plus Success', 'Agribank Debit Card'])
 
         # Checkbox variables for giới tính
         gioi_tinh_nam = checkbox(self.gioi_tinh == 'Nam')
@@ -535,6 +545,12 @@ class Customer(models.Model):
         # Checkbox variables for loại tài khoản
         tk_ngau_nhien = checkbox(self.loai_tai_khoan == 'Tài khoản ngẫu nhiên')
         tk_theo_yeu_cau = checkbox(self.loai_tai_khoan == 'Tài khoản số theo yêu cầu')
+        tk_chuyen_dung = checkbox(self.loai_tai_khoan == 'Tài khoản chuyên dụng')
+
+        # Checkbox variables for kết quả phân loại KH
+        pl_cao = checkbox(self.ket_qua_phan_loai_kh == 'Cao')
+        pl_trungbinh = checkbox(self.ket_qua_phan_loai_kh == 'Trung bình')
+        pl_thap = checkbox(self.ket_qua_phan_loai_kh == 'Thấp')
 
         from datetime import datetime, date
 
@@ -639,6 +655,11 @@ class Customer(models.Model):
             # Checkbox variables - Tài khoản
             'tk_ngau_nhien': tk_ngau_nhien,
             'tk_theo_yeu_cau': tk_theo_yeu_cau,
+            'tk_chuyen_dung': tk_chuyen_dung,
+            # Checkbox variables - Kết quả phân loại KH
+            'pl_cao': pl_cao,
+            'pl_trungbinh': pl_trungbinh,
+            'pl_thap': pl_thap,
             # Checkbox variables - Thẻ bổ sung
             'the_lap_nghiep': checkbox(self.the_lap_nghiep),
             'the_lien_ket': checkbox(self.the_lien_ket),
@@ -672,10 +693,11 @@ class Customer(models.Model):
 
         # Conditional account number logic
         # If "Tài khoản số theo yêu cầu" is selected, use so_tai_khoan_yc
+        # Otherwise, show dots (................)
         if self.loai_tai_khoan == 'Tài khoản số theo yêu cầu':
             data['stk_theo_yeu_cau'] = self.so_tai_khoan_yc or ''
         else:
-            data['stk_theo_yeu_cau'] = ''
+            data['stk_theo_yeu_cau'] = '................'
 
         # Calculate ngay_tra_the (card return date) = ngay_in (print date) + 7 days
         # Note: ngay_lap (creation date) is assumed to be ngay_in in this context
