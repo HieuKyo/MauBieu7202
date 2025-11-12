@@ -840,6 +840,24 @@ def variable_library_view(request):
         {'name': 'yhh2', 'description': 'Năm hết hạn CCCD - Chữ số thứ hai', 'example': 'Nếu ngày hết hạn là 15/06/2035 → yhh2 = 0'},
         {'name': 'yhh3', 'description': 'Năm hết hạn CCCD - Chữ số thứ ba', 'example': 'Nếu ngày hết hạn là 15/06/2035 → yhh3 = 3'},
         {'name': 'yhh4', 'description': 'Năm hết hạn CCCD - Chữ số thứ tư', 'example': 'Nếu ngày hết hạn là 15/06/2035 → yhh4 = 5'},
+        # Ngày trả thẻ
+        {'name': 'dtt1', 'description': 'Ngày trả thẻ - Chữ số thứ nhất', 'example': 'Nếu ngày trả thẻ là 20/12/2024 → dtt1 = 2'},
+        {'name': 'dtt2', 'description': 'Ngày trả thẻ - Chữ số thứ hai', 'example': 'Nếu ngày trả thẻ là 20/12/2024 → dtt2 = 0'},
+        {'name': 'mtt1', 'description': 'Tháng trả thẻ - Chữ số thứ nhất', 'example': 'Nếu ngày trả thẻ là 20/12/2024 → mtt1 = 1'},
+        {'name': 'mtt2', 'description': 'Tháng trả thẻ - Chữ số thứ hai', 'example': 'Nếu ngày trả thẻ là 20/12/2024 → mtt2 = 2'},
+        {'name': 'ytt1', 'description': 'Năm trả thẻ - Chữ số thứ nhất', 'example': 'Nếu ngày trả thẻ là 20/12/2024 → ytt1 = 2'},
+        {'name': 'ytt2', 'description': 'Năm trả thẻ - Chữ số thứ hai', 'example': 'Nếu ngày trả thẻ là 20/12/2024 → ytt2 = 0'},
+        {'name': 'ytt3', 'description': 'Năm trả thẻ - Chữ số thứ ba', 'example': 'Nếu ngày trả thẻ là 20/12/2024 → ytt3 = 2'},
+        {'name': 'ytt4', 'description': 'Năm trả thẻ - Chữ số thứ tư', 'example': 'Nếu ngày trả thẻ là 20/12/2024 → ytt4 = 4'},
+        # Ngày trả thẻ tính (tự động = ngày in + 7 ngày)
+        {'name': 'dttt1', 'description': 'Ngày trả thẻ tính - Chữ số thứ nhất', 'example': 'Nếu ngày in là 13/12/2024 → ngày trả thẻ tính = 20/12/2024 → dttt1 = 2'},
+        {'name': 'dttt2', 'description': 'Ngày trả thẻ tính - Chữ số thứ hai', 'example': 'dttt2 = 0'},
+        {'name': 'mttt1', 'description': 'Tháng trả thẻ tính - Chữ số thứ nhất', 'example': 'mttt1 = 1'},
+        {'name': 'mttt2', 'description': 'Tháng trả thẻ tính - Chữ số thứ hai', 'example': 'mttt2 = 2'},
+        {'name': 'yttt1', 'description': 'Năm trả thẻ tính - Chữ số thứ nhất', 'example': 'yttt1 = 2'},
+        {'name': 'yttt2', 'description': 'Năm trả thẻ tính - Chữ số thứ hai', 'example': 'yttt2 = 0'},
+        {'name': 'yttt3', 'description': 'Năm trả thẻ tính - Chữ số thứ ba', 'example': 'yttt3 = 2'},
+        {'name': 'yttt4', 'description': 'Năm trả thẻ tính - Chữ số thứ tư', 'example': 'yttt4 = 4'},
     ]
 
     # 2.5. Biến điều kiện dịch vụ & Checkbox
@@ -882,6 +900,10 @@ def variable_library_view(request):
         # Giới tính
         {'name': 'gioi_tinh_nam', 'description': 'Checkbox ☑/☐ khi chọn giới tính Nam', 'example': '☑ hoặc ☐'},
         {'name': 'gioi_tinh_nu', 'description': 'Checkbox ☑/☐ khi chọn giới tính Nữ', 'example': '☑ hoặc ☐'},
+
+        # Loại giấy tờ tùy thân (CMND vs Căn cước)
+        {'name': 'cmnd', 'description': 'Checkbox ☑/☐ tự động khi ngày cấp ≤ 01/07/2024 (CMND 9 số)', 'example': '☑ hoặc ☐'},
+        {'name': 'cancuoc', 'description': 'Checkbox ☑/☐ tự động khi ngày cấp > 01/07/2024 (CCCD 12 số)', 'example': '☑ hoặc ☐'},
 
         # Nghề nghiệp
         {'name': 'nghe_nghiep_cong_chuc', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Công chức viên chức', 'example': '☑ hoặc ☐'},

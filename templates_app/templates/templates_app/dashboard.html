@@ -433,6 +433,22 @@
                             </div>
                         </div>
 
+                        <!-- Customer Classification Group -->
+                        <div class="field-group" data-group="customer_classification">
+                            <h6 class="field-group-title"><i class="bi bi-person-badge"></i> Phân loại khách hàng</h6>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Kết quả phân loại khách hàng</label>
+                                    <select class="form-select" name="ket_qua_phan_loai_kh" id="ket-qua-phan-loai-kh">
+                                        <option value="">--- Chọn ---</option>
+                                        <option value="Cao">Cao</option>
+                                        <option value="Trung bình">Trung bình</option>
+                                        <option value="Thấp">Thấp</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Print Info Group -->
                         <div class="field-group" data-group="print_info">
                             <h6 class="field-group-title"><i class="bi bi-calendar-date"></i> Ngày in</h6>
@@ -814,6 +830,9 @@ function fillFormWithData(data) {
     if (data.loai_the) document.querySelector('[name="loai_the"]').value = data.loai_the;
     if (data.hang_the) document.querySelector('[name="hang_the"]').value = data.hang_the;
     if (data.ten_the_1) document.querySelector('[name="ten_the_1"]').value = data.ten_the_1;
+
+    // Customer Classification
+    if (data.ket_qua_phan_loai_kh) document.querySelector('[name="ket_qua_phan_loai_kh"]').value = data.ket_qua_phan_loai_kh;
 
     // Checkboxes - need to handle boolean values
     const checkboxFields = [
