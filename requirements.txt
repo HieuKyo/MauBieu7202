@@ -20,3 +20,6 @@ whitenoise==6.8.2
 
 # Date/time utilities
 python-dateutil==2.9.0.post0
+
+# Word to HTML conversion for preview
+mammoth==1.8.0

@@ -18,6 +18,8 @@ urlpatterns = [
     # Template
     path('template/<int:template_id>/', views.template_form_view, name='template_form'),
     path('template/<int:template_id>/generate/', views.generate_document_view, name='generate_document'),
+    path('template/<int:template_id>/preview/', views.print_preview_view, name='print_preview'),
+    path('template/<int:template_id>/preview/update/', views.update_preview_data, name='update_preview_data'),
 
     # New Dashboard API endpoints
     path('api/categories/<int:category_id>/templates/', views.category_templates_api, name='category_templates_api'),
