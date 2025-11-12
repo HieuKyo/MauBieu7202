@@ -14,6 +14,8 @@ import json
 import re
 from datetime import date, datetime
 import io
+import mammoth
+import tempfile
 
 
 @login_required
@@ -143,7 +145,16 @@ def template_form_view(request, template_id):
             if customer_id:
                 session_data['_customer_id'] = customer_id
             request.session[f'template_{template_id}_data'] = session_data
+
+            # Nếu là AJAX request (từ preview button), return JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'Dữ liệu đã được lưu'})
+
             return redirect('generate_document', template_id=template_id)
+        else:
+            # Nếu form không hợp lệ và là AJAX request
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
         # Create form with initial data from customer if available
         form = DynamicTemplateForm(template=template, initial=initial_data)
@@ -1782,3 +1793,122 @@ def customer_import_tsv(request):
             'success': False,
             'error': f'Lỗi khi xử lý file TSV: {str(e)}'
         }, status=500)
+
+
+@login_required
+def print_preview_view(request, template_id):
+    """
+    Xem trước tài liệu với highlight các trường đã điền và cho phép chỉnh sửa
+    """
+    template = get_object_or_404(Template, id=template_id, is_active=True)
+    user = request.user
+
+    # Kiểm tra quyền truy cập
+    if not template.user_has_access(user):
+        raise Http404("Bạn không có quyền truy cập mẫu biểu này")
+
+    # Lấy dữ liệu từ session
+    session_key = f'template_{template_id}_data'
+    data = request.session.get(session_key)
+
+    if not data:
+        messages.error(request, "Không tìm thấy dữ liệu. Vui lòng điền form lại.")
+        return redirect('template_form', template_id=template_id)
+
+    try:
+        # Lấy customer_id từ session data nếu có
+        customer_id = data.get('_customer_id', None)
+
+        # Tạo bản sao của data để không ảnh hưởng đến session
+        preview_data = data.copy()
+
+        # Lưu dữ liệu gốc để track các field đã điền
+        filled_fields = {k: v for k, v in preview_data.items() if v and not k.startswith('_')}
+
+        # Thêm TẤT CẢ biến chung (chi nhánh + custom variables) vào data
+        global_config = GlobalConfig.get_instance()
+        preview_data.update(global_config.get_all_variables())
+
+        # Thêm date variables nếu có customer
+        if customer_id:
+            try:
+                customer = Customer.objects.get(id=customer_id)
+                customer_data = customer.get_data_dict()
+                # Thêm các biến d1, d2, m1, m2, y1, y2, y3, y4
+                for key in ['d1', 'd2', 'm1', 'm2', 'y1', 'y2', 'y3', 'y4']:
+                    if key in customer_data:
+                        preview_data[key] = customer_data[key]
+            except Customer.DoesNotExist:
+                pass
+
+        # Render template Word với dữ liệu
+        template_path = template.file.path
+        output_stream = render_word_template(template_path, preview_data)
+
+        # Tạo file tạm để convert sang HTML
+        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_docx:
+            temp_docx.write(output_stream.getvalue())
+            temp_docx_path = temp_docx.name
+
+        try:
+            # Convert Word sang HTML
+            with open(temp_docx_path, 'rb') as docx_file:
+                result = mammoth.convert_to_html(docx_file)
+                html_content = result.value
+                messages_list = result.messages
+
+            # Highlight các field đã điền
+            for field_name, field_value in filled_fields.items():
+                if field_value and str(field_value).strip():
+                    # Escape HTML special characters
+                    field_value_escaped = str(field_value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    # Wrap field value with highlight span
+                    pattern = re.escape(field_value_escaped)
+                    html_content = re.sub(
+                        f'({pattern})',
+                        r'<span class="highlighted-field" contenteditable="true" data-field="\1">\1</span>',
+                        html_content,
+                        count=1
+                    )
+
+        finally:
+            # Xóa file tạm
+            os.unlink(temp_docx_path)
+
+        context = {
+            'template': template,
+            'html_content': html_content,
+            'filled_fields': filled_fields,
+            'template_id': template_id,
+        }
+
+        return render(request, 'templates_app/print_preview.html', context)
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo preview: {str(e)}")
+        return redirect('template_form', template_id=template_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_preview_data(request, template_id):
+    """
+    Cập nhật dữ liệu từ preview sau khi edit
+    """
+    try:
+        # Lấy dữ liệu từ request
+        updated_data = json.loads(request.body)
+
+        # Cập nhật session
+        session_key = f'template_{template_id}_data'
+        session_data = request.session.get(session_key, {})
+
+        # Merge updated data vào session
+        session_data.update(updated_data)
+        request.session[session_key] = session_data
+        request.session.modified = True
+
+        return JsonResponse({'success': True, 'message': 'Dữ liệu đã được cập nhật'})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
