@@ -165,6 +165,15 @@ class CustomerForm(forms.ModelForm):
             # Kênh giao dịch
             'kenh_mobile': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'kenh_internet': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            # Thông tin thẻ bổ sung
+            'the_lap_nghiep': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'the_lien_ket': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'the_dong_thuong_hieu': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'ten_the_1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên trên thẻ'}),
+            # Dịch vụ ABIC
+            'dv_abic': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            # Phân loại khách hàng
+            'ket_qua_phan_loai_kh': forms.Select(attrs={'class': 'form-select'}),
             'ghi_chu': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ghi chú thêm'}),
         }
 
@@ -206,6 +215,7 @@ class CategoryAdminForm(forms.ModelForm):
         ('banking', 'Thông tin tài khoản (Số TK, Loại TK, Loại tiền tệ)'),
         ('card', 'Thông tin thẻ (Loại thẻ, Hạng thẻ, Phát hành)'),
         ('services', 'Đăng ký dịch vụ (SMS Banking, Agribank Plus, Liên kết ví)'),
+        ('customer_classification', 'Phân loại khách hàng (Kết quả phân loại KH)'),
         ('print_info', 'Thông tin in mẫu biểu (Ngày in)'),
     ]
 

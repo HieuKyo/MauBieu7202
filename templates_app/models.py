@@ -507,6 +507,18 @@ class Customer(models.Model):
                 mhh1, mhh2 = date_str[2], date_str[3]
                 yhh1, yhh2, yhh3, yhh4 = date_str[4], date_str[5], date_str[6], date_str[7]
 
+        # Date variables for ngay_tra_the
+        dtt1, dtt2, mtt1, mtt2, ytt1, ytt2, ytt3, ytt4 = '', '', '', '', '', '', '', ''
+        if self.ngay_tra_the:
+            date_str = self.ngay_tra_the.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                dtt1, dtt2 = date_str[0], date_str[1]
+                mtt1, mtt2 = date_str[2], date_str[3]
+                ytt1, ytt2, ytt3, ytt4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
+        # Date variables for ngay_tra_the_tinh (calculated later)
+        dttt1, dttt2, mttt1, mttt2, yttt1, yttt2, yttt3, yttt4 = '', '', '', '', '', '', '', ''
+
         # Checkbox variables for hạng thẻ
         the_hang_chuan = checkbox(self.hang_the == 'Hạng chuẩn')
         the_hang_vang = checkbox(self.hang_the == 'Hạng vàng')
@@ -520,6 +532,18 @@ class Customer(models.Model):
         loai_the_visa = checkbox(self.loai_the == 'Thẻ Visa')
         loai_the_mastercard = checkbox(self.loai_the == 'Thẻ MasterCard')
         loai_the_khac = checkbox(self.loai_the not in ['Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ quốc tế', 'Thẻ tín dụng', 'Thẻ JCB', 'Thẻ Visa', 'Thẻ MasterCard', 'The Plus Success', 'Agribank Debit Card'])
+
+        # Checkbox variables for CMND vs CCCD (based on issue date)
+        # If ngay_cap_cmnd > 01/07/2024 -> check cancuoc, else check cmnd
+        from datetime import date as datetime_date
+        cutoff_date = datetime_date(2024, 7, 1)
+        if self.ngay_cap_cmnd:
+            is_cancuoc = self.ngay_cap_cmnd > cutoff_date
+            cmnd = checkbox(not is_cancuoc)
+            cancuoc = checkbox(is_cancuoc)
+        else:
+            cmnd = checkbox(False)
+            cancuoc = checkbox(False)
 
         # Checkbox variables for giới tính
         gioi_tinh_nam = checkbox(self.gioi_tinh == 'Nam')
@@ -604,6 +628,12 @@ class Customer(models.Model):
             # Date variables (ngày hết hạn CMND/CCCD)
             'dhh1': dhh1, 'dhh2': dhh2, 'mhh1': mhh1, 'mhh2': mhh2,
             'yhh1': yhh1, 'yhh2': yhh2, 'yhh3': yhh3, 'yhh4': yhh4,
+            # Date variables (ngày trả thẻ)
+            'dtt1': dtt1, 'dtt2': dtt2, 'mtt1': mtt1, 'mtt2': mtt2,
+            'ytt1': ytt1, 'ytt2': ytt2, 'ytt3': ytt3, 'ytt4': ytt4,
+            # Date variables (ngày trả thẻ tính - will be populated below)
+            'dttt1': dttt1, 'dttt2': dttt2, 'mttt1': mttt1, 'mttt2': mttt2,
+            'yttt1': yttt1, 'yttt2': yttt2, 'yttt3': yttt3, 'yttt4': yttt4,
             # Checkbox variables - Dịch vụ thu hộ
             'dv_thu_ho_tien_nuoc': checkbox(self.dv_thu_ho_tien_nuoc),
             'dv_thu_ho_tien_dien': checkbox(self.dv_thu_ho_tien_dien),
@@ -621,6 +651,9 @@ class Customer(models.Model):
             # Checkbox variables - Kênh giao dịch
             'kenh_mobile': checkbox(self.kenh_mobile),
             'kenh_internet': checkbox(self.kenh_internet),
+            # Checkbox variables - CMND vs CCCD (based on issue date)
+            'cmnd': cmnd,
+            'cancuoc': cancuoc,
             # Checkbox variables - Giới tính
             'gioi_tinh_nam': gioi_tinh_nam,
             'gioi_tinh_nu': gioi_tinh_nu,
@@ -699,13 +732,25 @@ class Customer(models.Model):
         else:
             data['stk_theo_yeu_cau'] = '................'
 
-        # Calculate ngay_tra_the (card return date) = ngay_in (print date) + 7 days
+        # Calculate ngay_tra_the_tinh (card return date) = ngay_in (print date) + 7 days
         # Note: ngay_lap (creation date) is assumed to be ngay_in in this context
         from datetime import timedelta
         if self.ngay_in:
             ngay_tra_the_calculated = self.ngay_in + timedelta(days=7)
             data['ngay_tra_the_tinh'] = ngay_tra_the_calculated.strftime('%d/%m/%Y')
             data['ngay_tra_the_tinh_obj'] = ngay_tra_the_calculated  # Date object
+
+            # Add individual digit variables for ngay_tra_the_tinh
+            date_str = ngay_tra_the_calculated.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                data['dttt1'] = date_str[0]
+                data['dttt2'] = date_str[1]
+                data['mttt1'] = date_str[2]
+                data['mttt2'] = date_str[3]
+                data['yttt1'] = date_str[4]
+                data['yttt2'] = date_str[5]
+                data['yttt3'] = date_str[6]
+                data['yttt4'] = date_str[7]
         else:
             data['ngay_tra_the_tinh'] = ''
             data['ngay_tra_the_tinh_obj'] = None
