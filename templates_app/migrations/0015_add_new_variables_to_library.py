@@ -14,15 +14,23 @@ def add_new_variables(apps, schema_editor):
             'name': 'cmnd',
             'label': 'Checkbox CMND (9 số)',
             'field_type': 'text',
-            'help_text': 'Tự động tích khi ngày cấp ≤ 01/07/2024',
+            'help_text': 'Tự động tích cho CMND 9 số',
+            'required': False,
+            'default_value': ''
+        },
+        {
+            'name': 'cccd',
+            'label': 'Checkbox CCCD (12 số cũ)',
+            'field_type': 'text',
+            'help_text': 'Tự động tích cho CCCD 12 số có ngày cấp ≤ 01/07/2024',
             'required': False,
             'default_value': ''
         },
         {
             'name': 'cancuoc',
-            'label': 'Checkbox Căn cước (12 số)',
+            'label': 'Checkbox Căn cước (12 số mới)',
             'field_type': 'text',
-            'help_text': 'Tự động tích khi ngày cấp > 01/07/2024',
+            'help_text': 'Tự động tích cho CCCD 12 số có ngày cấp > 01/07/2024',
             'required': False,
             'default_value': ''
         },
@@ -179,7 +187,7 @@ def remove_new_variables(apps, schema_editor):
     Variable = apps.get_model('templates_app', 'Variable')
 
     variable_names = [
-        'cmnd', 'cancuoc',
+        'cmnd', 'cccd', 'cancuoc',
         'dtt1', 'dtt2', 'mtt1', 'mtt2', 'ytt1', 'ytt2', 'ytt3', 'ytt4',
         'dttt1', 'dttt2', 'mttt1', 'mttt2', 'yttt1', 'yttt2', 'yttt3', 'yttt4'
     ]
