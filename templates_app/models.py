@@ -661,6 +661,7 @@ class Customer(models.Model):
             # Checkbox variables - Dịch vụ ngân hàng điện tử
             'dv_sms_banking': checkbox(self.dv_sms_banking),
             'dv_e_mobile': checkbox(self.dv_e_mobile),
+            'dv_vidientu': checkbox(self.dv_e_mobile),  # Alias for dv_e_mobile (ví điện tử)
             'dv_bankplus': checkbox(self.dv_bankplus),
             'dv_e_commerce': checkbox(self.dv_e_commerce),
             'dv_soft_otp': checkbox(self.dv_soft_otp),

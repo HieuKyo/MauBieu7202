@@ -528,6 +528,11 @@ def customer_create_view(request):
             noi_lam_viec=request.POST.get('noi_lam_viec', ''),
             so_tai_khoan=request.POST.get('so_tai_khoan', ''),
             ghi_chu=request.POST.get('ghi_chu', ''),
+            # Service checkboxes
+            dv_sms_banking=(request.POST.get('dv_sms_banking') == 'on'),
+            dv_bankplus=(request.POST.get('dv_bankplus') == 'on'),
+            dv_e_mobile=(request.POST.get('dv_e_mobile') == 'on'),
+            dv_abic=(request.POST.get('dv_abic') == 'on'),
             created_by=request.user
         )
         customer.save()
