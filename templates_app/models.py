@@ -533,16 +533,34 @@ class Customer(models.Model):
         loai_the_mastercard = checkbox(self.loai_the == 'Thẻ MasterCard')
         loai_the_khac = checkbox(self.loai_the not in ['Thẻ Ghi nợ nội địa', 'Thẻ Ghi nợ quốc tế', 'Thẻ tín dụng', 'Thẻ JCB', 'Thẻ Visa', 'Thẻ MasterCard', 'The Plus Success', 'Agribank Debit Card'])
 
-        # Checkbox variables for CMND vs CCCD (based on issue date)
-        # If ngay_cap_cmnd > 01/07/2024 -> check cancuoc, else check cmnd
+        # Checkbox variables for CMND vs CCCD vs Căn cước (based on ID length and issue date)
+        # Logic:
+        # - cmnd: CMND 9 số (old ID card)
+        # - cccd: CCCD 12 số có ngày cấp ≤ 01/07/2024
+        # - cancuoc: CCCD 12 số có ngày cấp > 01/07/2024
         from datetime import date as datetime_date
         cutoff_date = datetime_date(2024, 7, 1)
-        if self.ngay_cap_cmnd:
-            is_cancuoc = self.ngay_cap_cmnd > cutoff_date
-            cmnd = checkbox(not is_cancuoc)
-            cancuoc = checkbox(is_cancuoc)
-        else:
+
+        id_length = len(self.so_cmnd) if self.so_cmnd else 0
+
+        if id_length == 9:
+            # CMND 9 số cũ
+            cmnd = checkbox(True)
+            cccd = checkbox(False)
+            cancuoc = checkbox(False)
+        elif id_length == 12 and self.ngay_cap_cmnd:
+            # CCCD 12 số - phân biệt theo ngày cấp
             cmnd = checkbox(False)
+            if self.ngay_cap_cmnd <= cutoff_date:
+                cccd = checkbox(True)
+                cancuoc = checkbox(False)
+            else:
+                cccd = checkbox(False)
+                cancuoc = checkbox(True)
+        else:
+            # Không xác định
+            cmnd = checkbox(False)
+            cccd = checkbox(False)
             cancuoc = checkbox(False)
 
         # Checkbox variables for giới tính
@@ -651,8 +669,9 @@ class Customer(models.Model):
             # Checkbox variables - Kênh giao dịch
             'kenh_mobile': checkbox(self.kenh_mobile),
             'kenh_internet': checkbox(self.kenh_internet),
-            # Checkbox variables - CMND vs CCCD (based on issue date)
+            # Checkbox variables - CMND vs CCCD vs Căn cước
             'cmnd': cmnd,
+            'cccd': cccd,
             'cancuoc': cancuoc,
             # Checkbox variables - Giới tính
             'gioi_tinh_nam': gioi_tinh_nam,
@@ -724,13 +743,10 @@ class Customer(models.Model):
             data['so_tai_khoan_SMS'] = ''
             data['so_dien_thoai_SMS'] = ''
 
-        # Conditional account number logic
-        # If "Tài khoản số theo yêu cầu" is selected, use so_tai_khoan_yc
-        # Otherwise, show dots (................)
-        if self.loai_tai_khoan == 'Tài khoản số theo yêu cầu':
-            data['stk_theo_yeu_cau'] = self.so_tai_khoan_yc or ''
-        else:
-            data['stk_theo_yeu_cau'] = '................'
+        # Account number by request - always show value if exists
+        # Changed: Do not convert to dots when not selected
+        data['stk_theo_yeu_cau'] = self.so_tai_khoan_yc or ''
+        data['tk_theo_yeu_cau'] = self.so_tai_khoan_yc or ''  # Alias for backward compatibility
 
         # Calculate ngay_tra_the_tinh (card return date) = ngay_in (print date) + 7 days
         # Note: ngay_lap (creation date) is assumed to be ngay_in in this context

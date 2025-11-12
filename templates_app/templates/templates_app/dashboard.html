@@ -437,14 +437,23 @@
                         <div class="field-group" data-group="customer_classification">
                             <h6 class="field-group-title"><i class="bi bi-person-badge"></i> Phân loại khách hàng</h6>
                             <div class="row g-2">
-                                <div class="col-12">
-                                    <label class="form-label">Kết quả phân loại khách hàng</label>
-                                    <select class="form-select" name="ket_qua_phan_loai_kh" id="ket-qua-phan-loai-kh">
-                                        <option value="">--- Chọn ---</option>
-                                        <option value="Cao">Cao</option>
-                                        <option value="Trung bình">Trung bình</option>
-                                        <option value="Thấp">Thấp</option>
-                                    </select>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ket_qua_phan_loai_kh" value="Cao" id="pl-cao">
+                                        <label class="form-check-label" for="pl-cao">Cao</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ket_qua_phan_loai_kh" value="Trung bình" id="pl-trungbinh">
+                                        <label class="form-check-label" for="pl-trungbinh">Trung bình</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ket_qua_phan_loai_kh" value="Thấp" id="pl-thap">
+                                        <label class="form-check-label" for="pl-thap">Thấp</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -831,8 +840,11 @@ function fillFormWithData(data) {
     if (data.hang_the) document.querySelector('[name="hang_the"]').value = data.hang_the;
     if (data.ten_the_1) document.querySelector('[name="ten_the_1"]').value = data.ten_the_1;
 
-    // Customer Classification
-    if (data.ket_qua_phan_loai_kh) document.querySelector('[name="ket_qua_phan_loai_kh"]').value = data.ket_qua_phan_loai_kh;
+    // Customer Classification - Radio buttons
+    if (data.ket_qua_phan_loai_kh) {
+        const radio = document.querySelector(`[name="ket_qua_phan_loai_kh"][value="${data.ket_qua_phan_loai_kh}"]`);
+        if (radio) radio.checked = true;
+    }
 
     // Checkboxes - need to handle boolean values
     const checkboxFields = [

@@ -901,9 +901,10 @@ def variable_library_view(request):
         {'name': 'gioi_tinh_nam', 'description': 'Checkbox ☑/☐ khi chọn giới tính Nam', 'example': '☑ hoặc ☐'},
         {'name': 'gioi_tinh_nu', 'description': 'Checkbox ☑/☐ khi chọn giới tính Nữ', 'example': '☑ hoặc ☐'},
 
-        # Loại giấy tờ tùy thân (CMND vs Căn cước)
-        {'name': 'cmnd', 'description': 'Checkbox ☑/☐ tự động khi ngày cấp ≤ 01/07/2024 (CMND 9 số)', 'example': '☑ hoặc ☐'},
-        {'name': 'cancuoc', 'description': 'Checkbox ☑/☐ tự động khi ngày cấp > 01/07/2024 (CCCD 12 số)', 'example': '☑ hoặc ☐'},
+        # Loại giấy tờ tùy thân (CMND vs CCCD vs Căn cước)
+        {'name': 'cmnd', 'description': 'Checkbox ☑/☐ tự động cho CMND 9 số', 'example': '☑ hoặc ☐'},
+        {'name': 'cccd', 'description': 'Checkbox ☑/☐ tự động cho CCCD 12 số có ngày cấp ≤ 01/07/2024', 'example': '☑ hoặc ☐'},
+        {'name': 'cancuoc', 'description': 'Checkbox ☑/☐ tự động cho CCCD 12 số có ngày cấp > 01/07/2024', 'example': '☑ hoặc ☐'},
 
         # Nghề nghiệp
         {'name': 'nghe_nghiep_cong_chuc', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Công chức viên chức', 'example': '☑ hoặc ☐'},
