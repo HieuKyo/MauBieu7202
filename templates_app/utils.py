@@ -346,7 +346,8 @@ class JinjaWordTemplateProcessor:
     def _render_card_name_tables(self, context):
         """
         Tìm và điền tên thẻ vào tables (tên trên thẻ)
-        Tìm tables có 20+ columns và điền từng ký tự vào từng cell
+        Tìm tables có 15+ columns và điền từng ký tự vào từng cell
+        Quét cả main body, headers và footers
 
         Args:
             context: Dictionary chứa biến ho_ten_tieng_anh, ten_tieng_anh, hoặc ho_ten
@@ -370,14 +371,20 @@ class JinjaWordTemplateProcessor:
             return
 
         tables_filled = 0
+        tables_found = []
 
-        # Find and fill all tables with 20+ columns (likely card name tables)
-        for table in self.document.tables:
+        def fill_table(table, location='body'):
+            """Helper function to fill a single table"""
+            nonlocal tables_filled
             if not table.rows:
-                continue
+                return
 
-            # Check if this is a card name table (20+ columns)
-            if len(table.columns) >= 20:
+            num_cols = len(table.columns)
+            tables_found.append(f"{location}:{num_cols}cols")
+
+            # Check if this is a card name table (15+ columns)
+            # Lowered from 20 to support more table formats
+            if num_cols >= 15:
                 # Fill first row with card name characters
                 row = table.rows[0]
 
@@ -391,10 +398,25 @@ class JinjaWordTemplateProcessor:
                     row.cells[i].text = ''
 
                 tables_filled += 1
+                print(f"[DEBUG] Filled table in {location} ({num_cols} columns) with '{card_name}'")
 
-        # Debug
-        if tables_filled > 0:
-            print(f"[DEBUG] Filled {tables_filled} card name table(s) with '{card_name}'")
+        # Fill tables in main body
+        for table in self.document.tables:
+            fill_table(table, 'body')
+
+        # Fill tables in headers and footers
+        for section in self.document.sections:
+            # Headers
+            for table in section.header.tables:
+                fill_table(table, 'header')
+
+            # Footers
+            for table in section.footer.tables:
+                fill_table(table, 'footer')
+
+        # Debug summary
+        print(f"[DEBUG] Tables found: {', '.join(tables_found)}")
+        print(f"[DEBUG] Total {tables_filled} card name table(s) filled with '{card_name}'")
 
     def save(self, output_path):
         """
@@ -708,7 +730,8 @@ class WordTemplateProcessor:
     def _render_card_name_tables(self, context):
         """
         Tìm và điền tên thẻ vào tables (tên trên thẻ)
-        Tìm tables có 20+ columns và điền từng ký tự vào từng cell
+        Tìm tables có 15+ columns và điền từng ký tự vào từng cell
+        Quét cả main body, headers và footers
 
         Args:
             context: Dictionary chứa biến ho_ten_tieng_anh, ten_tieng_anh, hoặc ho_ten
@@ -732,14 +755,20 @@ class WordTemplateProcessor:
             return
 
         tables_filled = 0
+        tables_found = []
 
-        # Find and fill all tables with 20+ columns (likely card name tables)
-        for table in self.document.tables:
+        def fill_table(table, location='body'):
+            """Helper function to fill a single table"""
+            nonlocal tables_filled
             if not table.rows:
-                continue
+                return
 
-            # Check if this is a card name table (20+ columns)
-            if len(table.columns) >= 20:
+            num_cols = len(table.columns)
+            tables_found.append(f"{location}:{num_cols}cols")
+
+            # Check if this is a card name table (15+ columns)
+            # Lowered from 20 to support more table formats
+            if num_cols >= 15:
                 # Fill first row with card name characters
                 row = table.rows[0]
 
@@ -753,10 +782,25 @@ class WordTemplateProcessor:
                     row.cells[i].text = ''
 
                 tables_filled += 1
+                print(f"[DEBUG] Filled table in {location} ({num_cols} columns) with '{card_name}'")
 
-        # Debug
-        if tables_filled > 0:
-            print(f"[DEBUG] Filled {tables_filled} card name table(s) with '{card_name}'")
+        # Fill tables in main body
+        for table in self.document.tables:
+            fill_table(table, 'body')
+
+        # Fill tables in headers and footers
+        for section in self.document.sections:
+            # Headers
+            for table in section.header.tables:
+                fill_table(table, 'header')
+
+            # Footers
+            for table in section.footer.tables:
+                fill_table(table, 'footer')
+
+        # Debug summary
+        print(f"[DEBUG] Tables found: {', '.join(tables_found)}")
+        print(f"[DEBUG] Total {tables_filled} card name table(s) filled with '{card_name}'")
 
     def save(self, output_path):
         """
