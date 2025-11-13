@@ -368,6 +368,20 @@ class Customer(models.Model):
 
         errors = {}
 
+        # Validate CMND/CCCD format (only allow 9 or 12 digits)
+        if self.so_cmnd:
+            # Remove whitespace
+            cmnd_cleaned = self.so_cmnd.strip()
+
+            # Check if it's all digits
+            if not cmnd_cleaned.isdigit():
+                errors['so_cmnd'] = 'Số CMND/CCCD chỉ được chứa chữ số (0-9)'
+            else:
+                # Check length
+                cmnd_length = len(cmnd_cleaned)
+                if cmnd_length not in [9, 12]:
+                    errors['so_cmnd'] = f'Số CMND/CCCD phải có 9 chữ số (CMND cũ) hoặc 12 chữ số (CCCD/Căn cước). Hiện tại: {cmnd_length} chữ số'
+
         # Validate age (must be at least 15 years old)
         if self.ngay_sinh:
             today = date.today()
