@@ -3,7 +3,13 @@ Script test để verify dữ liệu Customer
 Chạy: python test_customer_data.py
 """
 import os
+import sys
 import django
+
+# Fix encoding for Windows
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wordgen.settings')
 django.setup()
@@ -22,7 +28,7 @@ try:
     print(f"CUSTOMER DATA TEST - ID: {customer_id}")
     print("="*60)
 
-    print(f"\n📋 Thông tin cơ bản:")
+    print(f"\n[Thong tin co ban]:")
     print(f"  - Họ tên: {customer.ho_ten}")
     print(f"  - CMND/CCCD: {customer.so_cmnd} ({len(customer.so_cmnd)} chữ số)")
     print(f"  - Ngày cấp: {customer.ngay_cap_cmnd}")
