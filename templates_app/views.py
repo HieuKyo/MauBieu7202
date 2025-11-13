@@ -137,6 +137,21 @@ def template_form_view(request, template_id):
             return JsonResponse({'success': True, 'message': 'Dữ liệu đã được lưu'})
 
     if request.method == 'POST':
+        # Nếu không có variables, vẫn cho phép submit
+        if template_variables.count() == 0:
+            # Không có form fields, lưu session data từ customer hoặc rỗng
+            session_data = initial_data.copy() if initial_data else {}
+            if customer_id:
+                session_data['_customer_id'] = customer_id
+            request.session[f'template_{template_id}_data'] = session_data
+
+            # Nếu là AJAX request (từ preview button), return JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'Dữ liệu đã được lưu'})
+
+            return redirect('generate_document', template_id=template_id)
+
+        # Có variables, validate form
         form = DynamicTemplateForm(request.POST, template=template)
         if form.is_valid():
             # Lưu dữ liệu vào session để generate document
@@ -1811,9 +1826,23 @@ def print_preview_view(request, template_id):
     session_key = f'template_{template_id}_data'
     data = request.session.get(session_key)
 
+    # Nếu không có data trong session, tạo mới từ customer hoặc rỗng
     if not data:
-        messages.error(request, "Không tìm thấy dữ liệu. Vui lòng điền form lại.")
-        return redirect('template_form', template_id=template_id)
+        customer_id = request.GET.get('customer')
+        if customer_id:
+            try:
+                customer = Customer.objects.get(id=customer_id)
+                data = customer.get_data_dict()
+                data['_customer_id'] = customer_id
+                # Lưu vào session cho lần sau
+                request.session[session_key] = data
+            except Customer.DoesNotExist:
+                data = {}
+        else:
+            # Không có customer, tạo dict rỗng
+            data = {}
+            # Vẫn lưu vào session để không lỗi
+            request.session[session_key] = data
 
     try:
         # Lấy customer_id từ session data nếu có
@@ -1822,7 +1851,7 @@ def print_preview_view(request, template_id):
         # Tạo bản sao của data để không ảnh hưởng đến session
         preview_data = data.copy()
 
-        # Lưu dữ liệu gốc để track các field đã điền
+        # Lưu dữ liệu gốc để track các field đã điền (từ form hoặc customer)
         filled_fields = {k: v for k, v in preview_data.items() if v and not k.startswith('_')}
 
         # Thêm TẤT CẢ biến chung (chi nhánh + custom variables) vào data

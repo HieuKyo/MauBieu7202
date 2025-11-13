@@ -123,33 +123,36 @@
                         {% endfor %}
 
                         <hr class="my-4">
-
-                        <div class="d-flex justify-content-between">
-                            <a href="{% url 'category_detail' category.id %}" class="btn btn-secondary">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16">
-                                    <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
-                                </svg>
-                                Quay lại
-                            </a>
-                            <div>
-                                <button type="button" class="btn btn-info btn-lg me-2" onclick="previewDocument()">
-                                    <i class="bi bi-eye"></i>
-                                    Xem trước
-                                </button>
-                                <button type="submit" class="btn btn-success btn-lg">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-arrow-down-fill" viewBox="0 0 16 16">
-                                        <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1zm-1 4v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 11.293V7.5a.5.5 0 0 1 1 0z"/>
-                                    </svg>
-                                    Tạo mẫu biểu
-                                </button>
-                            </div>
-                        </div>
                     {% else %}
-                    <div class="alert alert-warning">
-                        <p class="mb-0">Mẫu biểu này chưa có biến nào. Vui lòng liên hệ quản trị viên để cấu hình.</p>
-                    </div>
-                    <a href="{% url 'category_detail' category.id %}" class="btn btn-secondary">Quay lại</a>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Mẫu biểu này không yêu cầu nhập liệu.</strong>
+                            <p class="mb-0 mt-2">Tài liệu sẽ được tạo với dữ liệu từ khách hàng đã chọn hoặc thông tin chi nhánh.</p>
+                        </div>
+
+                        <hr class="my-4">
                     {% endif %}
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'category_detail' category.id %}" class="btn btn-secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+                            </svg>
+                            Quay lại
+                        </a>
+                        <div>
+                            <button type="button" class="btn btn-info btn-lg me-2" onclick="previewDocument()">
+                                <i class="bi bi-eye"></i>
+                                Xem trước
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-arrow-down-fill" viewBox="0 0 16 16">
+                                    <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1zm-1 4v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 11.293V7.5a.5.5 0 0 1 1 0z"/>
+                                </svg>
+                                Tạo mẫu biểu
+                            </button>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
