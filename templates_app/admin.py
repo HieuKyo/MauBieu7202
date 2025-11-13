@@ -13,11 +13,15 @@ from .import_helpers import (
 )
 
 
-class TemplateVariableInline(admin.TabularInline):
-    """Inline để quản lý biến của template"""
-    model = TemplateVariable
-    extra = 1
-    autocomplete_fields = ['variable']
+# KHÔNG SỬ DỤNG Variable và TemplateVariable nữa
+# Hệ thống sử dụng Customer model fields + GlobalConfig variables
+# Giữ lại code để backward compatible với data cũ
+
+# class TemplateVariableInline(admin.TabularInline):
+#     """Inline để quản lý biến của template"""
+#     model = TemplateVariable
+#     extra = 1
+#     autocomplete_fields = ['variable']
 
 
 @admin.register(Customer)
@@ -86,74 +90,78 @@ class CategoryAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(Variable)
-class VariableAdmin(admin.ModelAdmin):
-    """Admin cho Biến"""
-    list_display = ['name', 'label', 'field_type', 'required', 'created_at']
-    list_filter = ['field_type', 'required']
-    search_fields = ['name', 'label']
-    ordering = ['name']
+# Variable Admin - KHÔNG SỬ DỤNG NỮA
+# Hệ thống chuyển sang dùng Customer fields + GlobalConfig
+# Comment out để ẩn khỏi admin interface
 
-    change_list_template = 'admin/variable_changelist.html'
-
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('import/', self.admin_site.admin_view(self.import_variables_view), name='variable_import'),
-            path('export/csv/', self.admin_site.admin_view(self.export_csv_view), name='variable_export_csv'),
-            path('export/excel/', self.admin_site.admin_view(self.export_excel_view), name='variable_export_excel'),
-        ]
-        return custom_urls + urls
-
-    def import_variables_view(self, request):
-        """View để import biến từ CSV/Excel"""
-        if request.method == 'POST':
-            file = request.FILES.get('file')
-            if not file:
-                messages.error(request, 'Vui lòng chọn file để import')
-                return redirect('..')
-
-            # Determine file type
-            if file.name.endswith('.csv'):
-                success, errors = import_variables_from_csv(file)
-            elif file.name.endswith('.xlsx'):
-                success, errors = import_variables_from_excel(file)
-            else:
-                messages.error(request, 'Chỉ hỗ trợ file .csv hoặc .xlsx')
-                return redirect('..')
-
-            # Show results
-            if success:
-                messages.success(request, f'Đã import thành công {success} biến')
-            if errors:
-                for error in errors[:10]:  # Show first 10 errors
-                    messages.warning(request, error)
-                if len(errors) > 10:
-                    messages.warning(request, f'... và {len(errors) - 10} lỗi khác')
-
-            return redirect('..')
-
-        return render(request, 'admin/variable_import.html', {
-            'title': 'Import Biến',
-            'site_title': admin.site.site_title,
-            'site_header': admin.site.site_header,
-        })
-
-    def export_csv_view(self, request):
-        """Export biến ra CSV"""
-        response = HttpResponse(export_variables_to_csv(), content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="variables.csv"'
-        return response
-
-    def export_excel_view(self, request):
-        """Export biến ra Excel"""
-        output = export_variables_to_excel()
-        response = HttpResponse(
-            output.read(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response['Content-Disposition'] = 'attachment; filename="variables.xlsx"'
-        return response
+# @admin.register(Variable)
+# class VariableAdmin(admin.ModelAdmin):
+#     """Admin cho Biến"""
+#     list_display = ['name', 'label', 'field_type', 'required', 'created_at']
+#     list_filter = ['field_type', 'required']
+#     search_fields = ['name', 'label']
+#     ordering = ['name']
+#
+#     change_list_template = 'admin/variable_changelist.html'
+#
+#     def get_urls(self):
+#         urls = super().get_urls()
+#         custom_urls = [
+#             path('import/', self.admin_site.admin_view(self.import_variables_view), name='variable_import'),
+#             path('export/csv/', self.admin_site.admin_view(self.export_csv_view), name='variable_export_csv'),
+#             path('export/excel/', self.admin_site.admin_view(self.export_excel_view), name='variable_export_excel'),
+#         ]
+#         return custom_urls + urls
+#
+#     def import_variables_view(self, request):
+#         """View để import biến từ CSV/Excel"""
+#         if request.method == 'POST':
+#             file = request.FILES.get('file')
+#             if not file:
+#                 messages.error(request, 'Vui lòng chọn file để import')
+#                 return redirect('..')
+#
+#             # Determine file type
+#             if file.name.endswith('.csv'):
+#                 success, errors = import_variables_from_csv(file)
+#             elif file.name.endswith('.xlsx'):
+#                 success, errors = import_variables_from_excel(file)
+#             else:
+#                 messages.error(request, 'Chỉ hỗ trợ file .csv hoặc .xlsx')
+#                 return redirect('..')
+#
+#             # Show results
+#             if success:
+#                 messages.success(request, f'Đã import thành công {success} biến')
+#             if errors:
+#                 for error in errors[:10]:  # Show first 10 errors
+#                     messages.warning(request, error)
+#                 if len(errors) > 10:
+#                     messages.warning(request, f'... và {len(errors) - 10} lỗi khác')
+#
+#             return redirect('..')
+#
+#         return render(request, 'admin/variable_import.html', {
+#             'title': 'Import Biến',
+#             'site_title': admin.site.site_title,
+#             'site_header': admin.site.site_header,
+#         })
+#
+#     def export_csv_view(self, request):
+#         """Export biến ra CSV"""
+#         response = HttpResponse(export_variables_to_csv(), content_type='text/csv')
+#         response['Content-Disposition'] = 'attachment; filename="variables.csv"'
+#         return response
+#
+#     def export_excel_view(self, request):
+#         """Export biến ra Excel"""
+#         output = export_variables_to_excel()
+#         response = HttpResponse(
+#             output.read(),
+#             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+#         )
+#         response['Content-Disposition'] = 'attachment; filename="variables.xlsx"'
+#         return response
 
 
 @admin.register(Template)
@@ -164,7 +172,7 @@ class TemplateAdmin(admin.ModelAdmin):
     list_editable = ['is_active', 'order']
     search_fields = ['name', 'description']
     filter_horizontal = ['allowed_groups']
-    inlines = [TemplateVariableInline]
+    # inlines = [TemplateVariableInline]  # KHÔNG SỬ DỤNG NỮA - Variables không dùng
     ordering = ['category', 'order', 'name']
 
     change_list_template = 'admin/template_changelist.html'
@@ -254,7 +262,7 @@ class TemplateAdmin(admin.ModelAdmin):
         if request.method == 'POST':
             files = request.FILES.getlist('files')
             category_id = request.POST.get('category')
-            variable_ids = request.POST.getlist('variables')
+            # variable_ids = request.POST.getlist('variables')  # KHÔNG DÙNG NỮA
             group_ids = request.POST.getlist('groups')
 
             if not files:
@@ -265,11 +273,11 @@ class TemplateAdmin(admin.ModelAdmin):
                 messages.error(request, 'Vui lòng chọn danh mục')
                 return redirect('..')
 
-            # Import templates
+            # Import templates (không cần variables nữa)
             success, errors = import_templates_bulk(
                 files,
                 category_id,
-                variable_ids if variable_ids else None,
+                None,  # variable_ids - không dùng nữa
                 group_ids if group_ids else None
             )
 
@@ -291,21 +299,22 @@ class TemplateAdmin(admin.ModelAdmin):
             'site_title': admin.site.site_title,
             'site_header': admin.site.site_header,
             'categories': Category.objects.all().order_by('order', 'name'),
-            'variables': Variable.objects.all().order_by('name'),
+            # 'variables': Variable.objects.all().order_by('name'),  # KHÔNG DÙNG NỮA
             'groups': Group.objects.all().order_by('name'),
         }
         return render(request, 'admin/template_bulk_import.html', context)
 
 
-@admin.register(TemplateVariable)
-class TemplateVariableAdmin(admin.ModelAdmin):
-    """Admin cho liên kết Template-Variable"""
-    list_display = ['template', 'variable', 'order']
-    list_filter = ['template__category', 'template']
-    list_editable = ['order']
-    search_fields = ['template__name', 'variable__name']
-    autocomplete_fields = ['template', 'variable']
-    ordering = ['template', 'order']
+# TemplateVariable Admin - KHÔNG SỬ DỤNG NỮA
+# @admin.register(TemplateVariable)
+# class TemplateVariableAdmin(admin.ModelAdmin):
+#     """Admin cho liên kết Template-Variable"""
+#     list_display = ['template', 'variable', 'order']
+#     list_filter = ['template__category', 'template']
+#     list_editable = ['order']
+#     search_fields = ['template__name', 'variable__name']
+#     autocomplete_fields = ['template', 'variable']
+#     ordering = ['template', 'order']
 
 
 # Tùy chỉnh tiêu đề admin - Agribank Chi nhánh Giá Rai Bạc Liêu
