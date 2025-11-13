@@ -83,7 +83,7 @@ def test_template_form_page():
     """Test 2: Check template form page loads"""
     print_header("TEST 2: Kiểm tra trang form template")
 
-    url = f"{BASE_URL}/template/{TEST_TEMPLATE_ID}/form/"
+    url = f"{BASE_URL}/template/{TEST_TEMPLATE_ID}/"
 
     try:
         response = requests.get(url, timeout=10)
@@ -116,7 +116,7 @@ def test_print_preview_page():
     print_header("TEST 3: Kiểm tra trang Print Preview")
 
     # First, create session data by submitting form
-    form_url = f"{BASE_URL}/template/{TEST_TEMPLATE_ID}/form/"
+    form_url = f"{BASE_URL}/template/{TEST_TEMPLATE_ID}/"
     preview_url = f"{BASE_URL}/template/{TEST_TEMPLATE_ID}/preview/"
 
     try:
@@ -175,7 +175,7 @@ def test_update_preview_endpoint():
         session = requests.Session()
 
         # Get CSRF token
-        form_url = f"{BASE_URL}/template/{TEST_TEMPLATE_ID}/form/"
+        form_url = f"{BASE_URL}/template/{TEST_TEMPLATE_ID}/"
         session.get(form_url, timeout=10)
 
         # Try to update data
