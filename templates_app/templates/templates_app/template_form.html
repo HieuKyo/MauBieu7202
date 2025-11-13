@@ -218,7 +218,7 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    fillFormFields(result.data);
+                    fillFormFields(result.customer);
                     searchResults.style.display = 'none';
                     searchInput.value = '';
 
