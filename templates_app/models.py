@@ -744,10 +744,18 @@ class Customer(models.Model):
             data['so_tai_khoan_SMS'] = ''
             data['so_dien_thoai_SMS'] = ''
 
-        # Account number by request - always show value if exists
-        # Changed: Do not convert to dots when not selected
-        data['stk_theo_yeu_cau'] = self.so_tai_khoan_yc or ''
-        data['tk_theo_yeu_cau'] = self.so_tai_khoan_yc or ''  # Alias for backward compatibility
+        # Account number by request logic:
+        # - If "Tài khoản số theo yêu cầu" is selected AND has value: show the value
+        # - Otherwise: show dots "................."
+        if self.loai_tai_khoan == 'Tài khoản số theo yêu cầu' and self.so_tai_khoan_yc:
+            data['stk_theo_yeu_cau'] = self.so_tai_khoan_yc
+            data['tk_theo_yeu_cau'] = self.so_tai_khoan_yc
+            data['so_tai_khoan_yc'] = self.so_tai_khoan_yc  # Hiển thị số TK
+        else:
+            # Show dots when not selected or no value
+            data['stk_theo_yeu_cau'] = '.................'
+            data['tk_theo_yeu_cau'] = '.................'
+            data['so_tai_khoan_yc'] = '.................'
 
         # Calculate ngay_tra_the_tinh (card return date) = ngay_in (print date) + 7 days
         # Note: ngay_lap (creation date) is assumed to be ngay_in in this context

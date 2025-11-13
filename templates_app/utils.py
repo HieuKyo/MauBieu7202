@@ -388,17 +388,19 @@ class JinjaWordTemplateProcessor:
                 # Fill first row with card name characters
                 row = table.rows[0]
 
-                for i, char in enumerate(card_name):
-                    if i >= len(row.cells):
-                        break  # Card name longer than table
-                    row.cells[i].text = char
-
-                # Clear remaining cells
-                for i in range(len(card_name), len(row.cells)):
-                    row.cells[i].text = ''
+                # Fill characters, starting from first non-empty or empty cell
+                filled_count = 0
+                for cell_idx, cell in enumerate(row.cells):
+                    if filled_count < len(card_name):
+                        # Fill with character
+                        cell.text = card_name[filled_count]
+                        filled_count += 1
+                    else:
+                        # Clear remaining cells
+                        cell.text = ''
 
                 tables_filled += 1
-                print(f"[DEBUG] Filled table in {location} ({num_cols} columns) with '{card_name}'")
+                print(f"[DEBUG] Filled table in {location} ({num_cols} columns) with '{card_name}' ({filled_count} chars)")
 
         # Fill tables in main body
         for table in self.document.tables:
@@ -772,17 +774,19 @@ class WordTemplateProcessor:
                 # Fill first row with card name characters
                 row = table.rows[0]
 
-                for i, char in enumerate(card_name):
-                    if i >= len(row.cells):
-                        break  # Card name longer than table
-                    row.cells[i].text = char
-
-                # Clear remaining cells
-                for i in range(len(card_name), len(row.cells)):
-                    row.cells[i].text = ''
+                # Fill characters, starting from first non-empty or empty cell
+                filled_count = 0
+                for cell_idx, cell in enumerate(row.cells):
+                    if filled_count < len(card_name):
+                        # Fill with character
+                        cell.text = card_name[filled_count]
+                        filled_count += 1
+                    else:
+                        # Clear remaining cells
+                        cell.text = ''
 
                 tables_filled += 1
-                print(f"[DEBUG] Filled table in {location} ({num_cols} columns) with '{card_name}'")
+                print(f"[DEBUG] Filled table in {location} ({num_cols} columns) with '{card_name}' ({filled_count} chars)")
 
         # Fill tables in main body
         for table in self.document.tables:
