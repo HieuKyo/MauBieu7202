@@ -319,6 +319,7 @@ class Customer(models.Model):
     the_lien_ket = models.BooleanField(default=False, verbose_name="Thẻ liên kết")
     the_dong_thuong_hieu = models.BooleanField(default=False, verbose_name="Thẻ đồng thương hiệu")
     ten_the_1 = models.CharField(max_length=200, blank=True, verbose_name="Tên thẻ 1")
+    ten_the_2 = models.CharField(max_length=200, blank=True, verbose_name="Tên thẻ 2")  # FIX: Thêm tên thẻ 2 cho table thứ 2
 
     # Dịch vụ ABIC
     dv_abic = models.BooleanField(default=False, verbose_name="Dịch vụ: ABIC")
@@ -735,6 +736,7 @@ class Customer(models.Model):
             'dv_abic': checkbox(self.dv_abic),
             # Tên thẻ
             'ten_the_1': self.ten_the_1 or '',
+            'ten_the_2': self.ten_the_2 or '',  # FIX: Thêm tên thẻ 2
         }
 
         # Note: Card name (tên trên thẻ) is auto-filled into tables
