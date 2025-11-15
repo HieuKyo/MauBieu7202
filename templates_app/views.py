@@ -1255,9 +1255,19 @@ def generate_document_direct(request, template_id):
 
         # Checkbox - Nghề nghiệp
         nghe_nghiep = data.get('nghe_nghiep', '')
+        print(f"[DEBUG] Nghề nghiệp value: '{nghe_nghiep}' (type: {type(nghe_nghiep)}, len: {len(nghe_nghiep)})")
+        print(f"[DEBUG] Nghề nghiệp bytes: {nghe_nghiep.encode('utf-8') if nghe_nghiep else b''}")
+
         data['nghe_nghiep_cong_chuc'] = checkbox(nghe_nghiep == 'Công chức viên chức')
         data['nghe_nghiep_nong_dan'] = checkbox(nghe_nghiep == 'Nông dân')
         data['nghe_nghiep_giao_vien_bac_si'] = checkbox(nghe_nghiep == 'Giáo viên/Bác Sĩ')
+
+        # DEBUG: Check if match
+        if 'Giáo viên' in nghe_nghiep or 'Bác' in nghe_nghiep:
+            print(f"[DEBUG] Match test:")
+            print(f"  nghe_nghiep == 'Giáo viên/Bác Sĩ': {nghe_nghiep == 'Giáo viên/Bác Sĩ'}")
+            print(f"  Result checkbox: {data['nghe_nghiep_giao_vien_bac_si']}")
+
         data['nghe_nghiep_giao_vien'] = checkbox(nghe_nghiep == 'Giáo viên')  # FIX: Thêm riêng lẻ
         data['nghe_nghiep_bac_si'] = checkbox(nghe_nghiep == 'Bác sĩ')  # FIX: Thêm riêng lẻ
         data['nghe_nghiep_cong_nhan'] = checkbox(nghe_nghiep == 'Công nhân')
