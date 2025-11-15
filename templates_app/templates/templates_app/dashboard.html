@@ -395,9 +395,13 @@
                                         <label class="form-check-label" for="the-dong-th">Thẻ đồng thương hiệu</label>
                                     </div>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-md-6">
                                     <label class="form-label">Tên thẻ 1</label>
-                                    <input type="text" class="form-control" name="ten_the_1" placeholder="Nhập tên in trên thẻ">
+                                    <input type="text" class="form-control" name="ten_the_1" placeholder="Tên in trên thẻ 1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Tên thẻ 2</label>
+                                    <input type="text" class="form-control" name="ten_the_2" placeholder="Tên in trên thẻ 2 (nếu khác)">
                                 </div>
                             </div>
                         </div>
@@ -842,6 +846,7 @@ function fillFormWithData(data) {
     if (data.loai_the) document.querySelector('[name="loai_the"]').value = data.loai_the;
     if (data.hang_the) document.querySelector('[name="hang_the"]').value = data.hang_the;
     if (data.ten_the_1) document.querySelector('[name="ten_the_1"]').value = data.ten_the_1;
+    if (data.ten_the_2) document.querySelector('[name="ten_the_2"]').value = data.ten_the_2;  // FIX: Auto-fill tên thẻ 2
 
     // Customer Classification - Radio buttons
     if (data.ket_qua_phan_loai_kh) {
