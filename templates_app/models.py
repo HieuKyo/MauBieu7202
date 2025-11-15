@@ -179,6 +179,8 @@ class Customer(models.Model):
         ('Công chức viên chức', 'Công chức viên chức'),
         ('Nông dân', 'Nông dân'),
         ('Giáo viên/Bác Sĩ', 'Giáo viên/Bác Sĩ'),
+        ('Giáo viên', 'Giáo viên'),  # FIX: Thêm riêng lẻ
+        ('Bác sĩ', 'Bác sĩ'),  # FIX: Thêm riêng lẻ
         ('Công nhân', 'Công nhân'),
         ('Kinh doanh tự do', 'Kinh doanh tự do'),
         ('Học sinh/Sinh viên', 'Học sinh/Sinh viên'),
@@ -596,6 +598,8 @@ class Customer(models.Model):
         nghe_nghiep_cong_chuc = checkbox(self.nghe_nghiep == 'Công chức viên chức')
         nghe_nghiep_nong_dan = checkbox(self.nghe_nghiep == 'Nông dân')
         nghe_nghiep_giao_vien_bac_si = checkbox(self.nghe_nghiep == 'Giáo viên/Bác Sĩ')
+        nghe_nghiep_giao_vien = checkbox(self.nghe_nghiep == 'Giáo viên')  # FIX: Thêm riêng lẻ
+        nghe_nghiep_bac_si = checkbox(self.nghe_nghiep == 'Bác sĩ')  # FIX: Thêm riêng lẻ
         nghe_nghiep_cong_nhan = checkbox(self.nghe_nghiep == 'Công nhân')
         nghe_nghiep_kinh_doanh = checkbox(self.nghe_nghiep == 'Kinh doanh tự do')
         nghe_nghiep_hoc_sinh_sinh_vien = checkbox(self.nghe_nghiep == 'Học sinh/Sinh viên')

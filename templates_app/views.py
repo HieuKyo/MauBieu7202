@@ -980,6 +980,8 @@ def variable_library_view(request):
         {'name': 'nghe_nghiep_cong_chuc', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Công chức viên chức', 'example': '☑ hoặc ☐'},
         {'name': 'nghe_nghiep_nong_dan', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Nông dân', 'example': '☑ hoặc ☐'},
         {'name': 'nghe_nghiep_giao_vien_bac_si', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Giáo viên/Bác sĩ', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_giao_vien', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Giáo viên', 'example': '☑ hoặc ☐'},
+        {'name': 'nghe_nghiep_bac_si', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Bác sĩ', 'example': '☑ hoặc ☐'},
         {'name': 'nghe_nghiep_cong_nhan', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Công nhân', 'example': '☑ hoặc ☐'},
         {'name': 'nghe_nghiep_kinh_doanh', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Kinh doanh tự do', 'example': '☑ hoặc ☐'},
         {'name': 'nghe_nghiep_hoc_sinh_sinh_vien', 'description': 'Checkbox ☑/☐ khi chọn nghề nghiệp Học sinh/Sinh viên', 'example': '☑ hoặc ☐'},
@@ -1256,6 +1258,8 @@ def generate_document_direct(request, template_id):
         data['nghe_nghiep_cong_chuc'] = checkbox(nghe_nghiep == 'Công chức viên chức')
         data['nghe_nghiep_nong_dan'] = checkbox(nghe_nghiep == 'Nông dân')
         data['nghe_nghiep_giao_vien_bac_si'] = checkbox(nghe_nghiep == 'Giáo viên/Bác Sĩ')
+        data['nghe_nghiep_giao_vien'] = checkbox(nghe_nghiep == 'Giáo viên')  # FIX: Thêm riêng lẻ
+        data['nghe_nghiep_bac_si'] = checkbox(nghe_nghiep == 'Bác sĩ')  # FIX: Thêm riêng lẻ
         data['nghe_nghiep_cong_nhan'] = checkbox(nghe_nghiep == 'Công nhân')
         data['nghe_nghiep_kinh_doanh'] = checkbox(nghe_nghiep == 'Kinh doanh tự do')
         data['nghe_nghiep_hoc_sinh_sinh_vien'] = checkbox(nghe_nghiep == 'Học sinh/Sinh viên')
