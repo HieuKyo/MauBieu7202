@@ -292,7 +292,8 @@ def export_variables_to_excel():
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(cell.value)
-            except:
+            except (TypeError, AttributeError):
+                # Skip cells with values that can't be converted to string
                 pass
         adjusted_width = min(max_length + 2, 50)
         sheet.column_dimensions[column_letter].width = adjusted_width
