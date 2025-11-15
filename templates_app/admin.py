@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
 from django.http import HttpResponse
-from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig
+from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig, DetailedFeeTier, OnRequestFeeTier
 from .import_helpers import (
     import_variables_from_csv,
     import_variables_from_excel,
@@ -321,3 +321,60 @@ class TemplateAdmin(admin.ModelAdmin):
 admin.site.site_header = "Agribank Chi nhánh Giá Rai Bạc Liêu - Hệ thống Quản lý Mẫu biểu"
 admin.site.site_title = "Agribank Giá Rai Admin"
 admin.site.index_title = "Quản lý hệ thống Mẫu biểu"
+
+
+# ====================
+# Beautiful Number Fee Management
+# ====================
+
+@admin.register(DetailedFeeTier)
+class DetailedFeeTierAdmin(admin.ModelAdmin):
+    """Admin cho Biểu phí chi tiết"""
+    list_display = ['quantity', 'fee_type', 'min_fee', 'max_fee', 'formatted_fee_range']
+    list_filter = ['fee_type']
+    list_editable = ['min_fee', 'max_fee']
+    ordering = ['quantity', 'fee_type']
+
+    fieldsets = (
+        ('Thông tin bậc phí', {
+            'fields': ('quantity', 'fee_type')
+        }),
+        ('Mức phí', {
+            'fields': ('min_fee', 'max_fee'),
+            'description': '<p>Để <strong>Phí tối đa</strong> trống để hiển thị "Thỏa thuận"</p>'
+        }),
+    )
+
+    def formatted_fee_range(self, obj):
+        """Format hiển thị khoảng phí"""
+        if obj.max_fee:
+            return f"{obj.min_fee:,} - {obj.max_fee:,} VNĐ"
+        return f"Từ {obj.min_fee:,} VNĐ (Thỏa thuận)"
+    formatted_fee_range.short_description = 'Khoảng phí'
+
+
+@admin.register(OnRequestFeeTier)
+class OnRequestFeeTierAdmin(admin.ModelAdmin):
+    """Admin cho Biểu phí chọn số theo yêu cầu"""
+    list_display = ['quantity_range', 'min_fee', 'max_fee', 'formatted_fee_range']
+    list_editable = ['min_fee', 'max_fee']
+    ordering = ['min_quantity']
+
+    fieldsets = (
+        ('Số lượng số đẹp', {
+            'fields': ('min_quantity', 'max_quantity')
+        }),
+        ('Mức phí', {
+            'fields': ('min_fee', 'max_fee')
+        }),
+    )
+
+    def quantity_range(self, obj):
+        """Format hiển thị khoảng số lượng"""
+        return f"{obj.min_quantity} - {obj.max_quantity}"
+    quantity_range.short_description = 'Số lượng'
+
+    def formatted_fee_range(self, obj):
+        """Format hiển thị khoảng phí"""
+        return f"{obj.min_fee:,} - {obj.max_fee:,} VNĐ"
+    formatted_fee_range.short_description = 'Khoảng phí'
