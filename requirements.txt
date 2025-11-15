@@ -1,6 +1,9 @@
 # Core Django framework
 Django==5.2.7
 
+# Environment variable management
+python-dotenv==1.0.1
+
 # Word document generation
 python-docx==1.2.0
 lxml==6.0.2

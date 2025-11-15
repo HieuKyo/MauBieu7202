@@ -16,6 +16,35 @@ from datetime import date, datetime
 import io
 import mammoth
 import tempfile
+from urllib.parse import urlparse
+
+
+# Security helper functions
+def is_safe_redirect_url(url, allowed_host):
+    """
+    Validate redirect URL to prevent Open Redirect attacks.
+    Returns True only if the URL is safe to redirect to.
+
+    Args:
+        url: The URL to validate
+        allowed_host: The allowed host (from request.get_host())
+
+    Returns:
+        bool: True if URL is safe, False otherwise
+    """
+    if not url:
+        return False
+
+    # Parse the URL
+    parsed = urlparse(url)
+
+    # Allow only relative URLs (no scheme, no netloc) or same-host URLs
+    if not parsed.netloc:
+        # Relative URL - safe as long as it doesn't start with //
+        return not url.startswith('//')
+
+    # If netloc exists, it must match the allowed host
+    return parsed.netloc == allowed_host
 
 
 @login_required
@@ -259,8 +288,11 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-            next_url = request.GET.get('next', 'dashboard')
-            return redirect(next_url)
+            # Fix Open Redirect vulnerability: validate next_url before redirecting
+            next_url = request.GET.get('next', '')
+            if next_url and is_safe_redirect_url(next_url, request.get_host()):
+                return redirect(next_url)
+            return redirect('dashboard')
         else:
             messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng')
 
