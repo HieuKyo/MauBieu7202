@@ -32,7 +32,7 @@ FEE_TABLE = {
     (6, 'SPECIAL'): (5_000_000, 10_000_000),
     (7, 'SPECIAL'): (10_000_000, 20_000_000),
     (8, 'SPECIAL'): (25_000_000, 40_000_000),  # Từ ví dụ: 277777777
-    (9, 'SPECIAL'): (40_000_000, 60_000_000),
+    (9, 'SPECIAL'): (40_000_000, 80_000_000),  # Từ ví dụ: 888888888 → VAT: 44M-88M
 }
 
 VAT_RATE = Decimal('0.1')  # 10% VAT
@@ -119,8 +119,8 @@ def scan_sub_patterns(digits):
     """
     patterns = []
 
-    # 1. Tìm các chuỗi lặp liên tiếp (2-8 số)
-    for length in range(8, 1, -1):  # Từ 8 xuống 2
+    # 1. Tìm các chuỗi lặp liên tiếp (2-9 số)
+    for length in range(9, 1, -1):  # Từ 9 xuống 2
         for i in range(len(digits) - length + 1):
             substring = digits[i:i+length]
             # Kiểm tra tất cả ký tự giống nhau
@@ -133,8 +133,8 @@ def scan_sub_patterns(digits):
                         break
 
                 if not is_covered:
-                    # Xác định loại: 8 số lặp là đặc biệt, còn lại là thường
-                    pattern_type = 'SPECIAL' if length == 8 else 'NORMAL'
+                    # Xác định loại: 8+ số lặp là đặc biệt, còn lại là thường
+                    pattern_type = 'SPECIAL' if length >= 8 else 'NORMAL'
                     patterns.append({
                         'pattern': f'REPEAT_{length}',
                         'quantity': length,
