@@ -1555,6 +1555,13 @@ def generate_document_direct(request, template_id):
         # Add ALL GlobalConfig variables (branch info + custom variables + auto-generated date variables)
         data.update(config.get_all_variables())
 
+        # DEBUG: Print all occupation checkboxes
+        print("\n[DEBUG] All occupation checkboxes in data dict before render:")
+        for key in sorted(data.keys()):
+            if 'nghe_nghiep' in key:
+                print(f"  {key}: {data[key]}")
+        print()
+
         # Generate document
         output_file = render_word_template(template.file.path, data)
 
