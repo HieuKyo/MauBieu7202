@@ -51,6 +51,8 @@ def check_uniform_9_digit_structure(digits):
     1. Sảnh lặp tam (3-3-3): AAA-BBB-CCC (ví dụ: 333444555, 888999777)
     2. Lặp tam (3-3-3): ABC-ABC-ABC (ví dụ: 236236236)
 
+    KHÔNG bao gồm: 9 số lặp giống nhau (999999999) - sẽ được xử lý bởi scan_sub_patterns
+
     Args:
         digits: 9 số cần kiểm tra (string)
 
@@ -63,6 +65,11 @@ def check_uniform_9_digit_structure(digits):
         }
     """
     if len(digits) != 9:
+        return None
+
+    # Kiểm tra 9 số có giống nhau hoàn toàn không (999999999)
+    # Nếu có → KHÔNG phải uniform pattern → để scan_sub_patterns xử lý
+    if len(set(digits)) == 1:
         return None
 
     # Mẫu 1: Sảnh lặp tam AAA-BBB-CCC (3 nhóm, mỗi nhóm 3 số giống nhau)
@@ -84,6 +91,7 @@ def check_uniform_9_digit_structure(digits):
 
     # Mẫu 2: Lặp tam ABC-ABC-ABC (3 nhóm giống hệt nhau)
     # Ví dụ: 236236236
+    # NHƯNG không phải 999999999 (đã kiểm tra ở trên)
     if part1 == part2 == part3:
         return {
             'pattern': 'UNIFORM_9_TRIPLE_REPEAT',
