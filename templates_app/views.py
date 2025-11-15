@@ -990,8 +990,8 @@ def variable_library_view(request):
 
         # Dịch vụ ngân hàng điện tử
         {'name': 'dv_sms_banking', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ SMS Banking', 'example': '☑ hoặc ☐'},
-        {'name': 'dv_e_mobile', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ E-Mobile/Agribank Plus', 'example': '☑ hoặc ☐'},
-        {'name': 'dv_bankplus', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ BankPlus', 'example': '☑ hoặc ☐'},
+        {'name': 'dv_bankplus', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Agribank Plus', 'example': '☑ hoặc ☐'},  # FIX: Correct description
+        {'name': 'dv_e_mobile', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Liên kết ví (E-Wallet)', 'example': '☑ hoặc ☐'},  # FIX: Correct description
         {'name': 'dv_e_commerce', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ E-Commerce', 'example': '☑ hoặc ☐'},
         {'name': 'dv_soft_otp', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Soft OTP', 'example': '☑ hoặc ☐'},
         {'name': 'dv_smart_otp', 'description': 'Checkbox ☑/☐ khi chọn dịch vụ Smart OTP', 'example': '☑ hoặc ☐'},
@@ -1234,6 +1234,8 @@ def generate_document_direct(request, template_id):
         data['nghe_nghiep_kinh_doanh'] = checkbox(nghe_nghiep == 'Kinh doanh tự do')
         data['nghe_nghiep_hoc_sinh_sinh_vien'] = checkbox(nghe_nghiep == 'Học sinh/Sinh viên')
         data['nghe_nghiep_noi_tro'] = checkbox(nghe_nghiep == 'Nội trợ')
+        data['nghe_nghiep_cong_an_bo_doi'] = checkbox(nghe_nghiep == 'Công an/Bộ đội')  # FIX: Thêm nghề thiếu
+        data['nghe_nghiep_ky_su'] = checkbox(nghe_nghiep == 'Kỹ sư')  # FIX: Thêm nghề thiếu
         data['nghe_nghiep_khac'] = checkbox(nghe_nghiep == 'Khác')
 
         # Checkbox - Hạng thẻ
@@ -1260,11 +1262,50 @@ def generate_document_direct(request, template_id):
         data['tk_theo_yeu_cau'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản số theo yêu cầu')
         data['tk_chuyen_dung'] = checkbox(data['loai_tai_khoan'] == 'Tài khoản chuyên dụng')
 
+        # FIX: If "Tài khoản ngẫu nhiên" selected, set so_tai_khoan_yc to dots
+        if data.get('loai_tai_khoan') == 'Tài khoản ngẫu nhiên':
+            data['so_tai_khoan_yc'] = '.................'
+
         # Checkbox - Kết quả phân loại KH
         ket_qua_phan_loai_kh = data.get('ket_qua_phan_loai_kh', '')
         data['pl_cao'] = checkbox(ket_qua_phan_loai_kh == 'Cao')
         data['pl_trungbinh'] = checkbox(ket_qua_phan_loai_kh == 'Trung bình')
         data['pl_thap'] = checkbox(ket_qua_phan_loai_kh == 'Thấp')
+
+        # FIX: Checkbox - CMND/CCCD/CĂN CƯỚC based on digit length and issue date
+        # - 9 digits = CMND
+        # - 12 digits + issue date ≤ 01/07/2024 = CCCD
+        # - 12 digits + issue date > 01/07/2024 = CĂN CƯỚC
+        so_cmnd = data.get('so_cmnd', '').strip()
+        ngay_cap_cmnd_str = data.get('ngay_cap_cmnd', '')
+
+        # Default all to unchecked
+        data['cmnd'] = checkbox(False)
+        data['cccd'] = checkbox(False)
+        data['cancuoc'] = checkbox(False)
+
+        if len(so_cmnd) == 9:
+            # 9 digits = CMND (old ID card)
+            data['cmnd'] = checkbox(True)
+        elif len(so_cmnd) == 12 and ngay_cap_cmnd_str:
+            # 12 digits = CCCD or CĂN CƯỚC, depends on issue date
+            try:
+                from datetime import datetime, date
+                # Parse ngay_cap_cmnd (already in 'DD/MM/YYYY' format from earlier processing)
+                if '/' in ngay_cap_cmnd_str:
+                    ngay_cap_obj = datetime.strptime(ngay_cap_cmnd_str, '%d/%m/%Y').date()
+                else:
+                    # If still in YYYY-MM-DD format
+                    ngay_cap_obj = datetime.strptime(ngay_cap_cmnd_str, '%Y-%m-%d').date()
+
+                cutoff_date = date(2024, 7, 1)
+                if ngay_cap_obj <= cutoff_date:
+                    data['cccd'] = checkbox(True)  # Old CCCD
+                else:
+                    data['cancuoc'] = checkbox(True)  # New CĂN CƯỚC
+            except (ValueError, TypeError):
+                # If date parsing fails, default to CCCD for 12-digit numbers
+                data['cccd'] = checkbox(True)
 
         # Note: Card name (tên trên thẻ) is auto-filled into tables
         # by _render_card_name_tables() in utils.py
