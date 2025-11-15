@@ -4,6 +4,7 @@ Beautiful Number Analysis and Fee Lookup Services
 Dịch vụ phân tích số tài khoản đẹp và tra cứu phí.
 """
 
+from django.contrib.humanize.templatetags.humanize import intcomma
 from .models import DetailedFeeTier, OnRequestFeeTier
 
 
@@ -232,9 +233,9 @@ def get_detailed_fee(account_number):
 
         # Format hiển thị phí
         if tier.max_fee:
-            fee_display = f"{tier.min_fee:,} - {tier.max_fee:,} VNĐ"
+            fee_display = f"{intcomma(int(tier.min_fee))} - {intcomma(int(tier.max_fee))} VNĐ"
         else:
-            fee_display = f"Từ {tier.min_fee:,} VNĐ (Thỏa thuận)"
+            fee_display = f"Từ {intcomma(int(tier.min_fee))} VNĐ (Thỏa thuận)"
 
         return {
             'analysis': analysis,
@@ -288,7 +289,7 @@ def get_on_request_fee(quantity):
             max_quantity__gte=quantity
         )
 
-        fee_display = f"{tier.min_fee:,} - {tier.max_fee:,} VNĐ"
+        fee_display = f"{intcomma(int(tier.min_fee))} - {intcomma(int(tier.max_fee))} VNĐ"
 
         return {
             'fee_tier': tier,
