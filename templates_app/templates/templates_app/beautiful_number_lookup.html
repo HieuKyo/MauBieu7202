@@ -42,7 +42,7 @@
                     <div class="card shadow-sm mb-4">
                         <div class="card-body">
                             <h5 class="card-title">Nhập số tài khoản để phân tích</h5>
-                            <p class="text-muted">Hệ thống sẽ tự động phân tích và xác định loại số đẹp (Lặp, Lộc Phát, Tiến...)</p>
+                            <p class="text-muted">Hệ thống sẽ tự động phân tích 9 số khách hàng chọn (sau 7202) và xác định loại số đẹp (Lặp, Lộc Phát, Tiến...)</p>
 
                             <form method="POST" action="{% url 'beautiful_number_lookup' %}">
                                 {% csrf_token %}
@@ -50,14 +50,15 @@
 
                                 <div class="row g-3">
                                     <div class="col-md-8">
-                                        <label class="form-label">Số tài khoản <span class="text-danger">*</span></label>
+                                        <label class="form-label">Số tài khoản Agribank Giá Rai <span class="text-danger">*</span></label>
                                         <input type="text"
                                                class="form-control form-control-lg"
                                                name="account_number"
-                                               placeholder="VD: 1234567890"
+                                               placeholder="VD: 7202123456789 (13 số, bắt đầu bằng 7202)"
                                                required
-                                               pattern="[0-9]+"
-                                               title="Chỉ nhập số">
+                                               pattern="7202[0-9]{9}"
+                                               title="Số tài khoản phải có 13 số và bắt đầu bằng 7202"
+                                               maxlength="13">
                                     </div>
                                     <div class="col-md-4 d-flex align-items-end">
                                         <button type="submit" class="btn btn-primary btn-lg w-100">
@@ -80,7 +81,8 @@
                                 <div class="col-md-6">
                                     <h6>Thông tin số tài khoản:</h6>
                                     <ul class="list-unstyled">
-                                        <li><strong>Số tài khoản:</strong> {{ result.analysis.digits }}</li>
+                                        <li><strong>Số tài khoản:</strong> <code class="fs-5">{{ result.analysis.full_account }}</code></li>
+                                        <li><strong>Phần chọn (9 số):</strong> <code>{{ result.analysis.selectable_part }}</code></li>
                                         <li><strong>Số lượng số đẹp:</strong> {{ result.analysis.quantity }}</li>
                                         <li><strong>Loại:</strong>
                                             {% if result.analysis.is_special %}
@@ -256,11 +258,13 @@
             <div class="alert alert-info mt-4">
                 <h6><i class="bi bi-info-circle"></i> Ghi chú:</h6>
                 <ul class="mb-0">
-                    <li><strong>Số lặp cuối:</strong> 2+ chữ số giống nhau liên tiếp ở cuối (VD: 1234555)</li>
-                    <li><strong>Lộc phát:</strong> Có số 6 hoặc 8 (VD: 123456, 123678)</li>
-                    <li><strong>Số tiến liền:</strong> 3+ số liên tiếp tăng dần (VD: 123456, 234567)</li>
+                    <li><strong>Format số tài khoản:</strong> 7202XXXXXXXXX (13 số) - 4 số đầu cố định 7202, 9 số sau do khách hàng chọn</li>
+                    <li><strong>Phí tối thiểu:</strong> 500,000 VNĐ (chưa bao gồm VAT)</li>
+                    <li><strong>Số lặp cuối:</strong> 2+ chữ số giống nhau liên tiếp ở cuối (VD: 7202123456777)</li>
+                    <li><strong>Lộc phát:</strong> Có số 6 hoặc 8 trong 9 số chọn (VD: 7202123456888)</li>
+                    <li><strong>Số tiến liền:</strong> 3+ số liên tiếp tăng dần trong 9 số chọn (VD: 7202123456789)</li>
                     <li><strong>Quy tắc:</strong> Nếu một số thuộc nhiều loại, áp dụng mức phí cao hơn</li>
-                    <li><strong>Đối tượng:</strong> Biểu phí này dành cho khách hàng tổ chức</li>
+                    <li><strong>Đối tượng:</strong> Biểu phí này dành cho khách hàng tổ chức tại Agribank Chi nhánh Giá Rai - Bạc Liêu</li>
                 </ul>
             </div>
         </div>
