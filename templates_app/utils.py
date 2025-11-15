@@ -193,6 +193,10 @@ class JinjaWordTemplateProcessor:
         # Count checkboxes processed
         checkboxes_updated = 0
 
+        # DEBUG: Track all tags found
+        all_tags_found = []
+        occupation_tags_found = []
+
         # Tìm tất cả Structured Document Tags (Content Controls)
         for sdt in self.document.element.findall('.//w:sdt', namespaces=NSMAP):
             # Lấy tag name từ properties
@@ -203,6 +207,11 @@ class JinjaWordTemplateProcessor:
             tag_name = tag_element.get(f'{{{NSMAP["w"]}}}val')
             if not tag_name:
                 continue
+
+            # DEBUG: Track this tag
+            all_tags_found.append(tag_name)
+            if 'nghe_nghiep' in tag_name:
+                occupation_tags_found.append(tag_name)
 
             # Kiểm tra xem tag có trong context không
             if tag_name not in context:
@@ -273,6 +282,18 @@ class JinjaWordTemplateProcessor:
         # Debug: print số checkboxes đã update
         if checkboxes_updated > 0:
             print(f"[DEBUG] Updated {checkboxes_updated} checkboxes")
+
+        # DEBUG: Print occupation tags
+        if occupation_tags_found:
+            print(f"[DEBUG] Occupation tags found in Word template: {occupation_tags_found}")
+            # Check if nghe_nghiep_giao_vien_bac_si exists
+            if 'nghe_nghiep_giao_vien_bac_si' in occupation_tags_found:
+                print(f"[DEBUG] ✓ nghe_nghiep_giao_vien_bac_si tag FOUND in template")
+            else:
+                print(f"[DEBUG] ✗ nghe_nghiep_giao_vien_bac_si tag NOT FOUND in template!")
+                print(f"[DEBUG] Total {len(all_tags_found)} tags found in template")
+                if 'giao_vien' in str(all_tags_found).lower():
+                    print(f"[DEBUG] Found similar tags: {[t for t in all_tags_found if 'giao' in t.lower() or 'vien' in t.lower()]}")
 
     def _render_content_control_textboxes(self, context):
         """
@@ -595,6 +616,10 @@ class WordTemplateProcessor:
         # Count checkboxes processed
         checkboxes_updated = 0
 
+        # DEBUG: Track all tags found
+        all_tags_found = []
+        occupation_tags_found = []
+
         # Tìm tất cả Structured Document Tags (Content Controls)
         for sdt in self.document.element.findall('.//w:sdt', namespaces=NSMAP):
             # Lấy tag name từ properties
@@ -605,6 +630,11 @@ class WordTemplateProcessor:
             tag_name = tag_element.get(f'{{{NSMAP["w"]}}}val')
             if not tag_name:
                 continue
+
+            # DEBUG: Track this tag
+            all_tags_found.append(tag_name)
+            if 'nghe_nghiep' in tag_name:
+                occupation_tags_found.append(tag_name)
 
             # Kiểm tra xem tag có trong context không
             if tag_name not in context:
@@ -675,6 +705,18 @@ class WordTemplateProcessor:
         # Debug: print số checkboxes đã update
         if checkboxes_updated > 0:
             print(f"[DEBUG] Updated {checkboxes_updated} checkboxes")
+
+        # DEBUG: Print occupation tags
+        if occupation_tags_found:
+            print(f"[DEBUG] Occupation tags found in Word template: {occupation_tags_found}")
+            # Check if nghe_nghiep_giao_vien_bac_si exists
+            if 'nghe_nghiep_giao_vien_bac_si' in occupation_tags_found:
+                print(f"[DEBUG] ✓ nghe_nghiep_giao_vien_bac_si tag FOUND in template")
+            else:
+                print(f"[DEBUG] ✗ nghe_nghiep_giao_vien_bac_si tag NOT FOUND in template!")
+                print(f"[DEBUG] Total {len(all_tags_found)} tags found in template")
+                if 'giao_vien' in str(all_tags_found).lower():
+                    print(f"[DEBUG] Found similar tags: {[t for t in all_tags_found if 'giao' in t.lower() or 'vien' in t.lower()]}")
 
     def _render_content_control_textboxes(self, context):
         """
