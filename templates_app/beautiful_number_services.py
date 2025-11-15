@@ -9,12 +9,16 @@ from .models import DetailedFeeTier, OnRequestFeeTier
 
 def analyze_account_number(account_number):
     """
-    Phân tích số tài khoản để xác định số lượng và loại số đẹp.
+    Phân tích số tài khoản Agribank Giá Rai để xác định số lượng và loại số đẹp.
+
+    Format: 7202XXXXXXXXX (13 số)
+    - 4 số đầu: 7202 (cố định cho Agribank Giá Rai)
+    - 9 số sau: Phần khách hàng chọn (phân tích số đẹp)
 
     Logic phân loại:
-    - Số lặp cuối: 2+ chữ số giống nhau liên tiếp ở cuối (VD: 1234555, 1234666)
-    - Lộc phát: Có số 6 hoặc 8 (VD: 123456, 123678)
-    - Số tiến liền: 3+ số liên tiếp tăng dần (VD: 123456, 234567)
+    - Số lặp cuối: 2+ chữ số giống nhau liên tiếp ở cuối (VD: 123456777)
+    - Lộc phát: Có số 6 hoặc 8 (VD: 123456888)
+    - Số tiến liền: 3+ số liên tiếp tăng dần (VD: 123456789)
 
     Args:
         account_number: Số tài khoản cần phân tích (string hoặc int)
@@ -24,7 +28,9 @@ def analyze_account_number(account_number):
             'quantity': int,  # Số lượng số đẹp
             'is_special': bool,  # True nếu thuộc loại đặc biệt
             'patterns': list,  # Danh sách các mẫu tìm thấy
-            'description': str  # Mô tả chi tiết
+            'description': str,  # Mô tả chi tiết
+            'full_account': str,  # Số tài khoản đầy đủ (13 số)
+            'selectable_part': str  # 9 số khách hàng chọn
         }
     """
     # Chuẩn hóa số tài khoản về string
@@ -33,48 +39,68 @@ def analyze_account_number(account_number):
     # Loại bỏ ký tự không phải số
     digits = ''.join(c for c in account_str if c.isdigit())
 
-    if not digits or len(digits) < 2:
+    # Validate format: phải có 13 số
+    if len(digits) != 13:
         return {
             'quantity': 0,
             'is_special': False,
             'patterns': [],
-            'description': 'Số tài khoản không hợp lệ'
+            'description': f'Số tài khoản phải có 13 số (hiện có {len(digits)} số)',
+            'full_account': digits,
+            'selectable_part': '',
+            'error': f'Số tài khoản Agribank Giá Rai phải có 13 số (7202XXXXXXXXX)'
         }
+
+    # Validate prefix: 4 số đầu phải là 7202
+    if not digits.startswith('7202'):
+        return {
+            'quantity': 0,
+            'is_special': False,
+            'patterns': [],
+            'description': f'Số tài khoản phải bắt đầu bằng 7202 (hiện tại: {digits[:4]})',
+            'full_account': digits,
+            'selectable_part': '',
+            'error': 'Số tài khoản Agribank Giá Rai phải bắt đầu bằng 7202'
+        }
+
+    # Lấy 9 số cuối (phần khách hàng chọn)
+    selectable_part = digits[4:]  # Bỏ 7202, lấy 9 số sau
 
     patterns_found = []
     is_special = False
 
     # ========== PHÂN TÍCH CÁC MẪU SỐ ĐẸP ==========
+    # Chỉ phân tích 9 số khách hàng chọn (bỏ qua 7202)
 
     # 1. Kiểm tra SỐ LẶP CUỐI
-    repeating_count = check_repeating_suffix(digits)
+    repeating_count = check_repeating_suffix(selectable_part)
     if repeating_count >= 2:
-        patterns_found.append(f"Số lặp cuối ({repeating_count} số '{digits[-1]}')")
+        patterns_found.append(f"Số lặp cuối ({repeating_count} số '{selectable_part[-1]}')")
         is_special = True
 
     # 2. Kiểm tra LỘC PHÁT (số 6 và 8)
-    loc_phat_count = digits.count('6') + digits.count('8')
+    loc_phat_count = selectable_part.count('6') + selectable_part.count('8')
     if loc_phat_count > 0:
-        patterns_found.append(f"Lộc phát ({digits.count('6')} số 6, {digits.count('8')} số 8)")
+        patterns_found.append(f"Lộc phát ({selectable_part.count('6')} số 6, {selectable_part.count('8')} số 8)")
         is_special = True
 
     # 3. Kiểm tra SỐ TIẾN LIỀN NHAU
-    consecutive_count = check_consecutive_numbers(digits)
+    consecutive_count = check_consecutive_numbers(selectable_part)
     if consecutive_count >= 3:
         patterns_found.append(f"Số tiến liền ({consecutive_count} số)")
         is_special = True
 
     # 4. Kiểm tra SỐ ĐỐI XỨNG (bonus pattern)
-    if is_palindrome(digits):
+    if is_palindrome(selectable_part):
         patterns_found.append(f"Số đối xứng")
         is_special = True
 
     # 5. Kiểm tra SỐ TOÀN LẺ (bonus pattern)
-    if all(int(d) % 2 == 1 for d in digits):
+    if all(int(d) % 2 == 1 for d in selectable_part):
         patterns_found.append("Toàn số lẻ")
 
     # 6. Kiểm tra SỐ TOÀN CHẴN (bonus pattern)
-    if all(int(d) % 2 == 0 for d in digits):
+    if all(int(d) % 2 == 0 for d in selectable_part):
         patterns_found.append("Toàn số chẵn")
 
     # ========== TÍNH SỐ LƯỢNG SỐ ĐẸP ==========
@@ -92,7 +118,8 @@ def analyze_account_number(account_number):
         'is_special': is_special,
         'patterns': patterns_found,
         'description': description,
-        'digits': digits
+        'full_account': digits,  # 13 số đầy đủ (7202XXXXXXXXX)
+        'selectable_part': selectable_part  # 9 số khách hàng chọn
     }
 
 
