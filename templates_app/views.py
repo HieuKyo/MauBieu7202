@@ -1,22 +1,29 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-from django.http import HttpResponse, Http404, JsonResponse
-from django.db.models import Q, Exists, OuterRef
-from django.views.decorators.http import require_http_methods
-from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig, remove_vietnamese_diacritics
-from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
-from .utils import render_word_template
-from .issueby_mapping import get_issueby_name
-import os
-import json
-import re
-from datetime import date, datetime
+# Standard library imports
 import io
-import mammoth
+import json
+import os
+import re
 import tempfile
+from datetime import date, datetime
 from urllib.parse import urlparse
+
+# Django imports
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.http import HttpResponse, Http404, JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.views.decorators.http import require_http_methods
+
+# Third-party imports
+import mammoth
+
+# Local application imports
+from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
+from .issueby_mapping import get_issueby_name
+from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig, remove_vietnamese_diacritics
+from .utils import render_word_template
 
 
 # Security helper functions
@@ -1290,7 +1297,8 @@ def generate_document_direct(request, template_id):
                 data['d1'], data['d2'] = date_str[0], date_str[1]
                 data['m1'], data['m2'] = date_str[2], date_str[3]
                 data['y1'], data['y2'], data['y3'], data['y4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except:
+            except (ValueError, TypeError) as e:
+                # Invalid date format or type - set to None to avoid errors
                 data['ngay_sinh_obj'] = None
 
         # Date variables (from ngay_cap_cmnd)
@@ -1305,7 +1313,8 @@ def generate_document_direct(request, template_id):
                 data['dcc1'], data['dcc2'] = date_str[0], date_str[1]
                 data['mcc1'], data['mcc2'] = date_str[2], date_str[3]
                 data['ycc1'], data['ycc2'], data['ycc3'], data['ycc4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except:
+            except (ValueError, TypeError) as e:
+                # Invalid date format or type - set to None to avoid errors
                 data['ngay_cap_cmnd_obj'] = None
 
         # Date variables (from ngay_het_han_cmnd)
@@ -1320,7 +1329,8 @@ def generate_document_direct(request, template_id):
                 data['dhh1'], data['dhh2'] = date_str[0], date_str[1]
                 data['mhh1'], data['mhh2'] = date_str[2], date_str[3]
                 data['yhh1'], data['yhh2'], data['yhh3'], data['yhh4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except:
+            except (ValueError, TypeError) as e:
+                # Invalid date format or type - set to None to avoid errors
                 data['ngay_het_han_cmnd_obj'] = None
 
         # Ngày hiện tại cho tính toán (Date object)
@@ -1360,21 +1370,24 @@ def generate_document_direct(request, template_id):
                     try:
                         from datetime import datetime
                         customer.ngay_sinh = datetime.strptime(data['ngay_sinh'], '%d/%m/%Y').date()
-                    except:
+                    except (ValueError, TypeError):
+                        # Invalid date format - skip update
                         pass
 
                 if data.get('ngay_cap_cmnd'):
                     try:
                         from datetime import datetime
                         customer.ngay_cap_cmnd = datetime.strptime(data['ngay_cap_cmnd'], '%d/%m/%Y').date()
-                    except:
+                    except (ValueError, TypeError):
+                        # Invalid date format - skip update
                         pass
 
                 if data.get('ngay_het_han_cmnd'):
                     try:
                         from datetime import datetime
                         customer.ngay_het_han_cmnd = datetime.strptime(data['ngay_het_han_cmnd'], '%d/%m/%Y').date()
-                    except:
+                    except (ValueError, TypeError):
+                        # Invalid date format - skip update
                         pass
 
                 customer.gioi_tinh = data.get('gioi_tinh', '')
@@ -1531,11 +1544,12 @@ def customer_import_excel(request):
                                         try:
                                             parsed_date = datetime.strptime(str(value), '%d/%m/%Y')
                                             data[field_name] = parsed_date.date()
-                                        except:
+                                        except (ValueError, TypeError):
                                             try:
                                                 parsed_date = datetime.strptime(str(value), '%Y-%m-%d')
                                                 data[field_name] = parsed_date.date()
-                                            except:
+                                            except (ValueError, TypeError):
+                                                # Invalid date format - skip this field
                                                 pass
                             else:
                                 data[field_name] = value if value else ''
