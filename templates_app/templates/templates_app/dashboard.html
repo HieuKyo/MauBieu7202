@@ -475,6 +475,9 @@
                     <button type="button" class="btn btn-secondary" onclick="goToStep(2)">
                         <i class="bi bi-arrow-left"></i> Quay lại
                     </button>
+                    <button type="button" class="btn btn-info btn-lg me-2" onclick="previewDocument()">
+                        <i class="bi bi-eye"></i> Xem trước
+                    </button>
                     <button type="submit" class="btn btn-success btn-lg">
                         <i class="bi bi-download"></i> Tạo & Tải mẫu biểu
                     </button>
@@ -1186,6 +1189,56 @@ document.getElementById('customerForm').addEventListener('submit', function(e) {
         submitBtn.disabled = false;
     });
 });
+
+// Preview document function
+function previewDocument() {
+    // Validate form before preview
+    const validation = validateCustomerForm();
+    if (!validation.valid) {
+        alert('Vui lòng kiểm tra lại thông tin:\n\n' + validation.errors.join('\n'));
+        return;
+    }
+
+    if (!selectedTemplateId) {
+        alert('Vui lòng chọn mẫu biểu trước');
+        return;
+    }
+
+    const form = document.getElementById('customerForm');
+    const formData = new FormData(form);
+
+    // Show loading
+    const previewBtn = event.target;
+    const originalText = previewBtn.innerHTML;
+    previewBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang tải...';
+    previewBtn.disabled = true;
+
+    // Save to session via AJAX
+    fetch(`/template/${selectedTemplateId}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Redirect to preview page
+            window.location.href = `/template/${selectedTemplateId}/preview/`;
+        } else {
+            alert('Lỗi khi lưu dữ liệu');
+            previewBtn.innerHTML = originalText;
+            previewBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Lỗi khi tạo preview');
+        previewBtn.innerHTML = originalText;
+        previewBtn.disabled = false;
+    });
+}
 
 // ==========================================
 // AUTO-CALCULATION Functions
