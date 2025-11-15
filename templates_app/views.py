@@ -1159,6 +1159,11 @@ def generate_document_direct(request, template_id):
         data['ho_ten_tieng_anh'] = request.POST.get('ho_ten_tieng_anh', '')
         # Auto-generate ten_tieng_anh from ho_ten (remove diacritics and uppercase)
         data['ten_tieng_anh'] = remove_vietnamese_diacritics(data['ho_ten'])
+
+        # FIX: Auto-fill card name source for ten_the_1 and ten_the_2
+        # Priority: ho_ten_tieng_anh (manual) > ten_tieng_anh (auto-generated)
+        card_name_source = data['ho_ten_tieng_anh'] if data['ho_ten_tieng_anh'] else data['ten_tieng_anh']
+
         data['ngay_sinh'] = request.POST.get('ngay_sinh', '')
         data['gioi_tinh'] = request.POST.get('gioi_tinh', '')
 
@@ -1189,8 +1194,9 @@ def generate_document_direct(request, template_id):
         # Card
         data['loai_the'] = request.POST.get('loai_the', '')
         data['hang_the'] = request.POST.get('hang_the', '')
-        data['ten_the_1'] = request.POST.get('ten_the_1', '')
-        data['ten_the_2'] = request.POST.get('ten_the_2', '')  # Tên thẻ cho table thứ 2
+        # FIX: Auto-fill ten_the_1 and ten_the_2 from card_name_source (ten_tieng_anh)
+        data['ten_the_1'] = card_name_source  # For first card name table
+        data['ten_the_2'] = card_name_source  # For second card name table
         data['ngay_tra_the'] = request.POST.get('ngay_tra_the', '')
 
         # Checkboxes - helper function

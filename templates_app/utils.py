@@ -350,40 +350,44 @@ class JinjaWordTemplateProcessor:
         Quét cả main body, headers và footers
 
         Args:
-            context: Dictionary chứa biến ho_ten_tieng_anh, ten_tieng_anh, hoặc ho_ten
+            context: Dictionary chứa biến ten_the_1 và ten_the_2
         """
-        # Get card name from context with priority:
-        # 1. ho_ten_tieng_anh (manually entered English name)
-        # 2. ten_tieng_anh (auto-generated from ho_ten, already uppercase without diacritics)
-        # 3. ho_ten (fallback)
-        ho_ten_tieng_anh = (context.get('ho_ten_tieng_anh') or '').strip()
-        ten_tieng_anh = (context.get('ten_tieng_anh') or '').strip()
+        # FIX: Get card names from ten_the_1 and ten_the_2
+        # These are auto-filled from ten_tieng_anh in views.py
+        ten_the_1 = (context.get('ten_the_1') or '').strip().upper()
+        ten_the_2 = (context.get('ten_the_2') or '').strip().upper()
 
-        if ho_ten_tieng_anh:
-            card_name = ho_ten_tieng_anh.upper()
-        elif ten_tieng_anh:
-            card_name = ten_tieng_anh  # Already uppercase from auto-generation
-        else:
-            card_name = (context.get('ho_ten', '') or '').upper()
+        # Fallback to legacy logic if ten_the_1/2 not available
+        if not ten_the_1 and not ten_the_2:
+            ho_ten_tieng_anh = (context.get('ho_ten_tieng_anh') or '').strip()
+            ten_tieng_anh = (context.get('ten_tieng_anh') or '').strip()
+            if ho_ten_tieng_anh:
+                ten_the_1 = ho_ten_tieng_anh.upper()
+            elif ten_tieng_anh:
+                ten_the_1 = ten_tieng_anh  # Already uppercase
+            else:
+                ten_the_1 = (context.get('ho_ten', '') or '').upper()
+            ten_the_2 = ten_the_1  # Use same name for both tables
 
-        card_name = str(card_name).strip()
-        if not card_name:
+        if not ten_the_1:
             return
 
+        # List to hold card names for tables (first table uses ten_the_1, second uses ten_the_2)
+        card_names = [ten_the_1, ten_the_2] if ten_the_2 else [ten_the_1]
+        current_card_table_index = 0  # Track which card name table we're on
         tables_filled = 0
         tables_found = []
 
-        def fill_table(table, location='body'):
-            """Helper function to fill a single table"""
+        def fill_table_with_name(table, card_name, location='body'):
+            """Helper function to fill a single table with a specific card name"""
             nonlocal tables_filled
             if not table.rows:
-                return
+                return False
 
             num_cols = len(table.columns)
             tables_found.append(f"{location}:{num_cols}cols")
 
             # Check if this is a card name table (15+ columns)
-            # Lowered from 20 to support more table formats
             if num_cols >= 15:
                 # Fill first row with card name characters
                 row = table.rows[0]
@@ -400,25 +404,37 @@ class JinjaWordTemplateProcessor:
                         cell.text = ''
 
                 tables_filled += 1
-                print(f"[DEBUG] Filled table in {location} ({num_cols} columns) with '{card_name}' ({filled_count} chars)")
+                print(f"[DEBUG] Filled table {tables_filled} in {location} ({num_cols} columns) with '{card_name}' ({filled_count} chars)")
+                return True
+            return False
 
         # Fill tables in main body
         for table in self.document.tables:
-            fill_table(table, 'body')
+            if current_card_table_index < len(card_names):
+                if fill_table_with_name(table, card_names[current_card_table_index], 'body'):
+                    current_card_table_index += 1
 
         # Fill tables in headers and footers
         for section in self.document.sections:
             # Headers
             for table in section.header.tables:
-                fill_table(table, 'header')
+                if current_card_table_index < len(card_names):
+                    if fill_table_with_name(table, card_names[current_card_table_index], 'header'):
+                        current_card_table_index += 1
 
             # Footers
             for table in section.footer.tables:
-                fill_table(table, 'footer')
+                if current_card_table_index < len(card_names):
+                    if fill_table_with_name(table, card_names[current_card_table_index], 'footer'):
+                        current_card_table_index += 1
 
         # Debug summary
         print(f"[DEBUG] Tables found: {', '.join(tables_found)}")
-        print(f"[DEBUG] Total {tables_filled} card name table(s) filled with '{card_name}'")
+        print(f"[DEBUG] Total {tables_filled} card name table(s) filled")
+        if ten_the_1:
+            print(f"[DEBUG] - Table 1 filled with: '{ten_the_1}'")
+        if ten_the_2 and tables_filled >= 2:
+            print(f"[DEBUG] - Table 2 filled with: '{ten_the_2}'")
 
     def save(self, output_path):
         """
@@ -736,40 +752,44 @@ class WordTemplateProcessor:
         Quét cả main body, headers và footers
 
         Args:
-            context: Dictionary chứa biến ho_ten_tieng_anh, ten_tieng_anh, hoặc ho_ten
+            context: Dictionary chứa biến ten_the_1 và ten_the_2
         """
-        # Get card name from context with priority:
-        # 1. ho_ten_tieng_anh (manually entered English name)
-        # 2. ten_tieng_anh (auto-generated from ho_ten, already uppercase without diacritics)
-        # 3. ho_ten (fallback)
-        ho_ten_tieng_anh = (context.get('ho_ten_tieng_anh') or '').strip()
-        ten_tieng_anh = (context.get('ten_tieng_anh') or '').strip()
+        # FIX: Get card names from ten_the_1 and ten_the_2
+        # These are auto-filled from ten_tieng_anh in views.py
+        ten_the_1 = (context.get('ten_the_1') or '').strip().upper()
+        ten_the_2 = (context.get('ten_the_2') or '').strip().upper()
 
-        if ho_ten_tieng_anh:
-            card_name = ho_ten_tieng_anh.upper()
-        elif ten_tieng_anh:
-            card_name = ten_tieng_anh  # Already uppercase from auto-generation
-        else:
-            card_name = (context.get('ho_ten', '') or '').upper()
+        # Fallback to legacy logic if ten_the_1/2 not available
+        if not ten_the_1 and not ten_the_2:
+            ho_ten_tieng_anh = (context.get('ho_ten_tieng_anh') or '').strip()
+            ten_tieng_anh = (context.get('ten_tieng_anh') or '').strip()
+            if ho_ten_tieng_anh:
+                ten_the_1 = ho_ten_tieng_anh.upper()
+            elif ten_tieng_anh:
+                ten_the_1 = ten_tieng_anh  # Already uppercase
+            else:
+                ten_the_1 = (context.get('ho_ten', '') or '').upper()
+            ten_the_2 = ten_the_1  # Use same name for both tables
 
-        card_name = str(card_name).strip()
-        if not card_name:
+        if not ten_the_1:
             return
 
+        # List to hold card names for tables (first table uses ten_the_1, second uses ten_the_2)
+        card_names = [ten_the_1, ten_the_2] if ten_the_2 else [ten_the_1]
+        current_card_table_index = 0  # Track which card name table we're on
         tables_filled = 0
         tables_found = []
 
-        def fill_table(table, location='body'):
-            """Helper function to fill a single table"""
+        def fill_table_with_name(table, card_name, location='body'):
+            """Helper function to fill a single table with a specific card name"""
             nonlocal tables_filled
             if not table.rows:
-                return
+                return False
 
             num_cols = len(table.columns)
             tables_found.append(f"{location}:{num_cols}cols")
 
             # Check if this is a card name table (15+ columns)
-            # Lowered from 20 to support more table formats
             if num_cols >= 15:
                 # Fill first row with card name characters
                 row = table.rows[0]
@@ -786,25 +806,37 @@ class WordTemplateProcessor:
                         cell.text = ''
 
                 tables_filled += 1
-                print(f"[DEBUG] Filled table in {location} ({num_cols} columns) with '{card_name}' ({filled_count} chars)")
+                print(f"[DEBUG] Filled table {tables_filled} in {location} ({num_cols} columns) with '{card_name}' ({filled_count} chars)")
+                return True
+            return False
 
         # Fill tables in main body
         for table in self.document.tables:
-            fill_table(table, 'body')
+            if current_card_table_index < len(card_names):
+                if fill_table_with_name(table, card_names[current_card_table_index], 'body'):
+                    current_card_table_index += 1
 
         # Fill tables in headers and footers
         for section in self.document.sections:
             # Headers
             for table in section.header.tables:
-                fill_table(table, 'header')
+                if current_card_table_index < len(card_names):
+                    if fill_table_with_name(table, card_names[current_card_table_index], 'header'):
+                        current_card_table_index += 1
 
             # Footers
             for table in section.footer.tables:
-                fill_table(table, 'footer')
+                if current_card_table_index < len(card_names):
+                    if fill_table_with_name(table, card_names[current_card_table_index], 'footer'):
+                        current_card_table_index += 1
 
         # Debug summary
         print(f"[DEBUG] Tables found: {', '.join(tables_found)}")
-        print(f"[DEBUG] Total {tables_filled} card name table(s) filled with '{card_name}'")
+        print(f"[DEBUG] Total {tables_filled} card name table(s) filled")
+        if ten_the_1:
+            print(f"[DEBUG] - Table 1 filled with: '{ten_the_1}'")
+        if ten_the_2 and tables_filled >= 2:
+            print(f"[DEBUG] - Table 2 filled with: '{ten_the_2}'")
 
     def save(self, output_path):
         """
