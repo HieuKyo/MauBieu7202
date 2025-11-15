@@ -45,4 +45,7 @@ urlpatterns = [
 
     # Variable Library
     path('variable-library/', views.variable_library_view, name='variable_library'),
+
+    # Beautiful Number Fee Lookup
+    path('beautiful-number-lookup/', views.beautiful_number_lookup, name='beautiful_number_lookup'),
 ]

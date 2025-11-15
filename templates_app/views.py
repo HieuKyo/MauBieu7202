@@ -2084,3 +2084,59 @@ def update_preview_data(request, template_id):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+# ====================
+# Beautiful Number Fee Lookup Views
+# ====================
+
+@login_required
+def beautiful_number_lookup(request):
+    """
+    Trang tra cứu phí số đẹp.
+    Cho phép nhập số tài khoản hoặc số lượng số đẹp để tra cứu phí.
+    """
+    result = None
+    error = None
+    lookup_type = 'detailed'  # Default: Bảng 1 (chi tiết)
+
+    if request.method == 'POST':
+        lookup_type = request.POST.get('lookup_type', 'detailed')
+
+        if lookup_type == 'detailed':
+            # Tra cứu theo biểu phí chi tiết (Bảng 1)
+            account_number = request.POST.get('account_number', '').strip()
+
+            if not account_number:
+                error = 'Vui lòng nhập số tài khoản'
+            else:
+                from .beautiful_number_services import get_detailed_fee
+                result = get_detailed_fee(account_number)
+
+        elif lookup_type == 'on_request':
+            # Tra cứu theo biểu phí chọn số (Bảng 2)
+            try:
+                quantity = int(request.POST.get('quantity', 0))
+                if quantity < 2:
+                    error = 'Số lượng số đẹp phải từ 2 trở lên'
+                else:
+                    from .beautiful_number_services import get_on_request_fee
+                    result = get_on_request_fee(quantity)
+            except (ValueError, TypeError):
+                error = 'Vui lòng nhập số lượng hợp lệ'
+
+    # Lấy danh sách biểu phí để hiển thị
+    from .models import DetailedFeeTier, OnRequestFeeTier
+
+    detailed_tiers = DetailedFeeTier.objects.all().order_by('quantity', 'fee_type')
+    on_request_tiers = OnRequestFeeTier.objects.all().order_by('min_quantity')
+
+    context = {
+        'result': result,
+        'error': error,
+        'lookup_type': lookup_type,
+        'detailed_tiers': detailed_tiers,
+        'on_request_tiers': on_request_tiers,
+    }
+
+    return render(request, 'templates_app/beautiful_number_lookup.html', context)
