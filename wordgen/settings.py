@@ -10,24 +10,34 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / '.env')
+except ImportError:
+    # python-dotenv not installed, environment variables must be set manually
+    pass
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-_ur3yrg88lbflau7kf@ltr(=cxz2m!(8-)tx_b-2--gpyd)avc"
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-_ur3yrg88lbflau7kf@ltr(=cxz2m!(8-)tx_b-2--gpyd)avc')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Cấu hình cho triển khai LAN
-# Thay đổi thành IP LAN của máy chủ khi triển khai (ví dụ: ['192.168.1.100', 'localhost', '127.0.0.1'])
-ALLOWED_HOSTS = ['*']  # Cho phép mọi host trong quá trình development
+# Thay đổi thành IP LAN của máy chủ khi triển khai (ví dụ: ALLOWED_HOSTS=192.168.1.100,localhost,127.0.0.1)
+# Set via environment variable: ALLOWED_HOSTS=your-domain.com,192.168.1.100
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,*').split(',')
 
 
 # Application definition
