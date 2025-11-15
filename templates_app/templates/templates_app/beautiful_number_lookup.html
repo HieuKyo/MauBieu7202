@@ -1,5 +1,6 @@
 {% extends "templates_app/base.html" %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Tra cứu phí số đẹp - Agribank{% endblock %}
 
@@ -112,10 +113,10 @@
                                         <tr>
                                             <td class="text-center">{{ tier.quantity }}</td>
                                             <td>{{ tier.get_fee_type_display }}</td>
-                                            <td class="text-end">{{ tier.min_fee|floatformat:0 }} VNĐ</td>
+                                            <td class="text-end">{{ tier.min_fee|intcomma }} VNĐ</td>
                                             <td class="text-end">
                                                 {% if tier.max_fee %}
-                                                    {{ tier.max_fee|floatformat:0 }} VNĐ
+                                                    {{ tier.max_fee|intcomma }} VNĐ
                                                 {% else %}
                                                     <em>Thỏa thuận</em>
                                                 {% endif %}
