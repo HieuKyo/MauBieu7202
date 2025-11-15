@@ -169,7 +169,8 @@ class CustomerForm(forms.ModelForm):
             'the_lap_nghiep': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'the_lien_ket': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'the_dong_thuong_hieu': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'ten_the_1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên trên thẻ'}),
+            'ten_the_1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên trên thẻ 1'}),
+            'ten_the_2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên trên thẻ 2'}),  # FIX: Thêm tên thẻ 2
             # Dịch vụ ABIC
             'dv_abic': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             # Phân loại khách hàng

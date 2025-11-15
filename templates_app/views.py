@@ -1177,6 +1177,9 @@ def generate_document_direct(request, template_id):
         data['nghe_nghiep'] = request.POST.get('nghe_nghiep', '')
         data['noi_lam_viec'] = request.POST.get('noi_lam_viec', '')
 
+        # Customer Classification - FIX: Thêm phân loại khách hàng
+        data['ket_qua_phan_loai_kh'] = request.POST.get('ket_qua_phan_loai_kh', '')
+
         # Banking
         data['so_tai_khoan'] = request.POST.get('so_tai_khoan', '')
         data['loai_tai_khoan'] = request.POST.get('loai_tai_khoan', '')
@@ -1186,6 +1189,9 @@ def generate_document_direct(request, template_id):
         # Card
         data['loai_the'] = request.POST.get('loai_the', '')
         data['hang_the'] = request.POST.get('hang_the', '')
+        data['ten_the_1'] = request.POST.get('ten_the_1', '')
+        data['ten_the_2'] = request.POST.get('ten_the_2', '')  # Tên thẻ cho table thứ 2
+        data['ngay_tra_the'] = request.POST.get('ngay_tra_the', '')
 
         # Checkboxes - helper function
         def checkbox(value):
@@ -1202,6 +1208,7 @@ def generate_document_direct(request, template_id):
         data['dv_soft_otp'] = checkbox(request.POST.get('dv_soft_otp') == 'on')
         data['dv_smart_otp'] = checkbox(request.POST.get('dv_smart_otp') == 'on')
         data['dv_retail_ebanking'] = checkbox(request.POST.get('dv_retail_ebanking') == 'on')
+        data['dv_abic'] = checkbox(request.POST.get('dv_abic') == 'on')  # FIX: Thêm dv_abic
 
         # Service checkboxes - Dịch vụ thu hộ
         data['dv_thu_ho_tien_nuoc'] = checkbox(request.POST.get('dv_thu_ho_tien_nuoc') == 'on')
@@ -1267,23 +1274,44 @@ def generate_document_direct(request, template_id):
         ngay_in_str = request.POST.get('ngay_in', '')
         if ngay_in_str:
             try:
-                from datetime import datetime
+                from datetime import datetime, timedelta
                 # 1. Parse chuỗi 'YYYY-MM-DD' từ form
                 date_obj = datetime.strptime(ngay_in_str, '%Y-%m-%d')
-                
+
                 # 2. Định dạng lại thành 'DD/MM/YYYY'
                 formatted_date = date_obj.strftime('%d/%m/%Y')
-                
+
                 # 3. Gán vào cả 'ngay_in' và 'ngay_lap' (vì template Mau_1a.docx dùng 'ngay_lap')
                 data['ngay_in'] = formatted_date
                 data['ngay_lap'] = formatted_date
+
+                # 4. FIX: Tính ngay_tra_the_tinh = ngay_in + 7 ngày
+                ngay_tra_the_calculated = date_obj + timedelta(days=7)
+                data['ngay_tra_the_tinh'] = ngay_tra_the_calculated.strftime('%d/%m/%Y')
+                data['ngay_tra_the_tinh_obj'] = ngay_tra_the_calculated.date()
+
+                # Add individual digit variables for ngay_tra_the_tinh (dttt1, mttt1, yttt1, etc.)
+                date_str = ngay_tra_the_calculated.strftime('%d%m%Y')
+                if len(date_str) == 8:
+                    data['dttt1'] = date_str[0]
+                    data['dttt2'] = date_str[1]
+                    data['mttt1'] = date_str[2]
+                    data['mttt2'] = date_str[3]
+                    data['yttt1'] = date_str[4]
+                    data['yttt2'] = date_str[5]
+                    data['yttt3'] = date_str[6]
+                    data['yttt4'] = date_str[7]
             except ValueError:
                 # Nếu có lỗi, dùng giá trị gốc
                 data['ngay_in'] = ngay_in_str
                 data['ngay_lap'] = ngay_in_str
+                data['ngay_tra_the_tinh'] = ''
+                data['ngay_tra_the_tinh_obj'] = None
         else:
             data['ngay_in'] = ''
             data['ngay_lap'] = ''
+            data['ngay_tra_the_tinh'] = ''
+            data['ngay_tra_the_tinh_obj'] = None
 
         # Date variables (from ngay_sinh)
         if data['ngay_sinh']:
