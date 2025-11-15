@@ -1019,7 +1019,12 @@ def variable_library_view(request):
         {'name': 'the_dong_thuong_hieu', 'description': 'Checkbox ☑/☐ khi chọn thẻ đồng thương hiệu', 'example': '☑ hoặc ☐'},
 
         # Thông tin thẻ
-        {'name': 'ten_the_1', 'description': 'Tên in trên thẻ 1', 'example': 'NGUYEN VAN A'},
+        {'name': 'ten_the_1', 'description': 'Tên in trên thẻ 1 (toàn bộ chuỗi)', 'example': 'NGUYEN VAN A'},
+        {'name': 'ten_the_2', 'description': 'Tên in trên thẻ 2 (toàn bộ chuỗi)', 'example': 'NGUYEN VAN A'},
+
+        # Biến ký tự riêng lẻ cho tên thẻ (dùng trong table Word)
+        {'name': 'tt1_1 đến tt1_26', 'description': 'Từng ký tự của ten_the_1 (ô 1 đến ô 26). Dùng {{ tt1_1 }}, {{ tt1_2 }}, ..., {{ tt1_26 }} để chèn từng chữ vào từng ô table', 'example': 'tt1_1="N", tt1_2="G", tt1_3="U", ...'},
+        {'name': 'tt2_1 đến tt2_26', 'description': 'Từng ký tự của ten_the_2 (ô 1 đến ô 26). Dùng {{ tt2_1 }}, {{ tt2_2 }}, ..., {{ tt2_26 }} để chèn từng chữ vào từng ô table', 'example': 'tt2_1="N", tt2_2="G", tt2_3="U", ...'},
 
         # Biến tài khoản điều kiện
         {'name': 'stk_theo_yeu_cau', 'description': 'Số tài khoản (chỉ hiển thị khi chọn "Tài khoản số theo yêu cầu")', 'example': '1234567890'},
@@ -1197,6 +1202,21 @@ def generate_document_direct(request, template_id):
         # FIX: Auto-fill ten_the_1 and ten_the_2 from card_name_source (ten_tieng_anh)
         data['ten_the_1'] = card_name_source  # For first card name table
         data['ten_the_2'] = card_name_source  # For second card name table
+
+        # FIX: Create individual character variables for ten_the_1 and ten_the_2
+        # So users can use {{ tt1_1 }}, {{ tt1_2 }}, ... {{ tt1_26 }} in Word template
+        # tt1 = ten_the_1, tt2 = ten_the_2, support up to 26 characters
+        for i in range(26):
+            if i < len(data['ten_the_1']):
+                data[f'tt1_{i+1}'] = data['ten_the_1'][i]
+            else:
+                data[f'tt1_{i+1}'] = ''
+
+            if i < len(data['ten_the_2']):
+                data[f'tt2_{i+1}'] = data['ten_the_2'][i]
+            else:
+                data[f'tt2_{i+1}'] = ''
+
         data['ngay_tra_the'] = request.POST.get('ngay_tra_the', '')
 
         # Checkboxes - helper function
