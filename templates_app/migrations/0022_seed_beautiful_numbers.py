@@ -161,7 +161,7 @@ def remove_beautiful_numbers(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('templates_app', '0020_add_beautiful_number_model'),
+        ('templates_app', '0021_merge_20251115_1653'),
     ]
 
     operations = [
