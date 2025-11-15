@@ -1,5 +1,6 @@
 {% extends "templates_app/base.html" %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Danh sách số đẹp - Agribank{% endblock %}
 
@@ -148,7 +149,7 @@
                                                     </span>
                                                 </div>
                                                 <div class="text-end">
-                                                    <strong class="text-success">{{ num.fee|floatformat:0 }} VNĐ</strong>
+                                                    <strong class="text-success">{{ num.fee|intcomma }} VNĐ</strong>
                                                 </div>
                                                 {% if num.description %}
                                                 <div class="mt-2">
