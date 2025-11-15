@@ -81,8 +81,18 @@ class Category(models.Model):
     def get_visible_field_groups(self):
         """Trả về danh sách field groups, mặc định hiển thị tất cả nếu không cấu hình"""
         if not self.visible_field_groups:
-            # Mặc định: hiển thị tất cả
-            return ['personal_info', 'id_documents', 'contact', 'employment', 'banking', 'card', 'services', 'print_info']
+            # Mặc định: hiển thị tất cả field groups
+            return [
+                'personal_info',
+                'id_documents',
+                'contact',
+                'employment',
+                'customer_classification',  # FIX: Thêm phân loại khách hàng
+                'banking',
+                'card',
+                'services',
+                'print_info'
+            ]
         return self.visible_field_groups
 
 
