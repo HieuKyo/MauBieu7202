@@ -1001,5 +1001,104 @@ class OnRequestFeeTier(models.Model):
         return f"Chọn {self.min_quantity}-{self.max_quantity} số: {self.min_fee:,} - {self.max_fee:,} VNĐ"
 
 
+class BeautifulNumber(models.Model):
+    """
+    Danh sách số đẹp có sẵn để khách hàng chọn.
+    Phân loại theo mức giá và loại số đẹp (Tài lộc, Hợp tuổi, Phong thủy...).
+    """
+    # Định nghĩa các mức giá
+    PRICE_500K_1M = "500K-1M"
+    PRICE_1M_3M = "1M-3M"
+    PRICE_3M_5M = "3M-5M"
+    PRICE_5M_10M = "5M-10M"
+    PRICE_10M_20M = "10M-20M"
+    PRICE_20M_PLUS = "20M+"
+
+    PRICE_TIER_CHOICES = [
+        (PRICE_500K_1M, "500.000 - 1.000.000 VNĐ"),
+        (PRICE_1M_3M, "1.000.000 - 3.000.000 VNĐ"),
+        (PRICE_3M_5M, "3.000.000 - 5.000.000 VNĐ"),
+        (PRICE_5M_10M, "5.000.000 - 10.000.000 VNĐ"),
+        (PRICE_10M_20M, "10.000.000 - 20.000.000 VNĐ"),
+        (PRICE_20M_PLUS, "Trên 20.000.000 VNĐ"),
+    ]
+
+    # Định nghĩa các loại số đẹp
+    CATEGORY_LOC_PHAT = "LOC_PHAT"
+    CATEGORY_TAI_LOC = "TAI_LOC"
+    CATEGORY_HOP_TUOI = "HOP_TUOI"
+    CATEGORY_PHONG_THUY = "PHONG_THUY"
+    CATEGORY_SO_LAP = "SO_LAP"
+    CATEGORY_SO_TIEN = "SO_TIEN"
+    CATEGORY_SO_DOI_XUNG = "SO_DOI_XUNG"
+    CATEGORY_DAC_BIET = "DAC_BIET"
+
+    CATEGORY_CHOICES = [
+        (CATEGORY_LOC_PHAT, "Lộc Phát (Số 6, 8)"),
+        (CATEGORY_TAI_LOC, "Tài Lộc"),
+        (CATEGORY_HOP_TUOI, "Hợp Tuổi"),
+        (CATEGORY_PHONG_THUY, "Phong Thủy"),
+        (CATEGORY_SO_LAP, "Số Lặp"),
+        (CATEGORY_SO_TIEN, "Số Tiến"),
+        (CATEGORY_SO_DOI_XUNG, "Số Đối Xứng"),
+        (CATEGORY_DAC_BIET, "Đặc Biệt"),
+    ]
+
+    account_number = models.CharField(
+        max_length=13,
+        unique=True,
+        verbose_name="Số tài khoản",
+        help_text="Số tài khoản 13 số (7202XXXXXXXXX)"
+    )
+    category = models.CharField(
+        max_length=20,
+        choices=CATEGORY_CHOICES,
+        verbose_name="Loại số đẹp",
+        db_index=True
+    )
+    price_tier = models.CharField(
+        max_length=20,
+        choices=PRICE_TIER_CHOICES,
+        verbose_name="Mức giá",
+        db_index=True
+    )
+    fee = models.DecimalField(
+        max_digits=12,
+        decimal_places=0,
+        verbose_name="Phí (VNĐ)",
+        help_text="Phí cụ thể cho số này"
+    )
+    is_available = models.BooleanField(
+        default=True,
+        verbose_name="Còn số",
+        db_index=True
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name="Mô tả",
+        help_text="Mô tả đặc điểm của số đẹp này"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Ngày thêm"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Ngày cập nhật"
+    )
+
+    class Meta:
+        verbose_name = "Số đẹp có sẵn"
+        verbose_name_plural = "Danh sách số đẹp có sẵn"
+        ordering = ['price_tier', 'category', 'account_number']
+        indexes = [
+            models.Index(fields=['category', 'price_tier', 'is_available']),
+        ]
+
+    def __str__(self):
+        status = "✓" if self.is_available else "✗"
+        return f"{status} {self.account_number} - {self.get_category_display()} - {self.fee:,} VNĐ"
+
+
 # Alias để backward compatibility
 BranchConfig = GlobalConfig

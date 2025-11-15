@@ -2140,3 +2140,55 @@ def beautiful_number_lookup(request):
     }
 
     return render(request, 'templates_app/beautiful_number_lookup.html', context)
+
+
+@login_required
+def beautiful_number_list(request):
+    """
+    Trang danh sách số đẹp có sẵn để khách hàng chọn.
+    Có filter theo giá và loại số đẹp. Có thể in ra.
+    """
+    from .models import BeautifulNumber
+
+    # Lấy tham số filter từ request
+    category_filter = request.GET.get('category', '')
+    price_filter = request.GET.get('price', '')
+    available_only = request.GET.get('available', 'true') == 'true'
+
+    # Query base
+    numbers = BeautifulNumber.objects.all()
+
+    # Apply filters
+    if available_only:
+        numbers = numbers.filter(is_available=True)
+
+    if category_filter:
+        numbers = numbers.filter(category=category_filter)
+
+    if price_filter:
+        numbers = numbers.filter(price_tier=price_filter)
+
+    # Order by price and category
+    numbers = numbers.order_by('price_tier', 'category', 'account_number')
+
+    # Get choices for filters
+    category_choices = BeautifulNumber.CATEGORY_CHOICES
+    price_choices = BeautifulNumber.PRICE_TIER_CHOICES
+
+    # Group numbers by price tier for display
+    from collections import defaultdict
+    numbers_by_price = defaultdict(list)
+    for number in numbers:
+        numbers_by_price[number.price_tier].append(number)
+
+    context = {
+        'numbers': numbers,
+        'numbers_by_price': dict(numbers_by_price),
+        'category_choices': category_choices,
+        'price_choices': price_choices,
+        'selected_category': category_filter,
+        'selected_price': price_filter,
+        'available_only': available_only,
+    }
+
+    return render(request, 'templates_app/beautiful_number_list.html', context)

@@ -48,4 +48,5 @@ urlpatterns = [
 
     # Beautiful Number Fee Lookup
     path('beautiful-number-lookup/', views.beautiful_number_lookup, name='beautiful_number_lookup'),
+    path('beautiful-number-list/', views.beautiful_number_list, name='beautiful_number_list'),
 ]

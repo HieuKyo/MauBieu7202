@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
 from django.http import HttpResponse
-from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig, DetailedFeeTier, OnRequestFeeTier
+from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig, DetailedFeeTier, OnRequestFeeTier, BeautifulNumber
 from .import_helpers import (
     import_variables_from_csv,
     import_variables_from_excel,
@@ -378,3 +378,39 @@ class OnRequestFeeTierAdmin(admin.ModelAdmin):
         """Format hiển thị khoảng phí"""
         return f"{obj.min_fee:,} - {obj.max_fee:,} VNĐ"
     formatted_fee_range.short_description = 'Khoảng phí'
+
+
+@admin.register(BeautifulNumber)
+class BeautifulNumberAdmin(admin.ModelAdmin):
+    """Admin cho Danh sách số đẹp có sẵn"""
+    list_display = ['account_number', 'category', 'price_tier', 'formatted_fee', 'is_available', 'updated_at']
+    list_filter = ['is_available', 'category', 'price_tier']
+    list_editable = ['is_available']
+    search_fields = ['account_number', 'description']
+    ordering = ['price_tier', 'category', 'account_number']
+    date_hierarchy = 'created_at'
+
+    fieldsets = (
+        ('Thông tin số tài khoản', {
+            'fields': ('account_number', 'category', 'description')
+        }),
+        ('Phí dịch vụ', {
+            'fields': ('price_tier', 'fee')
+        }),
+        ('Trạng thái', {
+            'fields': ('is_available',)
+        }),
+    )
+
+    readonly_fields = ['created_at', 'updated_at']
+
+    def formatted_fee(self, obj):
+        """Format hiển thị phí"""
+        return f"{obj.fee:,} VNĐ"
+    formatted_fee.short_description = 'Phí'
+
+    def get_readonly_fields(self, request, obj=None):
+        """Make account_number readonly after creation"""
+        if obj:  # editing an existing object
+            return self.readonly_fields + ['account_number']
+        return self.readonly_fields

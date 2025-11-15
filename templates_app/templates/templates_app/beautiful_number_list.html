@@ -1,0 +1,200 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Danh sách số đẹp - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        body {
+            background-color: white;
+        }
+        .card {
+            border: 1px solid #000 !important;
+            box-shadow: none !important;
+        }
+        .table {
+            font-size: 12px;
+        }
+        h2, h5 {
+            color: #000 !important;
+        }
+    }
+
+    .number-card {
+        border: 2px solid #dee2e6;
+        transition: all 0.2s;
+    }
+
+    .number-card:hover {
+        border-color: var(--agribank-green);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .number-account {
+        font-family: 'Courier New', monospace;
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: var(--agribank-red);
+    }
+
+    .category-badge {
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+                <h2>
+                    <i class="bi bi-list-stars"></i> Danh sách số đẹp có sẵn
+                </h2>
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="bi bi-printer"></i> In danh sách
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="card shadow-sm mb-4 no-print">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="bi bi-funnel"></i> Lọc số đẹp</h5>
+                    <form method="GET" action="{% url 'beautiful_number_list' %}">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Loại số đẹp</label>
+                                <select name="category" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    {% for value, label in category_choices %}
+                                    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Mức giá</label>
+                                <select name="price" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    {% for value, label in price_choices %}
+                                    <option value="{{ value }}" {% if selected_price == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Trạng thái</label>
+                                <select name="available" class="form-select">
+                                    <option value="true" {% if available_only %}selected{% endif %}>Chỉ số còn</option>
+                                    <option value="false" {% if not available_only %}selected{% endif %}>Tất cả</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-search"></i> Lọc
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="alert alert-info mb-4">
+                <i class="bi bi-info-circle"></i>
+                Tìm thấy <strong>{{ numbers.count }}</strong> số đẹp
+                {% if selected_category %}
+                    - Loại: <strong>{{ selected_category }}</strong>
+                {% endif %}
+                {% if selected_price %}
+                    - Mức giá: <strong>{{ selected_price }}</strong>
+                {% endif %}
+            </div>
+
+            <!-- Numbers grouped by price tier -->
+            {% for price_tier, price_label in price_choices %}
+                {% if price_tier in numbers_by_price %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-tag"></i> {{ price_label }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for number in numbers_by_price.items %}
+                                {% if number.0 == price_tier %}
+                                    {% for num in number.1 %}
+                                    <div class="col-md-4 col-lg-3">
+                                        <div class="number-card card h-100">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <span class="number-account">{{ num.account_number }}</span>
+                                                    {% if num.is_available %}
+                                                        <span class="badge bg-success">Còn</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Hết</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="mb-2">
+                                                    <span class="category-badge badge bg-info">
+                                                        {{ num.get_category_display }}
+                                                    </span>
+                                                </div>
+                                                <div class="text-end">
+                                                    <strong class="text-success">{{ num.fee|floatformat:0 }} VNĐ</strong>
+                                                </div>
+                                                {% if num.description %}
+                                                <div class="mt-2">
+                                                    <small class="text-muted">{{ num.description }}</small>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+
+            {% if not numbers %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> Không tìm thấy số đẹp nào phù hợp với tiêu chí lọc.
+            </div>
+            {% endif %}
+
+            <!-- Print info -->
+            <div class="mt-4 text-center" style="display: none;">
+                <div class="d-print-block">
+                    <hr>
+                    <p class="mb-0"><strong>Agribank Chi nhánh Giá Rai - Bạc Liêu</strong></p>
+                    <p class="mb-0">Danh sách số tài khoản đẹp</p>
+                    <p class="mb-0 text-muted small">In ngày: {{ today|date:"d/m/Y H:i" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-submit form when select changes (optional)
+document.querySelectorAll('.no-print select').forEach(function(select) {
+    select.addEventListener('change', function() {
+        // Uncomment to enable auto-submit
+        // this.closest('form').submit();
+    });
+});
+</script>
+{% endblock %}

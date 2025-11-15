@@ -7,37 +7,16 @@
 <div class="container-fluid mt-4">
     <div class="row">
         <div class="col-12">
-            <h2 class="mb-4">
-                <i class="bi bi-calculator"></i> Tra cứu phí số đẹp
-            </h2>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="bi bi-calculator"></i> Tra cứu phí số đẹp
+                </h2>
+                <a href="{% url 'beautiful_number_list' %}" class="btn btn-success">
+                    <i class="bi bi-list-stars"></i> Xem danh sách số đẹp có sẵn
+                </a>
+            </div>
 
-            <!-- Tabs cho 2 loại tra cứu -->
-            <ul class="nav nav-tabs mb-4" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link {% if lookup_type == 'detailed' %}active{% endif %}"
-                            id="detailed-tab"
-                            data-bs-toggle="tab"
-                            data-bs-target="#detailed"
-                            type="button">
-                        <i class="bi bi-search"></i> Tra cứu theo số tài khoản (Bảng 1)
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link {% if lookup_type == 'on_request' %}active{% endif %}"
-                            id="on-request-tab"
-                            data-bs-toggle="tab"
-                            data-bs-target="#on-request"
-                            type="button">
-                        <i class="bi bi-list-ol"></i> Tra cứu chọn số theo yêu cầu (Bảng 2)
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content">
-                <!-- Tab 1: Tra cứu chi tiết -->
-                <div class="tab-pane fade {% if lookup_type == 'detailed' %}show active{% endif %}"
-                     id="detailed"
-                     role="tabpanel">
+            <!-- Tra cứu phí số đẹp -->
 
                     <div class="card shadow-sm mb-4">
                         <div class="card-body">
@@ -152,100 +131,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Tab 2: Tra cứu theo yêu cầu -->
-                <div class="tab-pane fade {% if lookup_type == 'on_request' %}show active{% endif %}"
-                     id="on-request"
-                     role="tabpanel">
-
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-body">
-                            <h5 class="card-title">Nhập số lượng số đẹp muốn chọn</h5>
-                            <p class="text-muted">Áp dụng khi khách hàng tự chọn số tài khoản</p>
-
-                            <form method="POST" action="{% url 'beautiful_number_lookup' %}">
-                                {% csrf_token %}
-                                <input type="hidden" name="lookup_type" value="on_request">
-
-                                <div class="row g-3">
-                                    <div class="col-md-8">
-                                        <label class="form-label">Số lượng số đẹp <span class="text-danger">*</span></label>
-                                        <input type="number"
-                                               class="form-control form-control-lg"
-                                               name="quantity"
-                                               placeholder="VD: 5"
-                                               min="2"
-                                               max="20"
-                                               required>
-                                    </div>
-                                    <div class="col-md-4 d-flex align-items-end">
-                                        <button type="submit" class="btn btn-primary btn-lg w-100">
-                                            <i class="bi bi-search"></i> Tra cứu
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Kết quả tra cứu -->
-                    {% if lookup_type == 'on_request' and result %}
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="mb-0"><i class="bi bi-check-circle"></i> Kết quả tra cứu</h5>
-                        </div>
-                        <div class="card-body">
-                            {% if result.fee_tier %}
-                                <div class="alert alert-info">
-                                    <h4 class="alert-heading">{{ result.fee_display }}</h4>
-                                    <p class="mb-0">Bậc: {{ result.fee_tier }}</p>
-                                </div>
-                            {% else %}
-                                <div class="alert alert-warning">
-                                    <p class="mb-0">{{ result.error }}</p>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Bảng biểu phí theo yêu cầu -->
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Biểu phí chọn số theo yêu cầu (Bảng 2)</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Từ (số lượng)</th>
-                                            <th>Đến (số lượng)</th>
-                                            <th>Phí tối thiểu</th>
-                                            <th>Phí tối đa</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for tier in on_request_tiers %}
-                                        <tr>
-                                            <td class="text-center">{{ tier.min_quantity }}</td>
-                                            <td class="text-center">{{ tier.max_quantity }}</td>
-                                            <td class="text-end">{{ tier.min_fee|floatformat:0 }} VNĐ</td>
-                                            <td class="text-end">{{ tier.max_fee|floatformat:0 }} VNĐ</td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted">Chưa có dữ liệu biểu phí</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Error message -->
             {% if error %}
