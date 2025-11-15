@@ -76,10 +76,10 @@
                                 </div>
                                 <div class="col-md-6">
                                     <h6>Phí dịch vụ:</h6>
-                                    {% if result.fee_tier %}
+                                    {% if not result.error %}
                                         <div class="alert alert-info">
                                             <h4 class="alert-heading">{{ result.fee_display }}</h4>
-                                            <p class="mb-0">Bậc: {{ result.fee_tier.quantity }} số đẹp - {{ result.fee_tier.get_fee_type_display }}</p>
+                                            <p class="mb-0">Bậc: {{ result.analysis.quantity }} số đẹp - {% if result.analysis.is_special %}Đặc biệt{% else %}Thường{% endif %}</p>
                                         </div>
                                     {% else %}
                                         <div class="alert alert-warning">
