@@ -1,17 +1,31 @@
 {% extends "templates_app/base.html" %}
 {% load static %}
 
-{% block title %}Print Preview - {{ template.name }}{% endblock %}
+{% block title %}Xem trước - {{ template.name }}{% endblock %}
 
 {% block extra_css %}
 <style>
+    body {
+        background: #f5f5f5;
+    }
+
+    .preview-toolbar {
+        background: white;
+        padding: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        position: sticky;
+        top: 56px;
+        z-index: 100;
+    }
+
     .preview-container {
         background: white;
         padding: 3rem;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
         margin: 2rem auto;
         max-width: 900px;
-        min-height: 800px;
+        min-height: 1100px;
     }
 
     .preview-content {
@@ -36,261 +50,77 @@
         padding: 0.5rem;
     }
 
-    .highlighted-field {
-        background-color: #fff3cd;
-        border: 2px solid #ffc107;
-        padding: 2px 4px;
-        border-radius: 3px;
-        cursor: text;
-        transition: all 0.3s;
-        display: inline-block;
-        min-width: 20px;
-    }
-
-    .highlighted-field:hover {
-        background-color: #ffeb9c;
-        border-color: #ffa000;
-    }
-
-    .highlighted-field:focus {
-        background-color: #e3f2fd;
-        border-color: #2196f3;
-        outline: none;
-    }
-
-    .toolbar {
-        position: sticky;
-        top: 0;
-        background: white;
-        padding: 1rem;
-        border-bottom: 2px solid #dee2e6;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        z-index: 1000;
-        margin-bottom: 2rem;
-    }
-
-    .btn-action {
-        margin-right: 0.5rem;
-    }
-
-    .edit-mode-indicator {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #ffc107;
-        color: #000;
-        padding: 0.5rem 1rem;
-        border-radius: 5px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        font-weight: bold;
-        display: none;
-    }
-
-    .edit-mode-indicator.active {
-        display: block;
-    }
-
     @media print {
-        .toolbar,
-        .edit-mode-indicator,
+        .preview-toolbar,
         nav,
         footer {
             display: none !important;
         }
 
-        .preview-container {
-            box-shadow: none;
-            padding: 0;
-            margin: 0;
+        body {
+            background: white;
         }
 
-        .highlighted-field {
-            background-color: transparent !important;
-            border: none !important;
+        .preview-container {
+            box-shadow: none;
+            margin: 0;
+            padding: 0;
+        }
+    }
+
+    @media screen {
+        .preview-container {
+            /* A4 paper size */
+            width: 21cm;
+            min-height: 29.7cm;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="toolbar">
-    <div class="row align-items-center">
-        <div class="col-md-6">
-            <h4 class="mb-0">
-                <i class="bi bi-file-earmark-text"></i>
-                Print Preview: {{ template.name }}
-            </h4>
-        </div>
-        <div class="col-md-6 text-end">
-            <button class="btn btn-secondary btn-action" onclick="goBack()">
-                <i class="bi bi-arrow-left"></i> Quay lại
-            </button>
-            <button class="btn btn-info btn-action" onclick="toggleEditMode()" id="editModeBtn">
-                <i class="bi bi-pencil"></i> Chế độ chỉnh sửa
-            </button>
-            <button class="btn btn-success btn-action" onclick="saveChanges()" id="saveBtn" style="display:none;">
-                <i class="bi bi-save"></i> Lưu thay đổi
-            </button>
-            <button class="btn btn-primary btn-action" onclick="window.print()">
-                <i class="bi bi-printer"></i> In
-            </button>
-            <button class="btn btn-warning btn-action" onclick="downloadWord()">
-                <i class="bi bi-download"></i> Tải Word
-            </button>
+<div class="preview-toolbar">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="{% url 'template_form' template.id %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Quay lại
+                </a>
+            </div>
+            <div>
+                <h5 class="mb-0">{{ template.name }}</h5>
+            </div>
+            <div>
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="bi bi-printer"></i>
+                    In
+                </button>
+                <a href="{% url 'template_form' template.id %}" class="btn btn-success ms-2">
+                    <i class="bi bi-download"></i>
+                    Tải Word
+                </a>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="preview-container">
-    <div class="preview-content" id="previewContent">
-        {{ html_content|safe }}
+<div class="container-fluid py-4">
+    <div class="preview-container">
+        <div class="preview-content">
+            {{ html_content|safe }}
+        </div>
     </div>
 </div>
 
-<div class="edit-mode-indicator" id="editIndicator">
-    <i class="bi bi-pencil-fill"></i> Chế độ chỉnh sửa đang BẬT
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    let isEditMode = false;
-    let originalContent = {};
-    const templateId = {{ template_id }};
-
-    // Track original content of highlighted fields
-    document.addEventListener('DOMContentLoaded', function() {
-        const highlightedFields = document.querySelectorAll('.highlighted-field');
-        highlightedFields.forEach((field, index) => {
-            field.setAttribute('data-field-id', index);
-            originalContent[index] = field.textContent;
-        });
-
-        // Disable editing by default
-        highlightedFields.forEach(field => {
-            field.setAttribute('contenteditable', 'false');
-        });
-    });
-
-    function toggleEditMode() {
-        isEditMode = !isEditMode;
-        const editModeBtn = document.getElementById('editModeBtn');
-        const saveBtn = document.getElementById('saveBtn');
-        const editIndicator = document.getElementById('editIndicator');
-        const highlightedFields = document.querySelectorAll('.highlighted-field');
-
-        if (isEditMode) {
-            // Enable editing
-            highlightedFields.forEach(field => {
-                field.setAttribute('contenteditable', 'true');
-            });
-            editModeBtn.innerHTML = '<i class="bi bi-eye"></i> Chế độ xem';
-            editModeBtn.classList.remove('btn-info');
-            editModeBtn.classList.add('btn-warning');
-            saveBtn.style.display = 'inline-block';
-            editIndicator.classList.add('active');
-        } else {
-            // Disable editing
-            highlightedFields.forEach(field => {
-                field.setAttribute('contenteditable', 'false');
-            });
-            editModeBtn.innerHTML = '<i class="bi bi-pencil"></i> Chế độ chỉnh sửa';
-            editModeBtn.classList.remove('btn-warning');
-            editModeBtn.classList.add('btn-info');
-            saveBtn.style.display = 'none';
-            editIndicator.classList.remove('active');
-        }
-    }
-
-    function saveChanges() {
-        const highlightedFields = document.querySelectorAll('.highlighted-field');
-        const changes = {};
-        let hasChanges = false;
-
-        highlightedFields.forEach(field => {
-            const fieldId = field.getAttribute('data-field-id');
-            const currentContent = field.textContent;
-            const originalField = field.getAttribute('data-field');
-
-            if (currentContent !== originalContent[fieldId]) {
-                // Try to find the field name from filled_fields
-                changes[originalField] = currentContent;
-                hasChanges = true;
-            }
-        });
-
-        if (!hasChanges) {
-            alert('Không có thay đổi nào để lưu.');
-            return;
-        }
-
-        // Send changes to server
-        fetch(`/template/${templateId}/preview/update/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify(changes)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Đã lưu thay đổi thành công!');
-                // Update original content
-                highlightedFields.forEach(field => {
-                    const fieldId = field.getAttribute('data-field-id');
-                    originalContent[fieldId] = field.textContent;
-                });
-            } else {
-                alert('Lỗi khi lưu: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Lỗi khi lưu thay đổi: ' + error);
-        });
-    }
-
-    function downloadWord() {
-        // Redirect to generate document
-        window.location.href = `/template/${templateId}/generate/`;
-    }
-
-    function goBack() {
-        window.location.href = `/template/${templateId}/`;
-    }
-
-    // Get CSRF token from cookie
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
-        // Ctrl/Cmd + E to toggle edit mode
-        if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-            e.preventDefault();
-            toggleEditMode();
-        }
-        // Ctrl/Cmd + S to save
-        if ((e.ctrlKey || e.metaKey) && e.key === 's' && isEditMode) {
-            e.preventDefault();
-            saveChanges();
-        }
-        // Ctrl/Cmd + P to print
-        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        // Ctrl+P: Print
+        if (e.ctrlKey && e.key === 'p') {
             e.preventDefault();
             window.print();
         }

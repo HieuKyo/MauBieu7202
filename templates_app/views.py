@@ -1813,7 +1813,7 @@ def customer_import_tsv(request):
 @login_required
 def print_preview_view(request, template_id):
     """
-    Xem trước tài liệu với highlight các trường đã điền và cho phép chỉnh sửa
+    Xem trước tài liệu (giống Google Print Preview)
     """
     template = get_object_or_404(Template, id=template_id, is_active=True)
     user = request.user
@@ -1851,9 +1851,6 @@ def print_preview_view(request, template_id):
         # Tạo bản sao của data để không ảnh hưởng đến session
         preview_data = data.copy()
 
-        # Lưu dữ liệu gốc để track các field đã điền (từ form hoặc customer)
-        filled_fields = {k: v for k, v in preview_data.items() if v and not k.startswith('_')}
-
         # Thêm TẤT CẢ biến chung (chi nhánh + custom variables) vào data
         global_config = GlobalConfig.get_instance()
         preview_data.update(global_config.get_all_variables())
@@ -1884,21 +1881,6 @@ def print_preview_view(request, template_id):
             with open(temp_docx_path, 'rb') as docx_file:
                 result = mammoth.convert_to_html(docx_file)
                 html_content = result.value
-                messages_list = result.messages
-
-            # Highlight các field đã điền
-            for field_name, field_value in filled_fields.items():
-                if field_value and str(field_value).strip():
-                    # Escape HTML special characters
-                    field_value_escaped = str(field_value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                    # Wrap field value with highlight span
-                    pattern = re.escape(field_value_escaped)
-                    html_content = re.sub(
-                        f'({pattern})',
-                        r'<span class="highlighted-field" contenteditable="true" data-field="\1">\1</span>',
-                        html_content,
-                        count=1
-                    )
 
         finally:
             # Xóa file tạm
@@ -1907,7 +1889,6 @@ def print_preview_view(request, template_id):
         context = {
             'template': template,
             'html_content': html_content,
-            'filled_fields': filled_fields,
             'template_id': template_id,
         }
 
