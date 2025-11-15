@@ -1,25 +1,289 @@
 """
-Beautiful Number Analysis and Fee Lookup Services
+Beautiful Number Analysis and Fee Lookup Services - Version 2.0
 
-Dịch vụ phân tích số tài khoản đẹp và tra cứu phí.
+Dịch vụ phân tích số tài khoản đẹp và tra cứu phí theo logic mới:
+- Bước 1: Kiểm tra cấu trúc 9 số đồng nhất
+- Bước 2: Quét mẫu con và chọn phí cao nhất
+- Tất cả giá cộng 10% VAT
 """
 
+from decimal import Decimal
 from django.contrib.humanize.templatetags.humanize import intcomma
 from .models import DetailedFeeTier, OnRequestFeeTier
+
+
+# ========== BẢNG PHÍ GỐC (THEO PDF) ==========
+# Phí gốc (chưa VAT) theo số lượng và loại
+FEE_TABLE = {
+    # (số_lượng, loại) -> (phí_min, phí_max)
+    (2, 'NORMAL'): (500_000, 1_000_000),
+    (3, 'NORMAL'): (1_000_000, 2_000_000),
+    (4, 'NORMAL'): (500_000, 1_000_000),  # Từ ví dụ: 348458484
+    (5, 'NORMAL'): (2_000_000, 3_000_000),
+    (6, 'NORMAL'): (3_000_000, 5_000_000),  # Từ ví dụ: 223334444
+    (7, 'NORMAL'): (5_000_000, 10_000_000),
+    (8, 'NORMAL'): (10_000_000, 20_000_000),  # Từ ví dụ: 223344556, 556677889
+    (9, 'NORMAL'): (25_000_000, 40_000_000),  # Từ ví dụ: 333444555, 236236236
+
+    (2, 'SPECIAL'): (1_000_000, 2_000_000),
+    (3, 'SPECIAL'): (2_000_000, 3_000_000),
+    (4, 'SPECIAL'): (1_000_000, 2_000_000),
+    (5, 'SPECIAL'): (3_000_000, 5_000_000),
+    (6, 'SPECIAL'): (5_000_000, 10_000_000),
+    (7, 'SPECIAL'): (10_000_000, 20_000_000),
+    (8, 'SPECIAL'): (25_000_000, 40_000_000),  # Từ ví dụ: 277777777
+    (9, 'SPECIAL'): (40_000_000, 60_000_000),
+}
+
+VAT_RATE = Decimal('0.1')  # 10% VAT
+
+
+def apply_vat(amount):
+    """Cộng 10% VAT vào số tiền"""
+    return int(Decimal(amount) * (1 + VAT_RATE))
+
+
+def check_uniform_9_digit_structure(digits):
+    """
+    Bước 1: Kiểm tra cấu trúc 9 số đồng nhất
+
+    Các mẫu đồng nhất:
+    1. Sảnh lặp tam (3-3-3): AAA-BBB-CCC (ví dụ: 333444555, 888999777)
+    2. Lặp tam (3-3-3): ABC-ABC-ABC (ví dụ: 236236236)
+
+    Args:
+        digits: 9 số cần kiểm tra (string)
+
+    Returns:
+        dict hoặc None: {
+            'pattern': str,
+            'quantity': 9,
+            'type': 'NORMAL',
+            'description': str
+        }
+    """
+    if len(digits) != 9:
+        return None
+
+    # Mẫu 1: Sảnh lặp tam AAA-BBB-CCC (3 nhóm, mỗi nhóm 3 số giống nhau)
+    # Ví dụ: 333444555, 888999777
+    part1 = digits[0:3]
+    part2 = digits[3:6]
+    part3 = digits[6:9]
+
+    if (part1[0] == part1[1] == part1[2] and
+        part2[0] == part2[1] == part2[2] and
+        part3[0] == part3[1] == part3[2] and
+        len(set([part1[0], part2[0], part3[0]])) == 3):  # 3 số khác nhau
+        return {
+            'pattern': 'UNIFORM_9_TRIPLE_HALL',
+            'quantity': 9,
+            'type': 'NORMAL',
+            'description': f'Sảnh lặp tam: {part1[0]*3}-{part2[0]*3}-{part3[0]*3}'
+        }
+
+    # Mẫu 2: Lặp tam ABC-ABC-ABC (3 nhóm giống hệt nhau)
+    # Ví dụ: 236236236
+    if part1 == part2 == part3:
+        return {
+            'pattern': 'UNIFORM_9_TRIPLE_REPEAT',
+            'quantity': 9,
+            'type': 'NORMAL',
+            'description': f'Lặp tam: {part1}-{part2}-{part3}'
+        }
+
+    return None
+
+
+def scan_sub_patterns(digits):
+    """
+    Bước 2: Quét tất cả các mẫu con trong 9 số
+
+    Tìm các mẫu:
+    1. Lặp liên tiếp: 2-8 số giống nhau liên tiếp (222, 4444, 77777777...)
+    2. Sảnh kép: Các cặp số liên tiếp (223344, 22334455...)
+    3. Lặp rải rác: Số lặp không liên tiếp (8484, 484...)
+
+    Args:
+        digits: 9 số cần quét (string)
+
+    Returns:
+        list: Danh sách các mẫu tìm được, mỗi mẫu là dict:
+        {
+            'pattern': str,
+            'quantity': int,
+            'type': 'NORMAL' hoặc 'SPECIAL',
+            'description': str,
+            'position': tuple (start, end)
+        }
+    """
+    patterns = []
+
+    # 1. Tìm các chuỗi lặp liên tiếp (2-8 số)
+    for length in range(8, 1, -1):  # Từ 8 xuống 2
+        for i in range(len(digits) - length + 1):
+            substring = digits[i:i+length]
+            # Kiểm tra tất cả ký tự giống nhau
+            if len(set(substring)) == 1:
+                # Kiểm tra xem vị trí này đã được phủ bởi mẫu dài hơn chưa
+                is_covered = False
+                for p in patterns:
+                    if p['position'][0] <= i and p['position'][1] >= i + length:
+                        is_covered = True
+                        break
+
+                if not is_covered:
+                    # Xác định loại: 8 số lặp là đặc biệt, còn lại là thường
+                    pattern_type = 'SPECIAL' if length == 8 else 'NORMAL'
+                    patterns.append({
+                        'pattern': f'REPEAT_{length}',
+                        'quantity': length,
+                        'type': pattern_type,
+                        'description': f'Lặp {length} số "{substring[0]}"',
+                        'position': (i, i + length)
+                    })
+
+    # 2. Tìm sảnh kép (cặp số liên tiếp)
+    # Ví dụ: 223344 (3 cặp), 22334455 (4 cặp)
+    i = 0
+    hall_start = -1
+    hall_pairs = 0
+
+    while i < len(digits) - 1:
+        # Kiểm tra có cặp số giống nhau không
+        if digits[i] == digits[i+1]:
+            if hall_start == -1:
+                hall_start = i
+            hall_pairs += 1
+            i += 2
+        else:
+            # Kết thúc chuỗi sảnh kép
+            if hall_pairs >= 2:  # Tối thiểu 2 cặp (4 số)
+                hall_length = hall_pairs * 2
+                # Kiểm tra không bị phủ bởi mẫu lặp
+                is_covered = False
+                for p in patterns:
+                    if p['position'][0] <= hall_start and p['position'][1] >= hall_start + hall_length:
+                        is_covered = True
+                        break
+
+                if not is_covered:
+                    patterns.append({
+                        'pattern': f'DOUBLE_HALL_{hall_length}',
+                        'quantity': hall_length,
+                        'type': 'NORMAL',
+                        'description': f'Sảnh kép {hall_pairs} cặp ({hall_length} số)',
+                        'position': (hall_start, hall_start + hall_length)
+                    })
+
+            hall_start = -1
+            hall_pairs = 0
+            i += 1
+
+    # Xử lý trường hợp sảnh kép kết thúc ở cuối
+    if hall_pairs >= 2:
+        hall_length = hall_pairs * 2
+        is_covered = False
+        for p in patterns:
+            if p['position'][0] <= hall_start and p['position'][1] >= hall_start + hall_length:
+                is_covered = True
+                break
+
+        if not is_covered:
+            patterns.append({
+                'pattern': f'DOUBLE_HALL_{hall_length}',
+                'quantity': hall_length,
+                'type': 'NORMAL',
+                'description': f'Sảnh kép {hall_pairs} cặp ({hall_length} số)',
+                'position': (hall_start, hall_start + hall_length)
+            })
+
+    # 3. Tìm lặp rải rác (ví dụ: 8484, 484)
+    # Tìm các mẫu lặp 2 chữ số: ABAB, hoặc ABA
+    for length in range(4, 2, -1):  # 4 hoặc 3
+        for i in range(len(digits) - length + 1):
+            substring = digits[i:i+length]
+
+            # Kiểm tra ABAB (4 số)
+            if length == 4 and substring[0] == substring[2] and substring[1] == substring[3]:
+                # Kiểm tra không bị phủ
+                is_covered = False
+                for p in patterns:
+                    if p['position'][0] <= i and p['position'][1] >= i + length:
+                        is_covered = True
+                        break
+
+                if not is_covered:
+                    patterns.append({
+                        'pattern': 'SCATTERED_4',
+                        'quantity': 4,
+                        'type': 'NORMAL',
+                        'description': f'Lặp rải rác: {substring}',
+                        'position': (i, i + length)
+                    })
+
+            # Kiểm tra ABA (3 số)
+            if length == 3 and substring[0] == substring[2]:
+                is_covered = False
+                for p in patterns:
+                    if p['position'][0] <= i and p['position'][1] >= i + length:
+                        is_covered = True
+                        break
+
+                if not is_covered:
+                    patterns.append({
+                        'pattern': 'SCATTERED_3',
+                        'quantity': 3,
+                        'type': 'NORMAL',
+                        'description': f'Lặp rải rác: {substring}',
+                        'position': (i, i + length)
+                    })
+
+    # Sắp xếp patterns theo số lượng giảm dần
+    patterns.sort(key=lambda x: x['quantity'], reverse=True)
+
+    return patterns
+
+
+def get_highest_fee_pattern(patterns):
+    """
+    Chọn mẫu có mức phí cao nhất
+
+    Args:
+        patterns: Danh sách các mẫu tìm được
+
+    Returns:
+        dict: Mẫu có phí cao nhất
+    """
+    if not patterns:
+        return None
+
+    highest_pattern = None
+    highest_fee = 0
+
+    for pattern in patterns:
+        key = (pattern['quantity'], pattern['type'])
+        if key in FEE_TABLE:
+            fee_min, fee_max = FEE_TABLE[key]
+            # So sánh theo phí tối đa
+            if fee_max > highest_fee:
+                highest_fee = fee_max
+                highest_pattern = pattern
+
+    return highest_pattern
 
 
 def analyze_account_number(account_number):
     """
     Phân tích số tài khoản Agribank Giá Rai để xác định số lượng và loại số đẹp.
 
+    Logic mới (2 bước):
+    1. Kiểm tra cấu trúc 9 số đồng nhất (Sảnh lặp tam, Lặp tam)
+    2. Nếu không, quét mẫu con và chọn phí cao nhất
+
     Format: 7202XXXXXXXXX (13 số)
     - 4 số đầu: 7202 (cố định cho Agribank Giá Rai)
     - 9 số sau: Phần khách hàng chọn (phân tích số đẹp)
-
-    Logic phân loại:
-    - Số lặp cuối: 2+ chữ số giống nhau liên tiếp ở cuối (VD: 123456777)
-    - Lộc phát: Có số 6 hoặc 8 (VD: 123456888)
-    - Số tiến liền: 3+ số liên tiếp tăng dần (VD: 123456789)
 
     Args:
         account_number: Số tài khoản cần phân tích (string hoặc int)
@@ -28,10 +292,14 @@ def analyze_account_number(account_number):
         dict: {
             'quantity': int,  # Số lượng số đẹp
             'is_special': bool,  # True nếu thuộc loại đặc biệt
-            'patterns': list,  # Danh sách các mẫu tìm thấy
+            'pattern_type': str,  # Loại mẫu
             'description': str,  # Mô tả chi tiết
             'full_account': str,  # Số tài khoản đầy đủ (13 số)
-            'selectable_part': str  # 9 số khách hàng chọn
+            'selectable_part': str,  # 9 số khách hàng chọn
+            'fee_min_base': int,  # Phí tối thiểu (chưa VAT)
+            'fee_max_base': int,  # Phí tối đa (chưa VAT)
+            'fee_min_vat': int,  # Phí tối thiểu (có VAT)
+            'fee_max_vat': int,  # Phí tối đa (có VAT)
         }
     """
     # Chuẩn hóa số tài khoản về string
@@ -45,11 +313,15 @@ def analyze_account_number(account_number):
         return {
             'quantity': 0,
             'is_special': False,
-            'patterns': [],
+            'pattern_type': 'INVALID',
             'description': f'Số tài khoản phải có 13 số (hiện có {len(digits)} số)',
             'full_account': digits,
             'selectable_part': '',
-            'error': f'Số tài khoản Agribank Giá Rai phải có 13 số (7202XXXXXXXXX)'
+            'fee_min_base': 0,
+            'fee_max_base': 0,
+            'fee_min_vat': 0,
+            'fee_max_vat': 0,
+            'error': 'Số tài khoản Agribank Giá Rai phải có 13 số (7202XXXXXXXXX)'
         }
 
     # Validate prefix: 4 số đầu phải là 7202
@@ -57,127 +329,81 @@ def analyze_account_number(account_number):
         return {
             'quantity': 0,
             'is_special': False,
-            'patterns': [],
+            'pattern_type': 'INVALID',
             'description': f'Số tài khoản phải bắt đầu bằng 7202 (hiện tại: {digits[:4]})',
             'full_account': digits,
             'selectable_part': '',
+            'fee_min_base': 0,
+            'fee_max_base': 0,
+            'fee_min_vat': 0,
+            'fee_max_vat': 0,
             'error': 'Số tài khoản Agribank Giá Rai phải bắt đầu bằng 7202'
         }
 
     # Lấy 9 số cuối (phần khách hàng chọn)
-    selectable_part = digits[4:]  # Bỏ 7202, lấy 9 số sau
+    selectable_part = digits[4:]
 
-    patterns_found = []
-    is_special = False
+    # ========== BƯỚC 1: KIỂM TRA CẤU TRÚC 9 SỐ ĐỒNG NHẤT ==========
+    uniform_pattern = check_uniform_9_digit_structure(selectable_part)
 
-    # ========== PHÂN TÍCH CÁC MẪU SỐ ĐẸP ==========
-    # Chỉ phân tích 9 số khách hàng chọn (bỏ qua 7202)
+    if uniform_pattern:
+        # Tìm thấy cấu trúc đồng nhất → 9 số thường
+        key = (9, 'NORMAL')
+        fee_min_base, fee_max_base = FEE_TABLE[key]
 
-    # 1. Kiểm tra SỐ LẶP CUỐI
-    repeating_count = check_repeating_suffix(selectable_part)
-    if repeating_count >= 2:
-        patterns_found.append(f"Số lặp cuối ({repeating_count} số '{selectable_part[-1]}')")
-        is_special = True
+        return {
+            'quantity': 9,
+            'is_special': False,
+            'pattern_type': uniform_pattern['pattern'],
+            'description': uniform_pattern['description'],
+            'full_account': digits,
+            'selectable_part': selectable_part,
+            'fee_min_base': fee_min_base,
+            'fee_max_base': fee_max_base,
+            'fee_min_vat': apply_vat(fee_min_base),
+            'fee_max_vat': apply_vat(fee_max_base),
+        }
 
-    # 2. Kiểm tra LỘC PHÁT (số 6 và 8)
-    loc_phat_count = selectable_part.count('6') + selectable_part.count('8')
-    if loc_phat_count > 0:
-        patterns_found.append(f"Lộc phát ({selectable_part.count('6')} số 6, {selectable_part.count('8')} số 8)")
-        is_special = True
+    # ========== BƯỚC 2: QUÉT MẪU CON ==========
+    sub_patterns = scan_sub_patterns(selectable_part)
 
-    # 3. Kiểm tra SỐ TIẾN LIỀN NHAU
-    consecutive_count = check_consecutive_numbers(selectable_part)
-    if consecutive_count >= 3:
-        patterns_found.append(f"Số tiến liền ({consecutive_count} số)")
-        is_special = True
+    if sub_patterns:
+        # Chọn mẫu có phí cao nhất
+        best_pattern = get_highest_fee_pattern(sub_patterns)
 
-    # 4. Kiểm tra SỐ ĐỐI XỨNG (bonus pattern)
-    if is_palindrome(selectable_part):
-        patterns_found.append(f"Số đối xứng")
-        is_special = True
+        if best_pattern:
+            key = (best_pattern['quantity'], best_pattern['type'])
+            fee_min_base, fee_max_base = FEE_TABLE.get(key, (0, 0))
 
-    # 5. Kiểm tra SỐ TOÀN LẺ (bonus pattern)
-    if all(int(d) % 2 == 1 for d in selectable_part):
-        patterns_found.append("Toàn số lẻ")
+            return {
+                'quantity': best_pattern['quantity'],
+                'is_special': best_pattern['type'] == 'SPECIAL',
+                'pattern_type': best_pattern['pattern'],
+                'description': best_pattern['description'],
+                'full_account': digits,
+                'selectable_part': selectable_part,
+                'fee_min_base': fee_min_base,
+                'fee_max_base': fee_max_base,
+                'fee_min_vat': apply_vat(fee_min_base),
+                'fee_max_vat': apply_vat(fee_max_base),
+            }
 
-    # 6. Kiểm tra SỐ TOÀN CHẴN (bonus pattern)
-    if all(int(d) % 2 == 0 for d in selectable_part):
-        patterns_found.append("Toàn số chẵn")
-
-    # ========== TÍNH SỐ LƯỢNG SỐ ĐẸP ==========
-    # Số lượng = tổng các chữ số đặc biệt
-    quantity = max(repeating_count, loc_phat_count, consecutive_count, 2)  # Tối thiểu 2
-
-    # ========== TẠO MÔ TẢ ==========
-    if not patterns_found:
-        description = "Số thường (không phải số đẹp)"
-    else:
-        description = " + ".join(patterns_found)
+    # Không tìm thấy mẫu nào → Số thường tối thiểu (2 số)
+    key = (2, 'NORMAL')
+    fee_min_base, fee_max_base = FEE_TABLE[key]
 
     return {
-        'quantity': quantity,
-        'is_special': is_special,
-        'patterns': patterns_found,
-        'description': description,
-        'full_account': digits,  # 13 số đầy đủ (7202XXXXXXXXX)
-        'selectable_part': selectable_part  # 9 số khách hàng chọn
+        'quantity': 2,
+        'is_special': False,
+        'pattern_type': 'NORMAL_MIN',
+        'description': 'Số thường (tối thiểu)',
+        'full_account': digits,
+        'selectable_part': selectable_part,
+        'fee_min_base': fee_min_base,
+        'fee_max_base': fee_max_base,
+        'fee_min_vat': apply_vat(fee_min_base),
+        'fee_max_vat': apply_vat(fee_max_base),
     }
-
-
-def check_repeating_suffix(digits):
-    """
-    Kiểm tra số lặp ở cuối (VD: 1234555 -> 3 số 5 lặp)
-
-    Returns:
-        int: Số lượng chữ số lặp liên tiếp ở cuối
-    """
-    if len(digits) < 2:
-        return 0
-
-    last_digit = digits[-1]
-    count = 1
-
-    for i in range(len(digits) - 2, -1, -1):
-        if digits[i] == last_digit:
-            count += 1
-        else:
-            break
-
-    return count
-
-
-def check_consecutive_numbers(digits):
-    """
-    Kiểm tra chuỗi số tiến liền nhau dài nhất (VD: 123456 -> 6 số)
-
-    Returns:
-        int: Độ dài chuỗi số tiến liền nhau dài nhất
-    """
-    if len(digits) < 3:
-        return 0
-
-    max_length = 1
-    current_length = 1
-
-    for i in range(1, len(digits)):
-        # Kiểm tra số tiếp theo có bằng số trước + 1 không
-        if int(digits[i]) == int(digits[i-1]) + 1:
-            current_length += 1
-            max_length = max(max_length, current_length)
-        else:
-            current_length = 1
-
-    return max_length if max_length >= 3 else 0
-
-
-def is_palindrome(digits):
-    """
-    Kiểm tra số có đối xứng không (VD: 12321, 12345 4321)
-
-    Returns:
-        bool: True nếu đối xứng
-    """
-    return digits == digits[::-1] and len(digits) >= 3
 
 
 def get_detailed_fee(account_number):
@@ -190,71 +416,44 @@ def get_detailed_fee(account_number):
     Returns:
         dict: {
             'analysis': dict,  # Kết quả phân tích số
-            'fee_tier': DetailedFeeTier hoặc None,
-            'min_fee': Decimal,
-            'max_fee': Decimal hoặc None,
+            'fee_tier': None,  # Không dùng nữa (để tương thích)
+            'min_fee': int,  # Phí tối thiểu (có VAT)
+            'max_fee': int,  # Phí tối đa (có VAT)
             'fee_display': str,
             'error': str hoặc None
         }
     """
-    # Bước 1: Phân tích số tài khoản
+    # Phân tích số tài khoản
     analysis = analyze_account_number(account_number)
 
-    if analysis['quantity'] == 0:
+    if analysis.get('error'):
         return {
             'analysis': analysis,
             'fee_tier': None,
             'min_fee': 0,
-            'max_fee': None,
+            'max_fee': 0,
             'fee_display': 'Không áp dụng',
-            'error': 'Số tài khoản không hợp lệ'
+            'error': analysis['error']
         }
 
-    # Bước 2: Xác định loại phí
-    quantity = analysis['quantity']
-    is_special = analysis['is_special']
+    # Lấy phí (đã có VAT)
+    min_fee = analysis['fee_min_vat']
+    max_fee = analysis['fee_max_vat']
 
-    # Xử lý trường hợp đặc biệt
-    if quantity >= 10:
-        quantity = 10
-        fee_type = DetailedFeeTier.IS_NORMAL_TYPE
-    elif quantity <= 2:
-        quantity = 2
-        fee_type = DetailedFeeTier.IS_NORMAL_TYPE  # 2 số không có loại đặc biệt
+    # Format hiển thị phí
+    if max_fee:
+        fee_display = f"{intcomma(min_fee)} - {intcomma(max_fee)} VNĐ"
     else:
-        fee_type = DetailedFeeTier.IS_SPECIAL_TYPE if is_special else DetailedFeeTier.IS_NORMAL_TYPE
+        fee_display = f"Từ {intcomma(min_fee)} VNĐ (Thỏa thuận)"
 
-    # Bước 3: Tra cứu bậc phí
-    try:
-        tier = DetailedFeeTier.objects.get(
-            quantity=quantity,
-            fee_type=fee_type
-        )
-
-        # Format hiển thị phí
-        if tier.max_fee:
-            fee_display = f"{intcomma(int(tier.min_fee))} - {intcomma(int(tier.max_fee))} VNĐ"
-        else:
-            fee_display = f"Từ {intcomma(int(tier.min_fee))} VNĐ (Thỏa thuận)"
-
-        return {
-            'analysis': analysis,
-            'fee_tier': tier,
-            'min_fee': tier.min_fee,
-            'max_fee': tier.max_fee,
-            'fee_display': fee_display,
-            'error': None
-        }
-
-    except DetailedFeeTier.DoesNotExist:
-        return {
-            'analysis': analysis,
-            'fee_tier': None,
-            'min_fee': 0,
-            'max_fee': None,
-            'fee_display': 'Chưa có biểu phí',
-            'error': f'Không tìm thấy bậc phí cho {quantity} số đẹp ({fee_type})'
-        }
+    return {
+        'analysis': analysis,
+        'fee_tier': None,  # Không dùng model nữa
+        'min_fee': min_fee,
+        'max_fee': max_fee,
+        'fee_display': fee_display,
+        'error': None
+    }
 
 
 def get_on_request_fee(quantity):
