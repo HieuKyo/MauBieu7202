@@ -49,4 +49,5 @@ urlpatterns = [
     # Beautiful Number Fee Lookup
     path('beautiful-number-lookup/', views.beautiful_number_lookup, name='beautiful_number_lookup'),
     path('beautiful-number-list/', views.beautiful_number_list, name='beautiful_number_list'),
+    path('api/beautiful-numbers/generate/', views.generate_beautiful_numbers_ajax, name='generate_beautiful_numbers'),
 ]

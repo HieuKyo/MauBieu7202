@@ -2142,6 +2142,193 @@ def beautiful_number_lookup(request):
     return render(request, 'templates_app/beautiful_number_lookup.html', context)
 
 
+# ========== BEAUTIFUL NUMBER GENERATOR FUNCTIONS ==========
+
+def get_price_tier_from_fee(fee_vat):
+    """
+    Map phí (có VAT) vào price_tier tương ứng
+
+    Args:
+        fee_vat: Phí đã bao gồm VAT
+
+    Returns:
+        Price tier code (PRICE_500K_1M, PRICE_1M_3M, etc.)
+    """
+    from .models import BeautifulNumber
+
+    if fee_vat <= 1_100_000:
+        return BeautifulNumber.PRICE_500K_1M
+    elif fee_vat <= 3_300_000:
+        return BeautifulNumber.PRICE_1M_3M
+    elif fee_vat <= 5_500_000:
+        return BeautifulNumber.PRICE_3M_5M
+    elif fee_vat <= 11_000_000:
+        return BeautifulNumber.PRICE_5M_10M
+    elif fee_vat <= 22_000_000:
+        return BeautifulNumber.PRICE_10M_20M
+    else:
+        return BeautifulNumber.PRICE_20M_PLUS
+
+
+def get_category_from_generator_type(gen_type, analysis):
+    """
+    Map loại generator và analysis sang category trong model
+
+    Args:
+        gen_type: 'lap', 'tien', 'ganh', 'lap_kep', 'ngau_nhien'
+        analysis: Kết quả từ analyze_account_number
+
+    Returns:
+        Category code
+    """
+    from .models import BeautifulNumber
+
+    # Ưu tiên dựa vào analysis nếu là số đặc biệt
+    if analysis.get('is_special'):
+        return BeautifulNumber.CATEGORY_DAC_BIET
+
+    # Map theo loại generator
+    category_map = {
+        'lap': BeautifulNumber.CATEGORY_SO_LAP,
+        'tien': BeautifulNumber.CATEGORY_SO_TIEN,
+        'ganh': BeautifulNumber.CATEGORY_SO_DOI_XUNG,
+        'lap_kep': BeautifulNumber.CATEGORY_SO_LAP,
+        'ngau_nhien': BeautifulNumber.CATEGORY_TAI_LOC,  # Số thường -> Tài lộc
+    }
+
+    return category_map.get(gen_type, BeautifulNumber.CATEGORY_TAI_LOC)
+
+
+def generate_and_save_beautiful_numbers(count_per_type=50, clear_existing=False):
+    """
+    Tạo số đẹp tự động và lưu vào database
+
+    Args:
+        count_per_type: Số lượng mỗi loại (mặc định 50)
+        clear_existing: Xóa các số hiện có trước khi tạo mới (mặc định False)
+
+    Returns:
+        Dict với thống kê kết quả
+    """
+    from .models import BeautifulNumber
+    from . import beautiful_number_generator as bng
+    from .beautiful_number_services import analyze_account_number
+
+    stats = {
+        'created': 0,
+        'skipped': 0,
+        'errors': 0,
+        'by_type': {}
+    }
+
+    # Xóa số cũ nếu được yêu cầu
+    if clear_existing:
+        deleted_count = BeautifulNumber.objects.all().delete()[0]
+        stats['deleted'] = deleted_count
+
+    # Định nghĩa các loại generator
+    generator_types = {
+        'lap': (bng.gen_so_lap, 20),  # Chỉ có 20 số lặp tối đa
+        'tien': (bng.gen_so_tien, 15),  # Chỉ có 15 số tiến
+        'ganh': (bng.gen_so_ganh, count_per_type),
+        'lap_kep': (bng.gen_so_lap_kep, count_per_type),
+        'ngau_nhien': (bng.gen_so_ngau_nhien, count_per_type),
+    }
+
+    # Tạo số cho từng loại
+    for gen_type, (generator_func, count) in generator_types.items():
+        type_stats = {
+            'created': 0,
+            'skipped': 0,
+            'errors': 0
+        }
+
+        try:
+            # Tạo số
+            numbers = bng.generate_numbers(generator_func, count)
+
+            for num in numbers:
+                try:
+                    # Phân tích số
+                    analysis = analyze_account_number(num)
+
+                    # Bỏ qua nếu có lỗi
+                    if analysis.get('error'):
+                        type_stats['errors'] += 1
+                        continue
+
+                    # Xác định category và price_tier
+                    category = get_category_from_generator_type(gen_type, analysis)
+                    price_tier = get_price_tier_from_fee(analysis['fee_min_vat'])
+
+                    # Tạo hoặc cập nhật số trong database
+                    beautiful_num, created = BeautifulNumber.objects.get_or_create(
+                        account_number=num,
+                        defaults={
+                            'category': category,
+                            'price_tier': price_tier,
+                            'fee': analysis['fee_min_vat'],
+                            'description': analysis['description'],
+                            'is_available': True,
+                        }
+                    )
+
+                    if created:
+                        type_stats['created'] += 1
+                        stats['created'] += 1
+                    else:
+                        type_stats['skipped'] += 1
+                        stats['skipped'] += 1
+
+                except Exception as e:
+                    type_stats['errors'] += 1
+                    stats['errors'] += 1
+                    print(f"Error processing number {num}: {e}")
+
+            stats['by_type'][gen_type] = type_stats
+
+        except Exception as e:
+            stats['by_type'][gen_type] = {
+                'created': 0,
+                'skipped': 0,
+                'errors': count,
+                'error_message': str(e)
+            }
+            stats['errors'] += count
+
+    return stats
+
+
+@login_required
+@require_http_methods(["POST"])
+def generate_beautiful_numbers_ajax(request):
+    """
+    AJAX endpoint để tạo số đẹp tự động
+    """
+    try:
+        # Lấy tham số từ request
+        count_per_type = int(request.POST.get('count_per_type', 50))
+        clear_existing = request.POST.get('clear_existing', 'false').lower() == 'true'
+
+        # Giới hạn số lượng để tránh quá tải
+        count_per_type = min(count_per_type, 200)
+
+        # Tạo số đẹp
+        stats = generate_and_save_beautiful_numbers(count_per_type, clear_existing)
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Đã tạo {stats["created"]} số mới, bỏ qua {stats["skipped"]} số trùng',
+            'stats': stats
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        }, status=500)
+
+
 @login_required
 def beautiful_number_list(request):
     """

@@ -56,9 +56,14 @@
                 <h2>
                     <i class="bi bi-list-stars"></i> Danh sách số đẹp có sẵn
                 </h2>
-                <button onclick="window.print()" class="btn btn-primary">
-                    <i class="bi bi-printer"></i> In danh sách
-                </button>
+                <div>
+                    <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#generateNumbersModal">
+                        <i class="bi bi-magic"></i> Tạo số đẹp tự động
+                    </button>
+                    <button onclick="window.print()" class="btn btn-primary">
+                        <i class="bi bi-printer"></i> In danh sách
+                    </button>
+                </div>
             </div>
 
             <!-- Filters -->
@@ -186,6 +191,46 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Tạo số đẹp tự động -->
+<div class="modal fade" id="generateNumbersModal" tabindex="-1" aria-labelledby="generateNumbersModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="generateNumbersModalLabel">
+                    <i class="bi bi-magic"></i> Tạo số đẹp tự động
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="countPerType" class="form-label">Số lượng mỗi loại</label>
+                    <input type="number" class="form-control" id="countPerType" value="50" min="10" max="200">
+                    <div class="form-text">
+                        Hệ thống sẽ tạo số cho 5 loại: Số lặp, Số tiến, Số gánh, Số lặp kép, Số ngẫu nhiên
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="clearExisting">
+                    <label class="form-check-label" for="clearExisting">
+                        Xóa tất cả số cũ trước khi tạo mới
+                    </label>
+                    <div class="form-text text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Cảnh báo: Tùy chọn này sẽ xóa toàn bộ số đẹp hiện có!
+                    </div>
+                </div>
+                <div id="generateStatus" class="alert d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-success" id="btnGenerateNumbers">
+                    <i class="bi bi-magic"></i> Tạo số đẹp
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -197,5 +242,100 @@ document.querySelectorAll('.no-print select').forEach(function(select) {
         // this.closest('form').submit();
     });
 });
+
+// Tạo số đẹp tự động
+document.getElementById('btnGenerateNumbers').addEventListener('click', function() {
+    const btn = this;
+    const countPerType = document.getElementById('countPerType').value;
+    const clearExisting = document.getElementById('clearExisting').checked;
+    const statusDiv = document.getElementById('generateStatus');
+
+    // Validate
+    if (!countPerType || countPerType < 10 || countPerType > 200) {
+        statusDiv.className = 'alert alert-danger';
+        statusDiv.textContent = 'Vui lòng nhập số lượng từ 10 đến 200';
+        statusDiv.classList.remove('d-none');
+        return;
+    }
+
+    // Confirm if clear existing
+    if (clearExisting) {
+        if (!confirm('Bạn có chắc chắn muốn XÓA TẤT CẢ số đẹp hiện có và tạo mới?')) {
+            return;
+        }
+    }
+
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang tạo...';
+    statusDiv.className = 'alert alert-info';
+    statusDiv.textContent = 'Đang tạo số đẹp, vui lòng đợi...';
+    statusDiv.classList.remove('d-none');
+
+    // Get CSRF token
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                      document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                      getCookie('csrftoken');
+
+    // Call API
+    fetch('{% url "generate_beautiful_numbers" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrftoken
+        },
+        body: new URLSearchParams({
+            'count_per_type': countPerType,
+            'clear_existing': clearExisting ? 'true' : 'false'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.className = 'alert alert-success';
+            statusDiv.innerHTML = `
+                <strong><i class="bi bi-check-circle"></i> Thành công!</strong><br>
+                ${data.message}<br>
+                <small>
+                    Số mới: ${data.stats.created} |
+                    Số trùng: ${data.stats.skipped} |
+                    Lỗi: ${data.stats.errors}
+                </small>
+            `;
+
+            // Reload page after 2 seconds
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            statusDiv.className = 'alert alert-danger';
+            statusDiv.innerHTML = `<strong><i class="bi bi-x-circle"></i> Lỗi!</strong><br>${data.message}`;
+        }
+    })
+    .catch(error => {
+        statusDiv.className = 'alert alert-danger';
+        statusDiv.innerHTML = `<strong><i class="bi bi-x-circle"></i> Lỗi!</strong><br>Không thể kết nối đến server: ${error.message}`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-magic"></i> Tạo số đẹp';
+    });
+});
+
+// Helper function to get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 </script>
 {% endblock %}
