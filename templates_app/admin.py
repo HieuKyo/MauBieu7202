@@ -516,7 +516,7 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
                 from .views import get_price_tier_from_fee
                 price_tier = get_price_tier_from_fee(analysis['fee_min_vat'])
 
-                # Create beautiful number
+                # Create beautiful number (mark as sold since import list = sold list)
                 try:
                     BeautifulNumber.objects.create(
                         account_number=num_str,
@@ -524,7 +524,7 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
                         price_tier=price_tier,
                         fee=analysis['fee_min_vat'],
                         description=analysis.get('description', ''),
-                        is_available=True
+                        is_available=False  # Số import = số đã bán
                     )
                     created_count += 1
                 except Exception as e:
@@ -532,7 +532,7 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
 
             # Show results
             if created_count > 0:
-                messages.success(request, f'✓ Đã thêm {created_count} số đẹp mới')
+                messages.success(request, f'✓ Đã thêm {created_count} số đẹp mới (đánh dấu "Đã bán")')
             if updated_count > 0:
                 messages.success(request, f'✓ Đã đánh dấu "Đã bán" cho {updated_count} số đã tồn tại')
             if errors:
