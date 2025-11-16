@@ -1,0 +1,10 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{% url 'admin:beautiful_number_import' %}" class="addlink">
+            Import số đẹp
+        </a>
+    </li>
+{% endblock %}

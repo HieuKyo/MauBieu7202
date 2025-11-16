@@ -384,11 +384,17 @@ class OnRequestFeeTierAdmin(admin.ModelAdmin):
 class BeautifulNumberAdmin(admin.ModelAdmin):
     """Admin cho Danh sách số đẹp có sẵn"""
     list_display = ['account_number', 'category', 'price_tier', 'formatted_fee', 'is_available', 'updated_at']
-    list_filter = ['is_available', 'category', 'price_tier']
+    list_filter = ['is_available', 'category', 'price_tier', 'created_at']
     list_editable = ['is_available']
     search_fields = ['account_number', 'description']
     ordering = ['price_tier', 'category', 'account_number']
     date_hierarchy = 'created_at'
+
+    # Thêm actions
+    actions = ['mark_as_sold', 'mark_as_available', 'delete_selected']
+
+    # Thêm change_list_template để hiển thị nút import
+    change_list_template = 'admin/beautiful_number_changelist.html'
 
     fieldsets = (
         ('Thông tin số tài khoản', {
@@ -414,3 +420,133 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
         if obj:  # editing an existing object
             return self.readonly_fields + ['account_number']
         return self.readonly_fields
+
+    # ===== BULK ACTIONS =====
+
+    @admin.action(description='Đánh dấu đã bán (không còn)')
+    def mark_as_sold(self, request, queryset):
+        """Bulk action: Đánh dấu số đã bán"""
+        updated = queryset.update(is_available=False)
+        self.message_user(request, f'Đã đánh dấu {updated} số là "Đã bán"', messages.SUCCESS)
+
+    @admin.action(description='Đánh dấu còn hàng')
+    def mark_as_available(self, request, queryset):
+        """Bulk action: Đánh dấu số còn hàng"""
+        updated = queryset.update(is_available=True)
+        self.message_user(request, f'Đã đánh dấu {updated} số là "Còn hàng"', messages.SUCCESS)
+
+    # ===== CUSTOM VIEWS =====
+
+    def get_urls(self):
+        """Thêm custom URLs"""
+        urls = super().get_urls()
+        custom_urls = [
+            path('import/', self.admin_site.admin_view(self.import_numbers_view), name='beautiful_number_import'),
+        ]
+        return custom_urls + urls
+
+    def import_numbers_view(self, request):
+        """View để import số đẹp từ text hoặc file"""
+        from .beautiful_number_services import analyze_account_number
+
+        if request.method == 'POST':
+            # Lấy input từ form
+            numbers_text = request.POST.get('numbers_text', '').strip()
+            file = request.FILES.get('numbers_file')
+            default_category = request.POST.get('category', BeautifulNumber.CATEGORY_TAI_LOC)
+
+            # Parse numbers from text or file
+            numbers = []
+            if numbers_text:
+                # Split by comma, semicolon, or newline
+                import re
+                numbers = re.split(r'[,;\n\r]+', numbers_text)
+            elif file:
+                # Read from file
+                content = file.read().decode('utf-8')
+                import re
+                numbers = re.split(r'[,;\n\r]+', content)
+
+            if not numbers:
+                messages.error(request, 'Vui lòng nhập danh sách số hoặc upload file')
+                return redirect('.')
+
+            # Process each number
+            created_count = 0
+            skipped_count = 0
+            errors = []
+
+            for num_str in numbers:
+                num_str = num_str.strip()
+                if not num_str:
+                    continue
+
+                # Validate number format
+                if len(num_str) != 13:
+                    errors.append(f'{num_str}: Phải có 13 chữ số')
+                    continue
+
+                if not num_str.startswith('7202'):
+                    errors.append(f'{num_str}: Phải bắt đầu bằng 7202')
+                    continue
+
+                # Check if exists
+                if BeautifulNumber.objects.filter(account_number=num_str).exists():
+                    skipped_count += 1
+                    continue
+
+                # Analyze number to get fee and category
+                analysis = analyze_account_number(num_str)
+
+                if analysis.get('error'):
+                    errors.append(f'{num_str}: {analysis.get("error")}')
+                    continue
+
+                # Determine category
+                if analysis.get('is_special'):
+                    category = BeautifulNumber.CATEGORY_DAC_BIET
+                else:
+                    category = default_category
+
+                # Determine price tier
+                from .views import get_price_tier_from_fee
+                price_tier = get_price_tier_from_fee(analysis['fee_min_vat'])
+
+                # Create beautiful number
+                try:
+                    BeautifulNumber.objects.create(
+                        account_number=num_str,
+                        category=category,
+                        price_tier=price_tier,
+                        fee=analysis['fee_min_vat'],
+                        description=analysis.get('description', ''),
+                        is_available=True
+                    )
+                    created_count += 1
+                except Exception as e:
+                    errors.append(f'{num_str}: {str(e)}')
+
+            # Show results
+            if created_count > 0:
+                messages.success(request, f'✓ Đã thêm {created_count} số đẹp mới')
+            if skipped_count > 0:
+                messages.info(request, f'ℹ Bỏ qua {skipped_count} số đã tồn tại')
+            if errors:
+                for error in errors[:10]:  # Show first 10 errors
+                    messages.warning(request, f'⚠ {error}')
+                if len(errors) > 10:
+                    messages.warning(request, f'... và {len(errors) - 10} lỗi khác')
+
+            return redirect('..')
+
+        # GET request - show form
+        context = {
+            'title': 'Import số đẹp',
+            'site_title': admin.site.site_title,
+            'site_header': admin.site.site_header,
+            'category_choices': BeautifulNumber.CATEGORY_CHOICES,
+            'opts': self.model._meta,
+            'has_view_permission': self.has_view_permission(request),
+        }
+        return render(request, 'admin/beautiful_number_import.html', context)
+
