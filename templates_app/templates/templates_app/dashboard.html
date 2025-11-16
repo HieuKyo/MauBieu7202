@@ -1437,6 +1437,18 @@ if (originalFillFormWithData) {
 // Address Selector Component Initialization
 // ==========================================
 let dashboardAddressSelector;
+let addressConversionData = {}; // Store conversion mapping
+
+// Load address conversion data
+fetch('{% static "data/chuyen_doi.json" %}')
+    .then(response => response.json())
+    .then(data => {
+        addressConversionData = data;
+        console.log('Address conversion data loaded:', Object.keys(data).length, 'mappings');
+    })
+    .catch(error => {
+        console.error('Error loading address conversion data:', error);
+    });
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Address Selector for Dashboard
@@ -1456,25 +1468,38 @@ document.addEventListener('DOMContentLoaded', function() {
             khom: '-- Chọn Ấp/Khóm --'
         },
         autoFill: function(fullAddress, parts) {
-            // Fill hidden fields for new address system
+            // CONVERSION LOGIC: Convert old address (Bạc Liêu) to new address (Cà Mau)
+            let newAddress = fullAddress;
+
+            if (fullAddress && addressConversionData[fullAddress]) {
+                // Found mapping - convert to new address
+                newAddress = addressConversionData[fullAddress];
+                console.log('✓ Address converted:', fullAddress, '→', newAddress);
+            } else if (fullAddress) {
+                // No mapping found - use old address as fallback
+                console.warn('⚠ No conversion mapping found for:', fullAddress);
+                console.warn('Using old address as fallback');
+            }
+
+            // Fill hidden fields with CONVERTED address
             document.getElementById('dashboard-province').value = parts.province || '';
             document.getElementById('dashboard-district').value = parts.district || '';
             document.getElementById('dashboard-ward').value = parts.ward || '';
             document.getElementById('dashboard-hamlet').value = parts.hamlet || '';
-            document.getElementById('dashboard-full-address').value = fullAddress || '';
+            document.getElementById('dashboard-full-address').value = newAddress || '';
 
-            // IMPORTANT: Also fill the old address field (dia_chi) for backward compatibility
+            // IMPORTANT: Fill dia_chi field with NEW CONVERTED address
             const diaChiField = document.getElementById('dia-chi-field');
-            if (diaChiField && fullAddress) {
-                diaChiField.value = fullAddress;
+            if (diaChiField && newAddress) {
+                diaChiField.value = newAddress;
             }
 
-            // Update preview
+            // Update preview with NEW CONVERTED address
             const previewContainer = document.getElementById('dashboard-address-preview-container');
             const preview = document.getElementById('dashboard-address-preview');
 
-            if (fullAddress) {
-                preview.innerHTML = `<strong class="text-success">${fullAddress}</strong>`;
+            if (newAddress) {
+                preview.innerHTML = `<strong class="text-success">${newAddress}</strong>`;
                 previewContainer.style.display = 'block';
             } else {
                 preview.innerHTML = '';
