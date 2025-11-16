@@ -473,6 +473,7 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
 
             # Process each number
             created_count = 0
+            updated_count = 0
             skipped_count = 0
             errors = []
 
@@ -490,9 +491,12 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
                     errors.append(f'{num_str}: Phải bắt đầu bằng 7202')
                     continue
 
-                # Check if exists
-                if BeautifulNumber.objects.filter(account_number=num_str).exists():
-                    skipped_count += 1
+                # Check if exists - if so, mark as sold
+                existing = BeautifulNumber.objects.filter(account_number=num_str).first()
+                if existing:
+                    existing.is_available = False
+                    existing.save()
+                    updated_count += 1
                     continue
 
                 # Analyze number to get fee and category
@@ -529,8 +533,8 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
             # Show results
             if created_count > 0:
                 messages.success(request, f'✓ Đã thêm {created_count} số đẹp mới')
-            if skipped_count > 0:
-                messages.info(request, f'ℹ Bỏ qua {skipped_count} số đã tồn tại')
+            if updated_count > 0:
+                messages.success(request, f'✓ Đã đánh dấu "Đã bán" cho {updated_count} số đã tồn tại')
             if errors:
                 for error in errors[:10]:  # Show first 10 errors
                     messages.warning(request, f'⚠ {error}')
