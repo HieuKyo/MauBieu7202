@@ -1015,12 +1015,12 @@ class BeautifulNumber(models.Model):
     PRICE_20M_PLUS = "20M+"
 
     PRICE_TIER_CHOICES = [
-        (PRICE_500K_1M, "500.000 - 1.000.000 VNĐ"),
-        (PRICE_1M_3M, "1.000.000 - 3.000.000 VNĐ"),
-        (PRICE_3M_5M, "3.000.000 - 5.000.000 VNĐ"),
-        (PRICE_5M_10M, "5.000.000 - 10.000.000 VNĐ"),
-        (PRICE_10M_20M, "10.000.000 - 20.000.000 VNĐ"),
-        (PRICE_20M_PLUS, "Trên 20.000.000 VNĐ"),
+        (PRICE_500K_1M, "500,000 - 1,000,000 VNĐ"),
+        (PRICE_1M_3M, "1,000,000 - 3,000,000 VNĐ"),
+        (PRICE_3M_5M, "3,000,000 - 5,000,000 VNĐ"),
+        (PRICE_5M_10M, "5,000,000 - 10,000,000 VNĐ"),
+        (PRICE_10M_20M, "10,000,000 - 20,000,000 VNĐ"),
+        (PRICE_20M_PLUS, "Trên 20,000,000 VNĐ"),
     ]
 
     # Định nghĩa các loại số đẹp
