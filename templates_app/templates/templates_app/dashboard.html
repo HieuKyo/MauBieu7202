@@ -158,62 +158,9 @@
                     </div>
                 </div>
 
-                <!-- Auto-Calculation Info Card (Full Width) -->
-                <div class="card mb-3 border-info" id="auto-calc-card" style="display: none;">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0">
-                            <i class="bi bi-calculator"></i> Thông tin Tự động
-                        </h6>
-                    </div>
-                    <div class="card-body p-3">
-                        <div class="row">
-                            <!-- Age Info -->
-                            <div class="col-md-4" id="age-info" style="display: none;">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-person-badge me-2"></i>
-                                    <div class="flex-grow-1">
-                                        <small class="text-muted d-block">Tuổi</small>
-                                        <strong id="age-value" class="d-block"></strong>
-                                    </div>
-                                    <span id="age-badge" class="badge"></span>
-                                </div>
-                            </div>
-
-                            <!-- CCCD Expiry Info -->
-                            <div class="col-md-4" id="cccd-info" style="display: none;">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-card-checklist me-2"></i>
-                                    <div class="flex-grow-1">
-                                        <small class="text-muted d-block">CCCD</small>
-                                        <strong id="cccd-value" class="d-block"></strong>
-                                    </div>
-                                    <span id="cccd-badge" class="badge"></span>
-                                </div>
-                            </div>
-
-                            <!-- Estimated Fee Info -->
-                            <div class="col-md-4" id="fee-info" style="display: none;">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-cash-coin me-2"></i>
-                                    <div class="flex-grow-1">
-                                        <small class="text-muted d-block">Phí dự kiến</small>
-                                        <div id="fee-details"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Help text -->
-                        <div class="alert alert-light p-2 mb-0 mt-2" style="font-size: 0.85rem;">
-                            <i class="bi bi-info-circle"></i>
-                            Thông tin này được tính tự động và cũng sẽ xuất hiện trong mẫu biểu Word khi sử dụng cú pháp Jinja2.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Two-Column Layout -->
+                <!-- Two-Pane Layout -->
                 <div class="row g-4">
-                    <!-- Left Column -->
+                    <!-- Left Pane: Personal & ID Info -->
                     <div class="col-lg-6">
                         <!-- Personal Info Group -->
                         <div class="field-group" data-group="personal_info">
@@ -297,11 +244,94 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Contact Info (Basic) -->
-                        <div class="field-group" data-group="contact_basic">
+                    <!-- Right Pane: Contact & Banking Info -->
+                    <div class="col-lg-6">
+                        <!-- Auto-Calculation Info Card -->
+                        <div class="card mb-3 border-info" id="auto-calc-card" style="display: none;">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-calculator"></i> Thông tin Tự động
+                                </h6>
+                            </div>
+                            <div class="card-body p-3">
+                                <!-- Age Info -->
+                                <div id="age-info" style="display: none;" class="mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-person-badge me-2"></i>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">Tuổi</small>
+                                            <strong id="age-value" class="d-block"></strong>
+                                        </div>
+                                        <span id="age-badge" class="badge"></span>
+                                    </div>
+                                </div>
+
+                                <!-- CCCD Expiry Info -->
+                                <div id="cccd-info" style="display: none;" class="mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-card-checklist me-2"></i>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">CCCD</small>
+                                            <strong id="cccd-value" class="d-block"></strong>
+                                        </div>
+                                        <span id="cccd-badge" class="badge"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Estimated Fee Info -->
+                                <div id="fee-info" style="display: none;">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-cash-coin me-2"></i>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted d-block">Phí dự kiến</small>
+                                            <div id="fee-details"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Help text -->
+                                <div class="alert alert-light p-2 mb-0 mt-2" style="font-size: 0.85rem;">
+                                    <i class="bi bi-info-circle"></i>
+                                    Thông tin này được tính tự động và cũng sẽ xuất hiện trong mẫu biểu Word khi sử dụng cú pháp Jinja2.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Group -->
+                        <div class="field-group" data-group="contact">
                             <h6 class="field-group-title"><i class="bi bi-telephone"></i> Thông tin liên hệ</h6>
                             <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Địa chỉ thường trú</label>
+                                    <textarea class="form-control" name="dia_chi" rows="2" id="dia-chi-field"></textarea>
+                                    <small class="text-muted">Hoặc chọn từ danh sách bên dưới để tự động điền</small>
+                                </div>
+
+                                <!-- Address Selector Component -->
+                                <div class="col-12">
+                                    <hr class="my-3">
+                                    <h6 class="fw-bold mb-3" style="color: var(--agribank-green);">
+                                        <i class="bi bi-geo-alt-fill"></i> Chọn địa chỉ chi tiết (Bạc Liêu)
+                                    </h6>
+                                    <div id="dashboard-address-selector-container"></div>
+
+                                    <!-- Hidden fields for address -->
+                                    <input type="hidden" name="province" id="dashboard-province">
+                                    <input type="hidden" name="district" id="dashboard-district">
+                                    <input type="hidden" name="ward" id="dashboard-ward">
+                                    <input type="hidden" name="hamlet" id="dashboard-hamlet">
+                                    <input type="hidden" name="full_address" id="dashboard-full-address">
+
+                                    <!-- Preview address -->
+                                    <div class="alert alert-info mt-3" id="dashboard-address-preview-container" style="display: none;">
+                                        <strong><i class="bi bi-check-circle"></i> Địa chỉ đã chọn:</strong>
+                                        <div id="dashboard-address-preview" class="mt-2"></div>
+                                    </div>
+                                    <hr class="my-3">
+                                </div>
+
                                 <div class="col-12">
                                     <label class="form-label">Số điện thoại</label>
                                     <input type="text" class="form-control" name="so_dien_thoai">
@@ -312,10 +342,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Right Column -->
-                    <div class="col-lg-6">
                         <!-- Banking Group -->
                         <div class="field-group" data-group="banking">
                             <h6 class="field-group-title"><i class="bi bi-bank"></i> Tài khoản</h6>
@@ -474,50 +501,6 @@
                                 <div class="col-12">
                                     <label class="form-label">Ngày in mẫu biểu</label>
                                     <input type="date" class="form-control" name="ngay_in" id="ngay-in">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Address Selector Section (Full Width) -->
-                <div class="field-group mt-4" data-group="address_selector" style="border: 2px solid var(--agribank-green); background: linear-gradient(to bottom, #f8fff8, #ffffff);">
-                    <h6 class="field-group-title" style="background: var(--agribank-green); color: white;">
-                        <i class="bi bi-geo-alt-fill"></i> Địa chỉ thường trú
-                    </h6>
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Địa chỉ thường trú</label>
-                            <textarea class="form-control" name="dia_chi" rows="2" id="dia-chi-field" placeholder="Nhập địa chỉ hoặc chọn từ danh sách bên dưới"></textarea>
-                            <small class="text-muted">
-                                <i class="bi bi-info-circle"></i> Bạn có thể nhập tự do hoặc chọn từ danh sách địa chỉ bên dưới để tự động điền và chuyển đổi sang địa chỉ mới
-                            </small>
-                        </div>
-
-                        <!-- Address Selector Component -->
-                        <div class="col-12">
-                            <div class="card border-success">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0 fw-bold" style="color: var(--agribank-green);">
-                                        <i class="bi bi-map"></i> Chọn địa chỉ chi tiết (Tỉnh Bạc Liêu - Cũ)
-                                    </h6>
-                                    <small class="text-muted">Hệ thống sẽ tự động chuyển đổi sang địa chỉ mới (Tỉnh Cà Mau)</small>
-                                </div>
-                                <div class="card-body">
-                                    <div id="dashboard-address-selector-container"></div>
-
-                                    <!-- Hidden fields for address -->
-                                    <input type="hidden" name="province" id="dashboard-province">
-                                    <input type="hidden" name="district" id="dashboard-district">
-                                    <input type="hidden" name="ward" id="dashboard-ward">
-                                    <input type="hidden" name="hamlet" id="dashboard-hamlet">
-                                    <input type="hidden" name="full_address" id="dashboard-full-address">
-
-                                    <!-- Preview address -->
-                                    <div class="alert alert-success mt-3" id="dashboard-address-preview-container" style="display: none;">
-                                        <strong><i class="bi bi-check-circle-fill"></i> Địa chỉ mới sau chuyển đổi:</strong>
-                                        <div id="dashboard-address-preview" class="mt-2" style="font-size: 1.1em;"></div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1468,119 +1451,67 @@ fetch('{% static "data/chuyen_doi.json" %}')
     });
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== Dashboard DOMContentLoaded fired ===');
-    console.log('AddressSelector class available:', typeof AddressSelector !== 'undefined');
-    console.log('Container exists:', document.querySelector('#dashboard-address-selector-container') !== null);
-    console.log('Conversion data loaded:', Object.keys(addressConversionData).length, 'mappings');
-
     // Initialize Address Selector for Dashboard
-    console.log('Initializing Address Selector...');
+    dashboardAddressSelector = new AddressSelector('#dashboard-address-selector-container', {
+        dataUrl: '{% static "data/dia_danh.json" %}',
+        showKhom: true,
+        labels: {
+            tinh: 'Tỉnh/Thành phố',
+            huyen: 'Quận/Huyện',
+            xa: 'Phường/Xã',
+            khom: 'Ấp/Khóm'
+        },
+        placeholders: {
+            tinh: '-- Chọn Tỉnh/Thành phố --',
+            huyen: '-- Chọn Quận/Huyện --',
+            xa: '-- Chọn Phường/Xã --',
+            khom: '-- Chọn Ấp/Khóm --'
+        },
+        autoFill: function(fullAddress, parts) {
+            // CONVERSION LOGIC: Convert old address (Bạc Liêu) to new address (Cà Mau)
+            let newAddress = fullAddress;
 
-    try {
-        dashboardAddressSelector = new AddressSelector('#dashboard-address-selector-container', {
-            dataUrl: '{% static "data/dia_danh.json" %}',
-            showKhom: true,
-            labels: {
-                tinh: 'Tỉnh/Thành phố',
-                huyen: 'Quận/Huyện',
-                xa: 'Phường/Xã',
-                khom: 'Ấp/Khóm'
-            },
-            placeholders: {
-                tinh: '-- Chọn Tỉnh/Thành phố --',
-                huyen: '-- Chọn Quận/Huyện --',
-                xa: '-- Chọn Phường/Xã --',
-                khom: '-- Chọn Ấp/Khóm --'
-            },
-            autoFill: function(fullAddress, parts) {
-                // CONVERSION LOGIC: Convert old address (Bạc Liêu) to new address (Cà Mau)
-                let newAddress = fullAddress;
-
-                if (fullAddress && addressConversionData[fullAddress]) {
-                    // Found mapping - convert to new address
-                    newAddress = addressConversionData[fullAddress];
-                    console.log('✓ Address converted:', fullAddress, '→', newAddress);
-                } else if (fullAddress) {
-                    // No mapping found - use old address as fallback
-                    console.warn('⚠ No conversion mapping found for:', fullAddress);
-                    console.warn('Using old address as fallback');
-                }
-
-                // Fill hidden fields with CONVERTED address
-                document.getElementById('dashboard-province').value = parts.province || '';
-                document.getElementById('dashboard-district').value = parts.district || '';
-                document.getElementById('dashboard-ward').value = parts.ward || '';
-                document.getElementById('dashboard-hamlet').value = parts.hamlet || '';
-                document.getElementById('dashboard-full-address').value = newAddress || '';
-
-                // IMPORTANT: Fill dia_chi field with NEW CONVERTED address
-                const diaChiField = document.getElementById('dia-chi-field');
-                if (diaChiField && newAddress) {
-                    diaChiField.value = newAddress;
-                }
-
-                // Update preview with NEW CONVERTED address
-                const previewContainer = document.getElementById('dashboard-address-preview-container');
-                const preview = document.getElementById('dashboard-address-preview');
-
-                if (newAddress) {
-                    preview.innerHTML = `<strong class="text-success">${newAddress}</strong>`;
-                    previewContainer.style.display = 'block';
-                } else {
-                    preview.innerHTML = '';
-                    previewContainer.style.display = 'none';
-                }
-            },
-            onLoad: function(instance) {
-                console.log('✓ Address Selector loaded successfully for Dashboard form');
-                console.log('Data check:', instance.data ? 'Data exists' : 'NO DATA!');
-                if (instance.data) {
-                    console.log('Data keys:', Object.keys(instance.data));
-                }
-
-                // Check if HTML was rendered
-                const container = document.querySelector('#dashboard-address-selector-container');
-                console.log('Container HTML length:', container ? container.innerHTML.length : 0);
-                console.log('Container children count:', container ? container.children.length : 0);
-
-                if (container && container.children.length > 0) {
-                    console.log('✓ Component rendered HTML successfully');
-                    console.log('First child tag:', container.children[0].tagName);
-                    console.log('First child HTML:', container.children[0].outerHTML.substring(0, 200));
-                } else {
-                    console.error('✗ Component did NOT render any HTML!');
-                }
+            if (fullAddress && addressConversionData[fullAddress]) {
+                // Found mapping - convert to new address
+                newAddress = addressConversionData[fullAddress];
+                console.log('✓ Address converted:', fullAddress, '→', newAddress);
+            } else if (fullAddress) {
+                // No mapping found - use old address as fallback
+                console.warn('⚠ No conversion mapping found for:', fullAddress);
+                console.warn('Using old address as fallback');
             }
-        });
 
-        console.log('✓ Dashboard Address Selector initialized successfully');
+            // Fill hidden fields with CONVERTED address
+            document.getElementById('dashboard-province').value = parts.province || '';
+            document.getElementById('dashboard-district').value = parts.district || '';
+            document.getElementById('dashboard-ward').value = parts.ward || '';
+            document.getElementById('dashboard-hamlet').value = parts.hamlet || '';
+            document.getElementById('dashboard-full-address').value = newAddress || '';
 
-        // Additional check after 2 seconds to see final state
-        setTimeout(() => {
-            const container = document.querySelector('#dashboard-address-selector-container');
-            console.log('=== 2-second check ===');
-            if (container) {
-                console.log('Container HTML length:', container.innerHTML.length);
-                console.log('Container display style:', window.getComputedStyle(container).display);
-                console.log('Container first 300 chars:', container.innerHTML.substring(0, 300));
+            // IMPORTANT: Fill dia_chi field with NEW CONVERTED address
+            const diaChiField = document.getElementById('dia-chi-field');
+            if (diaChiField && newAddress) {
+                diaChiField.value = newAddress;
+            }
 
-                // Check for select elements
-                const selects = container.querySelectorAll('select');
-                console.log('Number of <select> elements:', selects.length);
-                if (selects.length > 0) {
-                    selects.forEach((sel, idx) => {
-                        console.log(`Select ${idx}:`, sel.id, 'visible:', window.getComputedStyle(sel).display !== 'none');
-                    });
-                }
+            // Update preview with NEW CONVERTED address
+            const previewContainer = document.getElementById('dashboard-address-preview-container');
+            const preview = document.getElementById('dashboard-address-preview');
+
+            if (newAddress) {
+                preview.innerHTML = `<strong class="text-success">${newAddress}</strong>`;
+                previewContainer.style.display = 'block';
             } else {
-                console.error('Container not found!');
+                preview.innerHTML = '';
+                previewContainer.style.display = 'none';
             }
-        }, 2000);
+        },
+        onLoad: function(instance) {
+            console.log('Address Selector loaded for Dashboard form');
+        }
+    });
 
-    } catch (error) {
-        console.error('✗ ERROR initializing Address Selector:', error);
-        console.error('Error stack:', error.stack);
-    }
+    console.log('Dashboard Address Selector initialized');
 });
 
 </script>
