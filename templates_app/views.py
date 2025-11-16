@@ -2175,7 +2175,7 @@ def get_category_from_generator_type(gen_type, analysis):
     Map loại generator và analysis sang category trong model
 
     Args:
-        gen_type: 'lap', 'tien', 'ganh', 'lap_kep', 'ngau_nhien'
+        gen_type: 'lap', 'tien', 'ganh', 'lap_kep', 'ngau_nhien', 'loc_phat', 'phong_thuy', 'hop_tuoi', 'cao_cap'
         analysis: Kết quả từ analyze_account_number
 
     Returns:
@@ -2193,6 +2193,10 @@ def get_category_from_generator_type(gen_type, analysis):
         'tien': BeautifulNumber.CATEGORY_SO_TIEN,
         'ganh': BeautifulNumber.CATEGORY_SO_DOI_XUNG,
         'lap_kep': BeautifulNumber.CATEGORY_SO_LAP,
+        'loc_phat': BeautifulNumber.CATEGORY_LOC_PHAT,
+        'phong_thuy': BeautifulNumber.CATEGORY_PHONG_THUY,
+        'hop_tuoi': BeautifulNumber.CATEGORY_HOP_TUOI,
+        'cao_cap': BeautifulNumber.CATEGORY_DAC_BIET,  # Số cao cấp -> Đặc biệt
         'ngau_nhien': BeautifulNumber.CATEGORY_TAI_LOC,  # Số thường -> Tài lộc
     }
 
@@ -2232,6 +2236,10 @@ def generate_and_save_beautiful_numbers(count_per_type=50, clear_existing=False)
         'tien': (bng.gen_so_tien, 15),  # Chỉ có 15 số tiến
         'ganh': (bng.gen_so_ganh, count_per_type),
         'lap_kep': (bng.gen_so_lap_kep, count_per_type),
+        'loc_phat': (bng.gen_so_loc_phat, count_per_type),  # Số Lộc Phát (6,8)
+        'phong_thuy': (bng.gen_so_phong_thuy, count_per_type),  # Số Phong Thủy
+        'hop_tuoi': (bng.gen_so_hop_tuoi, count_per_type),  # Số Hợp Tuổi
+        'cao_cap': (bng.gen_so_cao_cap, min(count_per_type, 50)),  # Số cao cấp (giá cao)
         'ngau_nhien': (bng.gen_so_ngau_nhien, count_per_type),
     }
 
@@ -2336,6 +2344,7 @@ def beautiful_number_list(request):
     Có filter theo giá và loại số đẹp. Có thể in ra.
     """
     from .models import BeautifulNumber
+    from .beautiful_number_services import analyze_account_number
 
     # Lấy tham số filter từ request
     category_filter = request.GET.get('category', '')
@@ -2362,10 +2371,18 @@ def beautiful_number_list(request):
     category_choices = BeautifulNumber.CATEGORY_CHOICES
     price_choices = BeautifulNumber.PRICE_TIER_CHOICES
 
-    # Group numbers by price tier for display
+    # Enrich numbers with fee range from analysis
     from collections import defaultdict
     numbers_by_price = defaultdict(list)
+
     for number in numbers:
+        # Phân tích để lấy fee_min và fee_max
+        analysis = analyze_account_number(number.account_number)
+
+        # Attach fee range to number object
+        number.fee_min = analysis.get('fee_min_vat', number.fee)
+        number.fee_max = analysis.get('fee_max_vat', number.fee)
+
         numbers_by_price[number.price_tier].append(number)
 
     context = {
