@@ -17,8 +17,8 @@ from .models import DetailedFeeTier, OnRequestFeeTier
 FEE_TABLE = {
     # (số_lượng, loại) -> (phí_min, phí_max)
     # None = Thỏa thuận
-    (2, 'NORMAL'): (500_000, 1_000_000),
-    (3, 'NORMAL'): (500_000, 1_000_000),
+    (2, 'NORMAL'): (300_000, 500_000),
+    (3, 'NORMAL'): (300_000, 500_000),
     (3, 'SPECIAL'): (500_000, 1_000_000),
     (4, 'NORMAL'): (500_000, 1_000_000),
     (4, 'SPECIAL'): (1_000_000, 3_000_000),
