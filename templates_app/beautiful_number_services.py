@@ -14,11 +14,10 @@ from .models import DetailedFeeTier, OnRequestFeeTier
 
 # ========== BẢNG PHÍ GỐC (THEO PDF) ==========
 # Phí gốc (chưa VAT) theo số lượng và loại
+# Lưu ý: Số có mẫu đẹp nhất là 2-3 số thường KHÔNG được coi là số đẹp (trả về 0)
 FEE_TABLE = {
     # (số_lượng, loại) -> (phí_min, phí_max)
     # None = Thỏa thuận
-    (2, 'NORMAL'): (300_000, 500_000),
-    (3, 'NORMAL'): (300_000, 500_000),
     (3, 'SPECIAL'): (500_000, 1_000_000),
     (4, 'NORMAL'): (500_000, 1_000_000),
     (4, 'SPECIAL'): (1_000_000, 3_000_000),
