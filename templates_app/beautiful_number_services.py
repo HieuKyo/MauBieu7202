@@ -1,5 +1,5 @@
 """
-Beautiful Number Analysis and Fee Lookup Services - Version 2.0
+Beautiful Number Analysis and Fee Lookup Services - Version 2.1 (Đã sửa lỗi logic)
 
 Dịch vụ phân tích số tài khoản đẹp và tra cứu phí theo logic mới:
 - Bước 1: Kiểm tra cấu trúc 9 số đồng nhất
@@ -9,16 +9,15 @@ Dịch vụ phân tích số tài khoản đẹp và tra cứu phí theo logic m
 
 from decimal import Decimal
 from django.contrib.humanize.templatetags.humanize import intcomma
-from .models import DetailedFeeTier, OnRequestFeeTier
+from .models import OnRequestFeeTier # Xóa DetailedFeeTier vì không dùng
 
 
 # ========== BẢNG PHÍ GỐC (THEO PDF) ==========
 # Phí gốc (chưa VAT) theo số lượng và loại
+# Bảng này chính xác theo logic nghiệp vụ (không có bậc 300k)
 FEE_TABLE = {
     # (số_lượng, loại) -> (phí_min, phí_max)
     # None = Thỏa thuận
-    (2, 'NORMAL'): (300_000, 500_000),
-    (3, 'NORMAL'): (300_000, 500_000),
     (3, 'SPECIAL'): (500_000, 1_000_000),
     (4, 'NORMAL'): (500_000, 1_000_000),
     (4, 'SPECIAL'): (1_000_000, 3_000_000),
@@ -119,7 +118,8 @@ def find_best_sub_pattern(digits):
         for i in range(len(digits) - length + 1):
             substring = digits[i:i+length]
 
-            # ========== LOGIC PHÂN LOẠI CHÍNH XÁC ==========
+            # ========== [START] ĐÃ CẬP NHẬT LOGIC LỖI ==========
+            # Logic phân loại chính xác:
             # - Nếu lặp thuần túy (pure repeat):
             #   - Từ 3 số trở lên ('777', '5555'...) là 'SPECIAL'
             #   - 2 số ('22') là 'NORMAL'
@@ -129,6 +129,9 @@ def find_best_sub_pattern(digits):
                 fee_type = 'SPECIAL' if length >= 3 else 'NORMAL'
             else:
                 fee_type = 'NORMAL'
+            
+            # ========== [END] ĐÃ CẬP NHẬT LOGIC LỖI ==========
+
 
             classification = (length, fee_type)
             base_fee = FEE_TABLE.get(classification)
@@ -268,7 +271,7 @@ def analyze_account_number(account_number):
         'quantity': 0,
         'is_special': False,
         'pattern_type': 'NO_PATTERN',
-        'description': 'Không tìm thấy mẫu số đẹp',
+        'description': 'Không tìm thấy mẫu số đẹp (phí từ 550.000đ)',
         'full_account': digits,
         'selectable_part': selectable_part,
         'fee_min_base': 0,
@@ -311,12 +314,26 @@ def get_detailed_fee(account_number):
     # Lấy phí (đã có VAT)
     min_fee = analysis['fee_min_vat']
     max_fee = analysis['fee_max_vat']
+    
+    # Xử lý trường hợp không tìm thấy mẫu
+    if analysis['pattern_type'] == 'NO_PATTERN':
+        return {
+            'analysis': analysis,
+            'fee_tier': None,
+            'min_fee': 0,
+            'max_fee': 0,
+            'fee_display': 'Không tính phí',
+            'error': None # Không phải lỗi, chỉ là không có phí
+        }
 
     # Format hiển thị phí
     if max_fee:
         fee_display = f"{intcomma(min_fee)} - {intcomma(max_fee)} VNĐ"
-    else:
+    elif min_fee > 0: # Dành cho trường hợp Thỏa thuận
         fee_display = f"Từ {intcomma(min_fee)} VNĐ (Thỏa thuận)"
+    else:
+        fee_display = "Không tính phí"
+
 
     return {
         'analysis': analysis,
