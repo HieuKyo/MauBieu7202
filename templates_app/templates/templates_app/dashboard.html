@@ -1468,67 +1468,79 @@ fetch('{% static "data/chuyen_doi.json" %}')
     });
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== Dashboard DOMContentLoaded fired ===');
+    console.log('AddressSelector class available:', typeof AddressSelector !== 'undefined');
+    console.log('Container exists:', document.querySelector('#dashboard-address-selector-container') !== null);
+    console.log('Conversion data loaded:', Object.keys(addressConversionData).length, 'mappings');
+
     // Initialize Address Selector for Dashboard
-    dashboardAddressSelector = new AddressSelector('#dashboard-address-selector-container', {
-        dataUrl: '{% static "data/dia_danh.json" %}',
-        showKhom: true,
-        labels: {
-            tinh: 'Tỉnh/Thành phố',
-            huyen: 'Quận/Huyện',
-            xa: 'Phường/Xã',
-            khom: 'Ấp/Khóm'
-        },
-        placeholders: {
-            tinh: '-- Chọn Tỉnh/Thành phố --',
-            huyen: '-- Chọn Quận/Huyện --',
-            xa: '-- Chọn Phường/Xã --',
-            khom: '-- Chọn Ấp/Khóm --'
-        },
-        autoFill: function(fullAddress, parts) {
-            // CONVERSION LOGIC: Convert old address (Bạc Liêu) to new address (Cà Mau)
-            let newAddress = fullAddress;
+    console.log('Initializing Address Selector...');
 
-            if (fullAddress && addressConversionData[fullAddress]) {
-                // Found mapping - convert to new address
-                newAddress = addressConversionData[fullAddress];
-                console.log('✓ Address converted:', fullAddress, '→', newAddress);
-            } else if (fullAddress) {
-                // No mapping found - use old address as fallback
-                console.warn('⚠ No conversion mapping found for:', fullAddress);
-                console.warn('Using old address as fallback');
+    try {
+        dashboardAddressSelector = new AddressSelector('#dashboard-address-selector-container', {
+            dataUrl: '{% static "data/dia_danh.json" %}',
+            showKhom: true,
+            labels: {
+                tinh: 'Tỉnh/Thành phố',
+                huyen: 'Quận/Huyện',
+                xa: 'Phường/Xã',
+                khom: 'Ấp/Khóm'
+            },
+            placeholders: {
+                tinh: '-- Chọn Tỉnh/Thành phố --',
+                huyen: '-- Chọn Quận/Huyện --',
+                xa: '-- Chọn Phường/Xã --',
+                khom: '-- Chọn Ấp/Khóm --'
+            },
+            autoFill: function(fullAddress, parts) {
+                // CONVERSION LOGIC: Convert old address (Bạc Liêu) to new address (Cà Mau)
+                let newAddress = fullAddress;
+
+                if (fullAddress && addressConversionData[fullAddress]) {
+                    // Found mapping - convert to new address
+                    newAddress = addressConversionData[fullAddress];
+                    console.log('✓ Address converted:', fullAddress, '→', newAddress);
+                } else if (fullAddress) {
+                    // No mapping found - use old address as fallback
+                    console.warn('⚠ No conversion mapping found for:', fullAddress);
+                    console.warn('Using old address as fallback');
+                }
+
+                // Fill hidden fields with CONVERTED address
+                document.getElementById('dashboard-province').value = parts.province || '';
+                document.getElementById('dashboard-district').value = parts.district || '';
+                document.getElementById('dashboard-ward').value = parts.ward || '';
+                document.getElementById('dashboard-hamlet').value = parts.hamlet || '';
+                document.getElementById('dashboard-full-address').value = newAddress || '';
+
+                // IMPORTANT: Fill dia_chi field with NEW CONVERTED address
+                const diaChiField = document.getElementById('dia-chi-field');
+                if (diaChiField && newAddress) {
+                    diaChiField.value = newAddress;
+                }
+
+                // Update preview with NEW CONVERTED address
+                const previewContainer = document.getElementById('dashboard-address-preview-container');
+                const preview = document.getElementById('dashboard-address-preview');
+
+                if (newAddress) {
+                    preview.innerHTML = `<strong class="text-success">${newAddress}</strong>`;
+                    previewContainer.style.display = 'block';
+                } else {
+                    preview.innerHTML = '';
+                    previewContainer.style.display = 'none';
+                }
+            },
+            onLoad: function(instance) {
+                console.log('✓ Address Selector loaded successfully for Dashboard form');
             }
+        });
 
-            // Fill hidden fields with CONVERTED address
-            document.getElementById('dashboard-province').value = parts.province || '';
-            document.getElementById('dashboard-district').value = parts.district || '';
-            document.getElementById('dashboard-ward').value = parts.ward || '';
-            document.getElementById('dashboard-hamlet').value = parts.hamlet || '';
-            document.getElementById('dashboard-full-address').value = newAddress || '';
-
-            // IMPORTANT: Fill dia_chi field with NEW CONVERTED address
-            const diaChiField = document.getElementById('dia-chi-field');
-            if (diaChiField && newAddress) {
-                diaChiField.value = newAddress;
-            }
-
-            // Update preview with NEW CONVERTED address
-            const previewContainer = document.getElementById('dashboard-address-preview-container');
-            const preview = document.getElementById('dashboard-address-preview');
-
-            if (newAddress) {
-                preview.innerHTML = `<strong class="text-success">${newAddress}</strong>`;
-                previewContainer.style.display = 'block';
-            } else {
-                preview.innerHTML = '';
-                previewContainer.style.display = 'none';
-            }
-        },
-        onLoad: function(instance) {
-            console.log('Address Selector loaded for Dashboard form');
-        }
-    });
-
-    console.log('Dashboard Address Selector initialized');
+        console.log('✓ Dashboard Address Selector initialized successfully');
+    } catch (error) {
+        console.error('✗ ERROR initializing Address Selector:', error);
+        console.error('Error stack:', error.stack);
+    }
 });
 
 </script>
