@@ -2352,20 +2352,23 @@ def beautiful_number_list(request):
     available_only = request.GET.get('available', 'true') == 'true'
 
     # Query base
-    numbers = BeautifulNumber.objects.all()
+    numbers_queryset = BeautifulNumber.objects.all()
 
     # Apply filters
     if available_only:
-        numbers = numbers.filter(is_available=True)
+        numbers_queryset = numbers_queryset.filter(is_available=True)
 
     if category_filter:
-        numbers = numbers.filter(category=category_filter)
+        numbers_queryset = numbers_queryset.filter(category=category_filter)
 
     if price_filter:
-        numbers = numbers.filter(price_tier=price_filter)
+        numbers_queryset = numbers_queryset.filter(price_tier=price_filter)
 
     # Order by price and category
-    numbers = numbers.order_by('price_tier', 'category', 'account_number')
+    numbers_queryset = numbers_queryset.order_by('price_tier', 'category', 'account_number')
+
+    # IMPORTANT: Convert to list to allow attribute assignment
+    numbers = list(numbers_queryset)
 
     # Get choices for filters
     category_choices = BeautifulNumber.CATEGORY_CHOICES
@@ -2379,9 +2382,9 @@ def beautiful_number_list(request):
         # Phân tích để lấy fee_min và fee_max
         analysis = analyze_account_number(number.account_number)
 
-        # Attach fee range to number object
-        number.fee_min = analysis.get('fee_min_vat', number.fee)
-        number.fee_max = analysis.get('fee_max_vat', number.fee)
+        # Attach fee range to number object (works because numbers is a list)
+        number.fee_min = int(analysis.get('fee_min_vat', number.fee))
+        number.fee_max = int(analysis.get('fee_max_vat', number.fee))
 
         numbers_by_price[number.price_tier].append(number)
 
