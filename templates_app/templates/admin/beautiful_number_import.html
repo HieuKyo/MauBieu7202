@@ -1,0 +1,140 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Import số đẹp - {{ site_title }}{% endblock %}
+
+{% block extrahead %}
+<style>
+    .form-row {
+        margin-bottom: 20px;
+    }
+    .form-row label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .form-row input[type="text"],
+    .form-row textarea,
+    .form-row select,
+    .form-row input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+    }
+    .form-row textarea {
+        min-height: 200px;
+        font-family: monospace;
+    }
+    .help-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+    .example-box {
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 4px;
+    }
+    .example-box h4 {
+        margin-top: 0;
+        color: #333;
+    }
+    .example-box code {
+        background: #fff;
+        padding: 2px 6px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+    .submit-row {
+        padding: 12px 14px;
+        margin: 20px 0;
+        border-top: 1px solid #ddd;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Trang chủ</a>
+    &rsaquo; <a href="{% url 'admin:templates_app_beautifulnumber_changelist' %}">Số đẹp có sẵn</a>
+    &rsaquo; Import số đẹp
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Import số đẹp thủ công</h1>
+
+<div class="example-box">
+    <h4>📝 Hướng dẫn sử dụng</h4>
+    <ul>
+        <li>Nhập danh sách số tài khoản vào ô bên dưới, mỗi số trên một dòng</li>
+        <li>Hoặc ngăn cách bằng dấu phẩy (,) hoặc dấu chấm phẩy (;)</li>
+        <li>Hoặc upload file .txt/.csv chứa danh sách số</li>
+        <li>Hệ thống sẽ tự động phân tích và xác định phí cho mỗi số</li>
+        <li>Số đã tồn tại sẽ được bỏ qua</li>
+    </ul>
+
+    <h4>✅ Ví dụ định dạng hợp lệ:</h4>
+    <code>7202888888888</code><br>
+    <code>7202123456789, 7202236888888, 7202987654321</code><br>
+    <code>
+        7202111111111<br>
+        7202222222222<br>
+        7202333333333
+    </code>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <fieldset class="module aligned">
+        <h2>Nhập danh sách số</h2>
+
+        <div class="form-row">
+            <label for="numbers_text">Danh sách số tài khoản:</label>
+            <textarea name="numbers_text" id="numbers_text" placeholder="Nhập danh sách số tài khoản, mỗi số trên một dòng hoặc ngăn cách bởi dấu phẩy..."></textarea>
+            <p class="help-text">
+                Nhập số tài khoản 13 số, bắt đầu bằng 7202. Ví dụ: 7202888888888
+            </p>
+        </div>
+
+        <div class="form-row">
+            <label>Hoặc upload file:</label>
+            <input type="file" name="numbers_file" accept=".txt,.csv">
+            <p class="help-text">
+                File .txt hoặc .csv chứa danh sách số (mỗi số trên một dòng hoặc ngăn cách bởi dấu phẩy)
+            </p>
+        </div>
+
+        <div class="form-row">
+            <label for="category">Loại số đẹp mặc định:</label>
+            <select name="category" id="category">
+                {% for value, label in category_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <p class="help-text">
+                Số đặc biệt sẽ tự động được phân loại. Loại này chỉ áp dụng cho số thường.
+            </p>
+        </div>
+    </fieldset>
+
+    <div class="submit-row">
+        <input type="submit" value="Import số đẹp" class="default">
+        <a href="{% url 'admin:templates_app_beautifulnumber_changelist' %}" class="button cancel-link">Hủy</a>
+    </div>
+</form>
+
+<div class="example-box">
+    <h4>ℹ️ Lưu ý quan trọng</h4>
+    <ul>
+        <li><strong>Số đã tồn tại:</strong> Sẽ bị bỏ qua, không ghi đè</li>
+        <li><strong>Phí tự động:</strong> Hệ thống tự động tính phí dựa trên pattern của số</li>
+        <li><strong>Validation:</strong> Số không hợp lệ sẽ được báo lỗi chi tiết</li>
+        <li><strong>Trạng thái mặc định:</strong> Tất cả số mới được thêm đều có trạng thái "Còn hàng"</li>
+    </ul>
+</div>
+{% endblock %}
