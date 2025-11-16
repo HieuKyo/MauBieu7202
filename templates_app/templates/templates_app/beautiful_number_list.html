@@ -10,18 +10,40 @@
         .no-print {
             display: none !important;
         }
+        .print-only {
+            display: block !important;
+        }
+        .screen-only {
+            display: none !important;
+        }
         body {
             background-color: white;
         }
         .card {
             border: 1px solid #000 !important;
             box-shadow: none !important;
+            page-break-inside: avoid;
         }
         .table {
-            font-size: 12px;
+            font-size: 11px !important;
+        }
+        .table thead th {
+            background-color: #f0f0f0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         h2, h5 {
             color: #000 !important;
+            font-size: 16px;
+        }
+        .number-account {
+            font-size: 11px !important;
+        }
+    }
+
+    @media screen {
+        .print-only {
+            display: none;
         }
     }
 
@@ -44,6 +66,23 @@
 
     .category-badge {
         font-size: 0.85rem;
+    }
+
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .print-table th,
+    .print-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+
+    .print-table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
     }
 </style>
 {% endblock %}
@@ -123,55 +162,87 @@
                 {% endif %}
             </div>
 
-            <!-- Numbers grouped by price tier -->
-            {% for price_tier, price_label in price_choices %}
-                {% if price_tier in numbers_by_price %}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-tag"></i> {{ price_label }}
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            {% for number in numbers_by_price.items %}
-                                {% if number.0 == price_tier %}
-                                    {% for num in number.1 %}
-                                    <div class="col-md-4 col-lg-3">
-                                        <div class="number-card card h-100">
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                                    <span class="number-account">{{ num.account_number }}</span>
-                                                    {% if num.is_available %}
-                                                        <span class="badge bg-success">Còn</span>
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">Hết</span>
+            <!-- Screen View: Numbers grouped by price tier (Cards) -->
+            <div class="screen-only">
+                {% for price_tier, price_label in price_choices %}
+                    {% if price_tier in numbers_by_price %}
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-tag"></i> {{ price_label }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                {% for number in numbers_by_price.items %}
+                                    {% if number.0 == price_tier %}
+                                        {% for num in number.1 %}
+                                        <div class="col-md-4 col-lg-3">
+                                            <div class="number-card card h-100">
+                                                <div class="card-body">
+                                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                                        <span class="number-account">{{ num.account_number }}</span>
+                                                        {% if num.is_available %}
+                                                            <span class="badge bg-success">Còn</span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">Hết</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <span class="category-badge badge bg-info">
+                                                            {{ num.get_category_display }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <small class="text-muted d-block">Phí:</small>
+                                                        <strong class="text-success">{{ num.fee_min|intcomma }} - {{ num.fee_max|intcomma }} VNĐ</strong>
+                                                    </div>
+                                                    {% if num.description %}
+                                                    <div class="mt-2">
+                                                        <small class="text-muted">{{ num.description }}</small>
+                                                    </div>
                                                     {% endif %}
                                                 </div>
-                                                <div class="mb-2">
-                                                    <span class="category-badge badge bg-info">
-                                                        {{ num.get_category_display }}
-                                                    </span>
-                                                </div>
-                                                <div class="text-end">
-                                                    <strong class="text-success">{{ num.fee|intcomma }} VNĐ</strong>
-                                                </div>
-                                                {% if num.description %}
-                                                <div class="mt-2">
-                                                    <small class="text-muted">{{ num.description }}</small>
-                                                </div>
-                                                {% endif %}
                                             </div>
                                         </div>
-                                    </div>
-                                    {% endfor %}
-                                {% endif %}
-                            {% endfor %}
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
-                </div>
-                {% endif %}
-            {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Print View: Table Layout -->
+            <div class="print-only">
+                <h3 class="mb-3">Danh sách số tài khoản đẹp</h3>
+                <table class="print-table table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">STT</th>
+                            <th style="width: 20%;">Số tài khoản</th>
+                            <th style="width: 20%;">Loại số</th>
+                            <th style="width: 25%;">Phí (VNĐ)</th>
+                            <th style="width: 20%;">Mức giá</th>
+                            <th style="width: 10%;">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for num in numbers %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td class="number-account">{{ num.account_number }}</td>
+                            <td>{{ num.get_category_display }}</td>
+                            <td>{{ num.fee_min|intcomma }} - {{ num.fee_max|intcomma }}</td>
+                            <td>{{ num.get_price_tier_display }}</td>
+                            <td>{% if num.is_available %}Còn{% else %}Hết{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
 
             {% if not numbers %}
             <div class="alert alert-warning">
@@ -207,7 +278,7 @@
                     <label for="countPerType" class="form-label">Số lượng mỗi loại</label>
                     <input type="number" class="form-control" id="countPerType" value="50" min="10" max="200">
                     <div class="form-text">
-                        Hệ thống sẽ tạo số cho 5 loại: Số lặp, Số tiến, Số gánh, Số lặp kép, Số ngẫu nhiên
+                        Hệ thống sẽ tạo số cho 9 loại: Số lặp, Số tiến, Số gánh, Số lặp kép, Số Lộc Phát, Số Phong Thủy, Số Hợp Tuổi, Số cao cấp, Số ngẫu nhiên
                     </div>
                 </div>
                 <div class="form-check mb-3">

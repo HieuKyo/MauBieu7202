@@ -201,6 +201,200 @@ def gen_so_ngau_nhien(num_to_gen=100):
         yield num
 
 
+def gen_so_loc_phat(num_to_gen=100):
+    """
+    Tạo số Lộc Phát - chứa nhiều số 6 và 8 (số may mắn)
+
+    Args:
+        num_to_gen: Số lượng số cần tạo (mặc định 100)
+
+    Yields:
+        - Số chứa nhiều 6 và 8 trong 9 chữ số
+        - Số chứa nhiều 6 và 8 trong 6 chữ số
+
+    Example:
+        for num in gen_so_loc_phat(50):
+            print(num)  # 7202688688688, 7202236686868, ...
+    """
+    generated = set()
+    lucky_digits = ['6', '8']
+
+    while len(generated) < num_to_gen:
+        # 1. Số 9 chữ số với nhiều 6,8 (ít nhất 5 số 6 hoặc 8)
+        count_lucky = random.randint(5, 9)
+        count_others = 9 - count_lucky
+
+        digits = []
+        for _ in range(count_lucky):
+            digits.append(random.choice(lucky_digits))
+        for _ in range(count_others):
+            digits.append(str(random.randint(0, 9)))
+
+        random.shuffle(digits)
+        s_9 = ''.join(digits)
+        if not s_9.startswith('236'):
+            generated.add(f"{PREFIX_9_SO}{s_9}")
+
+        # 2. Số 6 chữ số với nhiều 6,8 (ít nhất 4 số 6 hoặc 8)
+        count_lucky_6 = random.randint(4, 6)
+        count_others_6 = 6 - count_lucky_6
+
+        digits_6 = []
+        for _ in range(count_lucky_6):
+            digits_6.append(random.choice(lucky_digits))
+        for _ in range(count_others_6):
+            digits_6.append(str(random.randint(0, 9)))
+
+        random.shuffle(digits_6)
+        s_6 = ''.join(digits_6)
+        generated.add(f"{PREFIX_6_SO}{s_6}")
+
+    for num in generated:
+        yield num
+
+
+def gen_so_phong_thuy(num_to_gen=100):
+    """
+    Tạo số Phong Thủy - số có ý nghĩa đặc biệt
+
+    Bao gồm:
+    - Số chứa 168 (nhất lộc bát)
+    - Số chứa 888 (phát phát phát)
+    - Số chứa 999 (cửu cửu)
+    - Số có tổng chia hết cho 9 (số toàn mỹ)
+
+    Args:
+        num_to_gen: Số lượng số cần tạo (mặc định 100)
+
+    Yields:
+        Số phong thủy theo các tiêu chí trên
+
+    Example:
+        for num in gen_so_phong_thuy(50):
+            print(num)  # 7202168888168, 7202236999888, ...
+    """
+    generated = set()
+    special_patterns = ['168', '888', '999', '688', '886', '666', '888']
+
+    while len(generated) < num_to_gen:
+        # 1. Số 9 chữ số chứa pattern đặc biệt
+        pattern = random.choice(special_patterns)
+        remaining = 9 - len(pattern)
+
+        # Tạo các chữ số còn lại
+        rest_digits = ''.join([str(random.randint(0, 9)) for _ in range(remaining)])
+
+        # Chèn pattern vào vị trí ngẫu nhiên
+        insert_pos = random.randint(0, remaining)
+        s_9 = rest_digits[:insert_pos] + pattern + rest_digits[insert_pos:]
+
+        if not s_9.startswith('236'):
+            generated.add(f"{PREFIX_9_SO}{s_9}")
+
+        # 2. Số 6 chữ số chứa pattern
+        if len(pattern) <= 6:
+            remaining_6 = 6 - len(pattern)
+            rest_digits_6 = ''.join([str(random.randint(0, 9)) for _ in range(remaining_6)])
+            insert_pos_6 = random.randint(0, remaining_6)
+            s_6 = rest_digits_6[:insert_pos_6] + pattern + rest_digits_6[insert_pos_6:]
+            generated.add(f"{PREFIX_6_SO}{s_6}")
+
+    for num in generated:
+        yield num
+
+
+def gen_so_hop_tuoi(num_to_gen=100):
+    """
+    Tạo số Hợp Tuổi - số có các chữ số hợp tuổi theo phong thủy
+
+    Sử dụng các con số may mắn: 1, 3, 5, 6, 8, 9
+
+    Args:
+        num_to_gen: Số lượng số cần tạo (mặc định 100)
+
+    Yields:
+        Số hợp tuổi với các chữ số may mắn
+
+    Example:
+        for num in gen_so_hop_tuoi(50):
+            print(num)  # 7202138685931, 7202236689135, ...
+    """
+    generated = set()
+    lucky_for_age = ['1', '3', '5', '6', '8', '9']
+
+    while len(generated) < num_to_gen:
+        # 1. Số 9 chữ số với các số may mắn
+        s_9 = ''.join([random.choice(lucky_for_age) for _ in range(9)])
+        if not s_9.startswith('236'):
+            generated.add(f"{PREFIX_9_SO}{s_9}")
+
+        # 2. Số 6 chữ số với các số may mắn
+        s_6 = ''.join([random.choice(lucky_for_age) for _ in range(6)])
+        generated.add(f"{PREFIX_6_SO}{s_6}")
+
+    for num in generated:
+        yield num
+
+
+def gen_so_cao_cap(num_to_gen=50):
+    """
+    Tạo số cao cấp - có pattern phức tạp để đạt mức giá cao (10M-20M+)
+
+    Bao gồm:
+    - Số lặp 7-8 chữ số liên tiếp
+    - Số tiến 7-8 chữ số liên tiếp
+    - Kết hợp nhiều pattern đẹp
+
+    Args:
+        num_to_gen: Số lượng số cần tạo (mặc định 50)
+
+    Yields:
+        Số có pattern phức tạp, giá trị cao
+
+    Example:
+        for num in gen_so_cao_cap(30):
+            print(num)  # 7202888888881, 7202236888888, ...
+    """
+    generated = set()
+
+    while len(generated) < num_to_gen:
+        # 1. Lặp 7-8 số giống nhau trong 9 chữ số
+        digit = str(random.randint(0, 9))
+        length = random.randint(7, 8)
+        remaining = 9 - length
+
+        repeated = digit * length
+        rest = ''.join([str(random.randint(0, 9)) for _ in range(remaining)])
+
+        # Đặt phần lặp ở đầu, giữa hoặc cuối
+        position = random.choice(['start', 'end'])
+        if position == 'start':
+            s_9 = repeated + rest
+        else:
+            s_9 = rest + repeated
+
+        if not s_9.startswith('236'):
+            generated.add(f"{PREFIX_9_SO}{s_9}")
+
+        # 2. Lặp 5-6 số trong 6 chữ số
+        digit_6 = str(random.randint(0, 9))
+        length_6 = random.randint(5, 6)
+        remaining_6 = 6 - length_6
+
+        repeated_6 = digit_6 * length_6
+        if remaining_6 > 0:
+            rest_6 = ''.join([str(random.randint(0, 9)) for _ in range(remaining_6)])
+            position_6 = random.choice(['start', 'end'])
+            s_6 = repeated_6 + rest_6 if position_6 == 'start' else rest_6 + repeated_6
+        else:
+            s_6 = repeated_6
+
+        generated.add(f"{PREFIX_6_SO}{s_6}")
+
+    for num in generated:
+        yield num
+
+
 # --- HÀM TIỆN ÍCH BỔ SUNG ---
 
 def generate_all_types(count_per_type=20):
@@ -217,7 +411,11 @@ def generate_all_types(count_per_type=20):
             'tien': [...],
             'ganh': [...],
             'lap_kep': [...],
-            'ngau_nhien': [...]
+            'ngau_nhien': [...],
+            'loc_phat': [...],
+            'phong_thuy': [...],
+            'hop_tuoi': [...],
+            'cao_cap': [...]
         }
 
     Example:
@@ -229,6 +427,10 @@ def generate_all_types(count_per_type=20):
         'tien': generate_numbers(gen_so_tien, count_per_type),
         'ganh': generate_numbers(gen_so_ganh, count_per_type),
         'lap_kep': generate_numbers(gen_so_lap_kep, count_per_type),
+        'loc_phat': generate_numbers(gen_so_loc_phat, count_per_type),
+        'phong_thuy': generate_numbers(gen_so_phong_thuy, count_per_type),
+        'hop_tuoi': generate_numbers(gen_so_hop_tuoi, count_per_type),
+        'cao_cap': generate_numbers(gen_so_cao_cap, min(count_per_type, 50)),
         'ngau_nhien': generate_numbers(gen_so_ngau_nhien, count_per_type),
     }
 
