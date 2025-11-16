@@ -1,0 +1,571 @@
+{
+  "Tỉnh Bạc Liêu": {
+    "Thành phố Bạc Liêu": {
+      "Phường 1": [
+        "1",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "Phường 2": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "Phường 3": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "Trà Kha B"
+      ],
+      "Phường 5": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8"
+      ],
+      "Phường 7": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "Phường 8": [
+        "1",
+        "2",
+        "3",
+        "8",
+        "Cầu Sập",
+        "Trà Kha",
+        "Trà Kha B",
+        "Trà Khứa"
+      ],
+      "Phường Nhà Mát": [
+        "Bờ Tây",
+        "Chòm Xoài",
+        "Đầu Lộ",
+        "Đầu Lộ A",
+        "Kinh Tế",
+        "Nhà Mát"
+      ],
+      "Xã Hiệp Thành": [
+        "Giồng Giữa",
+        "Giồng Nhãn",
+        "Giồng Nhãn A",
+        "Xóm Lẫm"
+      ],
+      "Xã Vĩnh Trạch Đông": [
+        "Giồng Giữa A",
+        "Giồng Giữa B",
+        "Biển Đông A",
+        "Biển Đông B",
+        "Biển Tây A",
+        "Biển Tây B"
+      ]
+    },
+    "Huyện Hồng Dân": {
+      "Thị trấn Ngan Dừa": [
+        "Bà Hiên",
+        "Bà Gồng",
+        "Trèm Trẹm",
+        "Nội Ô - Khu 1A",
+        "Nội Ô - Khu 1B",
+        "Nội Ô - Khu 2",
+        "Nội Ô - Khu 3",
+        "Thống Nhất",
+        "Xẻo Quao"
+      ],
+      "Xã Lộc Ninh": [
+        "Bà Ai I",
+        "Bà Ai II",
+        "Bình Dân",
+        "Cai Giảng",
+        "Đầu Sấu Đông",
+        "Đầu Sấu Tây",
+        "Kinh Xáng",
+        "Phước Hòa",
+        "Tà Suôl"
+      ],
+      "Xã Ninh Hòa": [
+        "Ninh An",
+        "Ninh Định",
+        "Ninh Phước",
+        "Ninh Thạnh I",
+        "Ninh Thạnh II",
+        "Tà Ben",
+        "Tà Ky",
+        "Tà Óc",
+        "Vĩnh An"
+      ],
+      "Xã Vĩnh Lộc": [
+        "Cầu Đỏ",
+        "Nhị Cầm",
+        "Sơn Trắng",
+        "Vĩnh Bình",
+        "Vĩnh Hòa",
+        "Vĩnh Thành Lập",
+        "Vĩnh Thạnh"
+      ],
+      "Xã Vĩnh Lộc A": [
+        "Ba Đình",
+        "Bần Ổi",
+        "Bến Bào",
+        "Bình Lộc",
+        "Lộ Xe",
+        "Lộ Xe A"
+      ],
+      "Xã Ninh Quới": [
+        "Ninh Bình",
+        "Ninh Điền",
+        "Ninh Phú",
+        "Ninh Thành",
+        "Ninh Tân",
+        "Ngan Kè",
+        "Ngọn",
+        "Phú Tân",
+        "Vàm",
+        "Xóm Tre"
+      ],
+      "Xã Ninh Quới A": [
+        "Ninh Chài",
+        "Ninh Chùa",
+        "Ninh Hiệp",
+        "Ninh Hòa",
+        "Ninh Lợi",
+        "Ninh Tiến",
+        "Ninh Phước",
+        "Ninh Thành",
+        "Ninh Thạnh",
+        "Ninh Thuận"
+      ],
+      "Xã Ninh Thạnh Lợi": [
+        "Cai Giảng",
+        "Cây Cui",
+        "Cây Mét",
+        "Kos Thum (Cỏ Thum)",
+        "Ngô Kim",
+        "Ninh Thạnh Đông",
+        "Ninh Thạnh Tây",
+        "Xẻo Dừng",
+        "Xẻo Gừa"
+      ],
+      "Xã Ninh Thạnh Lợi A": [
+        "Chòm Cao",
+        "Chủ Chọt",
+        "Nhà Lầu I",
+        "Nhà Lầu II",
+        "Thống Nhất"
+      ]
+    },
+    "Huyện Phước Long": {
+      "Thị trấn Phước Long": [
+        "Hành Chính",
+        "Long Đức",
+        "Long Hải",
+        "Long Hậu",
+        "Long Hòa",
+        "Long Thành",
+        "Nội Ô",
+        "Phước Hòa A",
+        "Phước Hòa Tiền",
+        "Phước Thuận A",
+        "Phước Thuận I"
+      ],
+      "Xã Vĩnh Phú Đông": [
+        "Huê III",
+        "Mỹ I",
+        "Mỹ II",
+        "Mỹ IIA",
+        "Mỹ Tân",
+        "Phước IIIA",
+        "Phước IIIB",
+        "Vĩnh Lộc",
+        "Vĩnh Phú A",
+        "Vĩnh Phú B",
+        "Tường I"
+      ],
+      "Xã Vĩnh Phú Tây": [
+        "Bình Bảo",
+        "Bình Hổ",
+        "Bình Hổ A",
+        "Bình Lễ",
+        "Bình Thạnh",
+        "Bình Thạnh A",
+        "Bình Tốt",
+        "Bình Tốt A",
+        "Bình Tốt B",
+        "Huê I",
+        "Phước II"
+      ],
+      "Xã Hưng Phú": [
+        "Mỹ Hòa",
+        "Mỹ Phú Đông",
+        "Mỹ Phú Tây",
+        "Mỹ Trinh",
+        "Mỹ Tường I",
+        "Mỹ Tường II",
+        "Tường II",
+        "Tường IV",
+        "Vĩnh Tường"
+      ],
+      "Xã Phong Thạnh Tây A": [
+        "1A",
+        "1B",
+        "2B",
+        "3",
+        "8",
+        "8A",
+        "8B"
+      ],
+      "Xã Phong Thạnh Tây B": [
+        "2A",
+        "4",
+        "9",
+        "9A",
+        "9B",
+        "9C",
+        "12"
+      ],
+      "Xã Phước Long": [
+        "Phước Hậu",
+        "Phước Ninh",
+        "Phước Tân",
+        "Phước Thành",
+        "Phước Thạnh",
+        "Phước Thọ",
+        "Phước Thọ Hậu",
+        "Phước Thọ Tiền",
+        "Phước Trường"
+      ],
+      "Xã Vĩnh Thanh": [
+        "Huê II",
+        "10",
+        "Bình Thiện",
+        "Huê I",
+        "Huê IIA",
+        "Huê IIB",
+        "Vĩnh Bình A",
+        "Vĩnh Bình B",
+        "Vĩnh Đông",
+        "Vĩnh Hòa",
+        "Tường IIIA",
+        "Tường IIIB",
+        "Tường Thắng A",
+        "Tường Thắng B"
+      ]
+    },
+    "Huyện Vĩnh Lợi": {
+      "Xã Hưng Hội": [
+        "Cả Vĩnh",
+        "Cái Giá",
+        "Cù Lao",
+        "Đay Tà Ni",
+        "Giả Tiểu",
+        "Nước Mặn",
+        "Phú Tòng",
+        "Sóc Đồn"
+      ],
+      "Xã Hưng Thành": [
+        "Gia Hội",
+        "Hoàng Quân I",
+        "Hoàng Quân II",
+        "Hoàng Quân III",
+        "Năm Căn",
+        "Ngọc Được",
+        "Nhà Thờ",
+        "Quốc Kỷ",
+        "Vườn Cò",
+        "Xẻo Nhào"
+      ],
+      "Xã Châu Thới": [
+        "B1",
+        "B2",
+        "Bà Chăng A",
+        "Bà Chăng B",
+        "Bào Sen",
+        "Cai Điều",
+        "Công Điền",
+        "Giồng Bướm A",
+        "Giồng Bướm B",
+        "Nàng Rền",
+        "Nhà Việc",
+        "Trà Hất",
+        "Tràm 1",
+        "Xóm Lớn"
+      ],
+      "Xã Vĩnh Hưng": [
+        "Đông Hưng",
+        "Nam Hưng",
+        "Nam Thạnh",
+        "Tam Hưng",
+        "Thạnh Hưng I",
+        "Thạnh Hưng II",
+        "Trần Nghĩa",
+        "Trung Hưng II"
+      ],
+      "Xã Vĩnh Hưng A": [
+        "Bắc Hưng",
+        "Mỹ Phú Đông",
+        "Mỹ Trinh",
+        "Nguyễn Điền",
+        "Trung Hưng",
+        "Trung Hưng IA",
+        "Trung Hưng IB",
+        "Trung Hưng III"
+      ],
+      "Thị trấn Châu Hưng": [
+        "Bà Chăng",
+        "Cái Dầy",
+        "Mặc Đây",
+        "Nhà Thờ",
+        "Tân Tạo",
+        "Thông Lưu B",
+        "Xẻo Chích",
+        "Xẻo Lá"
+      ],
+      "Xã Châu Hưng A": [
+        "Chắt Đốt",
+        "Hà Đức",
+        "Nhà Dài A",
+        "Nhà Dài B",
+        "Thạnh Long",
+        "Thông Lưu A",
+        "Trà Ban I",
+        "Trà Ban II"
+      ],
+      "Xã Long Thạnh": [
+        "Béc Hen Lớn",
+        "Béc Hen Nhỏ",
+        "Cái Tràm A1",
+        "Cái Tràm A2",
+        "Cây Điều",
+        "Hòa Linh",
+        "Phước Thạnh I",
+        "Phước Thạnh II",
+        "Tân Long",
+        "Trà Khứa",
+        "Tràm 1"
+      ]
+    },
+    "Thị xã Giá Rai": {
+      "Phường 1": [1, 2, 3, 4, 5],
+      "Phường Hộ Phòng": [1, 2, 3, 4, 5],
+      "Xã Phong Thạnh Đông": [9, 10, 11, 12, 13, 15],
+      "Phường Láng Tròn": [1, 2, 3, 7, 8, 11, 12, 13],
+      "Xã Phong Tân": [5, 14, 15, "16A", "16B", 17, 18, 19, 20, 21],
+      "Xã Tân Phong": [1, 2, 3, "3B", 10, "10A", "10B", "Khúc Tréo A", "Khúc Tréo B", "Nhàn Dân A", "Nhàn Dân B"],
+      "Xã Phong Thạnh": [19, "19A", 20, 21, 23, 24, 25],
+      "Xã Phong Thạnh A": [3, 4, "4A", 18, 22, 24],
+      "Xã Phong Thạnh Tây": [1, 2, 3, 4, 5, 6, 7],
+      "Xã Tân Thạnh": [8, 9, "Gò Muồng", "Kinh Lớn", "Xóm Mới"]
+    },
+    "Huyện Đông Hải": {
+        "Thị trấn Gành Hào": [
+          1, 2, 3, 4, 5
+        ],
+        "Xã An Phúc": [
+        "Cái Keo",
+        "Chòi Mòi",
+        "Long Phú",
+        "Minh Thìn",
+        "Minh Thìn A",
+        "Phước Thắng",
+        "Phước Thắng A"
+      ],
+      "Xã Định Thành": [
+        "Cây Giá",
+        "Cây Thẻ",
+        "Chòi Mòi",
+        "Lung Chim",
+        "Lung Xình"
+      ],
+      "Xã Định Thành A": [
+        "Hòa Phong",
+        "Lung Lá",
+        "Lung Rong",
+        "Kênh Xáng",
+        "Phan Màu"
+      ],
+      "Xã An Trạch": [
+        "Anh Dũng",
+        "Hiệp Vinh",
+        "Hoàng Minh",
+        "Hoàng Minh A",
+        "Lung Lá",
+        "Thành Thưởng",
+        "Thành Thưởng A",
+        "Văn Đức A",
+        "Văn Đức B"
+      ],
+      "Xã An Trạch A": [
+        "1",
+        "2",
+        "Ba Mến",
+        "Ba Mến A",
+        "Quyết Chiến",
+        "Quyết Thắng",
+        "Thành Thưởng B",
+        "Thành Thưởng C"
+      ],
+      "Xã Điền Hải": [
+        "Bờ Cảng",
+        "Diêm Điền",
+        "Doanh Điền",
+        "Gò Cát",
+        "Huy Điền",
+        "Long Hà"
+      ],
+      "Xã Long Điền": [
+        "Cây Dương",
+        "Cây Dương A",
+        "Cây Giang",
+        "Cây Giang A",
+        "Công Điền",
+        "Đại Điền",
+        "Đầu Lá",
+        "Hòa I",
+        "Hòa II",
+        "Hòa Thạnh",
+        "Rạch Rắn",
+        "Thạnh I",
+        "Thạnh II",
+        "Thạnh An",
+        "Thạnh Trị"
+      ],
+      "Xã Long Điền Đông A": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "Châu Điền",
+        "Hiệp Điền",
+        "Mỹ Điền",
+        "Phước Điền"
+      ],
+      "Xã Long Điền Đông": [
+        "Bửu I",
+        "Bửu II",
+        "Bửu Đông",
+        "Cái Cùng",
+        "Minh Điền",
+        "Trung Điền",
+        "Trường Điền",
+        "Vĩnh Điền"
+      ],
+        "Xã Long Điền Tây": [
+        "An Điền",
+        "Bình Điền",
+        "Canh Điền",
+        "Lam Điền",
+        "Lập Điền",
+        "Thanh Hải",
+        "Thuận Điền",
+        "Vinh Điền"
+      ]
+    },
+    "Huyện Hòa Bình": {
+      "Thị trấn Hòa Bình": [
+        "Cái Tràm B",
+        "Chùa Phật",
+        "Láng Giài",
+        "Láng Giài A",
+        "Thị Trấn A",
+        "Thị Trấn A I",
+        "Thị Trấn B",
+        "Thị Trấn BI"
+      ],
+      "Xã Vĩnh Mỹ A": [
+        "15A",
+        "Châu Phú",
+        "Do Thới",
+        "Huy Hết",
+        "Tân Tiến",
+        "Vĩnh Hiệp",
+        "Vĩnh Hội",
+        "Vĩnh Tân",
+        "Vĩnh Thành",
+        "Vĩnh Thạnh",
+        "Xóm Lớn A",
+        "Xóm Lớn B"
+      ],
+      "Xã Vĩnh Mỹ B": [
+        "14",
+        "15",
+        "An Khoa",
+        "An Nghiệp",
+        "An Thành",
+        "Bình Minh",
+        "Đồng Lớn I",
+        "Đồng Lớn II"
+      ],
+      "Xã Vĩnh Thịnh": [
+        "Vĩnh Bình",
+        "Vĩnh Hòa",
+        "Vĩnh Lạc",
+        "Vĩnh Lập",
+        "Vĩnh Kiểu",
+        "Vĩnh Mới",
+        "Vĩnh Tiến"
+      ],
+      "Xã Vĩnh Bình": [
+        "17",
+        "18",
+        "19",
+        "Kế Phòng",
+        "Minh Hòa",
+        "Mỹ Phú Nam",
+        "Ninh Lợi",
+        "Thanh Sơn",
+        "Thạnh Hưng 2"
+      ],
+      "Xã Vĩnh Hậu": [
+        "13",
+        "14",
+        "Toàn Thắng",
+        "Thống Nhất",
+        "Vĩnh Mẫu",
+        "Vĩnh Thạnh"
+      ],
+      "Xã Vĩnh Hậu A": [
+        "12",
+        "15",
+        "16",
+        "17",
+        "Cây Gừa",
+        "Giồng Tra"
+      ],
+      "Xã Minh Diệu": [
+        "21",
+        "33",
+        "36",
+        "37",
+        "38",
+        "Cá Rô",
+        "Hậu Bối 1",
+        "Hậu Bối 2",
+        "Nam Hưng",
+        "Ninh Lợi",
+        "Trà Co",
+        "Tràm I (Tràm Một)"
+      ]
+    }
+  }
+}

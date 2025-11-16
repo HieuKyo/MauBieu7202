@@ -3,6 +3,11 @@
 
 {% block title %}Danh sách Khách hàng - Hệ thống Mẫu biểu{% endblock %}
 
+{% block extra_head %}
+<!-- Address Selector Component -->
+<script src="{% static 'js/address_selector_component.js' %}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-6">
@@ -226,6 +231,24 @@
                         <label for="add_dia_chi" class="form-label">Địa chỉ</label>
                         <textarea class="form-control" id="add_dia_chi" name="dia_chi" rows="2"></textarea>
                     </div>
+                    <!-- Address Selector Component -->
+                    <hr class="my-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill"></i> Thông tin địa chỉ chi tiết</h6>
+                    <div id="add-address-selector-container"></div>
+                    <!-- Hidden fields for address -->
+                    <input type="hidden" id="add_province" name="province">
+                    <input type="hidden" id="add_district" name="district">
+                    <input type="hidden" id="add_ward" name="ward">
+                    <input type="hidden" id="add_hamlet" name="hamlet">
+                    <input type="hidden" id="add_full_address" name="full_address">
+                    <!-- Preview address -->
+                    <div class="alert alert-secondary mt-3">
+                        <strong><i class="bi bi-info-circle"></i> Địa chỉ đã chọn:</strong>
+                        <div id="add-address-preview" class="mt-2">
+                            <em class="text-muted">Chưa chọn địa chỉ</em>
+                        </div>
+                    </div>
+                    <hr class="my-4">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="add_noi_lam_viec" class="form-label">Nơi làm việc</label>
@@ -370,6 +393,24 @@
                         <label for="edit_dia_chi" class="form-label">Địa chỉ</label>
                         <textarea class="form-control" id="edit_dia_chi" name="dia_chi" rows="2"></textarea>
                     </div>
+                    <!-- Address Selector Component -->
+                    <hr class="my-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill"></i> Thông tin địa chỉ chi tiết</h6>
+                    <div id="edit-address-selector-container"></div>
+                    <!-- Hidden fields for address -->
+                    <input type="hidden" id="edit_province" name="province">
+                    <input type="hidden" id="edit_district" name="district">
+                    <input type="hidden" id="edit_ward" name="ward">
+                    <input type="hidden" id="edit_hamlet" name="hamlet">
+                    <input type="hidden" id="edit_full_address" name="full_address">
+                    <!-- Preview address -->
+                    <div class="alert alert-secondary mt-3">
+                        <strong><i class="bi bi-info-circle"></i> Địa chỉ đã chọn:</strong>
+                        <div id="edit-address-preview" class="mt-2">
+                            <em class="text-muted">Chưa chọn địa chỉ</em>
+                        </div>
+                    </div>
+                    <hr class="my-4">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit_noi_lam_viec" class="form-label">Nơi làm việc</label>
@@ -622,6 +663,30 @@ function editCustomer(customerId) {
             document.getElementById('edit_noi_lam_viec').value = customer.noi_lam_viec || '';
             document.getElementById('edit_so_tai_khoan').value = customer.so_tai_khoan || '';
             document.getElementById('edit_ghi_chu').value = customer.ghi_chu || '';
+
+            // Load address fields
+            document.getElementById('edit_province').value = customer.province || '';
+            document.getElementById('edit_district').value = customer.district || '';
+            document.getElementById('edit_ward').value = customer.ward || '';
+            document.getElementById('edit_hamlet').value = customer.hamlet || '';
+            document.getElementById('edit_full_address').value = customer.full_address || '';
+
+            // Set address selector values if exists
+            if (customer.province) {
+                setTimeout(function() {
+                    editAddressSelector.setValue({
+                        tinh: customer.province,
+                        huyen: customer.district,
+                        xa: customer.ward,
+                        khom: customer.hamlet
+                    });
+                    // Update preview
+                    const preview = document.getElementById('edit-address-preview');
+                    preview.innerHTML = customer.full_address
+                        ? `<strong>${customer.full_address}</strong>`
+                        : '<em class="text-muted">Chưa chọn địa chỉ</em>';
+                }, 300); // Wait for modal to fully render
+            }
 
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('editCustomerModal'));
@@ -897,5 +962,82 @@ function submitAgribankImport() {
         document.getElementById('importAgribankResult').style.display = 'block';
     });
 }
+
+// ============================================
+// Address Selector Component Initialization
+// ============================================
+let addAddressSelector, editAddressSelector;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Address Selector for Add Customer Modal
+    addAddressSelector = new AddressSelector('#add-address-selector-container', {
+        dataUrl: '{% static "data/dia_danh.json" %}',
+        showKhom: true,
+        labels: {
+            tinh: 'Tỉnh/Thành phố',
+            huyen: 'Quận/Huyện',
+            xa: 'Phường/Xã',
+            khom: 'Ấp/Khóm'
+        },
+        autoFill: function(fullAddress, parts) {
+            // Fill hidden fields
+            document.getElementById('add_province').value = parts.province || '';
+            document.getElementById('add_district').value = parts.district || '';
+            document.getElementById('add_ward').value = parts.ward || '';
+            document.getElementById('add_hamlet').value = parts.hamlet || '';
+            document.getElementById('add_full_address').value = fullAddress || '';
+
+            // Update preview
+            const preview = document.getElementById('add-address-preview');
+            preview.innerHTML = fullAddress
+                ? `<strong>${fullAddress}</strong>`
+                : '<em class="text-muted">Chưa chọn địa chỉ</em>';
+        },
+        onLoad: function(instance) {
+            console.log('Address Selector loaded for Add Customer modal');
+        }
+    });
+
+    // Initialize Address Selector for Edit Customer Modal
+    editAddressSelector = new AddressSelector('#edit-address-selector-container', {
+        dataUrl: '{% static "data/dia_danh.json" %}',
+        showKhom: true,
+        labels: {
+            tinh: 'Tỉnh/Thành phố',
+            huyen: 'Quận/Huyện',
+            xa: 'Phường/Xã',
+            khom: 'Ấp/Khóm'
+        },
+        autoFill: function(fullAddress, parts) {
+            // Fill hidden fields
+            document.getElementById('edit_province').value = parts.province || '';
+            document.getElementById('edit_district').value = parts.district || '';
+            document.getElementById('edit_ward').value = parts.ward || '';
+            document.getElementById('edit_hamlet').value = parts.hamlet || '';
+            document.getElementById('edit_full_address').value = fullAddress || '';
+
+            // Update preview
+            const preview = document.getElementById('edit-address-preview');
+            preview.innerHTML = fullAddress
+                ? `<strong>${fullAddress}</strong>`
+                : '<em class="text-muted">Chưa chọn địa chỉ</em>';
+        },
+        onLoad: function(instance) {
+            console.log('Address Selector loaded for Edit Customer modal');
+        }
+    });
+
+    // Reset address selector when Add modal is closed
+    document.getElementById('addCustomerModal').addEventListener('hidden.bs.modal', function() {
+        addAddressSelector.reset();
+        document.getElementById('add-address-preview').innerHTML = '<em class="text-muted">Chưa chọn địa chỉ</em>';
+    });
+
+    // Reset address selector when Edit modal is closed
+    document.getElementById('editCustomerModal').addEventListener('hidden.bs.modal', function() {
+        editAddressSelector.reset();
+        document.getElementById('edit-address-preview').innerHTML = '<em class="text-muted">Chưa chọn địa chỉ</em>';
+    });
+});
 </script>
 {% endblock %}

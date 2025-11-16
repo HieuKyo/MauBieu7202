@@ -272,6 +272,32 @@ class Customer(models.Model):
     so_dien_thoai = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại", db_index=True)
     email = models.EmailField(blank=True, verbose_name="Email")
 
+    # Thông tin địa chỉ chi tiết (Address Selector Component)
+    province = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Tỉnh/Thành phố"
+    )
+    district = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Quận/Huyện"
+    )
+    ward = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Phường/Xã"
+    )
+    hamlet = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Ấp/Khóm"
+    )
+    full_address = models.TextField(
+        blank=True,
+        verbose_name="Địa chỉ đầy đủ"
+    )
+
     # Địa chỉ hành chính (mã)
     ma_tinh = models.CharField(max_length=10, blank=True, verbose_name="Mã tỉnh/thành phố")
     ma_quan_huyen = models.CharField(max_length=10, blank=True, verbose_name="Mã quận/huyện")
@@ -648,6 +674,12 @@ class Customer(models.Model):
             'ho_khau': self.ho_khau or '',
             'so_dien_thoai': self.so_dien_thoai or '',
             'email': self.email or '',
+            # Địa chỉ chi tiết từ Address Selector
+            'province': self.province or '',
+            'district': self.district or '',
+            'ward': self.ward or '',
+            'hamlet': self.hamlet or '',
+            'full_address': self.full_address or '',
             'nghe_nghiep': self.nghe_nghiep or '',
             'noi_lam_viec': self.noi_lam_viec or '',
             'so_tai_khoan': self.so_tai_khoan or '',

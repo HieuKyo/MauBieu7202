@@ -137,6 +137,12 @@ class CustomerForm(forms.ModelForm):
             'dia_chi': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Địa chỉ thường trú'}),
             'so_dien_thoai': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số điện thoại'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'email@example.com'}),
+            # Address Selector Component - Hidden fields
+            'province': forms.HiddenInput(),
+            'district': forms.HiddenInput(),
+            'ward': forms.HiddenInput(),
+            'hamlet': forms.HiddenInput(),
+            'full_address': forms.HiddenInput(),
             'nghe_nghiep': forms.Select(attrs={'class': 'form-select'}),
             'noi_lam_viec': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi làm việc'}),
             'so_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản'}),
