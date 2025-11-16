@@ -46,6 +46,10 @@ class CustomerAdmin(admin.ModelAdmin):
         ('Thông tin liên hệ', {
             'fields': ('dia_chi', 'so_dien_thoai', 'email')
         }),
+        ('Địa chỉ chi tiết (Address Selector)', {
+            'fields': ('province', 'district', 'ward', 'hamlet', 'full_address'),
+            'description': 'Thông tin địa chỉ chi tiết được điền tự động từ Address Selector Component'
+        }),
         ('Thông tin nghề nghiệp', {
             'fields': ('nghe_nghiep', 'noi_lam_viec')
         }),
