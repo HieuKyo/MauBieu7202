@@ -3,6 +3,11 @@
 
 {% block title %}Dashboard - Hệ thống Mẫu biểu{% endblock %}
 
+{% block extra_head %}
+<!-- Address Selector Component -->
+<script src="{% static 'js/address_selector_component.js' %}"></script>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .step-container {
@@ -300,8 +305,33 @@
                             <div class="row g-2">
                                 <div class="col-12">
                                     <label class="form-label">Địa chỉ thường trú</label>
-                                    <textarea class="form-control" name="dia_chi" rows="2"></textarea>
+                                    <textarea class="form-control" name="dia_chi" rows="2" id="dia-chi-field"></textarea>
+                                    <small class="text-muted">Hoặc chọn từ danh sách bên dưới để tự động điền</small>
                                 </div>
+
+                                <!-- Address Selector Component -->
+                                <div class="col-12">
+                                    <hr class="my-3">
+                                    <h6 class="fw-bold mb-3" style="color: var(--agribank-green);">
+                                        <i class="bi bi-geo-alt-fill"></i> Chọn địa chỉ chi tiết (Bạc Liêu)
+                                    </h6>
+                                    <div id="dashboard-address-selector-container"></div>
+
+                                    <!-- Hidden fields for address -->
+                                    <input type="hidden" name="province" id="dashboard-province">
+                                    <input type="hidden" name="district" id="dashboard-district">
+                                    <input type="hidden" name="ward" id="dashboard-ward">
+                                    <input type="hidden" name="hamlet" id="dashboard-hamlet">
+                                    <input type="hidden" name="full_address" id="dashboard-full-address">
+
+                                    <!-- Preview address -->
+                                    <div class="alert alert-info mt-3" id="dashboard-address-preview-container" style="display: none;">
+                                        <strong><i class="bi bi-check-circle"></i> Địa chỉ đã chọn:</strong>
+                                        <div id="dashboard-address-preview" class="mt-2"></div>
+                                    </div>
+                                    <hr class="my-3">
+                                </div>
+
                                 <div class="col-12">
                                     <label class="form-label">Số điện thoại</label>
                                     <input type="text" class="form-control" name="so_dien_thoai">
@@ -1402,6 +1432,62 @@ if (originalFillFormWithData) {
         setTimeout(updateAutoCalcCard, 100);
     };
 }
+
+// ==========================================
+// Address Selector Component Initialization
+// ==========================================
+let dashboardAddressSelector;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Address Selector for Dashboard
+    dashboardAddressSelector = new AddressSelector('#dashboard-address-selector-container', {
+        dataUrl: '{% static "data/dia_danh.json" %}',
+        showKhom: true,
+        labels: {
+            tinh: 'Tỉnh/Thành phố',
+            huyen: 'Quận/Huyện',
+            xa: 'Phường/Xã',
+            khom: 'Ấp/Khóm'
+        },
+        placeholders: {
+            tinh: '-- Chọn Tỉnh/Thành phố --',
+            huyen: '-- Chọn Quận/Huyện --',
+            xa: '-- Chọn Phường/Xã --',
+            khom: '-- Chọn Ấp/Khóm --'
+        },
+        autoFill: function(fullAddress, parts) {
+            // Fill hidden fields for new address system
+            document.getElementById('dashboard-province').value = parts.province || '';
+            document.getElementById('dashboard-district').value = parts.district || '';
+            document.getElementById('dashboard-ward').value = parts.ward || '';
+            document.getElementById('dashboard-hamlet').value = parts.hamlet || '';
+            document.getElementById('dashboard-full-address').value = fullAddress || '';
+
+            // IMPORTANT: Also fill the old address field (dia_chi) for backward compatibility
+            const diaChiField = document.getElementById('dia-chi-field');
+            if (diaChiField && fullAddress) {
+                diaChiField.value = fullAddress;
+            }
+
+            // Update preview
+            const previewContainer = document.getElementById('dashboard-address-preview-container');
+            const preview = document.getElementById('dashboard-address-preview');
+
+            if (fullAddress) {
+                preview.innerHTML = `<strong class="text-success">${fullAddress}</strong>`;
+                previewContainer.style.display = 'block';
+            } else {
+                preview.innerHTML = '';
+                previewContainer.style.display = 'none';
+            }
+        },
+        onLoad: function(instance) {
+            console.log('Address Selector loaded for Dashboard form');
+        }
+    });
+
+    console.log('Dashboard Address Selector initialized');
+});
 
 </script>
 {% endblock %}
