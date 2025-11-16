@@ -967,6 +967,18 @@ function submitAgribankImport() {
 // Address Selector Component Initialization
 // ============================================
 let addAddressSelector, editAddressSelector;
+let addressConversionData = {}; // Store conversion mapping
+
+// Load address conversion data
+fetch('{% static "data/chuyen_doi.json" %}')
+    .then(response => response.json())
+    .then(data => {
+        addressConversionData = data;
+        console.log('Address conversion data loaded:', Object.keys(data).length, 'mappings');
+    })
+    .catch(error => {
+        console.error('Error loading address conversion data:', error);
+    });
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Address Selector for Add Customer Modal
@@ -980,17 +992,30 @@ document.addEventListener('DOMContentLoaded', function() {
             khom: 'Ấp/Khóm'
         },
         autoFill: function(fullAddress, parts) {
-            // Fill hidden fields
+            // CONVERSION LOGIC: Convert old address (Bạc Liêu) to new address (Cà Mau)
+            let newAddress = fullAddress;
+
+            if (fullAddress && addressConversionData[fullAddress]) {
+                // Found mapping - convert to new address
+                newAddress = addressConversionData[fullAddress];
+                console.log('✓ Address converted:', fullAddress, '→', newAddress);
+            } else if (fullAddress) {
+                // No mapping found - use old address as fallback
+                console.warn('⚠ No conversion mapping found for:', fullAddress);
+                console.warn('Using old address as fallback');
+            }
+
+            // Fill hidden fields with CONVERTED address
             document.getElementById('add_province').value = parts.province || '';
             document.getElementById('add_district').value = parts.district || '';
             document.getElementById('add_ward').value = parts.ward || '';
             document.getElementById('add_hamlet').value = parts.hamlet || '';
-            document.getElementById('add_full_address').value = fullAddress || '';
+            document.getElementById('add_full_address').value = newAddress || '';
 
-            // Update preview
+            // Update preview with NEW CONVERTED address
             const preview = document.getElementById('add-address-preview');
-            preview.innerHTML = fullAddress
-                ? `<strong>${fullAddress}</strong>`
+            preview.innerHTML = newAddress
+                ? `<strong>${newAddress}</strong>`
                 : '<em class="text-muted">Chưa chọn địa chỉ</em>';
         },
         onLoad: function(instance) {
@@ -1009,17 +1034,30 @@ document.addEventListener('DOMContentLoaded', function() {
             khom: 'Ấp/Khóm'
         },
         autoFill: function(fullAddress, parts) {
-            // Fill hidden fields
+            // CONVERSION LOGIC: Convert old address (Bạc Liêu) to new address (Cà Mau)
+            let newAddress = fullAddress;
+
+            if (fullAddress && addressConversionData[fullAddress]) {
+                // Found mapping - convert to new address
+                newAddress = addressConversionData[fullAddress];
+                console.log('✓ Address converted:', fullAddress, '→', newAddress);
+            } else if (fullAddress) {
+                // No mapping found - use old address as fallback
+                console.warn('⚠ No conversion mapping found for:', fullAddress);
+                console.warn('Using old address as fallback');
+            }
+
+            // Fill hidden fields with CONVERTED address
             document.getElementById('edit_province').value = parts.province || '';
             document.getElementById('edit_district').value = parts.district || '';
             document.getElementById('edit_ward').value = parts.ward || '';
             document.getElementById('edit_hamlet').value = parts.hamlet || '';
-            document.getElementById('edit_full_address').value = fullAddress || '';
+            document.getElementById('edit_full_address').value = newAddress || '';
 
-            // Update preview
+            // Update preview with NEW CONVERTED address
             const preview = document.getElementById('edit-address-preview');
-            preview.innerHTML = fullAddress
-                ? `<strong>${fullAddress}</strong>`
+            preview.innerHTML = newAddress
+                ? `<strong>${newAddress}</strong>`
                 : '<em class="text-muted">Chưa chọn địa chỉ</em>';
         },
         onLoad: function(instance) {

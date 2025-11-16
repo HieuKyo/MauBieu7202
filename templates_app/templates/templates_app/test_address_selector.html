@@ -74,6 +74,7 @@
 
     <script>
         const debugLog = document.getElementById('debug-log');
+        let addressConversionData = {}; // Store conversion mapping
 
         function log(message) {
             const time = new Date().toLocaleTimeString();
@@ -82,6 +83,19 @@
 
         log('Page loaded');
         log('Checking if AddressSelector class exists: ' + (typeof AddressSelector !== 'undefined' ? 'YES ✓' : 'NO ✗'));
+
+        // Load address conversion data
+        log('Loading address conversion data...');
+        fetch('{% static "data/chuyen_doi.json" %}')
+            .then(response => response.json())
+            .then(data => {
+                addressConversionData = data;
+                log('✓ Conversion data loaded: ' + Object.keys(data).length + ' mappings');
+            })
+            .catch(error => {
+                log('✗ ERROR loading conversion data: ' + error.message);
+                console.error('Error loading address conversion data:', error);
+            });
 
         document.addEventListener('DOMContentLoaded', function() {
             log('DOMContentLoaded event fired');
@@ -105,19 +119,29 @@
                         khom: 'Ấp/Khóm'
                     },
                     autoFill: function(fullAddress, parts) {
-                        log('AutoFill triggered: ' + fullAddress);
+                        log('AutoFill triggered - Old address: ' + fullAddress);
 
-                        // Fill hidden fields
+                        // CONVERSION LOGIC: Convert old address to new address
+                        let newAddress = fullAddress;
+
+                        if (fullAddress && addressConversionData[fullAddress]) {
+                            newAddress = addressConversionData[fullAddress];
+                            log('✓ Converted to NEW address: ' + newAddress);
+                        } else if (fullAddress) {
+                            log('⚠ No conversion mapping found - using old address as fallback');
+                        }
+
+                        // Fill hidden fields with CONVERTED address
                         document.getElementById('test-province').value = parts.province || '';
                         document.getElementById('test-district').value = parts.district || '';
                         document.getElementById('test-ward').value = parts.ward || '';
                         document.getElementById('test-hamlet').value = parts.hamlet || '';
-                        document.getElementById('test-full-address').value = fullAddress || '';
+                        document.getElementById('test-full-address').value = newAddress || '';
 
-                        // Show preview
-                        if (fullAddress) {
+                        // Show preview with NEW CONVERTED address
+                        if (newAddress) {
                             document.getElementById('test-address-display').innerHTML =
-                                `<strong style="color: green; font-size: 1.1em;">${fullAddress}</strong>`;
+                                `<strong style="color: green; font-size: 1.1em;">${newAddress}</strong>`;
                             document.getElementById('test-preview').style.display = 'block';
                         } else {
                             document.getElementById('test-preview').style.display = 'none';
