@@ -50,4 +50,7 @@ urlpatterns = [
     path('beautiful-number-lookup/', views.beautiful_number_lookup, name='beautiful_number_lookup'),
     path('beautiful-number-list/', views.beautiful_number_list, name='beautiful_number_list'),
     path('api/beautiful-numbers/generate/', views.generate_beautiful_numbers_ajax, name='generate_beautiful_numbers'),
+
+    # Test Address Selector
+    path('test-address-selector/', views.test_address_selector, name='test_address_selector'),
 ]

@@ -2399,3 +2399,11 @@ def beautiful_number_list(request):
     }
 
     return render(request, 'templates_app/beautiful_number_list.html', context)
+
+
+@login_required
+def test_address_selector(request):
+    """
+    Test page for Address Selector Component
+    """
+    return render(request, 'templates_app/test_address_selector.html')
