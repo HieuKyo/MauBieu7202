@@ -17,6 +17,8 @@ from .models import DetailedFeeTier, OnRequestFeeTier
 FEE_TABLE = {
     # (số_lượng, loại) -> (phí_min, phí_max)
     # None = Thỏa thuận
+    (2, 'NORMAL'): (300_000, 500_000),
+    (3, 'NORMAL'): (300_000, 500_000),
     (3, 'SPECIAL'): (500_000, 1_000_000),
     (4, 'NORMAL'): (500_000, 1_000_000),
     (4, 'SPECIAL'): (1_000_000, 3_000_000),
@@ -117,14 +119,15 @@ def find_best_sub_pattern(digits):
         for i in range(len(digits) - length + 1):
             substring = digits[i:i+length]
 
-            # Phân loại: chỉ lặp thuần túy mới là SPECIAL
-            if is_pure_repeat(substring):
-                fee_type = 'SPECIAL' if length >= 8 else 'NORMAL'
-            else:
-                fee_type = 'NORMAL'
+            # ========== LOGIC PHÂN LOẠI CHÍNH XÁC ==========
+            # - Nếu lặp thuần túy (pure repeat):
+            #   - Từ 3 số trở lên ('777', '5555'...) là 'SPECIAL'
+            #   - 2 số ('22') là 'NORMAL'
+            # - Nếu không lặp thuần túy (sảnh, lặp kép...): Luôn là 'NORMAL'
 
-            # Quy tắc đặc biệt: 2 số luôn là NORMAL
-            if length == 2:
+            if is_pure_repeat(substring):
+                fee_type = 'SPECIAL' if length >= 3 else 'NORMAL'
+            else:
                 fee_type = 'NORMAL'
 
             classification = (length, fee_type)
