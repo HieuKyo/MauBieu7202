@@ -1533,10 +1533,50 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             onLoad: function(instance) {
                 console.log('✓ Address Selector loaded successfully for Dashboard form');
+                console.log('Data check:', instance.data ? 'Data exists' : 'NO DATA!');
+                if (instance.data) {
+                    console.log('Data keys:', Object.keys(instance.data));
+                }
+
+                // Check if HTML was rendered
+                const container = document.querySelector('#dashboard-address-selector-container');
+                console.log('Container HTML length:', container ? container.innerHTML.length : 0);
+                console.log('Container children count:', container ? container.children.length : 0);
+
+                if (container && container.children.length > 0) {
+                    console.log('✓ Component rendered HTML successfully');
+                    console.log('First child tag:', container.children[0].tagName);
+                    console.log('First child HTML:', container.children[0].outerHTML.substring(0, 200));
+                } else {
+                    console.error('✗ Component did NOT render any HTML!');
+                }
             }
         });
 
         console.log('✓ Dashboard Address Selector initialized successfully');
+
+        // Additional check after 2 seconds to see final state
+        setTimeout(() => {
+            const container = document.querySelector('#dashboard-address-selector-container');
+            console.log('=== 2-second check ===');
+            if (container) {
+                console.log('Container HTML length:', container.innerHTML.length);
+                console.log('Container display style:', window.getComputedStyle(container).display);
+                console.log('Container first 300 chars:', container.innerHTML.substring(0, 300));
+
+                // Check for select elements
+                const selects = container.querySelectorAll('select');
+                console.log('Number of <select> elements:', selects.length);
+                if (selects.length > 0) {
+                    selects.forEach((sel, idx) => {
+                        console.log(`Select ${idx}:`, sel.id, 'visible:', window.getComputedStyle(sel).display !== 'none');
+                    });
+                }
+            } else {
+                console.error('Container not found!');
+            }
+        }, 2000);
+
     } catch (error) {
         console.error('✗ ERROR initializing Address Selector:', error);
         console.error('Error stack:', error.stack);
