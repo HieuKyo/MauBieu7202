@@ -3,7 +3,11 @@ from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
 from django.http import HttpResponse
-from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig, DetailedFeeTier, OnRequestFeeTier, BeautifulNumber
+from .models import (
+    Category, Template, Variable, TemplateVariable, Customer, GlobalConfig,
+    DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
+    BankStatement, Transaction
+)
 from .import_helpers import (
     import_variables_from_csv,
     import_variables_from_excel,
