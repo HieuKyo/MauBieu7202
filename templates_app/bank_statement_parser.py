@@ -13,6 +13,61 @@ class BankStatementParser:
     # Các cột bắt buộc trong file sao kê Agribank
     REQUIRED_COLUMNS = ['trdt', 'acctccyamt', 'aftrbal', 'rem', 'trcdnm']
 
+    # Mapping tên viết tắt ngân hàng
+    BANK_CODE_MAPPING = {
+        'VCB': 'Vietcombank',
+        'VIETCOMBANK': 'Vietcombank',
+        'TCB': 'Techcombank',
+        'TECHCOMBANK': 'Techcombank',
+        'BIDV': 'BIDV',
+        'CTG': 'Vietinbank',
+        'VIETINBANK': 'Vietinbank',
+        'MB': 'MB Bank',
+        'MBBANK': 'MB Bank',
+        'ACB': 'ACB',
+        'VPB': 'VPBank',
+        'VPBANK': 'VPBank',
+        'STB': 'Sacombank',
+        'SACOMBANK': 'Sacombank',
+        'SCB': 'SCB',
+        'VIB': 'VIB',
+        'SHB': 'SHB',
+        'EXIMBANK': 'Eximbank',
+        'EIB': 'Eximbank',
+        'MSB': 'MSB',
+        'OCB': 'OCB',
+        'TPB': 'TPBank',
+        'TPBANK': 'TPBank',
+        'SEABANK': 'SeABank',
+        'HDBank': 'HDBank',
+        'LPB': 'LienVietPostBank',
+        'LIENVIETPOSTBANK': 'LienVietPostBank',
+        'PVCOMBANK': 'PVcomBank',
+        'BAB': 'BacABank',
+        'BACABANK': 'BacABank',
+        'NAB': 'NamABank',
+        'NAMABANK': 'NamABank',
+        'VAB': 'VietABank',
+        'VIETABANK': 'VietABank',
+        'PGBANK': 'PGBank',
+        'ABB': 'ABBank',
+        'ABBANK': 'ABBank',
+        'VIETBANK': 'VietBank',
+        'NCB': 'NCB',
+        'OCEANBANK': 'OceanBank',
+        'GPB': 'GPBank',
+        'GPBANK': 'GPBank',
+        'CIMB': 'CIMB',
+        'WOORI': 'Woori Bank',
+        'SHINHAN': 'Shinhan Bank',
+        'PUBLICBANK': 'Public Bank',
+        'NONGHYUP': 'Nonghyup Bank',
+        'INDOVINA': 'Indovina Bank',
+        'CAKE': 'Cake by VPBank',
+        'TIMO': 'Timo by VPBank',
+        'UBANK': 'UBank by VPBank',
+    }
+
     def __init__(self, file_path):
         """
         Khởi tạo parser với đường dẫn file
@@ -54,6 +109,19 @@ class BankStatementParser:
 
         except Exception as e:
             return False, f"Lỗi khi đọc file: {str(e)}"
+
+    def get_bank_name_from_code(self, bank_code):
+        """
+        Lấy tên đầy đủ ngân hàng từ mã viết tắt
+
+        Args:
+            bank_code: Mã viết tắt ngân hàng (VD: VCB, TCB, BIDV, STB)
+
+        Returns:
+            str: Tên đầy đủ ngân hàng hoặc mã gốc nếu không tìm thấy
+        """
+        bank_code_upper = bank_code.upper().strip()
+        return self.BANK_CODE_MAPPING.get(bank_code_upper, bank_code)
 
     def parse_beneficiary_info(self, rem, tomgntno, acctccyamt):
         """
@@ -97,7 +165,35 @@ class BankStatementParser:
                 beneficiary_name = ' '.join(name_parts[:4])  # Lấy tối đa 4 từ
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
-        # Pattern 2: Vietcombank
+        # Pattern 2: Ngân hàng khác với format chuẩn
+        # Format 1: BANK_CODE;số_tài_khoản;nội_dung (VD: STB;070055505932;ck)
+        # Format 2: mã-BANK_CODE;số_tài_khoản;nội_dung (VD: 337133-BIDV;78810000156950;nam)
+        pattern2_general = re.search(r'(?:(\d+)-)?([A-Z]{2,15});(\d{10,20});(.*)', rem)
+        if pattern2_general:
+            transaction_code = pattern2_general.group(1)  # Có thể None
+            bank_code = pattern2_general.group(2)
+            account_number = pattern2_general.group(3)
+            content = pattern2_general.group(4)
+
+            # Tra cứu tên ngân hàng
+            bank_name = self.get_bank_name_from_code(bank_code)
+
+            # Parse tên người từ content
+            words = content.split()
+            name_parts = []
+            for word in words:
+                if word and (word.isupper() or word[0].isupper()):
+                    # Bỏ qua các từ khóa
+                    if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'ck', 'ct', 'fcc']:
+                        name_parts.append(word)
+                    else:
+                        break
+            if name_parts:
+                beneficiary_name = ' '.join(name_parts[:4])
+
+            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
+        # Pattern 3: Vietcombank (legacy patterns - giữ lại để backward compatible)
         # Format 1: mã-VCB;số_tài_khoản;nội_dung
         pattern2_1 = re.search(r'\d+-VCB;(\d{10,20});(.*)', rem)
         if pattern2_1:
@@ -153,28 +249,19 @@ class BankStatementParser:
                 beneficiary_name = ' '.join(name_parts[:4])
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
-        # Pattern 3: IBFT (liên ngân hàng)
+        # Pattern 4: IBFT (liên ngân hàng)
         # Format: xxx-IBFT nội_dung
-        pattern3 = re.search(r'\d+-IBFT\s+(.*)', rem)
-        if pattern3:
-            content = pattern3.group(1)
-            # Parse tên ngân hàng từ nội dung
-            if 'VCB' in content.upper() or 'VIETCOMBANK' in content.upper():
-                bank_name = "Vietcombank"
-            elif 'VIETINBANK' in content.upper() or 'CTG' in content.upper():
-                bank_name = "Vietinbank"
-            elif 'TECHCOMBANK' in content.upper() or 'TCB' in content.upper():
-                bank_name = "Techcombank"
-            elif 'BIDV' in content.upper():
-                bank_name = "BIDV"
-            elif 'MB' in content.upper() and 'MBBANK' in content.upper():
-                bank_name = "MB Bank"
-            elif 'ACB' in content.upper():
-                bank_name = "ACB"
-            elif 'SACOMBANK' in content.upper() or 'STB' in content.upper():
-                bank_name = "Sacombank"
-            else:
-                bank_name = "Liên ngân hàng"
+        pattern4 = re.search(r'\d+-IBFT\s+(.*)', rem)
+        if pattern4:
+            content = pattern4.group(1)
+            content_upper = content.upper()
+
+            # Parse tên ngân hàng từ nội dung bằng cách duyệt mapping
+            bank_name = "Liên ngân hàng"  # Default
+            for code, name in self.BANK_CODE_MAPPING.items():
+                if code in content_upper:
+                    bank_name = name
+                    break
 
             # Parse tên người và số TK
             words = content.split()
@@ -217,6 +304,14 @@ class BankStatementParser:
                 return "Nhận chuyển khoản nội bộ Agribank"
             else:
                 return "Chuyển khoản nội bộ Agribank"
+
+        # Chuyển khoản ngân hàng khác (STB, BIDV, TCB, VCB, etc.)
+        # Pattern: [mã]-[BANK_CODE];số_tk;nội_dung hoặc [BANK_CODE];số_tk;nội_dung
+        if re.search(r'(?:\d+-)?[A-Z]{2,15};\d{10,20};', rem):
+            if amount > 0:
+                return "Nhận chuyển khoản liên ngân hàng"
+            else:
+                return "Chuyển khoản liên ngân hàng"
 
         # IBFT
         if 'IBFT' in rem:
