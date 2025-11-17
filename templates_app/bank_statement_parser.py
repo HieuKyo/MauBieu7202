@@ -458,6 +458,10 @@ class BankStatementParser:
         rem_lower = rem.lower()
         trcdnm_lower = trcdnm.lower()
 
+        # Giải ngân: Nội dung có chứa '7202LDS'
+        if '7202LDS' in rem:
+            return "Giải ngân"
+
         # Chuyển khoản nội bộ Agribank
         if 'MB(' in rem:
             if amount > 0:
@@ -520,6 +524,12 @@ class BankStatementParser:
             return "Rút tiền ATM khác hệ thống"
         if 'rút tiền' in trcdnm_lower and ('từ thẻ rút tiền mặt' in trcdnm_lower or 'rut tien mat' in trcdnm_lower):
             return "Rút tiền mặt cùng hệ thống"
+        # Rút tiền ATM với mã 7202ATM trong nội dung
+        if '7202ATM' in rem:
+            return "Rút tiền ATM"
+        # Rút tiền tại ngân hàng
+        if 'RUT TK' in rem.upper() or 'rut tk' in rem_lower:
+            return "Rút tiền tại ngân hàng"
         if 'RUT TM' in rem.upper() or 'RUT TIEN' in rem.upper():
             return "Rút tiền mặt"
 
@@ -541,8 +551,15 @@ class BankStatementParser:
         # Dịch vụ
         if re.search(r'\d{9,11}@\d{9,11}', rem):
             return "Nạp tiền điện thoại"
-        if 'MA_GD' in rem and 'PB' in rem:
-            return "Thanh toán tiền điện"
+        # C/C Transfer TO - Thanh toán dịch vụ
+        if 'C/C Transfer TO' in rem or 'c/c transfer to' in rem_lower:
+            return "Thanh toán dịch vụ"
+        # MAP(số giao dịch) - Thanh toán dịch vụ
+        if re.search(r'MAP\(\d+\)', rem, re.IGNORECASE):
+            return "Thanh toán dịch vụ"
+        # Thanh toán tiền điện (case-insensitive) - đổi thành "Thanh toán dịch vụ"
+        if 'ma_gd' in rem_lower and 'pb' in rem_lower:
+            return "Thanh toán dịch vụ"
         if 'VNPT' in rem.upper():
             return "Thanh toán dịch vụ (VNPT)"
 
@@ -556,13 +573,21 @@ class BankStatementParser:
         if 'LAI TIEN GUI' in trcdnm.upper() or ('LAI' in rem.upper() and 'GUI' in rem.upper()):
             return "Trả lãi tiền gửi"
 
-        # PaymentHub: Giao dịch không xác định được ngân hàng nhưng husrid starts with '7202API'
+        # Giao dịch đặc biệt dựa vào husrid
         husrid = str(row.get('husrid', ''))
-        if husrid and len(husrid) >= 7 and husrid[:7] == '7202API':
-            if amount > 0:
-                return "Nhận tiền PaymentHub"
-            else:
-                return "Thanh toán qua PaymentHub"
+        if husrid and len(husrid) >= 7:
+            # PaymentHub: husrid starts with '7202API'
+            if husrid[:7] == '7202API':
+                if amount > 0:
+                    return "Nhận tiền qua PaymentHub"
+                else:
+                    return "Thanh toán qua PaymentHub"
+            # OSB: husrid starts with '7202OSB'
+            elif husrid[:7] == '7202OSB':
+                if amount > 0:
+                    return "Nhận tiền qua OSB"
+                else:
+                    return "Chuyển tiền qua OSB"
 
         # Không xác định được
         return ""
@@ -639,11 +664,14 @@ class BankStatementParser:
                 acctccyamt
             )
 
-            # Kiểm tra PaymentHub: Nếu không xác định được ngân hàng và husrid starts with '7202API'
+            # Kiểm tra các loại giao dịch đặc biệt dựa vào husrid
             if not beneficiary_info['bank_name'] or beneficiary_info['bank_name'] == '':
                 husrid = str(row.get('husrid', ''))
-                if husrid and len(husrid) >= 7 and husrid[:7] == '7202API':
-                    beneficiary_info['bank_name'] = 'PaymentHub'
+                if husrid and len(husrid) >= 7:
+                    if husrid[:7] == '7202API':
+                        beneficiary_info['bank_name'] = 'PaymentHub'
+                    elif husrid[:7] == '7202OSB':
+                        beneficiary_info['bank_name'] = 'OSB'
 
             # Phân loại giao dịch
             transaction_type = self.classify_transaction(row)
