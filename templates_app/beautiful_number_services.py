@@ -1,7 +1,9 @@
 """
-Beautiful Number Analysis and Fee Lookup Services - Version 2.5 (Logic 6-số vs 9-số)
+Beautiful Number Analysis and Fee Lookup Services - Version 2.8 (Sửa lỗi Tam hoa & Sảnh tiến)
 
 Dịch vụ phân tích số tài khoản đẹp và tra cứu phí theo logic mới:
+- Sửa lỗi 1: Tam hoa (XXX-YYY-ZZZ) phải là (9, NORMAL) 27.5M.
+- Sửa lỗi 2: Sảnh tiến (12345) phải là (5, SPECIAL) 3.3M.
 - TH1 (Chọn 9 số): 7202 + [9 số] -> Phí sàn 1.1M
 - TH2 (Chọn 6 số): 7202 + 236 + [6 số] -> Phí sàn 550k
 - Logic tính phí cao nhất vẫn được áp dụng.
@@ -15,18 +17,18 @@ from .models import OnRequestFeeTier
 # ========== BẢNG PHÍ GỐC (THEO PDF) ==========
 FEE_TABLE = {
     # (số_lượng, loại) -> (phí_min, phí_max)
-    (3, 'SPECIAL'): (500_000, 1_000_000), # <<< PHÍ SÀN 550k SẼ DÙNG BẬC NÀY
-    (4, 'NORMAL'): (500_000, 1_000_000), # <<< HOẶC BẬC NÀY
+    (3, 'SPECIAL'): (500_000, 1_000_000), # Phí sàn 550k
+    (4, 'NORMAL'): (500_000, 1_000_000), # Phí sàn 550k
     (4, 'SPECIAL'): (1_000_000, 3_000_000),
-    (5, 'NORMAL'): (1_000_000, 3_000_000), # <<< PHÍ SÀN 1.1M SẼ DÙNG BẬC NÀY
-    (5, 'SPECIAL'): (3_000_000, 5_000_000),
+    (5, 'NORMAL'): (1_000_000, 3_000_000), # Phí sàn 1.1M (9 số)
+    (5, 'SPECIAL'): (3_000_000, 5_000_000), # <<< SẢNH TIẾN 12345 SẼ VÀO ĐÂY (3.3M)
     (6, 'NORMAL'): (3_000_000, 5_000_000),
     (6, 'SPECIAL'): (8_000_000, 10_000_000),
     (7, 'NORMAL'): (8_000_000, 10_000_000),
     (7, 'SPECIAL'): (10_000_000, 20_000_000),
     (8, 'NORMAL'): (10_000_000, 20_000_000),
     (8, 'SPECIAL'): (25_000_000, 40_000_000),
-    (9, 'NORMAL'): (25_000_000, 40_000_000),
+    (9, 'NORMAL'): (25_000_000, 40_000_000), # <<< TAM HOA SẼ VÀO ĐÂY (27.5M)
     (9, 'SPECIAL'): (40_000_000, 80_000_000),
     (10, 'NORMAL'): (100_000_000, None),
 }
@@ -41,7 +43,7 @@ def apply_vat(amount):
     return int(Decimal(amount) * VAT_RATE)
 
 
-# ========== CÁC HÀM KIỂM TRA MẪU (V2.2) ==========
+# ========== CÁC HÀM KIỂM TRA MẪU (V2.7) ==========
 
 def is_pure_repeat(s):
     """Kiểm tra lặp thuần túy (VD: '777')"""
@@ -78,6 +80,7 @@ def is_lap_kep(s):
 # ========== KẾT THÚC HÀM KIỂM TRA ==========
 
 
+# ========== [START] CẬP NHẬT V2.8 (Sửa lỗi Tam hoa) ==========
 def check_uniform_9_digit_structure(digits):
     """
     Bước 1: Kiểm tra cấu trúc 9 số đồng nhất
@@ -91,16 +94,27 @@ def check_uniform_9_digit_structure(digits):
 
     part1, part2, part3 = digits[0:3], digits[3:6], digits[6:9]
 
-    # 2. Sảnh tiến 3-3-3 (333444555)
-    if (is_pure_repeat(part1) and is_pure_repeat(part2) and is_pure_repeat(part3)):
-        if (int(part1[0]) + 1 == int(part2[0]) and int(part2[0]) + 1 == int(part3[0])):
-            return (9, 'NORMAL', f'Sảnh tiến tam: {part1}-{part2}-{part3}')
+    # 2. Sảnh tiến (111222333) HOẶC Tam hoa (555666888, 555666555)
+    #    Miễn là 3 cụm lặp thuần, đều là (9, NORMAL)
+    if (is_pure_repeat(part1) and
+        is_pure_repeat(part2) and
+        is_pure_repeat(part3)):
+
+        # Kiểm tra tăng dần (để hiển thị mô tả)
+        if (int(part1[0]) + 1 == int(part2[0]) and
+            int(part2[0]) + 1 == int(part3[0])):
+            description = f'Sảnh tiến tam: {part1}-{part2}-{part3}'
+        else:
+            description = f'Tam hoa (3 cụm): {part1}-{part2}-{part3}'
+            
+        return (9, 'NORMAL', description) # Trả về (9, NORMAL) cho cả 2 trường hợp
 
     # 3. Lặp tam 3-3-3 (236236236)
     if part1 == part2 == part3:
         return (9, 'NORMAL', f'Lặp tam: {part1}-{part2}-{part3}')
 
     return None
+# ========== [END] CẬP NHẬT V2.8 (Sửa lỗi Tam hoa) ==========
 
 
 def find_best_sub_pattern(digits_to_scan):
@@ -111,8 +125,6 @@ def find_best_sub_pattern(digits_to_scan):
     best_classification = None
     best_description = "Không tìm thấy mẫu con"
 
-    # Quét từ 8 xuống 2
-    # Giới hạn độ dài quét bằng độ dài chuỗi
     max_len = min(8, len(digits_to_scan)) 
     
     for length in range(max_len, 1, -1):
@@ -121,24 +133,30 @@ def find_best_sub_pattern(digits_to_scan):
             fee_type = None
             description = ""
 
+            # ========== [START] CẬP NHẬT V2.8 (Sửa lỗi Sảnh tiến) ==========
+            
             # 1. Kiểm tra mẫu 'SPECIAL' (Lặp thuần túy)
             if is_pure_repeat(substring):
                 fee_type = 'SPECIAL' if length >= 3 else 'NORMAL' # '22' là normal
                 description = f'Lặp {length} số "{substring[0]}"'
             
-            # 2. Kiểm tra các mẫu 'NORMAL' (Sảnh, Lặp kép, Sảnh lặp)
-            else:
-                if is_sanh_tien(substring):
-                    fee_type = 'NORMAL'
-                    description = f'Sảnh tiến {length} số: {substring}'
-                elif is_sanh_lap(substring):
-                    fee_type = 'NORMAL'
-                    description = f'Sảnh lặp {length} số: {substring}'
-                elif is_lap_kep(substring):
-                    fee_type = 'NORMAL'
-                    description = f'Lặp kép {length} số: {substring}'
+            # 2. Kiểm tra mẫu 'SPECIAL' (Sảnh tiến)
+            # "số tiến liền nhau" được xếp vào loại đặc biệt
+            elif is_sanh_tien(substring):
+                fee_type = 'SPECIAL'
+                description = f'Sảnh tiến {length} số: {substring}'
 
-            # 3. Nếu là mẫu hợp lệ (fee_type != None), tra cứu phí
+            # 3. Kiểm tra các mẫu 'NORMAL' (Sảnh lặp, Lặp kép)
+            elif is_sanh_lap(substring):
+                fee_type = 'NORMAL'
+                description = f'Sảnh lặp {length} số: {substring}'
+            elif is_lap_kep(substring):
+                fee_type = 'NORMAL'
+                description = f'Lặp kép {length} số: {substring}'
+            
+            # ========== [END] CẬP NHẬT V2.8 (Sửa lỗi Sảnh tiến) ==========
+
+            # 4. Nếu là mẫu hợp lệ (fee_type != None), tra cứu phí
             if fee_type:
                 classification = (length, fee_type)
                 base_fee = FEE_TABLE.get(classification)
@@ -186,7 +204,7 @@ def analyze_account_number(account_number):
     selectable_part = digits[4:] # 9 số cuối
     best_result = {}
 
-    # ========== [START] LOGIC MỚI V2.5 (6-số vs 9-số) ==========
+    # ========== [START] LOGIC V2.5 (6-số vs 9-số) ==========
     
     BANK_SUB_PREFIX = "236"
     
@@ -203,7 +221,7 @@ def analyze_account_number(account_number):
             'fee_min_base': fee_min_base_default, 'fee_max_base': fee_max_base_default
         }
 
-        # Quét mẫu con trong 6 số
+        # Quét mẫu con trong 6 số (ĐÃ SỬA V2.8)
         sub_pattern_result = find_best_sub_pattern(analysis_part) # Chỉ quét 6 số
         if sub_pattern_result:
             quantity, pattern_type, description = sub_pattern_result
@@ -231,7 +249,7 @@ def analyze_account_number(account_number):
             'fee_min_base': fee_min_base_default, 'fee_max_base': fee_max_base_default
         }
 
-        # BƯỚC 1: KIỂM TRA 9 SỐ ĐỒNG NHẤT
+        # BƯỚC 1: KIỂM TRA 9 SỐ ĐỒNG NHẤT (ĐÃ SỬA V2.8)
         uniform_result = check_uniform_9_digit_structure(analysis_part)
         if uniform_result:
             quantity, pattern_type, description = uniform_result
@@ -244,9 +262,12 @@ def analyze_account_number(account_number):
                     'fee_min_base': fee_min_base, 'fee_max_base': fee_max_base
                 }
 
-        # BƯỚC 2: QUÉT MẪU CON (trong 9 số)
-        # Chỉ chạy nếu chưa tìm thấy phí cao nhất
-        if not uniform_result or best_result['fee_min_base'] < FEE_TABLE.get((9, 'SPECIAL'), (0,0))[0]:
+        # BƯỚC 2: QUÉT MẪU CON (trong 9 số) (ĐÃ SỬA V2.8)
+        
+        # Kiểm tra xem B1 có tìm thấy (9, SPECIAL) 40M không
+        is_highest_tier = (uniform_result and uniform_result[0] == 9 and uniform_result[1] == 'SPECIAL')
+
+        if not is_highest_tier:
             sub_pattern_result = find_best_sub_pattern(analysis_part)
             if sub_pattern_result:
                 quantity, pattern_type, description = sub_pattern_result
@@ -259,7 +280,7 @@ def analyze_account_number(account_number):
                         'fee_min_base': fee_min_base, 'fee_max_base': fee_max_base
                     }
 
-    # ========== [END] LOGIC MỚI V2.5 ==========
+    # ========== [END] LOGIC MỚI V2.8 ==========
 
     # Trả về kết quả tốt nhất
     return {
