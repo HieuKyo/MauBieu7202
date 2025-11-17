@@ -1,0 +1,334 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Kết quả phân tích - {{ statement.file_name }} - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .summary-card {
+        border-left: 4px solid #007934;
+    }
+    .transaction-table {
+        font-size: 0.9rem;
+    }
+    .transaction-table th {
+        background-color: #007934;
+        color: white;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .transaction-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    .badge-custom {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .stats-card {
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-3px);
+    }
+    .filter-section {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .table-container {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid main-container">
+    <!-- Page Header -->
+    <div class="row mb-3">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'bank_statement_upload' %}">Phân tích Sao kê</a></li>
+                    <li class="breadcrumb-item active">Kết quả</li>
+                </ol>
+            </nav>
+            <h3 class="text-agribank">
+                <i class="bi bi-file-earmark-check"></i>
+                {{ statement.file_name }}
+            </h3>
+            <p class="text-muted">
+                <i class="bi bi-calendar3"></i> Upload lúc: {{ statement.uploaded_at|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'bank_statement_export' statement.id %}" class="btn btn-success">
+                <i class="bi bi-download"></i> Xuất Excel
+            </a>
+            <a href="{% url 'bank_statement_upload' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Quay lại
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card summary-card stats-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Tổng số GD</h6>
+                            <h4 class="mb-0 text-agribank">{{ statement.total_transactions|intcomma }}</h4>
+                        </div>
+                        <div class="text-agribank">
+                            <i class="bi bi-list-check" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card stats-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Tổng tiền ra</h6>
+                            <h4 class="mb-0 text-danger">{{ statement.total_debit|floatformat:0|intcomma }}</h4>
+                            <small class="text-muted">VNĐ</small>
+                        </div>
+                        <div class="text-danger">
+                            <i class="bi bi-arrow-down-circle" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card stats-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Tổng tiền vào</h6>
+                            <h4 class="mb-0 text-success">{{ statement.total_credit|floatformat:0|intcomma }}</h4>
+                            <small class="text-muted">VNĐ</small>
+                        </div>
+                        <div class="text-success">
+                            <i class="bi bi-arrow-up-circle" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card stats-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Số dư cuối kỳ</h6>
+                            <h4 class="mb-0 text-primary">{{ statement.final_balance|floatformat:0|intcomma }}</h4>
+                            <small class="text-muted">VNĐ</small>
+                        </div>
+                        <div class="text-primary">
+                            <i class="bi bi-wallet2" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Types Summary -->
+    {% if transaction_types %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-pie-chart"></i> Thống kê theo loại giao dịch
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for type_stat in transaction_types %}
+                        <div class="col-md-6 col-lg-4 mb-2">
+                            <div class="d-flex justify-content-between align-items-center p-2 border-start border-3 border-agribank">
+                                <div>
+                                    <strong>{{ type_stat.transaction_type }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ type_stat.count }} giao dịch</small>
+                                </div>
+                                <div class="text-end">
+                                    {% if type_stat.total_debit > 0 %}
+                                    <small class="text-danger">-{{ type_stat.total_debit|floatformat:0|intcomma }}</small>
+                                    {% endif %}
+                                    {% if type_stat.total_credit > 0 %}
+                                    <small class="text-success">+{{ type_stat.total_credit|floatformat:0|intcomma }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filter Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="filter-section">
+                <form method="get" class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-funnel"></i> Lọc theo loại giao dịch
+                        </label>
+                        <select name="type" class="form-select" onchange="this.form.submit()">
+                            <option value="">-- Tất cả --</option>
+                            {% for option in filter_options %}
+                            <option value="{{ option }}" {% if selected_type == option %}selected{% endif %}>
+                                {{ option }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        {% if selected_type %}
+                        <a href="?type=" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Xóa bộ lọc
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-agribank text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-table"></i> Chi tiết giao dịch
+                        {% if selected_type %}
+                            <span class="badge bg-light text-dark ms-2">{{ selected_type }}</span>
+                        {% endif %}
+                        <span class="badge bg-light text-dark ms-2">{{ page_obj.paginator.count }} giao dịch</span>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover transaction-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">STT</th>
+                                    <th style="width: 110px;">Ngày GD</th>
+                                    <th class="text-end" style="width: 130px;">Tiền ra</th>
+                                    <th class="text-end" style="width: 130px;">Tiền vào</th>
+                                    <th class="text-end" style="width: 130px;">Số dư</th>
+                                    <th style="width: 120px;">Ngân hàng</th>
+                                    <th style="width: 140px;">Số TK</th>
+                                    <th style="width: 180px;">Tên người</th>
+                                    <th>Nội dung</th>
+                                    <th style="width: 180px;">Loại GD</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in page_obj %}
+                                <tr>
+                                    <td class="text-center">{{ transaction.stt }}</td>
+                                    <td>{{ transaction.transaction_date|date:"d/m/Y" }}</td>
+                                    <td class="text-end text-danger">
+                                        {% if transaction.debit_amount > 0 %}
+                                            {{ transaction.debit_amount|floatformat:0|intcomma }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end text-success">
+                                        {% if transaction.credit_amount > 0 %}
+                                            {{ transaction.credit_amount|floatformat:0|intcomma }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end fw-bold">{{ transaction.balance|floatformat:0|intcomma }}</td>
+                                    <td>{{ transaction.bank_name|default:"-" }}</td>
+                                    <td class="font-monospace small">{{ transaction.account_number|default:"-" }}</td>
+                                    <td>{{ transaction.beneficiary_name|default:"-"|truncatechars:25 }}</td>
+                                    <td>
+                                        <small>{{ transaction.description|truncatechars:60 }}</small>
+                                    </td>
+                                    <td>
+                                        {% if transaction.transaction_type %}
+                                            <span class="badge badge-custom bg-info">{{ transaction.transaction_type }}</span>
+                                        {% else %}
+                                            <span class="badge badge-custom bg-secondary">Chưa phân loại</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">
+                                        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                                        <p class="text-muted mt-2">Không có giao dịch nào</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <div class="card-footer bg-light">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination mb-0 justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if selected_type %}&type={{ selected_type }}{% endif %}">
+                                    <i class="bi bi-chevron-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_type %}&type={{ selected_type }}{% endif %}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_type %}&type={{ selected_type }}{% endif %}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_type %}&type={{ selected_type }}{% endif %}">
+                                    <i class="bi bi-chevron-double-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

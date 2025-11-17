@@ -558,3 +558,94 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
         }
         return render(request, 'admin/beautiful_number_import.html', context)
 
+
+# ====================
+# Bank Statement Admin
+# ====================
+
+class TransactionInline(admin.TabularInline):
+    """Inline hiển thị các giao dịch trong sao kê"""
+    model = Transaction
+    extra = 0
+    readonly_fields = ['stt', 'transaction_date', 'debit_amount', 'credit_amount',
+                       'balance', 'bank_name', 'account_number', 'beneficiary_name',
+                       'description', 'transaction_type']
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(BankStatement)
+class BankStatementAdmin(admin.ModelAdmin):
+    """Admin cho BankStatement"""
+    list_display = ['file_name', 'uploaded_at', 'total_transactions', 'total_debit_display',
+                    'total_credit_display', 'final_balance_display', 'uploaded_by']
+    list_filter = ['uploaded_at', 'uploaded_by']
+    search_fields = ['file_name']
+    readonly_fields = ['uploaded_at', 'file_name', 'total_transactions', 'total_debit',
+                       'total_credit', 'final_balance', 'processed', 'uploaded_by']
+    inlines = [TransactionInline]
+
+    def total_debit_display(self, obj):
+        return f"{obj.total_debit:,.0f} VNĐ"
+    total_debit_display.short_description = "Tổng ghi nợ"
+
+    def total_credit_display(self, obj):
+        return f"{obj.total_credit:,.0f} VNĐ"
+    total_credit_display.short_description = "Tổng ghi có"
+
+    def final_balance_display(self, obj):
+        return f"{obj.final_balance:,.0f} VNĐ"
+    final_balance_display.short_description = "Số dư cuối"
+
+    def has_add_permission(self, request):
+        # Không cho phép thêm mới từ admin (phải upload từ form)
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Chỉ cho phép xóa nếu là superuser
+        return request.user.is_superuser
+
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    """Admin cho Transaction"""
+    list_display = ['stt', 'statement_file', 'transaction_date', 'debit_amount_display',
+                    'credit_amount_display', 'balance_display', 'bank_name',
+                    'account_number', 'transaction_type']
+    list_filter = ['transaction_date', 'transaction_type', 'bank_name']
+    search_fields = ['description', 'beneficiary_name', 'account_number']
+    readonly_fields = ['statement', 'stt', 'transaction_date', 'debit_amount', 'credit_amount',
+                       'balance', 'bank_name', 'account_number', 'beneficiary_name',
+                       'description', 'transaction_type', 'raw_trcdnm', 'raw_tomgntno']
+    date_hierarchy = 'transaction_date'
+
+    def statement_file(self, obj):
+        return obj.statement.file_name
+    statement_file.short_description = "File sao kê"
+
+    def debit_amount_display(self, obj):
+        if obj.debit_amount > 0:
+            return f"{obj.debit_amount:,.0f}"
+        return "-"
+    debit_amount_display.short_description = "Ghi nợ"
+
+    def credit_amount_display(self, obj):
+        if obj.credit_amount > 0:
+            return f"{obj.credit_amount:,.0f}"
+        return "-"
+    credit_amount_display.short_description = "Ghi có"
+
+    def balance_display(self, obj):
+        return f"{obj.balance:,.0f}"
+    balance_display.short_description = "Số dư"
+
+    def has_add_permission(self, request):
+        # Không cho phép thêm mới từ admin
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Chỉ cho phép xóa nếu là superuser
+        return request.user.is_superuser
+

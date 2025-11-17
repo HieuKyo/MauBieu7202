@@ -2407,3 +2407,284 @@ def test_address_selector(request):
     Test page for Address Selector Component
     """
     return render(request, 'templates_app/test_address_selector.html')
+
+
+# ====================
+# Bank Statement Analyzer Views
+# ====================
+
+@login_required
+def bank_statement_upload(request):
+    """
+    Trang upload file sao kê ngân hàng
+    """
+    from .models import BankStatement
+
+    if request.method == 'POST' and request.FILES.get('statement_file'):
+        try:
+            from .bank_statement_parser import BankStatementParser
+            import os
+            from django.conf import settings
+
+            # Lưu file upload
+            uploaded_file = request.FILES['statement_file']
+            file_name = uploaded_file.name
+
+            # Tạo thư mục upload nếu chưa có
+            upload_dir = os.path.join(settings.MEDIA_ROOT, 'bank_statements')
+            os.makedirs(upload_dir, exist_ok=True)
+
+            # Lưu file tạm
+            file_path = os.path.join(upload_dir, file_name)
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+
+            # Parse file
+            parser = BankStatementParser(file_path)
+
+            # Validate file
+            is_valid, error_msg = parser.validate_file()
+            if not is_valid:
+                messages.error(request, f'File không hợp lệ: {error_msg}')
+                return redirect('bank_statement_upload')
+
+            # Process file
+            transactions_data = parser.process()
+            summary = parser.get_summary()
+
+            # Tạo BankStatement
+            statement = BankStatement.objects.create(
+                file_name=file_name,
+                total_transactions=summary['total_transactions'],
+                total_debit=summary['total_debit'],
+                total_credit=summary['total_credit'],
+                final_balance=summary['final_balance'],
+                processed=True,
+                uploaded_by=request.user
+            )
+
+            # Lưu các transactions
+            from .models import Transaction
+            for trans_data in transactions_data:
+                Transaction.objects.create(
+                    statement=statement,
+                    stt=trans_data['stt'],
+                    transaction_date=trans_data['ngay_giao_dich'],
+                    debit_amount=trans_data['so_tien_ghi_no'],
+                    credit_amount=trans_data['so_tien_ghi_co'],
+                    balance=trans_data['so_du_sau_gd'],
+                    bank_name=trans_data['ngan_hang'],
+                    account_number=trans_data['so_tai_khoan'],
+                    beneficiary_name=trans_data['ten_nguoi'],
+                    description=trans_data['noi_dung'],
+                    transaction_type=trans_data['ghi_chu'],
+                    raw_trcdnm=trans_data['raw_trcdnm'],
+                    raw_tomgntno=trans_data['raw_tomgntno']
+                )
+
+            messages.success(request, f'Đã phân tích thành công {summary["total_transactions"]} giao dịch!')
+            return redirect('bank_statement_result', statement_id=statement.id)
+
+        except Exception as e:
+            messages.error(request, f'Lỗi khi xử lý file: {str(e)}')
+            return redirect('bank_statement_upload')
+
+    # Lấy danh sách các statement đã upload
+    statements = BankStatement.objects.filter(uploaded_by=request.user).order_by('-uploaded_at')[:10]
+
+    context = {
+        'statements': statements,
+    }
+    return render(request, 'templates_app/bank_statement_upload.html', context)
+
+
+@login_required
+def bank_statement_result(request, statement_id):
+    """
+    Hiển thị kết quả phân tích sao kê
+    """
+    from .models import BankStatement, Transaction
+    from django.core.paginator import Paginator
+
+    statement = get_object_or_404(BankStatement, id=statement_id, uploaded_by=request.user)
+
+    # Lấy tham số filter
+    transaction_type_filter = request.GET.get('type', '')
+
+    # Query transactions
+    transactions = statement.transactions.all()
+
+    # Apply filter
+    if transaction_type_filter:
+        transactions = transactions.filter(transaction_type=transaction_type_filter)
+
+    # Pagination
+    paginator = Paginator(transactions, 50)  # 50 giao dịch mỗi trang
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Thống kê theo loại giao dịch
+    transaction_types = statement.transactions.exclude(transaction_type='').values('transaction_type').annotate(
+        count=models.Count('id'),
+        total_debit=models.Sum('debit_amount'),
+        total_credit=models.Sum('credit_amount')
+    ).order_by('transaction_type')
+
+    # Danh sách các loại giao dịch để filter
+    filter_options = [
+        "Chuyển khoản nội bộ Agribank",
+        "Nhận chuyển khoản nội bộ Agribank",
+        "Chuyển khoản liên ngân hàng",
+        "Nhận chuyển khoản liên ngân hàng",
+        "Rút tiền ATM",
+        "Rút tiền mặt",
+        "Nộp tiền ATM",
+        "Nộp tiền mặt",
+        "Thanh toán thẻ",
+        "Thanh toán POS",
+        "Nạp tiền điện thoại",
+        "Thanh toán tiền điện",
+        "Thanh toán dịch vụ (VNPT)",
+        "Phí dịch vụ",
+        "Trả lãi tiền gửi"
+    ]
+
+    context = {
+        'statement': statement,
+        'page_obj': page_obj,
+        'transaction_types': transaction_types,
+        'filter_options': filter_options,
+        'selected_type': transaction_type_filter,
+    }
+
+    return render(request, 'templates_app/bank_statement_result.html', context)
+
+
+@login_required
+def bank_statement_export(request, statement_id):
+    """
+    Export báo cáo sao kê ra file Excel
+    """
+    from .models import BankStatement
+    from io import BytesIO
+    import xlsxwriter
+    from django.http import HttpResponse
+
+    statement = get_object_or_404(BankStatement, id=statement_id, uploaded_by=request.user)
+
+    # Tạo file Excel trong memory
+    output = BytesIO()
+
+    workbook = xlsxwriter.Workbook(output)
+
+    # Format cho số tiền
+    money_format = workbook.add_format({
+        'num_format': '#,##0',
+        'align': 'right'
+    })
+
+    # Format cho header
+    header_format = workbook.add_format({
+        'bold': True,
+        'bg_color': '#4472C4',
+        'font_color': 'white',
+        'align': 'center',
+        'valign': 'vcenter',
+        'border': 1
+    })
+
+    # Format cho ngày
+    date_format = workbook.add_format({
+        'num_format': 'dd/mm/yyyy',
+        'align': 'center'
+    })
+
+    # Sheet 1: Chi tiết giao dịch
+    worksheet1 = workbook.add_worksheet('Chi tiết')
+
+    # Header
+    headers = [
+        'STT', 'Ngày GD', 'Số tiền ghi nợ', 'Số tiền ghi có',
+        'Số dư sau GD', 'Ngân hàng', 'Số TK', 'Tên người',
+        'Nội dung', 'Loại giao dịch'
+    ]
+
+    for col_num, header in enumerate(headers):
+        worksheet1.write(0, col_num, header, header_format)
+
+    # Set column widths
+    worksheet1.set_column('A:A', 8)   # STT
+    worksheet1.set_column('B:B', 12)  # Ngày
+    worksheet1.set_column('C:E', 15)  # Các cột tiền
+    worksheet1.set_column('F:F', 15)  # Ngân hàng
+    worksheet1.set_column('G:G', 18)  # Số TK
+    worksheet1.set_column('H:H', 25)  # Tên người
+    worksheet1.set_column('I:I', 40)  # Nội dung
+    worksheet1.set_column('J:J', 30)  # Loại GD
+
+    # Data
+    transactions = statement.transactions.all()
+    for row_num, trans in enumerate(transactions, start=1):
+        worksheet1.write(row_num, 0, trans.stt)
+        worksheet1.write(row_num, 1, trans.transaction_date, date_format)
+        worksheet1.write(row_num, 2, float(trans.debit_amount), money_format)
+        worksheet1.write(row_num, 3, float(trans.credit_amount), money_format)
+        worksheet1.write(row_num, 4, float(trans.balance), money_format)
+        worksheet1.write(row_num, 5, trans.bank_name)
+        worksheet1.write(row_num, 6, trans.account_number)
+        worksheet1.write(row_num, 7, trans.beneficiary_name)
+        worksheet1.write(row_num, 8, trans.description)
+        worksheet1.write(row_num, 9, trans.transaction_type)
+
+    # Sheet 2: Thống kê
+    worksheet2 = workbook.add_worksheet('Thống kê')
+
+    # Thống kê tổng quan
+    worksheet2.write(0, 0, 'THỐNG KÊ TỔNG QUAN', header_format)
+    worksheet2.write(1, 0, 'Tên file:')
+    worksheet2.write(1, 1, statement.file_name)
+    worksheet2.write(2, 0, 'Ngày upload:')
+    worksheet2.write(2, 1, statement.uploaded_at.strftime('%d/%m/%Y %H:%M'))
+    worksheet2.write(3, 0, 'Tổng số giao dịch:')
+    worksheet2.write(3, 1, statement.total_transactions)
+    worksheet2.write(4, 0, 'Tổng tiền ghi nợ:')
+    worksheet2.write(4, 1, float(statement.total_debit), money_format)
+    worksheet2.write(5, 0, 'Tổng tiền ghi có:')
+    worksheet2.write(5, 1, float(statement.total_credit), money_format)
+    worksheet2.write(6, 0, 'Số dư cuối kỳ:')
+    worksheet2.write(6, 1, float(statement.final_balance), money_format)
+
+    # Thống kê theo loại giao dịch
+    worksheet2.write(8, 0, 'THỐNG KÊ THEO LOẠI GIAO DỊCH', header_format)
+    worksheet2.write(9, 0, 'Loại giao dịch', header_format)
+    worksheet2.write(9, 1, 'Số lượng', header_format)
+    worksheet2.write(9, 2, 'Tổng ghi nợ', header_format)
+    worksheet2.write(9, 3, 'Tổng ghi có', header_format)
+
+    transaction_types = statement.transactions.exclude(transaction_type='').values('transaction_type').annotate(
+        count=models.Count('id'),
+        total_debit=models.Sum('debit_amount'),
+        total_credit=models.Sum('credit_amount')
+    ).order_by('transaction_type')
+
+    for row_num, item in enumerate(transaction_types, start=10):
+        worksheet2.write(row_num, 0, item['transaction_type'])
+        worksheet2.write(row_num, 1, item['count'])
+        worksheet2.write(row_num, 2, float(item['total_debit'] or 0), money_format)
+        worksheet2.write(row_num, 3, float(item['total_credit'] or 0), money_format)
+
+    worksheet2.set_column('A:A', 40)
+    worksheet2.set_column('B:D', 15)
+
+    workbook.close()
+
+    # Chuẩn bị response
+    output.seek(0)
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="BaoCao_SaoKe_{statement.id}.xlsx"'
+
+    return response
