@@ -5,6 +5,8 @@
 {% block title %}Kết quả phân tích - {{ statement.file_name }} - Agribank{% endblock %}
 
 {% block extra_css %}
+<!-- SweetAlert2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <style>
     .summary-card {
         border-left: 4px solid #007934;
@@ -331,4 +333,38 @@
         </div>
     </div>
 </div>
+
+<!-- SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show messages as SweetAlert2
+    {% if messages %}
+        {% for message in messages %}
+            let icon = 'info';
+            let title = 'Thông báo';
+
+            {% if message.tags == 'error' or message.tags == 'danger' %}
+                icon = 'error';
+                title = 'Lỗi!';
+            {% elif message.tags == 'success' %}
+                icon = 'success';
+                title = 'Thành công!';
+            {% elif message.tags == 'warning' %}
+                icon = 'warning';
+                title = 'Cảnh báo!';
+            {% endif %}
+
+            Swal.fire({
+                icon: icon,
+                title: title,
+                text: '{{ message }}',
+                confirmButtonText: 'Đóng',
+                confirmButtonColor: '#007934'
+            });
+        {% endfor %}
+    {% endif %}
+});
+</script>
 {% endblock %}

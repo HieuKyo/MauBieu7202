@@ -31,6 +31,8 @@
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 </style>
+<!-- SweetAlert2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 {% endblock %}
 
 {% block content %}
@@ -46,15 +48,14 @@
         </div>
     </div>
 
-    <!-- Messages -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
+    <!-- Messages (Hidden - sẽ hiển thị bằng SweetAlert2) -->
+    <div id="messages" style="display: none;">
+        {% if messages %}
+            {% for message in messages %}
+                <div data-type="{{ message.tags }}" data-message="{{ message }}"></div>
+            {% endfor %}
+        {% endif %}
+    </div>
 
     <!-- Upload Form -->
     <div class="row mb-4">
@@ -149,8 +150,43 @@
     {% endif %}
 </div>
 
+<!-- SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Show messages as SweetAlert2
+    const messagesDiv = document.getElementById('messages');
+    if (messagesDiv) {
+        const messageItems = messagesDiv.querySelectorAll('[data-type]');
+        messageItems.forEach(function(item) {
+            const type = item.getAttribute('data-type');
+            const message = item.getAttribute('data-message');
+
+            let icon = 'info';
+            let title = 'Thông báo';
+
+            if (type === 'error' || type === 'danger') {
+                icon = 'error';
+                title = 'Lỗi!';
+            } else if (type === 'success') {
+                icon = 'success';
+                title = 'Thành công!';
+            } else if (type === 'warning') {
+                icon = 'warning';
+                title = 'Cảnh báo!';
+            }
+
+            Swal.fire({
+                icon: icon,
+                title: title,
+                text: message,
+                confirmButtonText: 'Đóng',
+                confirmButtonColor: '#007934'
+            });
+        });
+    }
+
     const fileInput = document.getElementById('statement_file');
     const fileInfo = document.getElementById('fileInfo');
     const fileName = document.getElementById('fileName');
@@ -160,7 +196,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // File input change event
     fileInput.addEventListener('change', function(e) {
         if (this.files && this.files[0]) {
-            fileName.textContent = this.files[0].name;
+            const file = this.files[0];
+            const validExtensions = ['.xls', '.xlsx', '.XLS', '.XLSX'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            // Validate file extension
+            if (!validExtensions.some(ext => ext.toLowerCase() === fileExtension)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'File không hợp lệ!',
+                    text: 'Vui lòng chọn file Excel (.xls hoặc .xlsx)',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#007934'
+                });
+                this.value = ''; // Clear input
+                fileInfo.classList.add('d-none');
+                submitBtn.disabled = true;
+                return;
+            }
+
+            fileName.textContent = file.name;
             fileInfo.classList.remove('d-none');
             submitBtn.disabled = false;
         }
@@ -193,10 +248,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Form submit - show loading
-    document.getElementById('uploadForm').addEventListener('submit', function() {
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang xử lý...';
-        submitBtn.disabled = true;
+    // Form submit - show loading with SweetAlert
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // Prevent default submit
+
+        Swal.fire({
+            title: 'Đang xử lý...',
+            html: 'Vui lòng đợi trong giây lát. Hệ thống đang phân tích file sao kê của bạn.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // Submit form after showing loading
+        setTimeout(() => {
+            this.submit();
+        }, 300);
     });
 });
 </script>

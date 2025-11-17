@@ -32,10 +32,11 @@ class BankStatementParser:
             tuple: (is_valid, error_message)
         """
         try:
-            # Đọc file Excel
-            if self.file_path.endswith('.xls'):
+            # Đọc file Excel (case-insensitive)
+            file_lower = self.file_path.lower()
+            if file_lower.endswith('.xls') and not file_lower.endswith('.xlsx'):
                 self.df = pd.read_excel(self.file_path, engine='xlrd')
-            elif self.file_path.endswith('.xlsx'):
+            elif file_lower.endswith('.xlsx'):
                 self.df = pd.read_excel(self.file_path, engine='openpyxl')
             else:
                 return False, "File phải có định dạng .xls hoặc .xlsx"
