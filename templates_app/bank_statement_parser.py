@@ -204,6 +204,31 @@ class BankStatementParser:
         account_number = ""
         beneficiary_name = ""
 
+        # Pattern 0: Nộp tiền tại Agribank
+        # Format: "TÊN NGƯỜI NỘP nộp tiền :" hoặc "TÊN nộp tiền", "NOP TIEN"
+        rem_lower = rem.lower()
+        if 'nop tien' in rem_lower or 'nộp tiền' in rem_lower:
+            bank_name = "Agribank"
+            # Parse tên người nộp tiền (ở trước cụm "nộp tiền")
+            # Tìm vị trí của "nộp tiền" hoặc "nop tien"
+            nop_tien_patterns = [
+                (r'([A-Z\s]+)\s*nộp tiền\s*:?', 'nộp tiền'),
+                (r'([A-Z\s]+)\s*Nộp tiền\s*:?', 'Nộp tiền'),
+                (r'([A-Z\s]+)\s*nop tien\s*:?', 'nop tien'),
+                (r'([A-Z\s]+)\s*NOP TIEN\s*:?', 'NOP TIEN'),
+            ]
+            for pattern, keyword in nop_tien_patterns:
+                match = re.search(pattern, rem, re.IGNORECASE)
+                if match:
+                    name_part = match.group(1).strip()
+                    # Làm sạch tên (bỏ các ký tự đặc biệt)
+                    name_words = name_part.split()
+                    clean_words = [w for w in name_words if w and len(w) > 1]
+                    if clean_words:
+                        beneficiary_name = ' '.join(clean_words[:5])
+                    break
+            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
         # Pattern 1: Chuyển khoản nội bộ Agribank
         # Format: MB(mã_giao_dịch)(nội dung)
         pattern1 = re.search(r'MB\((\d+)\)\((.*?)\)', rem)
@@ -400,6 +425,12 @@ class BankStatementParser:
         trcdnm = str(row.get('trcdnm', ''))
         amount = row.get('acctccyamt', 0)
 
+        # Lấy số tiền tuyệt đối để check phí rút tiền
+        abs_amount = abs(amount)
+
+        rem_lower = rem.lower()
+        trcdnm_lower = trcdnm.lower()
+
         # Chuyển khoản nội bộ Agribank
         if 'MB(' in rem:
             if amount > 0:
@@ -422,23 +453,41 @@ class BankStatementParser:
             else:
                 return "Chuyển khoản liên ngân hàng"
 
-        # IBFT
-        if 'IBFT' in rem:
+        # IBFT - Kiểm tra cả trong rem và trcdnm
+        if 'IBFT' in rem or 'IBFT' in trcdnm or 'ibft' in trcdnm_lower:
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
                 return "Chuyển khoản liên ngân hàng"
 
-        # Rút tiền
-        if 'Withdrawal BankNet ATM' in trcdnm:
-            return "Rút tiền ATM"
+        # Rút tiền với phí cụ thể
+        # 1,100 đồng: Rút tiền mặt cùng hệ thống (từ thẻ rút tiền mặt)
+        if abs_amount == 1100 and 'rút tiền' in trcdnm_lower and 'từ thẻ rút tiền mặt' in trcdnm_lower:
+            return "Phí rút tiền mặt cùng hệ thống"
+
+        # 3,300 đồng: Rút tiền ATM khác hệ thống (Withdrawal BankNet ATM)
+        if abs_amount == 3300 and 'withdrawal banknet atm' in trcdnm_lower:
+            return "Phí rút tiền ATM khác hệ thống"
+
+        # 1,650 đồng: Rút tiền mặt cùng hệ thống + in sao kê (550 đồng)
+        if abs_amount == 1650 and 'rút tiền' in trcdnm_lower and 'từ thẻ rút tiền mặt' in trcdnm_lower:
+            return "Phí rút tiền mặt cùng hệ thống (kèm in sao kê)"
+
+        # Rút tiền tổng quát
+        if 'Withdrawal BankNet ATM' in trcdnm or 'withdrawal banknet atm' in trcdnm_lower:
+            return "Rút tiền ATM khác hệ thống"
+        if 'rút tiền' in trcdnm_lower and ('từ thẻ rút tiền mặt' in trcdnm_lower or 'rut tien mat' in trcdnm_lower):
+            return "Rút tiền mặt cùng hệ thống"
         if 'RUT TM' in rem.upper() or 'RUT TIEN' in rem.upper():
             return "Rút tiền mặt"
 
         # Nộp tiền
         if 'Deposit' in trcdnm:
-            return "Nộp tiền ATM"
-        if 'NOP TIEN' in rem.upper() or 'NOP TM' in rem.upper():
+            return "Nộp tiền qua ATM"
+        # Nộp tiền tại Agribank (có tên người nộp trong nội dung)
+        if 'nop tien' in rem_lower or 'nộp tiền' in rem_lower:
+            return "Nộp tiền tại Agribank"
+        if 'NOP TM' in rem.upper():
             return "Nộp tiền mặt"
 
         # Thanh toán
@@ -455,10 +504,14 @@ class BankStatementParser:
         if 'VNPT' in rem.upper():
             return "Thanh toán dịch vụ (VNPT)"
 
-        # Phí và lãi
+        # Lãi tiền gửi - Kiểm tra không có nội dung và trcdnm là "Lãi tiền gửi"
+        if (not rem or rem.strip() == '' or rem == 'nan') and 'lãi tiền gửi' in trcdnm_lower.strip():
+            return "Trả lãi tiền gửi hằng tháng"
+
+        # Phí và lãi (tổng quát)
         if 'PHI THU THEO LO' in trcdnm.upper() or 'PHI' in rem.upper():
             return "Phí dịch vụ"
-        if 'LAI TIEN GUI' in trcdnm.upper() or 'LAI' in rem.upper():
+        if 'LAI TIEN GUI' in trcdnm.upper() or ('LAI' in rem.upper() and 'GUI' in rem.upper()):
             return "Trả lãi tiền gửi"
 
         # Không xác định được
