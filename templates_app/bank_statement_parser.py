@@ -66,6 +66,57 @@ class BankStatementParser:
         'CAKE': 'Cake by VPBank',
         'TIMO': 'Timo by VPBank',
         'UBANK': 'UBank by VPBank',
+        'KLB': 'Kiên Long Bank',
+        'KIENLONGBANK': 'Kiên Long Bank',
+    }
+
+    # Mapping BIN code (Bank Identification Number) từ hệ thống NAPAS
+    # BIN code gồm 6 số dùng để định danh ngân hàng trong giao dịch thẻ
+    BIN_CODE_MAPPING = {
+        '970405': 'Agribank',
+        '970422': 'Vietinbank',  # CTG
+        '970436': 'Vietcombank',  # VCB
+        '970418': 'BIDV',
+        '970407': 'Techcombank',  # TCB
+        '970432': 'VPBank',
+        '970403': 'Sacombank',  # STB
+        '970416': 'ACB',
+        '970423': 'TPBank',
+        '970441': 'VIB',
+        '970443': 'SHB',
+        '970431': 'Eximbank',
+        '970426': 'MB Bank',
+        '970448': 'OCB',
+        '970414': 'PVcomBank',
+        '970433': 'VietABank',
+        '970427': 'VietCapital Bank',
+        '970438': 'BaoViet Bank',
+        '970457': 'Woori Bank',
+        '970410': 'Standard Chartered',
+        '970424': 'Shinhan Bank',
+        '970412': 'HSBC',
+        '970419': 'NCB',
+        '970406': 'DongA Bank',
+        '970437': 'HDBank',
+        '970429': 'SCB',
+        '970454': 'VietBank',
+        '970430': 'PGBank',
+        '970425': 'ABBank',
+        '970409': 'BacABank',
+        '970428': 'NamABank',
+        '970458': 'UOB',
+        '970434': 'Indovina Bank',
+        '970439': 'Public Bank',
+        '970415': 'Vietinbank',  # Duplicate entry for legacy
+        '970400': 'SaigonBank',
+        '970449': 'LienVietPostBank',
+        '970452': 'Kiên Long Bank',  # KLB
+        '970446': 'Cooperative Bank',
+        '970421': 'VRB',
+        '970456': 'IBK',
+        '970440': 'SeABank',
+        '970460': 'CAKE by VPBank',
+        '970463': 'Timo by VPBank',
     }
 
     def __init__(self, file_path):
@@ -122,6 +173,19 @@ class BankStatementParser:
         """
         bank_code_upper = bank_code.upper().strip()
         return self.BANK_CODE_MAPPING.get(bank_code_upper, bank_code)
+
+    def get_bank_name_from_bin(self, bin_code):
+        """
+        Lấy tên đầy đủ ngân hàng từ BIN code (Bank Identification Number)
+
+        Args:
+            bin_code: Mã BIN 6 số của ngân hàng (VD: 970422, 970436)
+
+        Returns:
+            str: Tên đầy đủ ngân hàng hoặc 'MCC' nếu không tìm thấy
+        """
+        bin_code_str = str(bin_code).strip()
+        return self.BIN_CODE_MAPPING.get(bin_code_str, 'MCC')
 
     def parse_beneficiary_info(self, rem, tomgntno, acctccyamt):
         """
@@ -281,6 +345,44 @@ class BankStatementParser:
 
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
+        # Pattern 5: MCC transactions with BIN code
+        # Format 1: 1000A17202 - 337221-NGUYEN THI KIM THOA chuyen khoan;MCC;20231220224051;0976831420123;970422
+        # Format 2: 679450-7202205158872;MCC;20231226044837;0702281569;970422
+        # Pattern: [optional_prefix] [trace]-[content];MCC;[datetime];[account];[BIN]
+        pattern5_mcc = re.search(r'(?:1000A\d+ - )?(?:(\d+)-)?([^;]+);MCC;(\d{14});(\d+);(\d{6})', rem)
+        if pattern5_mcc:
+            trace_or_account = pattern5_mcc.group(1)  # Could be trace number or account
+            content_before_mcc = pattern5_mcc.group(2)  # Content before MCC
+            datetime_str = pattern5_mcc.group(3)  # Transaction datetime
+            account_from_pattern = pattern5_mcc.group(4)  # Account number
+            bin_code = pattern5_mcc.group(5)  # BIN code (6 digits)
+
+            # Get bank name from BIN code
+            bank_name = self.get_bank_name_from_bin(bin_code)
+
+            # Account number is from the pattern
+            account_number = account_from_pattern
+
+            # Parse beneficiary name from content before MCC
+            # Content could be: "337221-NGUYEN THI KIM THOA chuyen khoan" or "7202205158872"
+            if content_before_mcc:
+                # If content starts with digits followed by dash, extract name after dash
+                content_match = re.match(r'\d+-([A-Z\s]+)', content_before_mcc)
+                if content_match:
+                    name_part = content_match.group(1).strip()
+                    # Remove common keywords from end
+                    name_words = name_part.split()
+                    clean_name_parts = []
+                    for word in name_words:
+                        if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'ck', 'ct']:
+                            clean_name_parts.append(word)
+                        else:
+                            break
+                    if clean_name_parts:
+                        beneficiary_name = ' '.join(clean_name_parts[:4])
+
+            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
         # Không parse được
         return {'bank_name': '', 'account_number': '', 'beneficiary_name': ''}
 
@@ -304,6 +406,13 @@ class BankStatementParser:
                 return "Nhận chuyển khoản nội bộ Agribank"
             else:
                 return "Chuyển khoản nội bộ Agribank"
+
+        # MCC transactions (merchant/payment)
+        if ';MCC;' in rem and re.search(r'\d{6}$', rem):  # Check for BIN code at end
+            if amount > 0:
+                return "Nhận thanh toán MCC"
+            else:
+                return "Thanh toán qua MCC"
 
         # Chuyển khoản ngân hàng khác (STB, BIDV, TCB, VCB, etc.)
         # Pattern: [mã]-[BANK_CODE];số_tk;nội_dung hoặc [BANK_CODE];số_tk;nội_dung
