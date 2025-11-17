@@ -295,11 +295,34 @@ class BankStatementParser:
 
                 return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
+        # Pattern 2.5: MBVCB/IBVCB - Chuyển khoản Vietcombank format đặc biệt
+        # Format: MBVCB.5667288555.032551.931922.CT tu 1988944725 NGUYEN DINH TRUONG toi 7202205158872 Phan Giang Nam tai AGRIBANK
+        # MBVCB = Mobile Banking VCB, IBVCB = Internet Banking VCB
+        if 'VCB.' in rem and ('CT tu' in rem or 'CT TU' in rem.upper()):
+            pattern_vcb = re.search(
+                r'(?:MB|IB)VCB\.[^.]+\.[^.]+\.[^.]+\.CT tu\s+(\d+)\s+([A-Z\s]+?)\s+toi\s+(\d+)\s+([A-Z\s]+?)\s+tai\s+([A-Z\s]+)',
+                rem,
+                re.IGNORECASE
+            )
+            if pattern_vcb:
+                bank_name = "Vietcombank"
+                account_number = pattern_vcb.group(1)  # Số TK người chuyển
+                sender_name = pattern_vcb.group(2).strip()  # Tên người chuyển
+                receiver_account = pattern_vcb.group(3)  # Số TK người nhận (TK của user)
+                receiver_name = pattern_vcb.group(4).strip()  # Tên người nhận
+                receiver_bank = pattern_vcb.group(5).strip()  # Ngân hàng đích
+
+                # Beneficiary là người chuyển tiền
+                beneficiary_name = sender_name
+
+                return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
         # Pattern 3: Ngân hàng khác với format chuẩn
-        # Format 1: BANK_CODE;số_tài_khoản;nội_dung (VD: STB;070055505932;ck)
+        # Format 1: BANK_CODE;số_tài_khoản;nội_dung (VD: STB;070055505932;ck, Vietinbank;102006240267;...)
         # Format 2: mã-BANK_CODE;số_tài_khoản;nội_dung (VD: 337133-BIDV;78810000156950;nam)
         # LƯU Ý: Pattern này có thể nhầm MCC là bank code, nên MCC pattern phải check trước!
-        pattern2_general = re.search(r'(?:(\d+)-)?([A-Z]{2,15});(\d{10,20});(.*)', rem)
+        # Cho phép cả chữ hoa và thường: [A-Za-z]
+        pattern2_general = re.search(r'(?:(\d+)-)?([A-Za-z]{2,15});(\d{10,20});(.*)', rem, re.IGNORECASE)
         if pattern2_general:
             transaction_code = pattern2_general.group(1)  # Có thể None
             bank_code = pattern2_general.group(2)
@@ -449,9 +472,24 @@ class BankStatementParser:
             else:
                 return "Thanh toán qua MCC"
 
-        # Chuyển khoản ngân hàng khác (STB, BIDV, TCB, VCB, etc.)
+        # MBVCB/IBVCB - Chuyển khoản Vietcombank format đặc biệt
+        if 'VCB.' in rem and ('CT tu' in rem or 'CT TU' in rem.upper()):
+            if amount > 0:
+                return "Nhận chuyển khoản liên ngân hàng"
+            else:
+                return "Chuyển khoản liên ngân hàng"
+
+        # Vietcombank legacy format với dấu hai chấm (Vietcombank:số_tk:nội_dung)
+        if 'Vietcombank:' in rem or 'vietcombank:' in rem_lower:
+            if amount > 0:
+                return "Nhận chuyển khoản liên ngân hàng"
+            else:
+                return "Chuyển khoản liên ngân hàng"
+
+        # Chuyển khoản ngân hàng khác (STB, BIDV, TCB, VCB, Vietinbank, etc.)
         # Pattern: [mã]-[BANK_CODE];số_tk;nội_dung hoặc [BANK_CODE];số_tk;nội_dung
-        if re.search(r'(?:\d+-)?[A-Z]{2,15};\d{10,20};', rem):
+        # Cho phép cả chữ hoa và thường
+        if re.search(r'(?:\d+-)?[A-Za-z]{2,15};\d{10,20};', rem, re.IGNORECASE):
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
