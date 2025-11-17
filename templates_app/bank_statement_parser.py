@@ -556,6 +556,14 @@ class BankStatementParser:
         if 'LAI TIEN GUI' in trcdnm.upper() or ('LAI' in rem.upper() and 'GUI' in rem.upper()):
             return "Trả lãi tiền gửi"
 
+        # PaymentHub: Giao dịch không xác định được ngân hàng nhưng husrid starts with '7202API'
+        husrid = str(row.get('husrid', ''))
+        if husrid and len(husrid) >= 7 and husrid[:7] == '7202API':
+            if amount > 0:
+                return "Nhận tiền PaymentHub"
+            else:
+                return "Thanh toán qua PaymentHub"
+
         # Không xác định được
         return ""
 
@@ -630,6 +638,12 @@ class BankStatementParser:
                 tomgntno,
                 acctccyamt
             )
+
+            # Kiểm tra PaymentHub: Nếu không xác định được ngân hàng và husrid starts with '7202API'
+            if not beneficiary_info['bank_name'] or beneficiary_info['bank_name'] == '':
+                husrid = str(row.get('husrid', ''))
+                if husrid and len(husrid) >= 7 and husrid[:7] == '7202API':
+                    beneficiary_info['bank_name'] = 'PaymentHub'
 
             # Phân loại giao dịch
             transaction_type = self.classify_transaction(row)
