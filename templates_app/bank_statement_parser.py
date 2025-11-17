@@ -254,9 +254,51 @@ class BankStatementParser:
                 beneficiary_name = ' '.join(name_parts[:4])  # Lấy tối đa 4 từ
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
-        # Pattern 2: Ngân hàng khác với format chuẩn
+        # Pattern 2: MCC transactions with BIN code (PHẢI CHECK TRƯỚC Pattern 2 general!)
+        # Format 1: 1000A17202 - 337221-NGUYEN THI KIM THOA chuyen khoan;MCC;20231220224051;0976831420123;970422
+        # Format 2: 679450-7202205158872;MCC;20231226044837;0702281569;970422
+        # Pattern: [optional_prefix] [trace]-[content];MCC;[datetime];[account];[BIN]
+        if ';MCC;' in rem:  # Quick check trước khi chạy regex phức tạp
+            pattern_mcc = re.search(r'(?:1000A\d+ - )?(?:(\d+)-)?([^;]+);MCC;(\d{14});(\d+);(\d{6})', rem)
+            if pattern_mcc:
+                trace_or_account = pattern_mcc.group(1)  # Could be trace number or account
+                content_before_mcc = pattern_mcc.group(2)  # Content before MCC
+                datetime_str = pattern_mcc.group(3)  # Transaction datetime
+                account_from_pattern = pattern_mcc.group(4)  # Account number
+                bin_code = pattern_mcc.group(5)  # BIN code (6 digits)
+
+                # Get bank name from BIN code
+                bank_name = self.get_bank_name_from_bin(bin_code)
+
+                # Account number is from the pattern
+                account_number = account_from_pattern
+
+                # Parse beneficiary name from content before MCC
+                # Content could be: "NGUYEN THI KIM THOA chuyen khoan" or "7202205158872"
+                # (số trace đã bị tách ra group 1 rồi)
+                if content_before_mcc:
+                    # Kiểm tra xem content có phải là tên người không (có chữ cái in hoa)
+                    if re.search(r'[A-Z]', content_before_mcc):
+                        # Parse tên người, bỏ các từ khóa
+                        name_words = content_before_mcc.split()
+                        clean_name_parts = []
+                        for word in name_words:
+                            # Bỏ qua số và các từ khóa
+                            if word.isdigit():
+                                continue
+                            if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'ck', 'ct', 'fcc']:
+                                clean_name_parts.append(word)
+                            else:
+                                break
+                        if clean_name_parts:
+                            beneficiary_name = ' '.join(clean_name_parts[:4])
+
+                return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
+        # Pattern 3: Ngân hàng khác với format chuẩn
         # Format 1: BANK_CODE;số_tài_khoản;nội_dung (VD: STB;070055505932;ck)
         # Format 2: mã-BANK_CODE;số_tài_khoản;nội_dung (VD: 337133-BIDV;78810000156950;nam)
+        # LƯU Ý: Pattern này có thể nhầm MCC là bank code, nên MCC pattern phải check trước!
         pattern2_general = re.search(r'(?:(\d+)-)?([A-Z]{2,15});(\d{10,20});(.*)', rem)
         if pattern2_general:
             transaction_code = pattern2_general.group(1)  # Có thể None
@@ -367,44 +409,6 @@ class BankStatementParser:
                             break
             if name_parts:
                 beneficiary_name = ' '.join(name_parts[:4])
-
-            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
-
-        # Pattern 5: MCC transactions with BIN code
-        # Format 1: 1000A17202 - 337221-NGUYEN THI KIM THOA chuyen khoan;MCC;20231220224051;0976831420123;970422
-        # Format 2: 679450-7202205158872;MCC;20231226044837;0702281569;970422
-        # Pattern: [optional_prefix] [trace]-[content];MCC;[datetime];[account];[BIN]
-        pattern5_mcc = re.search(r'(?:1000A\d+ - )?(?:(\d+)-)?([^;]+);MCC;(\d{14});(\d+);(\d{6})', rem)
-        if pattern5_mcc:
-            trace_or_account = pattern5_mcc.group(1)  # Could be trace number or account
-            content_before_mcc = pattern5_mcc.group(2)  # Content before MCC
-            datetime_str = pattern5_mcc.group(3)  # Transaction datetime
-            account_from_pattern = pattern5_mcc.group(4)  # Account number
-            bin_code = pattern5_mcc.group(5)  # BIN code (6 digits)
-
-            # Get bank name from BIN code
-            bank_name = self.get_bank_name_from_bin(bin_code)
-
-            # Account number is from the pattern
-            account_number = account_from_pattern
-
-            # Parse beneficiary name from content before MCC
-            # Content could be: "337221-NGUYEN THI KIM THOA chuyen khoan" or "7202205158872"
-            if content_before_mcc:
-                # If content starts with digits followed by dash, extract name after dash
-                content_match = re.match(r'\d+-([A-Z\s]+)', content_before_mcc)
-                if content_match:
-                    name_part = content_match.group(1).strip()
-                    # Remove common keywords from end
-                    name_words = name_part.split()
-                    clean_name_parts = []
-                    for word in name_words:
-                        if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'ck', 'ct']:
-                            clean_name_parts.append(word)
-                        else:
-                            break
-                    if clean_name_parts:
-                        beneficiary_name = ' '.join(clean_name_parts[:4])
 
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
