@@ -33,7 +33,7 @@
 </head>
 <body>
     <!-- Agribank Header -->
-    <nav class="navbar navbar-expand-lg navbar-dark agribank-header">
+    <nav class="navbar navbar-expand-lg navbar-dark agribank-header" style="background: linear-gradient(90deg, #AE1C3F 0%, #8a1230 100%) !important; border-bottom: 3px solid #D69D26;">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard' %}">
                 <img src="{% static 'images/agribank_logo.png' %}" alt="Agribank" class="agribank-logo">
@@ -205,6 +205,18 @@
                   'Hệ thống quản lý mẫu biểu và hồ sơ khách hàng');
             return false;
         }
+
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    // Use Bootstrap's alert dismiss
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000); // 5 seconds
+            });
+        });
     </script>
     {% block extra_js %}{% endblock %}
 </body>
