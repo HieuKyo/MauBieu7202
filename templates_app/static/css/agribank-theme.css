@@ -1,62 +1,60 @@
-/*
- * Agribank Traditional Brand Colors and Theme
- * Primary Red: #95212A (Agribank Traditional Red)
- * Primary Green: #005A3A (Agribank Traditional Green)
- * Font: Times New Roman (Traditional)
- */
+/* ==========================================================================
+   AGRIBANK THEME - CHI NHÁNH GIÁ RAI BẠC LIÊU
+   Color Palette:
+   - Primary Red: #AE1C3F (Đỏ đô)
+   - Accent Gold: #D69D26 (Vàng cam)
+   - Support Green: #005326 (Xanh lá đậm)
+   - Background: #F4F6F9 (Xám nhạt)
+   ========================================================================== */
 
 :root {
-    --agribank-red: #95212A;
-    --agribank-green: #005A3A;
-    --agribank-red-dark: #7c1c23;
+    --agri-red: #AE1C3F;
+    --agri-red-dark: #8a1230;
+    --agri-gold: #D69D26;
+    --agri-gold-bright: #FFDD00;
+    --agri-green: #005326;
+    --agri-bg: #F4F6F9;
+    --agri-text-dark: #333333;
+    --agri-text-light: #6c757d;
+    --sidebar-width: 250px;
+
+    /* Backward compatibility với biến cũ */
+    --agribank-red: #AE1C3F;
+    --agribank-red-dark: #8a1230;
+    --agribank-green: #005326;
     --agribank-green-light: #e8f5e9;
     --agribank-text: #333333;
     --agribank-gray: #f8f9fa;
 }
 
-/* Traditional Agribank Font */
 body {
-    font-family: 'Times New Roman', Times, serif;
+    background-color: var(--agri-bg);
+    font-family: 'Roboto', 'Segoe UI', Tahoma, sans-serif;
+    color: var(--agri-text-dark);
 }
 
-/* Override Bootstrap primary color with Agribank Red */
-.btn-primary {
-    background-color: var(--agribank-red) !important;
-    border-color: var(--agribank-red) !important;
-    font-weight: bold;
-    text-transform: uppercase;
-    transition: background-color 0.2s ease-in-out;
-}
-
-.btn-primary:hover {
-    background-color: var(--agribank-red-dark) !important;
-    border-color: var(--agribank-red-dark) !important;
-}
-
-.bg-primary {
-    background-color: var(--agribank-red) !important;
-}
-
-.text-primary {
-    color: var(--agribank-red) !important;
+/* --- 1. Header / Topbar --- */
+.bg-agribank {
+    background: linear-gradient(90deg, var(--agri-red) 0%, var(--agri-red-dark) 100%) !important;
+    border-bottom: 3px solid var(--agri-gold);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .navbar {
-    background: var(--agribank-green) !important;
+    background: var(--agri-green) !important;
 }
 
-/* Brand header */
 .agribank-header {
-    background: var(--agribank-green);
+    background: var(--agri-green);
     padding: 1rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,.1);
 }
 
-.header-agribank {
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--agribank-green);
+.navbar-brand {
+    font-weight: 700;
+    text-transform: uppercase;
+    color: white !important;
+    letter-spacing: 0.5px;
 }
 
 .agribank-logo {
@@ -71,106 +69,90 @@ body {
     letter-spacing: 1px;
 }
 
-/* Cards with Agribank theme - Red accent border */
+/* --- 2. Sidebar / Menu bên trái --- */
+.sidebar {
+    background-color: #ffffff;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    border-right: 1px solid #e9ecef;
+}
+
+.nav-link {
+    color: var(--agri-text-dark);
+    font-weight: 500;
+    padding: 12px 20px;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.nav-link:hover {
+    background-color: #fff5f5; /* Đỏ rất nhạt */
+    color: var(--agri-red);
+    border-left-color: var(--agri-gold);
+}
+
+.nav-link.active {
+    background-color: #fff0f0;
+    color: var(--agri-red);
+    border-left-color: var(--agri-red);
+    font-weight: 700;
+}
+
+.nav-link i {
+    margin-right: 10px;
+    color: var(--agri-text-light);
+}
+
+.nav-link.active i, .nav-link:hover i {
+    color: var(--agri-red);
+}
+
+/* --- 3. Cards / Khung nội dung --- */
 .card {
-    border-top: 4px solid var(--agribank-red);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    background-color: white;
+    border-top: 4px solid var(--agri-red);
     transition: all 0.2s ease-in-out;
 }
 
+.card-header {
+    background-color: white;
+    border-bottom: 2px solid var(--agri-bg);
+    font-weight: 700;
+    color: var(--agri-red);
+    padding: 15px 20px;
+}
+
+/* Tiêu đề Card màu đỏ đặc trưng */
+.card-title {
+    color: var(--agri-red);
+    margin-bottom: 0;
+}
+
+/* Card hover effects */
 .card.category-card:hover,
 .card.template-card:hover {
-    border-color: var(--agribank-red);
-    box-shadow: 0 0.5rem 1rem rgba(149, 33, 42, 0.2);
+    border-color: var(--agri-red);
+    box-shadow: 0 0.5rem 1rem rgba(174, 28, 63, 0.2);
     background-color: #fff8f8;
-    border-left: 4px solid var(--agribank-red);
+    border-left: 4px solid var(--agri-red);
     transform: translateX(5px);
 }
 
 .category-card .bg-primary {
-    background-color: var(--agribank-green) !important;
+    background-color: var(--agri-green) !important;
 }
 
 .template-card .bg-success {
-    background-color: var(--agribank-green) !important;
-}
-
-/* Badge colors */
-.badge.bg-secondary {
-    background-color: var(--agribank-green) !important;
-}
-
-.badge.bg-info {
-    background-color: var(--agribank-red) !important;
-    color: white !important;
-}
-
-/* Login page */
-.login-container {
-    background: linear-gradient(135deg, var(--agribank-red) 0%, var(--agribank-red-dark) 100%);
-    min-height: 100vh;
-}
-
-.login-card {
-    border-top: 4px solid var(--agribank-red);
-}
-
-/* Form controls */
-.form-control:focus {
-    border-color: var(--agribank-red);
-    box-shadow: 0 0 0 0.2rem rgba(149, 33, 42, 0.25);
-}
-
-/* Breadcrumb */
-.breadcrumb {
-    background-color: var(--agribank-green-light);
-}
-
-.breadcrumb-item.active {
-    color: var(--agribank-green);
-}
-
-.breadcrumb-item a {
-    color: var(--agribank-red);
-}
-
-/* Footer */
-footer {
-    background-color: var(--agribank-gray);
-    border-top: 3px solid var(--agribank-red);
-}
-
-/* Alert colors */
-.alert-success {
-    background-color: var(--agribank-green-light);
-    border-color: var(--agribank-green);
-    color: var(--agribank-green);
-}
-
-/* Button success */
-.btn-success {
-    background-color: var(--agribank-green) !important;
-    border-color: var(--agribank-green) !important;
-}
-
-.btn-success:hover {
-    background-color: #004528 !important;
-    border-color: #004528 !important;
-}
-
-/* Accent elements */
-.text-success {
-    color: var(--agribank-green) !important;
-}
-
-.border-success {
-    border-color: var(--agribank-green) !important;
+    background-color: var(--agri-green) !important;
 }
 
 /* Category and Template icons */
 .category-icon,
 .template-icon {
-    background: var(--agribank-green);
+    background: var(--agri-green);
     border-radius: 12px;
     padding: 15px;
     display: inline-flex;
@@ -181,13 +163,157 @@ footer {
 
 /* Card footer accent */
 .card-footer {
-    border-top: 2px solid var(--agribank-gray);
+    border-top: 2px solid var(--agri-bg);
 }
 
-/* Dropdown hover */
+/* --- 4. Buttons / Nút bấm --- */
+.btn-primary {
+    background-color: var(--agri-red) !important;
+    border-color: var(--agri-red) !important;
+    padding: 8px 20px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: var(--agri-red-dark) !important;
+    border-color: var(--agri-red-dark) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(174, 28, 63, 0.3);
+}
+
+.btn-outline-primary {
+    color: var(--agri-red);
+    border-color: var(--agri-red);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--agri-red);
+    color: white;
+}
+
+.btn-success {
+    background-color: var(--agri-green) !important;
+    border-color: var(--agri-green) !important;
+}
+
+.btn-success:hover {
+    background-color: #004528 !important;
+    border-color: #004528 !important;
+}
+
+/* --- 5. Tables / Bảng dữ liệu --- */
+.table thead th {
+    background-color: var(--agri-green);
+    color: white;
+    border-bottom: 2px solid var(--agri-red);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #fff5f5; /* Hover màu đỏ nhạt */
+}
+
+/* --- 6. Form Controls --- */
+.form-control:focus {
+    border-color: var(--agri-red);
+    box-shadow: 0 0 0 0.2rem rgba(174, 28, 63, 0.25);
+}
+
+.form-label {
+    color: var(--agri-text-dark);
+    font-weight: 600;
+}
+
+/* --- 7. Login Page --- */
+.login-container {
+    background: linear-gradient(135deg, var(--agri-red) 0%, var(--agri-red-dark) 100%);
+    min-height: 100vh;
+}
+
+.login-card {
+    border-top: 4px solid var(--agri-red);
+}
+
+/* --- 8. Utilities / Tiện ích khác --- */
+.text-agri {
+    color: var(--agri-red) !important;
+}
+
+.bg-agri-light {
+    background-color: #fff5f5;
+}
+
+.border-agri {
+    border-color: var(--agri-red) !important;
+}
+
+.bg-primary {
+    background-color: var(--agri-red) !important;
+}
+
+.text-primary {
+    color: var(--agri-red) !important;
+}
+
+.text-success {
+    color: var(--agri-green) !important;
+}
+
+.border-success {
+    border-color: var(--agri-green) !important;
+}
+
+/* Badge trạng thái */
+.badge-agri {
+    background-color: var(--agri-red);
+    color: white;
+}
+
+.badge.bg-secondary {
+    background-color: var(--agri-green) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--agri-red) !important;
+    color: white !important;
+}
+
+/* --- 9. Breadcrumb --- */
+.breadcrumb {
+    background-color: var(--agribank-green-light);
+}
+
+.breadcrumb-item.active {
+    color: var(--agri-green);
+}
+
+.breadcrumb-item a {
+    color: var(--agri-red);
+}
+
+/* --- 10. Alerts --- */
+.alert-success {
+    background-color: var(--agribank-green-light);
+    border-color: var(--agri-green);
+    color: var(--agri-green);
+}
+
+.alert-success .alert-link {
+    color: var(--agri-green);
+    font-weight: bold;
+}
+
+.text-danger {
+    color: #d32f2f !important;
+}
+
+/* --- 11. Dropdown --- */
 .dropdown-item:hover {
     background-color: var(--agribank-green-light);
-    color: var(--agribank-red);
+    color: var(--agri-red);
 }
 
 /* Admin branding */
@@ -199,21 +325,19 @@ footer {
     color: white !important;
 }
 
-/* Responsive logo */
-@media (max-width: 768px) {
-    .agribank-logo {
-        max-height: 40px;
-    }
-
-    .agribank-brand-text {
-        font-size: 1.2rem;
-    }
+/* --- 12. Footer --- */
+footer {
+    background-color: white;
+    border-top: 3px solid var(--agri-gold);
+    padding: 15px 0;
+    color: var(--agri-text-light);
+    font-size: 0.9rem;
 }
 
-/* Loading indicator */
+/* --- 13. Loading Spinner --- */
 .agribank-spinner {
     border: 3px solid var(--agribank-green-light);
-    border-top: 3px solid var(--agribank-red);
+    border-top: 3px solid var(--agri-red);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -225,29 +349,21 @@ footer {
     100% { transform: rotate(360deg); }
 }
 
-/* Table styling */
-.table thead {
-    background-color: var(--agribank-green);
-    color: white;
+/* --- 14. Responsive --- */
+@media (max-width: 768px) {
+    .agribank-logo {
+        max-height: 40px;
+    }
+
+    .agribank-brand-text {
+        font-size: 1.2rem;
+    }
 }
 
-.table-hover tbody tr:hover {
-    background-color: var(--agribank-green-light);
-}
-
-/* Form labels */
-.form-label {
-    color: var(--agribank-text);
-    font-weight: 600;
-}
-
-/* Required field indicator */
-.text-danger {
-    color: #d32f2f !important;
-}
-
-/* Success message */
-.alert-success .alert-link {
-    color: var(--agribank-green);
+/* --- 15. Additional Agribank Styling --- */
+.header-agribank {
+    font-family: 'Roboto', 'Segoe UI', sans-serif;
+    font-size: 14px;
     font-weight: bold;
+    color: var(--agri-green);
 }
