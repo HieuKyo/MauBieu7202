@@ -547,8 +547,12 @@ class BankStatementParser:
             return "Thanh toán thẻ"
 
         # Dịch vụ
+        # Nạp tiền điện thoại - đổi thành Thanh toán dịch vụ
         if re.search(r'\d{9,11}@\d{9,11}', rem):
-            return "Nạp tiền điện thoại"
+            return "Thanh toán dịch vụ"
+        # MA_GD: (Mã giao dịch) - Thanh toán dịch vụ
+        if 'MA_GD:' in rem.upper() or 'ma_gd:' in rem_lower:
+            return "Thanh toán dịch vụ"
         # C/C Transfer TO - Thanh toán dịch vụ
         if 'C/C Transfer TO' in rem or 'c/c transfer to' in rem_lower:
             return "Thanh toán dịch vụ"
