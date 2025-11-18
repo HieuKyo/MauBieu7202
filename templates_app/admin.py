@@ -6,7 +6,8 @@ from django.http import HttpResponse
 from .models import (
     Category, Template, Variable, TemplateVariable, Customer, GlobalConfig,
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
-    BankStatement, Transaction
+    BankStatement, Transaction,
+    UserProfile, Course, CourseEnrollment
 )
 from .import_helpers import (
     import_variables_from_csv,
@@ -652,4 +653,91 @@ class TransactionAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # Chỉ cho phép xóa nếu là superuser
         return request.user.is_superuser
+
+
+# ====================
+# Employee Management Admin
+# ====================
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    """Admin cho Hồ sơ nhân viên"""
+    list_display = ['employee_code', 'full_name', 'user', 'branch', 'department', 'position', 'phone']
+    list_filter = ['branch', 'department', 'position', 'job_function']
+    search_fields = ['employee_code', 'full_name', 'user__username', 'phone']
+    ordering = ['employee_code']
+
+    fieldsets = (
+        ('Thông tin tài khoản', {
+            'fields': ('user', 'employee_code')
+        }),
+        ('Thông tin cá nhân', {
+            'fields': ('full_name', 'dob', 'gender', 'phone', 'address')
+        }),
+        ('Giấy tờ tùy thân', {
+            'fields': ('id_card_number', 'id_card_date', 'id_card_place')
+        }),
+        ('Thông tin công việc', {
+            'fields': ('branch', 'department', 'job_function', 'position')
+        }),
+    )
+
+
+# ====================
+# E-Learning Admin
+# ====================
+
+class CourseEnrollmentInline(admin.TabularInline):
+    """Inline để quản lý học viên của khóa học"""
+    model = CourseEnrollment
+    extra = 0
+    fields = ['user', 'is_completed', 'completion_date']
+    readonly_fields = ['completion_date']
+    autocomplete_fields = ['user']
+
+
+@admin.register(Course)
+class CourseAdmin(admin.ModelAdmin):
+    """Admin cho Khóa học"""
+    list_display = ['name', 'start_date', 'end_date', 'get_enrollment_count', 'created_at']
+    list_filter = ['start_date', 'end_date']
+    search_fields = ['name', 'description']
+    ordering = ['-start_date']
+    inlines = [CourseEnrollmentInline]
+
+    fieldsets = (
+        ('Thông tin khóa học', {
+            'fields': ('name', 'description')
+        }),
+        ('Thời gian', {
+            'fields': ('start_date', 'end_date')
+        }),
+    )
+
+    def get_enrollment_count(self, obj):
+        """Hiển thị số lượng học viên"""
+        stats = obj.get_completion_stats()
+        return f"{stats['completed']}/{stats['total']}"
+    get_enrollment_count.short_description = 'Học viên (Hoàn thành/Tổng)'
+
+
+@admin.register(CourseEnrollment)
+class CourseEnrollmentAdmin(admin.ModelAdmin):
+    """Admin cho Ghi danh khóa học"""
+    list_display = ['course', 'user', 'is_completed', 'completion_date', 'enrolled_at']
+    list_filter = ['is_completed', 'course', 'enrolled_at']
+    search_fields = ['course__name', 'user__username', 'user__profile__full_name']
+    ordering = ['-enrolled_at']
+    autocomplete_fields = ['course', 'user']
+
+    fieldsets = (
+        ('Thông tin ghi danh', {
+            'fields': ('course', 'user')
+        }),
+        ('Trạng thái', {
+            'fields': ('is_completed', 'completion_date')
+        }),
+    )
+
+    readonly_fields = ['enrolled_at']
 

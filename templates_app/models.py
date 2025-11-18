@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, User
 from django.core.validators import FileExtensionValidator
 import unicodedata
 
@@ -1134,6 +1134,213 @@ class BeautifulNumber(models.Model):
 
 # Alias để backward compatibility
 BranchConfig = GlobalConfig
+
+
+# ====================
+# Employee Management Models
+# ====================
+
+class UserProfile(models.Model):
+    """
+    Thông tin mở rộng cho User - Quản lý nhân viên
+    Liên kết One-to-One với django.contrib.auth.models.User
+    """
+
+    GENDER_CHOICES = [
+        ('Nam', 'Nam'),
+        ('Nữ', 'Nữ'),
+        ('Khác', 'Khác'),
+    ]
+
+    BRANCH_CHOICES = [
+        ('HOI_SO', 'Hội sở Giá Rai Bạc Liêu'),
+        ('PGD_P1', 'Phòng Giao dịch Phường 1'),
+        ('PGD_LANG_TRON', 'Phòng Giao dịch Láng Tròn'),
+    ]
+
+    DEPARTMENT_CHOICES = [
+        ('KE_TOAN', 'Phòng Kế toán & Ngân quỹ'),
+        ('KHACH_HANG', 'Phòng Khách hàng'),
+        ('BAN_GIAM_DOC', 'Ban Giám đốc'),
+        ('TONG_HOP', 'Phòng Tổng hợp'),
+    ]
+
+    JOB_FUNCTION_CHOICES = [
+        ('GIAO_DICH_VIEN', 'Giao dịch viên'),
+        ('KIEM_SOAT_VIEN', 'Kiểm soát viên'),
+        ('HAU_KIEM_VIEN', 'Hậu kiểm viên'),
+        ('TONG_HOP_VIEN', 'Tổng hợp viên'),
+    ]
+
+    POSITION_CHOICES = [
+        ('GIAM_DOC', 'Giám đốc'),
+        ('PHO_GIAM_DOC', 'Phó Giám Đốc'),
+        ('TRUONG_PHONG', 'Trưởng phòng'),
+        ('PHO_PHONG', 'Phó phòng'),
+        ('GD_PGD', 'Giám đốc Phòng Giao dịch'),
+        ('PGD_PGD', 'Phó Giám đốc Phòng giao dịch'),
+        ('NHAN_VIEN', 'Nhân viên'),
+    ]
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='profile',
+        verbose_name="Tài khoản"
+    )
+    employee_code = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Mã nhân viên",
+        help_text="Mã nhân viên (khác với username)"
+    )
+    full_name = models.CharField(
+        max_length=200,
+        verbose_name="Họ và tên"
+    )
+    dob = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày sinh"
+    )
+    gender = models.CharField(
+        max_length=10,
+        choices=GENDER_CHOICES,
+        default='Nam',
+        verbose_name="Giới tính"
+    )
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Số điện thoại"
+    )
+    address = models.TextField(
+        blank=True,
+        verbose_name="Địa chỉ"
+    )
+    id_card_number = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Số CCCD"
+    )
+    id_card_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày cấp CCCD"
+    )
+    id_card_place = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Nơi cấp CCCD"
+    )
+    branch = models.CharField(
+        max_length=50,
+        choices=BRANCH_CHOICES,
+        blank=True,
+        verbose_name="Chi nhánh"
+    )
+    department = models.CharField(
+        max_length=50,
+        choices=DEPARTMENT_CHOICES,
+        blank=True,
+        verbose_name="Phòng ban"
+    )
+    job_function = models.CharField(
+        max_length=50,
+        choices=JOB_FUNCTION_CHOICES,
+        blank=True,
+        verbose_name="Nghiệp vụ"
+    )
+    position = models.CharField(
+        max_length=50,
+        choices=POSITION_CHOICES,
+        blank=True,
+        verbose_name="Chức vụ"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Hồ sơ nhân viên"
+        verbose_name_plural = "Hồ sơ nhân viên"
+        ordering = ['employee_code']
+
+    def __str__(self):
+        return f"{self.employee_code} - {self.full_name}"
+
+
+# ====================
+# E-Learning System Models
+# ====================
+
+class Course(models.Model):
+    """Khóa học E-Learning"""
+    name = models.CharField(
+        max_length=200,
+        verbose_name="Tên khóa học"
+    )
+    start_date = models.DateField(
+        verbose_name="Ngày bắt đầu"
+    )
+    end_date = models.DateField(
+        verbose_name="Ngày kết thúc"
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name="Ghi chú"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Khóa học"
+        verbose_name_plural = "Khóa học"
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return self.name
+
+    def get_completion_stats(self):
+        """Trả về thống kê hoàn thành (completed / total)"""
+        total = self.enrollments.count()
+        completed = self.enrollments.filter(is_completed=True).count()
+        return {'completed': completed, 'total': total}
+
+
+class CourseEnrollment(models.Model):
+    """Ghi danh khóa học - Học viên"""
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='enrollments',
+        verbose_name="Khóa học"
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='course_enrollments',
+        verbose_name="Người học"
+    )
+    is_completed = models.BooleanField(
+        default=False,
+        verbose_name="Đã hoàn thành"
+    )
+    completion_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày hoàn thành"
+    )
+    enrolled_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày ghi danh")
+
+    class Meta:
+        verbose_name = "Ghi danh khóa học"
+        verbose_name_plural = "Ghi danh khóa học"
+        unique_together = ['course', 'user']
+        ordering = ['course', 'user__username']
+
+    def __str__(self):
+        return f"{self.course.name} - {self.user.username}"
 
 
 # ====================

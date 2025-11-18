@@ -1,0 +1,50 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Import Nhân viên{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="bi bi-upload"></i> Import Nhân viên từ Excel</h2>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="excel_file" class="form-label">Chọn file Excel</label>
+                    <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
+                    <div class="form-text">
+                        File Excel phải có các cột: Username, Full Name (hoặc Họ và tên), Employee Code (hoặc Mã nhân viên).
+                        <br>Các cột tùy chọn: Branch, Department, Position, Job Function, Phone, DOB
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Upload và Import
+                </button>
+                <a href="{% url 'course_dashboard' %}" class="btn btn-secondary">Hủy</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h5>Hướng dẫn:</h5>
+        <ul>
+            <li>File Excel phải có dòng đầu tiên là header</li>
+            <li><strong>Username:</strong> Tên đăng nhập (bắt buộc)</li>
+            <li><strong>Employee Code:</strong> Mã nhân viên (bắt buộc)</li>
+            <li><strong>Full Name:</strong> Họ và tên</li>
+            <li>Nếu username chưa tồn tại, hệ thống sẽ tạo user mới với mật khẩu mặc định: <code>Csi@123</code></li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
