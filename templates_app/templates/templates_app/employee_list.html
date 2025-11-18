@@ -1,0 +1,501 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Quản lý nhân viên{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-people-fill"></i> Quản lý nhân viên</h2>
+        <div>
+            <a href="{% url 'employee_import_excel' %}" class="btn btn-success">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Import từ Excel
+            </a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+                <i class="bi bi-person-plus-fill"></i> Thêm nhân viên mới
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="employeeTable">
+                    <thead>
+                        <tr>
+                            <th>Mã NV</th>
+                            <th>Họ và tên</th>
+                            <th>Username</th>
+                            <th>Ngày sinh</th>
+                            <th>Giới tính</th>
+                            <th>Điện thoại</th>
+                            <th>Số CCCD</th>
+                            <th>Phòng ban</th>
+                            <th>Chức vụ</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employees %}
+                        <tr id="employee-row-{{ emp.id }}">
+                            <td>{{ emp.employee_code }}</td>
+                            <td><strong>{{ emp.full_name }}</strong></td>
+                            <td>{{ emp.user.username }}</td>
+                            <td>{{ emp.dob|date:"d/m/Y"|default:"-" }}</td>
+                            <td>{{ emp.gender }}</td>
+                            <td>{{ emp.phone|default:"-" }}</td>
+                            <td>{{ emp.id_card_number|default:"-" }}</td>
+                            <td>{{ emp.get_department_display|default:"-" }}</td>
+                            <td>{{ emp.get_position_display|default:"-" }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editEmployee({{ emp.id }})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteEmployee({{ emp.id }}, '{{ emp.full_name }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted">Chưa có nhân viên nào</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div class="modal fade" id="addEmployeeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-plus-fill"></i> Thêm nhân viên mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addEmployeeForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="username" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Mật khẩu</label>
+                                <input type="text" class="form-control" name="password" placeholder="Mặc định: Csi@123">
+                                <small class="form-text text-muted">Để trống sẽ dùng mật khẩu mặc định</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Mã nhân viên <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="employee_code" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="full_name" required>
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-person"></i> Thông tin cá nhân</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Ngày sinh</label>
+                                <input type="date" class="form-control" name="dob">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Giới tính</label>
+                                <select class="form-select" name="gender">
+                                    <option value="Nam">Nam</option>
+                                    <option value="Nữ">Nữ</option>
+                                    <option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Điện thoại</label>
+                                <input type="text" class="form-control" name="phone">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Địa chỉ</label>
+                        <textarea class="form-control" name="address" rows="2"></textarea>
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-card-text"></i> Thông tin CCCD</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Số CCCD</label>
+                                <input type="text" class="form-control" name="id_card_number" maxlength="12">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Ngày cấp</label>
+                                <input type="date" class="form-control" name="id_card_date">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Nơi cấp</label>
+                                <input type="text" class="form-control" name="id_card_place" placeholder="Cục Cảnh sát ĐKQL...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-building"></i> Thông tin công việc</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Chi nhánh</label>
+                                <select class="form-select" name="branch">
+                                    <option value="">-- Chọn chi nhánh --</option>
+                                    <option value="HOI_SO">Hội sở Giá Rai Bạc Liêu</option>
+                                    <option value="PGD_P1">Phòng Giao dịch Phường 1</option>
+                                    <option value="PGD_LANG_TRON">Phòng Giao dịch Láng Tròn</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Phòng ban</label>
+                                <select class="form-select" name="department">
+                                    <option value="">-- Chọn phòng ban --</option>
+                                    <option value="KE_TOAN">Phòng Kế toán & Ngân quỹ</option>
+                                    <option value="KHACH_HANG">Phòng Khách hàng</option>
+                                    <option value="BAN_GIAM_DOC">Ban Giám đốc</option>
+                                    <option value="TONG_HOP">Phòng Tổng hợp</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Chức vụ</label>
+                                <select class="form-select" name="position">
+                                    <option value="">-- Chọn chức vụ --</option>
+                                    <option value="GIAM_DOC">Giám đốc</option>
+                                    <option value="PHO_GIAM_DOC">Phó Giám Đốc</option>
+                                    <option value="TRUONG_PHONG">Trưởng phòng</option>
+                                    <option value="PHO_PHONG">Phó phòng</option>
+                                    <option value="GD_PGD">Giám đốc Phòng Giao dịch</option>
+                                    <option value="PGD_PGD">Phó Giám đốc Phòng giao dịch</option>
+                                    <option value="NHAN_VIEN">Nhân viên</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Nghiệp vụ</label>
+                                <select class="form-select" name="job_function">
+                                    <option value="">-- Chọn nghiệp vụ --</option>
+                                    <option value="GIAO_DICH_VIEN">Giao dịch viên</option>
+                                    <option value="KIEM_SOAT_VIEN">Kiểm soát viên</option>
+                                    <option value="HAU_KIEM_VIEN">Hậu kiểm viên</option>
+                                    <option value="TONG_HOP_VIEN">Tổng hợp viên</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddEmployee()">
+                    <i class="bi bi-save"></i> Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Employee Modal (similar structure, will be populated via JS) -->
+<div class="modal fade" id="editEmployeeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Chỉnh sửa thông tin nhân viên</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editEmployeeForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit_employee_id" name="employee_id">
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Username và Mã nhân viên không thể thay đổi
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" id="edit_username" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Mã nhân viên</label>
+                                <input type="text" class="form-control" id="edit_employee_code" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_full_name" name="full_name" required>
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-person"></i> Thông tin cá nhân</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Ngày sinh</label>
+                                <input type="date" class="form-control" id="edit_dob" name="dob">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Giới tính</label>
+                                <select class="form-select" id="edit_gender" name="gender">
+                                    <option value="Nam">Nam</option>
+                                    <option value="Nữ">Nữ</option>
+                                    <option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Điện thoại</label>
+                                <input type="text" class="form-control" id="edit_phone" name="phone">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Địa chỉ</label>
+                        <textarea class="form-control" id="edit_address" name="address" rows="2"></textarea>
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-card-text"></i> Thông tin CCCD</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Số CCCD</label>
+                                <input type="text" class="form-control" id="edit_id_card_number" name="id_card_number" maxlength="12">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Ngày cấp</label>
+                                <input type="date" class="form-control" id="edit_id_card_date" name="id_card_date">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Nơi cấp</label>
+                                <input type="text" class="form-control" id="edit_id_card_place" name="id_card_place">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-building"></i> Thông tin công việc</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Chi nhánh</label>
+                                <select class="form-select" id="edit_branch" name="branch">
+                                    <option value="">-- Chọn chi nhánh --</option>
+                                    <option value="HOI_SO">Hội sở Giá Rai Bạc Liêu</option>
+                                    <option value="PGD_P1">Phòng Giao dịch Phường 1</option>
+                                    <option value="PGD_LANG_TRON">Phòng Giao dịch Láng Tròn</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Phòng ban</label>
+                                <select class="form-select" id="edit_department" name="department">
+                                    <option value="">-- Chọn phòng ban --</option>
+                                    <option value="KE_TOAN">Phòng Kế toán & Ngân quỹ</option>
+                                    <option value="KHACH_HANG">Phòng Khách hàng</option>
+                                    <option value="BAN_GIAM_DOC">Ban Giám đốc</option>
+                                    <option value="TONG_HOP">Phòng Tổng hợp</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Chức vụ</label>
+                                <select class="form-select" id="edit_position" name="position">
+                                    <option value="">-- Chọn chức vụ --</option>
+                                    <option value="GIAM_DOC">Giám đốc</option>
+                                    <option value="PHO_GIAM_DOC">Phó Giám Đốc</option>
+                                    <option value="TRUONG_PHONG">Trưởng phòng</option>
+                                    <option value="PHO_PHONG">Phó phòng</option>
+                                    <option value="GD_PGD">Giám đốc Phòng Giao dịch</option>
+                                    <option value="PGD_PGD">Phó Giám đốc Phòng giao dịch</option>
+                                    <option value="NHAN_VIEN">Nhân viên</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Nghiệp vụ</label>
+                                <select class="form-select" id="edit_job_function" name="job_function">
+                                    <option value="">-- Chọn nghiệp vụ --</option>
+                                    <option value="GIAO_DICH_VIEN">Giao dịch viên</option>
+                                    <option value="KIEM_SOAT_VIEN">Kiểm soát viên</option>
+                                    <option value="HAU_KIEM_VIEN">Hậu kiểm viên</option>
+                                    <option value="TONG_HOP_VIEN">Tổng hợp viên</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditEmployee()">
+                    <i class="bi bi-save"></i> Cập nhật
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function submitAddEmployee() {
+    const form = document.getElementById('addEmployeeForm');
+    const formData = new FormData(form);
+
+    fetch('{% url "employee_create_manual" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Lỗi: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Đã xảy ra lỗi: ' + error);
+    });
+}
+
+function editEmployee(employeeId) {
+    // Fetch employee data and populate edit form
+    fetch(`/admin/templates_app/userprofile/${employeeId}/change/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        // For now, we'll use a simpler approach - get data from table row
+        const row = document.getElementById(`employee-row-${employeeId}`);
+        const cells = row.cells;
+
+        document.getElementById('edit_employee_id').value = employeeId;
+        document.getElementById('edit_employee_code').value = cells[0].textContent;
+        document.getElementById('edit_full_name').value = cells[1].textContent.trim();
+        document.getElementById('edit_username').value = cells[2].textContent;
+
+        // Show modal
+        new bootstrap.Modal(document.getElementById('editEmployeeModal')).show();
+    });
+}
+
+function submitEditEmployee() {
+    const employeeId = document.getElementById('edit_employee_id').value;
+    const form = document.getElementById('editEmployeeForm');
+    const formData = new FormData(form);
+
+    fetch(`/employees/${employeeId}/update/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Lỗi: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Đã xảy ra lỗi: ' + error);
+    });
+}
+
+function deleteEmployee(employeeId, fullName) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa nhân viên "${fullName}"?\n\nLưu ý: Thao tác này không thể hoàn tác!`)) {
+        return;
+    }
+
+    fetch(`/employees/${employeeId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Lỗi: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Đã xảy ra lỗi: ' + error);
+    });
+}
+</script>
+{% endblock %}

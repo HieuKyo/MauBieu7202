@@ -91,8 +91,8 @@
                                     <i class="bi bi-mortarboard"></i> Quản lý Khóa học
                                 </a></li>
                                 {% if user|has_employee_import_permission %}
-                                <li><a class="dropdown-item" href="{% url 'employee_import_excel' %}">
-                                    <i class="bi bi-person-plus-fill"></i> Import Nhân viên
+                                <li><a class="dropdown-item" href="{% url 'employee_list' %}">
+                                    <i class="bi bi-people-fill"></i> Quản lý Nhân viên
                                 </a></li>
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
