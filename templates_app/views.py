@@ -2723,12 +2723,17 @@ def download_employee_template(request):
         'Username',
         'Họ và tên',
         'Mã nhân viên',
+        'Ngày sinh',
+        'Giới tính',
+        'Điện thoại',
+        'Địa chỉ',
+        'Số CCCD',
+        'Ngày cấp CCCD',
+        'Nơi cấp CCCD',
         'Chi nhánh',
         'Phòng ban',
         'Chức vụ',
-        'Nghiệp vụ',
-        'Điện thoại',
-        'Ngày sinh'
+        'Nghiệp vụ'
     ]
 
     # Write headers with styling
@@ -2747,34 +2752,49 @@ def download_employee_template(request):
             'nguyenvana',
             'Nguyễn Văn A',
             'NV001',
+            '15/01/1990',
+            'Nam',
+            '0912345678',
+            '123 Đường ABC, Phường 1, TP. Bạc Liêu',
+            '001234567890',
+            '01/01/2020',
+            'Cục Cảnh sát ĐKQL cư trú và DLQG về dân cư',
             'HOI_SO',
             'KE_TOAN',
             'TRUONG_PHONG',
-            'KIEM_SOAT_VIEN',
-            '0912345678',
-            '15/01/1990'
+            'KIEM_SOAT_VIEN'
         ],
         [
             'tranthib',
             'Trần Thị B',
             'NV002',
+            '20/05/1995',
+            'Nữ',
+            '0987654321',
+            '456 Đường XYZ, Phường 2, TP. Bạc Liêu',
+            '002345678901',
+            '15/03/2021',
+            'Cục Cảnh sát ĐKQL cư trú và DLQG về dân cư',
             'PGD_P1',
             'KHACH_HANG',
             'NHAN_VIEN',
-            'GIAO_DICH_VIEN',
-            '0987654321',
-            '20/05/1995'
+            'GIAO_DICH_VIEN'
         ],
         [
             'levanc',
             'Lê Văn C',
             'NV003',
+            '10/12/1988',
+            'Nam',
+            '0901234567',
+            '789 Đường DEF, Láng Tròn, TP. Bạc Liêu',
+            '003456789012',
+            '20/07/2019',
+            'Cục Cảnh sát ĐKQL cư trú và DLQG về dân cư',
             'PGD_LANG_TRON',
             'TONG_HOP',
             'PHO_PHONG',
-            'TONG_HOP_VIEN',
-            '0901234567',
-            '10/12/1988'
+            'TONG_HOP_VIEN'
         ],
     ]
 
@@ -2784,7 +2804,7 @@ def download_employee_template(request):
             cell.alignment = Alignment(horizontal='left', vertical='center')
 
     # Adjust column widths
-    column_widths = [15, 25, 15, 20, 25, 25, 20, 15, 15]
+    column_widths = [15, 25, 15, 15, 12, 15, 35, 18, 15, 45, 20, 25, 25, 20]
     for col_idx, width in enumerate(column_widths, start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
@@ -2798,19 +2818,29 @@ def download_employee_template(request):
         ['   - Họ và tên: Họ tên đầy đủ'],
         ['   - Mã nhân viên: Mã nhân viên (không trùng)'],
         [''],
-        ['2. Các cột tùy chọn:'],
+        ['2. Thông tin cá nhân (tùy chọn):'],
+        ['   - Ngày sinh: Định dạng dd/mm/yyyy (ví dụ: 15/01/1990)'],
+        ['   - Giới tính: Nam, Nữ, hoặc Khác'],
+        ['   - Điện thoại: Số điện thoại liên hệ'],
+        ['   - Địa chỉ: Địa chỉ nơi ở hiện tại'],
+        [''],
+        ['3. Thông tin CCCD (tùy chọn):'],
+        ['   - Số CCCD: Số căn cước công dân (12 chữ số)'],
+        ['   - Ngày cấp CCCD: Định dạng dd/mm/yyyy (ví dụ: 01/01/2020)'],
+        ['   - Nơi cấp CCCD: Nơi cấp CCCD (ví dụ: Cục Cảnh sát ĐKQL cư trú và DLQG về dân cư)'],
+        [''],
+        ['4. Thông tin công việc (tùy chọn):'],
         ['   - Chi nhánh: HOI_SO, PGD_P1, PGD_LANG_TRON'],
         ['   - Phòng ban: KE_TOAN, KHACH_HANG, BAN_GIAM_DOC, TONG_HOP'],
         ['   - Chức vụ: GIAM_DOC, PHO_GIAM_DOC, TRUONG_PHONG, PHO_PHONG, GD_PGD, PGD_PGD, NHAN_VIEN'],
         ['   - Nghiệp vụ: GIAO_DICH_VIEN, KIEM_SOAT_VIEN, HAU_KIEM_VIEN, TONG_HOP_VIEN'],
-        ['   - Điện thoại: Số điện thoại'],
-        ['   - Ngày sinh: Định dạng dd/mm/yyyy (ví dụ: 15/01/1990)'],
         [''],
-        ['3. Lưu ý:'],
+        ['5. Lưu ý quan trọng:'],
         ['   - Không xóa dòng tiêu đề (dòng đầu tiên)'],
         ['   - Mật khẩu mặc định cho user mới: Csi@123'],
-        ['   - Nếu Username đã tồn tại, hệ thống sẽ cập nhật thông tin'],
+        ['   - Nếu Username đã tồn tại, hệ thống sẽ cập nhật thông tin nhân viên'],
         ['   - Các cột Chi nhánh, Phòng ban, Chức vụ, Nghiệp vụ phải sử dụng đúng mã như trên'],
+        ['   - Ngày tháng phải đúng định dạng dd/mm/yyyy'],
     ]
 
     title_font = Font(bold=True, size=14, color='366092')
@@ -2924,6 +2954,29 @@ def employee_import_excel(request):
                     if data.get('Phone') or data.get('Điện thoại'):
                         profile.phone = str(data.get('Phone') or data.get('Điện thoại', '')).strip()
 
+                    # Gender
+                    if data.get('Gender') or data.get('Giới tính'):
+                        gender_value = str(data.get('Gender') or data.get('Giới tính', '')).strip()
+                        if gender_value:
+                            profile.gender = gender_value
+
+                    # Address
+                    if data.get('Address') or data.get('Địa chỉ'):
+                        address_value = str(data.get('Address') or data.get('Địa chỉ', '')).strip()
+                        if address_value:
+                            profile.address = address_value
+
+                    # ID Card (CCCD) fields
+                    if data.get('ID Card Number') or data.get('Số CCCD'):
+                        id_card_num = str(data.get('ID Card Number') or data.get('Số CCCD', '')).strip()
+                        if id_card_num:
+                            profile.id_card_number = id_card_num
+
+                    if data.get('ID Card Place') or data.get('Nơi cấp CCCD'):
+                        id_card_place = str(data.get('ID Card Place') or data.get('Nơi cấp CCCD', '')).strip()
+                        if id_card_place:
+                            profile.id_card_place = id_card_place
+
                     # Parse date fields
                     dob_value = data.get('DOB') or data.get('Ngày sinh')
                     if dob_value:
@@ -2935,6 +2988,20 @@ def employee_import_excel(request):
                             except (ValueError, TypeError):
                                 try:
                                     profile.dob = datetime.strptime(dob_value, '%Y-%m-%d').date()
+                                except (ValueError, TypeError):
+                                    pass
+
+                    # ID Card Date
+                    id_card_date_value = data.get('ID Card Date') or data.get('Ngày cấp CCCD')
+                    if id_card_date_value:
+                        if isinstance(id_card_date_value, datetime):
+                            profile.id_card_date = id_card_date_value.date()
+                        elif isinstance(id_card_date_value, str):
+                            try:
+                                profile.id_card_date = datetime.strptime(id_card_date_value, '%d/%m/%Y').date()
+                            except (ValueError, TypeError):
+                                try:
+                                    profile.id_card_date = datetime.strptime(id_card_date_value, '%Y-%m-%d').date()
                                 except (ValueError, TypeError):
                                     pass
 
@@ -2967,6 +3034,200 @@ def employee_import_excel(request):
         'title': 'Import nhân viên từ Excel',
     }
     return render(request, 'templates_app/employee_import.html', context)
+
+
+@login_required
+def employee_list(request):
+    """
+    Hiển thị danh sách nhân viên và form thêm/sửa
+    Chỉ Superuser có quyền
+    """
+    if not check_employee_import_permission(request.user):
+        messages.error(request, 'Bạn không có quyền quản lý nhân viên')
+        return redirect('dashboard')
+
+    from .models import UserProfile
+
+    employees = UserProfile.objects.select_related('user').all().order_by('employee_code')
+
+    context = {
+        'title': 'Quản lý nhân viên',
+        'employees': employees,
+    }
+    return render(request, 'templates_app/employee_list.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def employee_create_manual(request):
+    """
+    Tạo nhân viên mới thủ công
+    Chỉ Superuser có quyền
+    """
+    if not check_employee_import_permission(request.user):
+        return JsonResponse({'success': False, 'error': 'Bạn không có quyền'}, status=403)
+
+    from .models import UserProfile
+    from datetime import datetime
+
+    try:
+        # Required fields
+        username = request.POST.get('username', '').strip()
+        employee_code = request.POST.get('employee_code', '').strip()
+        full_name = request.POST.get('full_name', '').strip()
+
+        if not username or not employee_code or not full_name:
+            return JsonResponse({'success': False, 'error': 'Thiếu thông tin bắt buộc'}, status=400)
+
+        # Check if username exists
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'success': False, 'error': f'Username "{username}" đã tồn tại'}, status=400)
+
+        # Check if employee_code exists
+        if UserProfile.objects.filter(employee_code=employee_code).exists():
+            return JsonResponse({'success': False, 'error': f'Mã nhân viên "{employee_code}" đã tồn tại'}, status=400)
+
+        # Create user
+        user = User.objects.create_user(
+            username=username,
+            password=request.POST.get('password', 'Csi@123'),
+            first_name=full_name.split()[0] if full_name else '',
+            last_name=' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else ''
+        )
+
+        # Create profile
+        profile = UserProfile.objects.create(
+            user=user,
+            employee_code=employee_code,
+            full_name=full_name
+        )
+
+        # Optional fields
+        if request.POST.get('dob'):
+            try:
+                profile.dob = datetime.strptime(request.POST.get('dob'), '%Y-%m-%d').date()
+            except:
+                pass
+
+        profile.gender = request.POST.get('gender', 'Nam')
+        profile.phone = request.POST.get('phone', '')
+        profile.address = request.POST.get('address', '')
+        profile.id_card_number = request.POST.get('id_card_number', '')
+
+        if request.POST.get('id_card_date'):
+            try:
+                profile.id_card_date = datetime.strptime(request.POST.get('id_card_date'), '%Y-%m-%d').date()
+            except:
+                pass
+
+        profile.id_card_place = request.POST.get('id_card_place', '')
+        profile.branch = request.POST.get('branch', '')
+        profile.department = request.POST.get('department', '')
+        profile.position = request.POST.get('position', '')
+        profile.job_function = request.POST.get('job_function', '')
+
+        profile.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Đã thêm nhân viên {full_name} thành công'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def employee_update_manual(request, employee_id):
+    """
+    Cập nhật thông tin nhân viên
+    Chỉ Superuser có quyền
+    """
+    if not check_employee_import_permission(request.user):
+        return JsonResponse({'success': False, 'error': 'Bạn không có quyền'}, status=403)
+
+    from .models import UserProfile
+    from datetime import datetime
+
+    try:
+        profile = UserProfile.objects.get(id=employee_id)
+
+        # Update fields
+        full_name = request.POST.get('full_name', '').strip()
+        if full_name:
+            profile.full_name = full_name
+
+        if request.POST.get('dob'):
+            try:
+                profile.dob = datetime.strptime(request.POST.get('dob'), '%Y-%m-%d').date()
+            except:
+                pass
+
+        profile.gender = request.POST.get('gender', profile.gender)
+        profile.phone = request.POST.get('phone', profile.phone)
+        profile.address = request.POST.get('address', profile.address)
+        profile.id_card_number = request.POST.get('id_card_number', profile.id_card_number)
+
+        if request.POST.get('id_card_date'):
+            try:
+                profile.id_card_date = datetime.strptime(request.POST.get('id_card_date'), '%Y-%m-%d').date()
+            except:
+                pass
+
+        profile.id_card_place = request.POST.get('id_card_place', profile.id_card_place)
+        profile.branch = request.POST.get('branch', profile.branch)
+        profile.department = request.POST.get('department', profile.department)
+        profile.position = request.POST.get('position', profile.position)
+        profile.job_function = request.POST.get('job_function', profile.job_function)
+
+        profile.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Đã cập nhật thông tin nhân viên {profile.full_name}'
+        })
+
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Không tìm thấy nhân viên'}, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def employee_delete_manual(request, employee_id):
+    """
+    Xóa nhân viên
+    Chỉ Superuser có quyền
+    """
+    if not check_employee_import_permission(request.user):
+        return JsonResponse({'success': False, 'error': 'Bạn không có quyền'}, status=403)
+
+    from .models import UserProfile
+
+    try:
+        profile = UserProfile.objects.get(id=employee_id)
+        full_name = profile.full_name
+        user = profile.user
+
+        # Delete profile and user
+        profile.delete()
+        user.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Đã xóa nhân viên {full_name}'
+        })
+
+    except UserProfile.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Không tìm thấy nhân viên'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # ====================
