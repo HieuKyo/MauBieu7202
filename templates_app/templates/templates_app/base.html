@@ -86,11 +86,11 @@
                                 <li><a class="dropdown-item" href="{% url 'bank_statement_upload' %}">
                                     <i class="bi bi-file-earmark-spreadsheet"></i> Phân tích Sao kê Ngân hàng
                                 </a></li>
-                                {% if user|has_elearning_permission %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'course_dashboard' %}">
                                     <i class="bi bi-mortarboard"></i> Quản lý Khóa học
                                 </a></li>
+                                {% if user|has_employee_import_permission %}
                                 <li><a class="dropdown-item" href="{% url 'employee_import_excel' %}">
                                     <i class="bi bi-person-plus-fill"></i> Import Nhân viên
                                 </a></li>

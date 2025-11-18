@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
 from django.http import HttpResponse, Http404, JsonResponse
@@ -2695,12 +2696,24 @@ def bank_statement_export(request, statement_id):
 # Employee Management Views
 # ====================
 
+def check_employee_import_permission(user):
+    """
+    Kiểm tra quyền import nhân viên
+    Chỉ Superuser có quyền
+    """
+    return user.is_superuser
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def employee_import_excel(request):
     """
     View để import nhân viên từ file Excel
+    Chỉ Superuser có quyền
     """
+    if not check_employee_import_permission(request.user):
+        messages.error(request, 'Bạn không có quyền import nhân viên')
+        return redirect('dashboard')
     if request.method == 'POST' and request.FILES.get('excel_file'):
         try:
             import openpyxl
@@ -2832,9 +2845,9 @@ def employee_import_excel(request):
 # E-Learning Views
 # ====================
 
-def check_elearning_permission(user):
+def check_elearning_manage_permission(user):
     """
-    Kiểm tra quyền quản lý e-learning
+    Kiểm tra quyền quản lý e-learning (tạo/sửa/xóa khóa học)
     Chỉ Superuser và nhóm "Phòng Tổng hợp" có quyền
     """
     if user.is_superuser:
@@ -2846,6 +2859,7 @@ def check_elearning_permission(user):
 def course_dashboard(request):
     """
     Dashboard hiển thị danh sách khóa học (accordion style)
+    Tất cả user đã đăng nhập đều có thể xem
     """
     from .models import Course, CourseEnrollment, UserProfile
 
@@ -2861,8 +2875,8 @@ def course_dashboard(request):
         enrollments = course.enrollments.select_related('user__profile').order_by('user__username')
         course.enrollment_list = enrollments
 
-    # Check if user has permission to manage courses
-    has_permission = check_elearning_permission(request.user)
+    # Check if user has permission to manage courses (create/edit/delete)
+    has_permission = check_elearning_manage_permission(request.user)
 
     context = {
         'courses': courses,
@@ -2875,8 +2889,9 @@ def course_dashboard(request):
 def course_create(request):
     """
     Tạo khóa học mới
+    Chỉ Superuser và Phòng Tổng hợp có quyền
     """
-    if not check_elearning_permission(request.user):
+    if not check_elearning_manage_permission(request.user):
         messages.error(request, 'Bạn không có quyền tạo khóa học')
         return redirect('course_dashboard')
 
@@ -2925,10 +2940,11 @@ def course_create(request):
 def course_add_students(request, course_id):
     """
     Thêm học viên vào khóa học
+    Chỉ Superuser và Phòng Tổng hợp có quyền
     """
     from .models import Course, CourseEnrollment, UserProfile
 
-    if not check_elearning_permission(request.user):
+    if not check_elearning_manage_permission(request.user):
         messages.error(request, 'Bạn không có quyền thêm học viên')
         return redirect('course_dashboard')
 
@@ -3012,11 +3028,12 @@ def course_add_students(request, course_id):
 def course_toggle_completion(request, enrollment_id):
     """
     AJAX endpoint để toggle trạng thái hoàn thành khóa học
+    Chỉ Superuser và Phòng Tổng hợp có quyền
     """
     from .models import CourseEnrollment
     from django.utils import timezone
 
-    if not check_elearning_permission(request.user):
+    if not check_elearning_manage_permission(request.user):
         return JsonResponse({
             'success': False,
             'error': 'Bạn không có quyền cập nhật'
