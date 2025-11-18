@@ -2689,3 +2689,360 @@ def bank_statement_export(request, statement_id):
     response['Content-Disposition'] = f'attachment; filename="BaoCao_SaoKe_{statement.id}.xlsx"'
 
     return response
+
+
+# ====================
+# Employee Management Views
+# ====================
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def employee_import_excel(request):
+    """
+    View để import nhân viên từ file Excel
+    """
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        try:
+            import openpyxl
+            from datetime import datetime
+            from .models import UserProfile
+
+            excel_file = request.FILES['excel_file']
+
+            # Validate file extension
+            if not excel_file.name.endswith(('.xlsx', '.xls')):
+                messages.error(request, 'File phải có định dạng .xlsx hoặc .xls')
+                return redirect('employee_import_excel')
+
+            wb = openpyxl.load_workbook(excel_file, data_only=True)
+            ws = wb.active
+
+            # Dòng đầu tiên là header
+            headers = [cell.value for cell in ws[1]]
+
+            success_count = 0
+            error_count = 0
+            errors = []
+
+            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                try:
+                    data = {}
+                    for col_idx, value in enumerate(row):
+                        if col_idx < len(headers) and headers[col_idx]:
+                            data[headers[col_idx]] = value if value else ''
+
+                    # Extract required fields
+                    username = str(data.get('Username', '')).strip()
+                    full_name = str(data.get('Full Name', '') or data.get('Họ và tên', '')).strip()
+                    employee_code = str(data.get('Employee Code', '') or data.get('Mã nhân viên', '')).strip()
+
+                    # Validate required fields
+                    if not username or not employee_code:
+                        errors.append(f"Dòng {row_idx}: Thiếu Username hoặc Mã nhân viên")
+                        error_count += 1
+                        continue
+
+                    # Check if user exists
+                    user = User.objects.filter(username=username).first()
+                    if not user:
+                        # Create new user with default password Csi@123
+                        user = User.objects.create_user(
+                            username=username,
+                            password='Csi@123',
+                            first_name=full_name.split()[0] if full_name else '',
+                            last_name=' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else ''
+                        )
+
+                    # Get or create UserProfile
+                    profile, created = UserProfile.objects.get_or_create(user=user)
+
+                    # Update profile fields
+                    if employee_code:
+                        profile.employee_code = employee_code
+                    if full_name:
+                        profile.full_name = full_name
+
+                    # Optional fields
+                    if data.get('Branch') or data.get('Chi nhánh'):
+                        branch_value = str(data.get('Branch') or data.get('Chi nhánh', '')).strip()
+                        # Map value to choice
+                        profile.branch = branch_value
+
+                    if data.get('Department') or data.get('Phòng ban'):
+                        dept_value = str(data.get('Department') or data.get('Phòng ban', '')).strip()
+                        profile.department = dept_value
+
+                    if data.get('Position') or data.get('Chức vụ'):
+                        pos_value = str(data.get('Position') or data.get('Chức vụ', '')).strip()
+                        profile.position = pos_value
+
+                    if data.get('Job Function') or data.get('Nghiệp vụ'):
+                        job_value = str(data.get('Job Function') or data.get('Nghiệp vụ', '')).strip()
+                        profile.job_function = job_value
+
+                    if data.get('Phone') or data.get('Điện thoại'):
+                        profile.phone = str(data.get('Phone') or data.get('Điện thoại', '')).strip()
+
+                    # Parse date fields
+                    dob_value = data.get('DOB') or data.get('Ngày sinh')
+                    if dob_value:
+                        if isinstance(dob_value, datetime):
+                            profile.dob = dob_value.date()
+                        elif isinstance(dob_value, str):
+                            try:
+                                profile.dob = datetime.strptime(dob_value, '%d/%m/%Y').date()
+                            except (ValueError, TypeError):
+                                try:
+                                    profile.dob = datetime.strptime(dob_value, '%Y-%m-%d').date()
+                                except (ValueError, TypeError):
+                                    pass
+
+                    profile.save()
+                    success_count += 1
+
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f"Dòng {row_idx}: {str(e)}")
+
+            # Show results
+            if success_count > 0:
+                messages.success(request, f'Đã import thành công {success_count} nhân viên')
+            if error_count > 0:
+                for error in errors[:10]:
+                    messages.warning(request, error)
+                if len(errors) > 10:
+                    messages.warning(request, f'... và {len(errors) - 10} lỗi khác')
+
+            return redirect('employee_import_excel')
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f'Lỗi khi xử lý file: {str(e)}')
+            return redirect('employee_import_excel')
+
+    # GET request - show form
+    context = {
+        'title': 'Import nhân viên từ Excel',
+    }
+    return render(request, 'templates_app/employee_import.html', context)
+
+
+# ====================
+# E-Learning Views
+# ====================
+
+def check_elearning_permission(user):
+    """
+    Kiểm tra quyền quản lý e-learning
+    Chỉ Superuser và nhóm "Phòng Tổng hợp" có quyền
+    """
+    if user.is_superuser:
+        return True
+    return user.groups.filter(name='Phòng Tổng hợp').exists()
+
+
+@login_required
+def course_dashboard(request):
+    """
+    Dashboard hiển thị danh sách khóa học (accordion style)
+    """
+    from .models import Course, CourseEnrollment, UserProfile
+
+    courses = Course.objects.all().prefetch_related('enrollments__user__profile')
+
+    # Enrich courses with completion stats
+    for course in courses:
+        stats = course.get_completion_stats()
+        course.completed_count = stats['completed']
+        course.total_count = stats['total']
+
+        # Get enrollments with profile info
+        enrollments = course.enrollments.select_related('user__profile').order_by('user__username')
+        course.enrollment_list = enrollments
+
+    # Check if user has permission to manage courses
+    has_permission = check_elearning_permission(request.user)
+
+    context = {
+        'courses': courses,
+        'has_permission': has_permission,
+    }
+    return render(request, 'templates_app/course_dashboard.html', context)
+
+
+@login_required
+def course_create(request):
+    """
+    Tạo khóa học mới
+    """
+    if not check_elearning_permission(request.user):
+        messages.error(request, 'Bạn không có quyền tạo khóa học')
+        return redirect('course_dashboard')
+
+    if request.method == 'POST':
+        try:
+            from .models import Course
+            from datetime import datetime
+
+            name = request.POST.get('name', '').strip()
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            description = request.POST.get('description', '').strip()
+
+            # Validate
+            if not name or not start_date or not end_date:
+                messages.error(request, 'Vui lòng điền đầy đủ thông tin')
+                return redirect('course_create')
+
+            # Parse dates
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+            if end_date_obj < start_date_obj:
+                messages.error(request, 'Ngày kết thúc phải sau ngày bắt đầu')
+                return redirect('course_create')
+
+            # Create course
+            course = Course.objects.create(
+                name=name,
+                start_date=start_date_obj,
+                end_date=end_date_obj,
+                description=description
+            )
+
+            messages.success(request, f'Đã tạo khóa học "{course.name}"')
+            return redirect('course_dashboard')
+
+        except Exception as e:
+            messages.error(request, f'Lỗi: {str(e)}')
+            return redirect('course_create')
+
+    return render(request, 'templates_app/course_create.html')
+
+
+@login_required
+def course_add_students(request, course_id):
+    """
+    Thêm học viên vào khóa học
+    """
+    from .models import Course, CourseEnrollment, UserProfile
+
+    if not check_elearning_permission(request.user):
+        messages.error(request, 'Bạn không có quyền thêm học viên')
+        return redirect('course_dashboard')
+
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        try:
+            # Get filter criteria
+            filter_type = request.POST.get('filter_type', 'individual')
+
+            if filter_type == 'individual':
+                # Add individual users
+                user_ids = request.POST.getlist('user_ids')
+                added_count = 0
+
+                for user_id in user_ids:
+                    user = User.objects.get(id=user_id)
+                    enrollment, created = CourseEnrollment.objects.get_or_create(
+                        course=course,
+                        user=user
+                    )
+                    if created:
+                        added_count += 1
+
+                messages.success(request, f'Đã thêm {added_count} học viên vào khóa học')
+
+            elif filter_type == 'bulk':
+                # Bulk add by criteria
+                job_function = request.POST.get('job_function', '')
+                department = request.POST.get('department', '')
+                position = request.POST.get('position', '')
+
+                # Build query
+                profiles = UserProfile.objects.all()
+
+                if job_function:
+                    profiles = profiles.filter(job_function=job_function)
+                if department:
+                    profiles = profiles.filter(department=department)
+                if position:
+                    profiles = profiles.filter(position=position)
+
+                added_count = 0
+                for profile in profiles:
+                    enrollment, created = CourseEnrollment.objects.get_or_create(
+                        course=course,
+                        user=profile.user
+                    )
+                    if created:
+                        added_count += 1
+
+                messages.success(request, f'Đã thêm {added_count} học viên vào khóa học')
+
+            return redirect('course_dashboard')
+
+        except Exception as e:
+            messages.error(request, f'Lỗi: {str(e)}')
+            return redirect('course_add_students', course_id=course_id)
+
+    # GET - show form
+    # Get all users with profiles
+    users_with_profiles = User.objects.filter(profile__isnull=False).select_related('profile').order_by('username')
+
+    # Get already enrolled users
+    enrolled_user_ids = course.enrollments.values_list('user_id', flat=True)
+
+    context = {
+        'course': course,
+        'users': users_with_profiles,
+        'enrolled_user_ids': list(enrolled_user_ids),
+        'job_function_choices': UserProfile.JOB_FUNCTION_CHOICES,
+        'department_choices': UserProfile.DEPARTMENT_CHOICES,
+        'position_choices': UserProfile.POSITION_CHOICES,
+    }
+
+    return render(request, 'templates_app/course_add_students.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def course_toggle_completion(request, enrollment_id):
+    """
+    AJAX endpoint để toggle trạng thái hoàn thành khóa học
+    """
+    from .models import CourseEnrollment
+    from django.utils import timezone
+
+    if not check_elearning_permission(request.user):
+        return JsonResponse({
+            'success': False,
+            'error': 'Bạn không có quyền cập nhật'
+        }, status=403)
+
+    try:
+        enrollment = get_object_or_404(CourseEnrollment, id=enrollment_id)
+
+        # Toggle completion
+        enrollment.is_completed = not enrollment.is_completed
+
+        if enrollment.is_completed:
+            enrollment.completion_date = timezone.now()
+        else:
+            enrollment.completion_date = None
+
+        enrollment.save()
+
+        return JsonResponse({
+            'success': True,
+            'is_completed': enrollment.is_completed,
+            'completion_date': enrollment.completion_date.strftime('%d/%m/%Y %H:%M') if enrollment.completion_date else None
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

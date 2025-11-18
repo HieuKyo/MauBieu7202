@@ -1,0 +1,224 @@
+{% extends 'templates_app/base.html' %}
+{% load humanize %}
+
+{% block title %}E-Learning - Quản lý Khóa học{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-mortarboard"></i> Quản lý Khóa học E-Learning</h2>
+        {% if has_permission %}
+        <a href="{% url 'course_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Tạo khóa học mới
+        </a>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not courses %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Chưa có khóa học nào.
+        {% if has_permission %}
+        <a href="{% url 'course_create' %}">Tạo khóa học đầu tiên</a>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="accordion" id="coursesAccordion">
+        {% for course in courses %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading{{ course.id }}">
+                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#collapse{{ course.id }}"
+                        aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                        aria-controls="collapse{{ course.id }}">
+                    <div class="w-100 d-flex justify-content-between align-items-center me-3">
+                        <span>
+                            <i class="bi bi-book"></i> <strong>{{ course.name }}</strong>
+                        </span>
+                        <span class="badge {% if course.completed_count == course.total_count and course.total_count > 0 %}bg-success{% else %}bg-warning text-dark{% endif %} ms-2">
+                            ({{ course.completed_count }}/{{ course.total_count }})
+                        </span>
+                    </div>
+                </button>
+            </h2>
+            <div id="collapse{{ course.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                 aria-labelledby="heading{{ course.id }}" data-bs-parent="#coursesAccordion">
+                <div class="accordion-body">
+                    <div class="mb-3">
+                        <p><strong>Ngày bắt đầu:</strong> {{ course.start_date|date:"d/m/Y" }}</p>
+                        <p><strong>Ngày kết thúc:</strong> {{ course.end_date|date:"d/m/Y" }}</p>
+                        {% if course.description %}
+                        <p><strong>Ghi chú:</strong> {{ course.description }}</p>
+                        {% endif %}
+
+                        {% if has_permission %}
+                        <div class="mt-2 mb-3">
+                            <a href="{% url 'course_add_students' course.id %}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-person-plus"></i> Thêm học viên
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if course.enrollment_list %}
+                    <h5>Danh sách học viên</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th>Mã NV</th>
+                                    <th>Họ và tên</th>
+                                    <th>Phòng ban</th>
+                                    <th style="width: 100px;">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for enrollment in course.enrollment_list %}
+                                <tr class="{% if not enrollment.is_completed %}table-danger{% endif %}">
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        {% if enrollment.user.profile %}
+                                            {{ enrollment.user.profile.employee_code }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if enrollment.user.profile %}
+                                            {{ enrollment.user.profile.full_name }}
+                                        {% else %}
+                                            {{ enrollment.user.username }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if enrollment.user.profile %}
+                                            {{ enrollment.user.profile.get_department_display }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="form-check">
+                                            <input class="form-check-input completion-checkbox"
+                                                   type="checkbox"
+                                                   id="enrollment{{ enrollment.id }}"
+                                                   data-enrollment-id="{{ enrollment.id }}"
+                                                   {% if enrollment.is_completed %}checked{% endif %}
+                                                   {% if not has_permission %}disabled{% endif %}>
+                                            <label class="form-check-label" for="enrollment{{ enrollment.id }}">
+                                                {% if enrollment.is_completed %}
+                                                    <span class="text-success">Hoàn thành</span>
+                                                {% else %}
+                                                    <span class="text-danger">Chưa hoàn thành</span>
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> Chưa có học viên nào đăng ký khóa học này.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% if has_permission %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle completion checkbox toggle
+    const checkboxes = document.querySelectorAll('.completion-checkbox');
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const enrollmentId = this.dataset.enrollmentId;
+            const isChecked = this.checked;
+
+            // Send AJAX request to toggle completion
+            fetch(`/elearning/enrollment/${enrollmentId}/toggle/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI
+                    const label = this.nextElementSibling;
+                    const span = label.querySelector('span');
+
+                    if (data.is_completed) {
+                        span.className = 'text-success';
+                        span.textContent = 'Hoàn thành';
+                        this.closest('tr').classList.remove('table-danger');
+                    } else {
+                        span.className = 'text-danger';
+                        span.textContent = 'Chưa hoàn thành';
+                        this.closest('tr').classList.add('table-danger');
+                    }
+
+                    // Update badge count
+                    updateCourseStats();
+                } else {
+                    alert('Lỗi: ' + data.error);
+                    // Revert checkbox
+                    this.checked = !isChecked;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi cập nhật trạng thái');
+                // Revert checkbox
+                this.checked = !isChecked;
+            });
+        });
+    });
+
+    function updateCourseStats() {
+        // This is a simple way to update the stats - reload the page
+        // In production, you might want to update just the badge numbers via AJAX
+        setTimeout(() => location.reload(), 500);
+    }
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

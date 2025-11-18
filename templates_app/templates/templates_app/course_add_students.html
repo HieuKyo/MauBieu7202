@@ -1,0 +1,81 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Thêm học viên - {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="bi bi-person-plus"></i> Thêm học viên vào khóa học: {{ course.name }}</h2>
+
+    <ul class="nav nav-tabs mb-3" id="addStudentTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="individual-tab" data-bs-toggle="tab" data-bs-target="#individual" type="button">Thêm từng người</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="bulk-tab" data-bs-toggle="tab" data-bs-target="#bulk" type="button">Thêm theo bộ lọc</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="addStudentTabContent">
+        <!-- Individual Tab -->
+        <div class="tab-pane fade show active" id="individual">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="filter_type" value="individual">
+                <div class="mb-3">
+                    {% for user in users %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="user_ids" value="{{ user.id }}" id="user{{ user.id }}"
+                               {% if user.id in enrolled_user_ids %}disabled checked{% endif %}>
+                        <label class="form-check-label" for="user{{ user.id }}">
+                            {{ user.profile.employee_code }} - {{ user.profile.full_name }}
+                            {% if user.id in enrolled_user_ids %}<span class="badge bg-success">Đã đăng ký</span>{% endif %}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-primary">Thêm học viên</button>
+                <a href="{% url 'course_dashboard' %}" class="btn btn-secondary">Quay lại</a>
+            </form>
+        </div>
+
+        <!-- Bulk Tab -->
+        <div class="tab-pane fade" id="bulk">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="filter_type" value="bulk">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="job_function" class="form-label">Nghiệp vụ</label>
+                        <select class="form-select" id="job_function" name="job_function">
+                            <option value="">-- Tất cả --</option>
+                            {% for value, label in job_function_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="department" class="form-label">Phòng ban</label>
+                        <select class="form-select" id="department" name="department">
+                            <option value="">-- Tất cả --</option>
+                            {% for value, label in department_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="position" class="form-label">Chức vụ</label>
+                        <select class="form-select" id="position" name="position">
+                            <option value="">-- Tất cả --</option>
+                            {% for value, label in position_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Thêm hàng loạt</button>
+                <a href="{% url 'course_dashboard' %}" class="btn btn-secondary">Quay lại</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

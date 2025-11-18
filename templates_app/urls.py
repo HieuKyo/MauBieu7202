@@ -58,4 +58,13 @@ urlpatterns = [
     path('bank-statement/upload/', views.bank_statement_upload, name='bank_statement_upload'),
     path('bank-statement/result/<int:statement_id>/', views.bank_statement_result, name='bank_statement_result'),
     path('bank-statement/export/<int:statement_id>/', views.bank_statement_export, name='bank_statement_export'),
+
+    # Employee Management
+    path('employees/import/', views.employee_import_excel, name='employee_import_excel'),
+
+    # E-Learning
+    path('elearning/', views.course_dashboard, name='course_dashboard'),
+    path('elearning/courses/create/', views.course_create, name='course_create'),
+    path('elearning/courses/<int:course_id>/add-students/', views.course_add_students, name='course_add_students'),
+    path('elearning/enrollment/<int:enrollment_id>/toggle/', views.course_toggle_completion, name='course_toggle_completion'),
 ]
