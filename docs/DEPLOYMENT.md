@@ -21,20 +21,19 @@
 ### Bước 1: Chuẩn bị môi trường
 
 1. **Đặt IP tĩnh cho máy chủ**
-   - Ví dụ: 192.168.1.100
-   - Subnet mask: 255.255.255.0
-   - Gateway: 192.168.1.1
+   - IP: 10.135.7.108
+   - Port: 8888
 
 2. **Mở port firewall**
 
    **Windows:**
    ```cmd
-   netsh advfirewall firewall add rule name="MauBieu7202" dir=in action=allow protocol=tcp localport=8000
+   netsh advfirewall firewall add rule name="MauBieu7202" dir=in action=allow protocol=tcp localport=8888
    ```
 
    **Linux:**
    ```bash
-   sudo ufw allow 8000/tcp
+   sudo ufw allow 8888/tcp
    ```
 
 ### Bước 2: Cấu hình Production
@@ -47,8 +46,8 @@
    # Tạo SECRET_KEY mới và mạnh
    SECRET_KEY=your-very-long-and-secure-secret-key-here
 
-   # Thêm IP máy chủ và các hostname
-   ALLOWED_HOSTS=localhost,127.0.0.1,192.168.1.100,maubieu.local
+   # IP mạng nội bộ Agribank
+   ALLOWED_HOSTS=localhost,127.0.0.1,10.135.7.108
    ```
 
 2. **Thu thập static files**
@@ -133,13 +132,13 @@ python run_waitress.py
 
 1. **Từ trình duyệt**, nhập địa chỉ:
    ```
-   http://192.168.1.100:8000
+   http://10.135.7.108:8888
    ```
 
 2. **Kiểm tra kết nối**
-   - Đảm bảo máy client và server cùng mạng LAN
-   - Kiểm tra firewall không chặn port 8000
-   - Ping thử: `ping 192.168.1.100`
+   - Đảm bảo máy client và server cùng mạng nội bộ Agribank
+   - Kiểm tra firewall không chặn port 8888
+   - Ping thử: `ping 10.135.7.108`
 
 ---
 
@@ -338,7 +337,7 @@ sudo journalctl -u maubieu -f
 sudo systemctl status maubieu
 
 # Kiểm tra port
-netstat -tlnp | grep 8000
+netstat -tlnp | grep 8888
 
 # Kiểm tra process
 ps aux | grep waitress
@@ -347,7 +346,7 @@ ps aux | grep waitress
 **Windows:**
 ```cmd
 :: Kiểm tra port
-netstat -ano | findstr :8000
+netstat -ano | findstr :8888
 
 :: Kiểm tra process
 tasklist | findstr python
@@ -377,7 +376,7 @@ du -sh /path/to/MauBieu7202/
 **Nguyên nhân & Giải pháp:**
 - Kiểm tra IP server: `ipconfig` (Windows) hoặc `ip addr` (Linux)
 - Kiểm tra ALLOWED_HOSTS trong `.env`
-- Kiểm tra firewall đã mở port 8000
+- Kiểm tra firewall đã mở port 8888
 - Ping thử: `ping <server-ip>`
 
 #### 2. Lỗi "DisallowedHost"
@@ -456,7 +455,7 @@ Nếu gặp vấn đề không thể tự xử lý:
 
 ### Khi triển khai
 - [ ] Đặt IP tĩnh cho server
-- [ ] Mở firewall port 8000
+- [ ] Mở firewall port 8888
 - [ ] Cấu hình ALLOWED_HOSTS
 - [ ] Tắt DEBUG mode
 - [ ] Đổi SECRET_KEY
@@ -478,7 +477,7 @@ Nếu gặp vấn đề không thể tự xử lý:
 | Thông số | Giá trị mặc định | Ghi chú |
 |----------|------------------|---------|
 | Host | 0.0.0.0 | Lắng nghe tất cả interfaces |
-| Port | 8000 | Có thể đổi nếu cần |
+| Port | 8888 | Có thể đổi nếu cần |
 | Threads | 4 | Tăng nếu nhiều người dùng |
 | Channel Timeout | 60s | Thời gian chờ request |
 | Connection Limit | 1000 | Số kết nối tối đa |
@@ -486,7 +485,7 @@ Nếu gặp vấn đề không thể tự xử lý:
 ### Chỉnh sửa trong `run_waitress.py`:
 ```python
 host = '0.0.0.0'
-port = 8000
+port = 8888
 threads = 4
 channel_timeout = 60
 connection_limit = 1000
