@@ -61,6 +61,7 @@ urlpatterns = [
 
     # Employee Management
     path('employees/import/', views.employee_import_excel, name='employee_import_excel'),
+    path('employees/import/template/', views.download_employee_template, name='download_employee_template'),
 
     # E-Learning
     path('elearning/', views.course_dashboard, name='course_dashboard'),

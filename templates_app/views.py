@@ -2705,6 +2705,134 @@ def check_employee_import_permission(user):
 
 
 @login_required
+def download_employee_template(request):
+    """
+    Tải về file Excel mẫu để import nhân viên
+    """
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from django.http import HttpResponse
+
+    # Create workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Danh sách nhân viên"
+
+    # Define headers (Vietnamese names that the import function looks for)
+    headers = [
+        'Username',
+        'Họ và tên',
+        'Mã nhân viên',
+        'Chi nhánh',
+        'Phòng ban',
+        'Chức vụ',
+        'Nghiệp vụ',
+        'Điện thoại',
+        'Ngày sinh'
+    ]
+
+    # Write headers with styling
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Add sample data rows
+    sample_data = [
+        [
+            'nguyenvana',
+            'Nguyễn Văn A',
+            'NV001',
+            'HOI_SO',
+            'KE_TOAN',
+            'TRUONG_PHONG',
+            'KIEM_SOAT_VIEN',
+            '0912345678',
+            '15/01/1990'
+        ],
+        [
+            'tranthib',
+            'Trần Thị B',
+            'NV002',
+            'PGD_P1',
+            'KHACH_HANG',
+            'NHAN_VIEN',
+            'GIAO_DICH_VIEN',
+            '0987654321',
+            '20/05/1995'
+        ],
+        [
+            'levanc',
+            'Lê Văn C',
+            'NV003',
+            'PGD_LANG_TRON',
+            'TONG_HOP',
+            'PHO_PHONG',
+            'TONG_HOP_VIEN',
+            '0901234567',
+            '10/12/1988'
+        ],
+    ]
+
+    for row_idx, row_data in enumerate(sample_data, start=2):
+        for col_idx, value in enumerate(row_data, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell.alignment = Alignment(horizontal='left', vertical='center')
+
+    # Adjust column widths
+    column_widths = [15, 25, 15, 20, 25, 25, 20, 15, 15]
+    for col_idx, width in enumerate(column_widths, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
+
+    # Add instruction sheet
+    ws_instructions = wb.create_sheet(title="Hướng dẫn")
+    instructions = [
+        ['HƯỚNG DẪN IMPORT NHÂN VIÊN'],
+        [''],
+        ['1. Các cột bắt buộc:'],
+        ['   - Username: Tên đăng nhập (không trùng)'],
+        ['   - Họ và tên: Họ tên đầy đủ'],
+        ['   - Mã nhân viên: Mã nhân viên (không trùng)'],
+        [''],
+        ['2. Các cột tùy chọn:'],
+        ['   - Chi nhánh: HOI_SO, PGD_P1, PGD_LANG_TRON'],
+        ['   - Phòng ban: KE_TOAN, KHACH_HANG, BAN_GIAM_DOC, TONG_HOP'],
+        ['   - Chức vụ: GIAM_DOC, PHO_GIAM_DOC, TRUONG_PHONG, PHO_PHONG, GD_PGD, PGD_PGD, NHAN_VIEN'],
+        ['   - Nghiệp vụ: GIAO_DICH_VIEN, KIEM_SOAT_VIEN, HAU_KIEM_VIEN, TONG_HOP_VIEN'],
+        ['   - Điện thoại: Số điện thoại'],
+        ['   - Ngày sinh: Định dạng dd/mm/yyyy (ví dụ: 15/01/1990)'],
+        [''],
+        ['3. Lưu ý:'],
+        ['   - Không xóa dòng tiêu đề (dòng đầu tiên)'],
+        ['   - Mật khẩu mặc định cho user mới: Csi@123'],
+        ['   - Nếu Username đã tồn tại, hệ thống sẽ cập nhật thông tin'],
+        ['   - Các cột Chi nhánh, Phòng ban, Chức vụ, Nghiệp vụ phải sử dụng đúng mã như trên'],
+    ]
+
+    title_font = Font(bold=True, size=14, color='366092')
+    for row_idx, instruction in enumerate(instructions, start=1):
+        cell = ws_instructions.cell(row=row_idx, column=1, value=instruction[0])
+        if row_idx == 1:
+            cell.font = title_font
+        cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+
+    ws_instructions.column_dimensions['A'].width = 80
+
+    # Prepare response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="Mau_Import_Nhan_Vien.xlsx"'
+    wb.save(response)
+
+    return response
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def employee_import_excel(request):
     """

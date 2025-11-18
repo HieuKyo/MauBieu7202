@@ -15,23 +15,36 @@
     {% endfor %}
     {% endif %}
 
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Bước 1:</strong> Tải về file mẫu Excel để import nhân viên
+                <a href="{% url 'download_employee_template' %}" class="btn btn-success btn-sm ms-3">
+                    <i class="bi bi-download"></i> Tải file mẫu Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-cloud-upload"></i> Bước 2: Upload file Excel đã điền thông tin</h5>
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="mb-3">
                     <label for="excel_file" class="form-label">Chọn file Excel</label>
                     <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
                     <div class="form-text">
-                        File Excel phải có các cột: Username, Full Name (hoặc Họ và tên), Employee Code (hoặc Mã nhân viên).
-                        <br>Các cột tùy chọn: Branch, Department, Position, Job Function, Phone, DOB
+                        File Excel phải có các cột: Username, Họ và tên, Mã nhân viên (bắt buộc).
+                        <br>Các cột tùy chọn: Chi nhánh, Phòng ban, Chức vụ, Nghiệp vụ, Điện thoại, Ngày sinh
                     </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-upload"></i> Upload và Import
                 </button>
-                <a href="{% url 'course_dashboard' %}" class="btn btn-secondary">Hủy</a>
+                <a href="{% url 'dashboard' %}" class="btn btn-secondary">Hủy</a>
             </form>
         </div>
     </div>
