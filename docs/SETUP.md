@@ -111,7 +111,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 ### Cấu hình ALLOWED_HOSTS
 Thêm tất cả IP và hostname có thể truy cập:
 ```env
-ALLOWED_HOSTS=localhost,127.0.0.1,192.168.1.100,maubieu.local
+ALLOWED_HOSTS=localhost,127.0.0.1,10.135.7.108
 ```
 
 ---
@@ -120,7 +120,7 @@ ALLOWED_HOSTS=localhost,127.0.0.1,192.168.1.100,maubieu.local
 
 ### Chế độ Development (Phát triển)
 ```bash
-python manage.py runserver 0.0.0.0:8000
+python manage.py runserver 0.0.0.0:8888
 ```
 
 ### Chế độ Production (Triển khai thực tế)
@@ -145,14 +145,12 @@ start.bat
 ## Truy cập ứng dụng
 
 ### Từ máy chủ
-- **Ứng dụng chính**: http://localhost:8000
-- **Trang quản trị**: http://localhost:8000/admin
+- **Ứng dụng chính**: http://localhost:8888
+- **Trang quản trị**: http://localhost:8888/admin
 
-### Từ máy khác trong mạng LAN
-- **Ứng dụng chính**: http://<IP-máy-chủ>:8000
-- **Trang quản trị**: http://<IP-máy-chủ>:8000/admin
-
-Ví dụ: http://192.168.1.100:8000
+### Từ máy khác trong mạng nội bộ Agribank
+- **Ứng dụng chính**: http://10.135.7.108:8888
+- **Trang quản trị**: http://10.135.7.108:8888/admin
 
 ### Kiểm tra IP máy chủ
 
@@ -182,7 +180,7 @@ hostname -I
    - Các biến tùy chỉnh khác
 
 ### 2. Tạo danh mục và mẫu biểu
-1. Đăng nhập trang quản trị: http://localhost:8000/admin
+1. Đăng nhập trang quản trị: http://localhost:8888/admin
 2. Thêm **Categories** (Danh mục)
 3. Thêm **Templates** (Mẫu biểu Word)
 4. Thêm **Variables** (Biến) nếu cần
@@ -208,13 +206,13 @@ pip install -r requirements.txt
 
 ### Lỗi "Address already in use"
 ```bash
-# Tìm và dừng tiến trình đang dùng port 8000
+# Tìm và dừng tiến trình đang dùng port 8888
 # Windows:
-netstat -ano | findstr :8000
+netstat -ano | findstr :8888
 taskkill /PID <PID> /F
 
 # Linux:
-lsof -i :8000
+lsof -i :8888
 kill <PID>
 ```
 
