@@ -527,10 +527,8 @@ class BankStatementParser:
         # Rút tiền ATM với mã 7202ATM trong nội dung
         if '7202ATM' in rem:
             return "Rút tiền ATM"
-        # Rút tiền tại ngân hàng
-        if 'RUT TK' in rem.upper() or 'rut tk' in rem_lower:
-            return "Rút tiền tại ngân hàng"
-        if 'RUT TM' in rem.upper() or 'RUT TIEN' in rem.upper():
+        # Rút tiền mặt (bao gồm RUT TM, RUT TIEN, RUT TK)
+        if 'RUT TM' in rem.upper() or 'RUT TIEN' in rem.upper() or 'RUT TK' in rem.upper() or 'rut tk' in rem_lower:
             return "Rút tiền mặt"
 
         # Nộp tiền
