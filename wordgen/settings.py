@@ -156,6 +156,12 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
 
+# CSRF settings for better security and compatibility
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF cookie if needed
+CSRF_COOKIE_SAMESITE = 'Lax'  # Prevent CSRF attacks while allowing normal navigation
+CSRF_COOKIE_SECURE = False  # Set to True if using HTTPS in production
+CSRF_USE_SESSIONS = False  # Use cookie-based CSRF tokens (default)
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
