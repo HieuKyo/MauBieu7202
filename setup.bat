@@ -1,6 +1,7 @@
 @echo off
 REM =====================================================
 REM Setup Script - Cai dat ung dung MauBieu7202
+REM Khong can Virtual Environment
 REM =====================================================
 
 title MauBieu7202 - Setup
@@ -12,10 +13,9 @@ echo =====================================================
 echo.
 echo Script nay se:
 echo   1. Kiem tra Python
-echo   2. Tao virtual environment
-echo   3. Cai dat dependencies
-echo   4. Thiet lap database
-echo   5. Thu thap static files
+echo   2. Cai dat dependencies
+echo   3. Thiet lap database
+echo   4. Thu thap static files
 echo.
 pause
 
@@ -23,7 +23,7 @@ REM =====================================================
 REM Step 1: Check Python
 REM =====================================================
 echo.
-echo [1/5] Kiem tra Python...
+echo [1/4] Kiem tra Python...
 python --version >nul 2>&1
 if errorlevel 1 (
     echo.
@@ -38,41 +38,9 @@ python --version
 echo.
 
 REM =====================================================
-REM Step 2: Create Virtual Environment
+REM Step 2: Install Dependencies
 REM =====================================================
-echo [2/5] Tao virtual environment...
-echo.
-
-if exist "venv" (
-    echo Virtual environment da ton tai
-    echo Dang kich hoat...
-) else (
-    echo Dang tao virtual environment moi...
-    python -m venv venv
-    if errorlevel 1 (
-        echo.
-        echo LOI: Khong the tao virtual environment
-        pause
-        exit /b 1
-    )
-    echo Virtual environment da duoc tao thanh cong
-)
-
-REM Activate virtual environment
-if exist "venv\Scripts\activate.bat" (
-    call venv\Scripts\activate.bat
-    echo Virtual environment da duoc kich hoat
-) else (
-    echo LOI: Khong tim thay venv\Scripts\activate.bat
-    pause
-    exit /b 1
-)
-echo.
-
-REM =====================================================
-REM Step 3: Install Dependencies
-REM =====================================================
-echo [3/5] Cai dat dependencies...
+echo [2/4] Cai dat dependencies...
 echo.
 
 pip install --upgrade pip
@@ -89,9 +57,9 @@ echo Dependencies da duoc cai dat thanh cong
 echo.
 
 REM =====================================================
-REM Step 4: Setup Database
+REM Step 3: Setup Database
 REM =====================================================
-echo [4/5] Thiet lap database...
+echo [3/4] Thiet lap database...
 echo.
 
 echo Dang chay migrations...
@@ -106,9 +74,9 @@ echo Database da duoc thiet lap thanh cong
 echo.
 
 REM =====================================================
-REM Step 5: Collect Static Files
+REM Step 4: Collect Static Files
 REM =====================================================
-echo [5/5] Thu thap static files...
+echo [4/4] Thu thap static files...
 echo.
 
 python manage.py collectstatic --noinput
@@ -150,11 +118,15 @@ echo =====================================================
 echo.
 echo De khoi dong ung dung:
 echo   1. Chay: run.bat
-echo   2. Mo trinh duyet: http://localhost:8000
+echo   2. Truy cap: http://10.135.7.108:8888
 echo.
 echo De truy cap trang admin:
-echo   - URL: http://localhost:8000/admin
+echo   - URL: http://10.135.7.108:8888/admin
 echo   - Su dung tai khoan admin da tao
+echo.
+echo LUU Y:
+echo   - Ung dung co the chay OFFLINE hoan toan
+echo   - Tat ca CSS, icons da duoc tich hop san
 echo.
 pause
 

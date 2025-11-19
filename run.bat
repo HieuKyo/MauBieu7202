@@ -16,7 +16,7 @@ echo.
 REM =====================================================
 REM Step 1: Check Python
 REM =====================================================
-echo [1/3] Kiem tra Python...
+echo [1/2] Kiem tra Python...
 python --version >nul 2>&1
 if errorlevel 1 (
     echo.
@@ -30,25 +30,9 @@ python --version
 echo.
 
 REM =====================================================
-REM Step 2: Activate Virtual Environment
+REM Step 2: Check Dependencies
 REM =====================================================
-echo [2/3] Kich hoat virtual environment...
-if exist "venv\Scripts\activate.bat" (
-    call venv\Scripts\activate.bat
-    echo Virtual environment da duoc kich hoat
-) else (
-    echo.
-    echo CANH BAO: Khong tim thay virtual environment
-    echo Dang chay voi system Python...
-    echo.
-    echo Neu gap loi, vui long chay setup.bat truoc
-)
-echo.
-
-REM =====================================================
-REM Step 3: Check Dependencies
-REM =====================================================
-echo [3/3] Kiem tra dependencies...
+echo [2/2] Kiem tra dependencies...
 python -c "import waitress" >nul 2>&1
 if errorlevel 1 (
     echo.
