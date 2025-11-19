@@ -56,8 +56,16 @@ python -c "import waitress" >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Waitress is not installed
     echo.
-    echo Installing dependencies from requirements.txt...
-    pip install -r requirements.txt
+    echo Installing dependencies...
+
+    REM Check if packages folder exists for offline installation
+    if exist "packages" (
+        echo Found local packages folder - installing offline...
+        pip install --no-index --find-links=packages -r requirements.txt
+    ) else (
+        pip install -r requirements.txt
+    )
+
     if errorlevel 1 (
         echo.
         echo ERROR: Failed to install dependencies

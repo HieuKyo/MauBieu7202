@@ -2733,7 +2733,10 @@ def download_employee_template(request):
         'Chi nhánh',
         'Phòng ban',
         'Chức vụ',
-        'Nghiệp vụ'
+        'Nghiệp vụ',
+        'Mã chứng thư số',
+        'CTS từ ngày',
+        'CTS đến ngày'
     ]
 
     # Write headers with styling
@@ -2762,7 +2765,10 @@ def download_employee_template(request):
             'HOI_SO',
             'KE_TOAN',
             'TRUONG_PHONG',
-            'KIEM_SOAT_VIEN'
+            'KIEM_SOAT_VIEN',
+            'CTS-NV001-2024',
+            '01/01/2024',
+            '31/12/2025'
         ],
         [
             'tranthib',
@@ -2778,7 +2784,10 @@ def download_employee_template(request):
             'PGD_P1',
             'KHACH_HANG',
             'NHAN_VIEN',
-            'GIAO_DICH_VIEN'
+            'GIAO_DICH_VIEN',
+            'CTS-NV002-2024',
+            '15/06/2024',
+            '14/06/2025'
         ],
         [
             'levanc',
@@ -2794,7 +2803,10 @@ def download_employee_template(request):
             'PGD_LANG_TRON',
             'TONG_HOP',
             'PHO_PHONG',
-            'TONG_HOP_VIEN'
+            'TONG_HOP_VIEN',
+            'CTS-NV003-2023',
+            '01/07/2023',
+            '30/06/2024'
         ],
     ]
 
@@ -2804,7 +2816,7 @@ def download_employee_template(request):
             cell.alignment = Alignment(horizontal='left', vertical='center')
 
     # Adjust column widths
-    column_widths = [15, 25, 15, 15, 12, 15, 35, 18, 15, 45, 20, 25, 25, 20]
+    column_widths = [15, 25, 15, 15, 12, 15, 35, 18, 15, 45, 20, 25, 25, 20, 20, 15, 15]
     for col_idx, width in enumerate(column_widths, start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
@@ -2835,12 +2847,18 @@ def download_employee_template(request):
         ['   - Chức vụ: GIAM_DOC, PHO_GIAM_DOC, TRUONG_PHONG, PHO_PHONG, GD_PGD, PGD_PGD, NHAN_VIEN'],
         ['   - Nghiệp vụ: GIAO_DICH_VIEN, KIEM_SOAT_VIEN, HAU_KIEM_VIEN, TONG_HOP_VIEN'],
         [''],
-        ['5. Lưu ý quan trọng:'],
+        ['5. Thông tin chứng thư số (tùy chọn):'],
+        ['   - Mã chứng thư số: Mã số chứng thư (ví dụ: CTS-NV001-2024)'],
+        ['   - CTS từ ngày: Ngày bắt đầu hiệu lực, định dạng dd/mm/yyyy'],
+        ['   - CTS đến ngày: Ngày hết hạn hiệu lực, định dạng dd/mm/yyyy'],
+        [''],
+        ['6. Lưu ý quan trọng:'],
         ['   - Không xóa dòng tiêu đề (dòng đầu tiên)'],
         ['   - Mật khẩu mặc định cho user mới: Csi@123'],
         ['   - Nếu Username đã tồn tại, hệ thống sẽ cập nhật thông tin nhân viên'],
         ['   - Các cột Chi nhánh, Phòng ban, Chức vụ, Nghiệp vụ phải sử dụng đúng mã như trên'],
         ['   - Ngày tháng phải đúng định dạng dd/mm/yyyy'],
+        ['   - Hệ thống sẽ cảnh báo khi chứng thư số hết hạn trong vòng 20 ngày'],
     ]
 
     title_font = Font(bold=True, size=14, color='366092')
@@ -3005,6 +3023,40 @@ def employee_import_excel(request):
                                 except (ValueError, TypeError):
                                     pass
 
+                    # Digital Certificate fields
+                    if data.get('Certificate Code') or data.get('Mã chứng thư số'):
+                        cert_code = str(data.get('Certificate Code') or data.get('Mã chứng thư số', '')).strip()
+                        if cert_code:
+                            profile.certificate_code = cert_code
+
+                    # Certificate Start Date
+                    cert_start_value = data.get('Certificate Start Date') or data.get('CTS từ ngày')
+                    if cert_start_value:
+                        if isinstance(cert_start_value, datetime):
+                            profile.certificate_start_date = cert_start_value.date()
+                        elif isinstance(cert_start_value, str):
+                            try:
+                                profile.certificate_start_date = datetime.strptime(cert_start_value, '%d/%m/%Y').date()
+                            except (ValueError, TypeError):
+                                try:
+                                    profile.certificate_start_date = datetime.strptime(cert_start_value, '%Y-%m-%d').date()
+                                except (ValueError, TypeError):
+                                    pass
+
+                    # Certificate End Date
+                    cert_end_value = data.get('Certificate End Date') or data.get('CTS đến ngày')
+                    if cert_end_value:
+                        if isinstance(cert_end_value, datetime):
+                            profile.certificate_end_date = cert_end_value.date()
+                        elif isinstance(cert_end_value, str):
+                            try:
+                                profile.certificate_end_date = datetime.strptime(cert_end_value, '%d/%m/%Y').date()
+                            except (ValueError, TypeError):
+                                try:
+                                    profile.certificate_end_date = datetime.strptime(cert_end_value, '%Y-%m-%d').date()
+                                except (ValueError, TypeError):
+                                    pass
+
                     profile.save()
                     success_count += 1
 
@@ -3047,12 +3099,70 @@ def employee_list(request):
         return redirect('dashboard')
 
     from .models import UserProfile
+    from datetime import date, timedelta
 
-    employees = UserProfile.objects.select_related('user').all().order_by('employee_code')
+    employees = UserProfile.objects.select_related('user').all()
+
+    # Get filter parameters
+    filter_department = request.GET.get('department', '')
+    filter_position = request.GET.get('position', '')
+    filter_branch = request.GET.get('branch', '')
+    filter_cert_status = request.GET.get('cert_status', '')
+
+    # Apply filters
+    if filter_department:
+        employees = employees.filter(department=filter_department)
+    if filter_position:
+        employees = employees.filter(position=filter_position)
+    if filter_branch:
+        employees = employees.filter(branch=filter_branch)
+
+    # Filter by certificate status
+    today = date.today()
+    warning_date = today + timedelta(days=20)
+
+    if filter_cert_status == 'expiring':
+        # Certificates expiring within 20 days
+        employees = employees.filter(
+            certificate_end_date__lte=warning_date,
+            certificate_end_date__gte=today
+        )
+    elif filter_cert_status == 'expired':
+        # Already expired certificates
+        employees = employees.filter(certificate_end_date__lt=today)
+    elif filter_cert_status == 'valid':
+        # Valid certificates (not expiring soon)
+        employees = employees.filter(certificate_end_date__gt=warning_date)
+    elif filter_cert_status == 'no_cert':
+        # No certificate
+        employees = employees.filter(certificate_code='')
+
+    employees = employees.order_by('employee_code')
+
+    # Count warnings for display
+    expiring_count = UserProfile.objects.filter(
+        certificate_end_date__lte=warning_date,
+        certificate_end_date__gte=today
+    ).count()
+    expired_count = UserProfile.objects.filter(certificate_end_date__lt=today).count()
+
+    # Get unique values for filter dropdowns
+    departments = UserProfile.DEPARTMENT_CHOICES
+    positions = UserProfile.POSITION_CHOICES
+    branches = UserProfile.BRANCH_CHOICES
 
     context = {
         'title': 'Quản lý nhân viên',
         'employees': employees,
+        'filter_department': filter_department,
+        'filter_position': filter_position,
+        'filter_branch': filter_branch,
+        'filter_cert_status': filter_cert_status,
+        'departments': departments,
+        'positions': positions,
+        'branches': branches,
+        'expiring_count': expiring_count,
+        'expired_count': expired_count,
     }
     return render(request, 'templates_app/employee_list.html', context)
 
@@ -3126,6 +3236,21 @@ def employee_create_manual(request):
         profile.position = request.POST.get('position', '')
         profile.job_function = request.POST.get('job_function', '')
 
+        # Digital certificate fields
+        profile.certificate_code = request.POST.get('certificate_code', '')
+
+        if request.POST.get('certificate_start_date'):
+            try:
+                profile.certificate_start_date = datetime.strptime(request.POST.get('certificate_start_date'), '%Y-%m-%d').date()
+            except:
+                pass
+
+        if request.POST.get('certificate_end_date'):
+            try:
+                profile.certificate_end_date = datetime.strptime(request.POST.get('certificate_end_date'), '%Y-%m-%d').date()
+            except:
+                pass
+
         profile.save()
 
         return JsonResponse({
@@ -3182,6 +3307,21 @@ def employee_update_manual(request, employee_id):
         profile.department = request.POST.get('department', profile.department)
         profile.position = request.POST.get('position', profile.position)
         profile.job_function = request.POST.get('job_function', profile.job_function)
+
+        # Digital certificate fields
+        profile.certificate_code = request.POST.get('certificate_code', profile.certificate_code)
+
+        if request.POST.get('certificate_start_date'):
+            try:
+                profile.certificate_start_date = datetime.strptime(request.POST.get('certificate_start_date'), '%Y-%m-%d').date()
+            except:
+                pass
+
+        if request.POST.get('certificate_end_date'):
+            try:
+                profile.certificate_end_date = datetime.strptime(request.POST.get('certificate_end_date'), '%Y-%m-%d').date()
+            except:
+                pass
 
         profile.save()
 

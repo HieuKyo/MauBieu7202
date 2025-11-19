@@ -6,7 +6,14 @@ REM =====================================================
 title WordGen - Quick Setup
 
 echo Installing dependencies (including WhiteNoise for static files)...
-pip install -r requirements.txt
+
+REM Check if packages folder exists for offline installation
+if exist "packages" (
+    echo Found local packages folder - installing offline...
+    pip install --no-index --find-links=packages -r requirements.txt
+) else (
+    pip install -r requirements.txt
+)
 
 echo.
 echo Setting up database...
