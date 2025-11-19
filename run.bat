@@ -1,6 +1,7 @@
 @echo off
 REM =====================================================
 REM Run Script - Khoi dong ung dung MauBieu7202
+REM Mang noi bo Agribank: 10.135.7.108:8888
 REM =====================================================
 
 title MauBieu7202 - Server
@@ -8,6 +9,7 @@ title MauBieu7202 - Server
 echo.
 echo =====================================================
 echo MauBieu7202 - Khoi dong Server
+echo Mang noi bo Agribank
 echo =====================================================
 echo.
 
@@ -70,8 +72,13 @@ echo =====================================================
 echo Dang khoi dong server...
 echo =====================================================
 echo.
-echo Server se chay tai: http://localhost:8000
-echo Admin panel: http://localhost:8000/admin
+echo Truy cap ung dung tai:
+echo   - Mang noi bo: http://10.135.7.108:8888
+echo   - Local:       http://localhost:8888
+echo.
+echo Admin panel:
+echo   - Mang noi bo: http://10.135.7.108:8888/admin
+echo   - Local:       http://localhost:8888/admin
 echo.
 echo Nhan Ctrl+C de dung server
 echo.
