@@ -30,9 +30,19 @@
         transform: translateY(-3px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
+    .custom-alert-modal .modal-header {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    .custom-alert-modal .modal-body {
+        text-align: center;
+        padding: 2rem;
+    }
+    .custom-alert-modal .alert-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
 </style>
-<!-- SweetAlert2 -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 {% endblock %}
 
 {% block content %}
@@ -150,12 +160,69 @@
     {% endif %}
 </div>
 
-<!-- SweetAlert2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Alert Modal -->
+<div class="modal fade custom-alert-modal" id="alertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="alertIcon" class="alert-icon"></div>
+                <h5 id="alertTitle" class="mb-3"></h5>
+                <p id="alertMessage" class="text-muted"></p>
+            </div>
+            <div class="modal-footer justify-content-center border-0">
+                <button type="button" class="btn btn-agribank" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-success mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h6>Đang xử lý...</h6>
+                <p class="text-muted small mb-0">Vui lòng đợi trong giây lát</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
+// Custom alert function using Bootstrap Modal
+function showAlert(type, title, message) {
+    const modal = document.getElementById('alertModal');
+    const iconEl = document.getElementById('alertIcon');
+    const titleEl = document.getElementById('alertTitle');
+    const messageEl = document.getElementById('alertMessage');
+
+    let iconClass = 'bi bi-info-circle text-info';
+    if (type === 'error' || type === 'danger') {
+        iconClass = 'bi bi-x-circle text-danger';
+    } else if (type === 'success') {
+        iconClass = 'bi bi-check-circle text-success';
+    } else if (type === 'warning') {
+        iconClass = 'bi bi-exclamation-triangle text-warning';
+    }
+
+    iconEl.innerHTML = '<i class="' + iconClass + '"></i>';
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Show messages as SweetAlert2
+    // Show messages from Django
     const messagesDiv = document.getElementById('messages');
     if (messagesDiv) {
         const messageItems = messagesDiv.querySelectorAll('[data-type]');
@@ -163,27 +230,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const type = item.getAttribute('data-type');
             const message = item.getAttribute('data-message');
 
-            let icon = 'info';
             let title = 'Thông báo';
-
             if (type === 'error' || type === 'danger') {
-                icon = 'error';
                 title = 'Lỗi!';
             } else if (type === 'success') {
-                icon = 'success';
                 title = 'Thành công!';
             } else if (type === 'warning') {
-                icon = 'warning';
                 title = 'Cảnh báo!';
             }
 
-            Swal.fire({
-                icon: icon,
-                title: title,
-                text: message,
-                confirmButtonText: 'Đóng',
-                confirmButtonColor: '#007934'
-            });
+            showAlert(type, title, message);
         });
     }
 
@@ -202,13 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Validate file extension
             if (!validExtensions.some(ext => ext.toLowerCase() === fileExtension)) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'File không hợp lệ!',
-                    text: 'Vui lòng chọn file Excel (.xls hoặc .xlsx)',
-                    confirmButtonText: 'Đóng',
-                    confirmButtonColor: '#007934'
-                });
+                showAlert('error', 'File không hợp lệ!', 'Vui lòng chọn file Excel (.xls hoặc .xlsx)');
                 this.value = ''; // Clear input
                 fileInfo.classList.add('d-none');
                 submitBtn.disabled = true;
@@ -248,25 +298,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Form submit - show loading with SweetAlert
+    // Form submit - show loading
     document.getElementById('uploadForm').addEventListener('submit', function(e) {
-        e.preventDefault(); // Prevent default submit
-
-        Swal.fire({
-            title: 'Đang xử lý...',
-            html: 'Vui lòng đợi trong giây lát. Hệ thống đang phân tích file sao kê của bạn.',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        // Submit form after showing loading
-        setTimeout(() => {
-            this.submit();
-        }, 300);
+        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        loadingModal.show();
     });
 });
 </script>

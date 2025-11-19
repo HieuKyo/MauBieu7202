@@ -785,6 +785,16 @@ class Customer(models.Model):
             'ten_the_2': self.ten_the_2 or '',  # FIX: Thêm tên thẻ 2
         }
 
+        # Card number variables - tách số thẻ ra từng ký tự (16 ký tự)
+        # sothe_1, sothe_2, ..., sothe_16
+        so_the = self.so_the_atm or ''
+        # Loại bỏ khoảng trắng và ký tự đặc biệt
+        so_the_cleaned = ''.join(filter(str.isdigit, so_the))
+        # Pad với khoảng trống nếu ngắn hơn 16 ký tự
+        so_the_padded = so_the_cleaned.ljust(16)
+        for i in range(1, 17):
+            data[f'sothe_{i}'] = so_the_padded[i-1] if i <= len(so_the_cleaned) else ''
+
         # Note: Card name (tên trên thẻ) is auto-filled into tables
         # by _render_card_name_tables() in utils.py
         # No need to generate individual character variables

@@ -5,39 +5,84 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-5">
+    <div class="col-md-5 col-lg-4">
+        <!-- Logo Agribank -->
         <div class="login-brand">
             <img src="{% static 'images/agribank_logo.png' %}" alt="Agribank Logo">
         </div>
+
+        <!-- Login Card -->
         <div class="card shadow-lg login-card">
             <div class="card-body p-5">
+                <!-- Header -->
                 <div class="text-center mb-4">
-                    <h3 class="fw-bold" style="color: var(--agribank-red);">Đăng nhập</h3>
-                    <p class="text-muted">Hệ thống Quản lý Mẫu biểu</p>
+                    <h3 class="fw-bold mb-2" style="color: var(--agri-red);">
+                        <i class="bi bi-shield-lock"></i> Đăng nhập
+                    </h3>
+                    <p class="text-muted mb-0">Hệ thống Quản lý Mẫu biểu</p>
+                    <div class="login-divider"></div>
                 </div>
 
-                <form method="post" action="{% url 'login' %}">
+                <!-- Login Form -->
+                <form method="post" action="{% url 'login' %}" id="loginForm">
                     {% csrf_token %}
 
                     <div class="mb-3">
-                        <label for="username" class="form-label">Tên đăng nhập</label>
-                        <input type="text" class="form-control form-control-lg" id="username" name="username" required autofocus>
+                        <label for="username" class="form-label fw-semibold">
+                            <i class="bi bi-person-circle text-primary"></i> Tên đăng nhập
+                        </label>
+                        <input type="text"
+                               class="form-control form-control-lg"
+                               id="username"
+                               name="username"
+                               placeholder="Nhập tên đăng nhập"
+                               required
+                               autofocus>
                     </div>
 
                     <div class="mb-4">
-                        <label for="password" class="form-label">Mật khẩu</label>
-                        <input type="password" class="form-control form-control-lg" id="password" name="password" required>
+                        <label for="password" class="form-label fw-semibold">
+                            <i class="bi bi-key-fill text-primary"></i> Mật khẩu
+                        </label>
+                        <input type="password"
+                               class="form-control form-control-lg"
+                               id="password"
+                               name="password"
+                               placeholder="Nhập mật khẩu"
+                               required>
                     </div>
 
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">Đăng nhập</button>
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary btn-lg login-btn">
+                            <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
+                        </button>
                     </div>
                 </form>
+
+                <!-- Footer Note -->
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Dành cho nhân viên nội bộ Agribank
+                    </small>
+                </div>
             </div>
         </div>
 
-        <div class="text-center mt-3 text-white">
-            <small>Vui lòng liên hệ quản trị viên nếu bạn gặp vấn đề đăng nhập</small>
+        <!-- Help Text -->
+        <div class="text-center mt-3">
+            <small class="login-footer-text">
+                <i class="bi bi-headset"></i>
+                Vui lòng liên hệ quản trị viên nếu bạn gặp vấn đề đăng nhập
+            </small>
+        </div>
+
+        <!-- Branch Info -->
+        <div class="text-center mt-2">
+            <small class="login-footer-text">
+                <i class="bi bi-geo-alt-fill"></i>
+                Chi nhánh Giá Rai - Bạc Liêu
+            </small>
         </div>
     </div>
 </div>
@@ -45,22 +90,182 @@
 
 {% block extra_css %}
 <style>
+    /* Gradient Background - Màu đỏ Agribank mới */
     body {
-        background: linear-gradient(135deg, var(--agribank-red) 0%, #7c1c23 100%);
+        background: linear-gradient(135deg, var(--agri-red) 0%, var(--agri-red-dark) 100%);
+        background-attachment: fixed;
     }
+
     .main-container {
         padding-top: 3rem;
+        padding-bottom: 3rem;
     }
+
+    /* Logo Container */
     .login-brand {
         text-align: center;
         margin-bottom: 2rem;
+        animation: fadeInDown 0.6s ease-out;
     }
+
     .login-brand img {
         max-width: 250px;
         background: white;
         padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        border: 3px solid var(--agri-gold);
+        transition: transform 0.3s ease;
+    }
+
+    .login-brand img:hover {
+        transform: scale(1.02);
+    }
+
+    /* Login Card */
+    .login-card {
+        border-top: 5px solid var(--agri-red) !important;
+        border-radius: 15px !important;
+        animation: fadeInUp 0.6s ease-out;
+        overflow: hidden;
+    }
+
+    .login-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, var(--agri-red) 0%, var(--agri-gold) 100%);
+    }
+
+    /* Divider */
+    .login-divider {
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(90deg, var(--agri-red) 0%, var(--agri-gold) 100%);
+        margin: 1rem auto 0;
+        border-radius: 2px;
+    }
+
+    /* Form Controls */
+    .form-control {
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+        padding: 0.75rem 1rem;
+    }
+
+    .form-control:focus {
+        border-color: var(--agri-red);
+        box-shadow: 0 0 0 0.25rem rgba(174, 28, 63, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .form-label {
+        color: var(--agri-text-dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-label i {
+        margin-right: 0.25rem;
+    }
+
+    /* Login Button */
+    .login-btn {
+        background: linear-gradient(135deg, var(--agri-red) 0%, var(--agri-red-dark) 100%);
+        border: none;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .login-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .login-btn:hover::before {
+        left: 100%;
+    }
+
+    .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(174, 28, 63, 0.4);
+    }
+
+    .login-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Animations */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+        .login-brand img {
+            max-width: 200px;
+        }
+
+        .card-body {
+            padding: 2rem !important;
+        }
+    }
+
+    /* Icons color */
+    .bi-shield-lock {
+        color: var(--agri-red);
+    }
+
+    /* Login footer text - Contrast color for readability */
+    .login-footer-text {
+        color: #ffffff;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        font-weight: 500;
+        background: rgba(0,0,0,0.15);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        display: inline-block;
+        backdrop-filter: blur(5px);
+    }
+
+    .login-footer-text i {
+        margin-right: 0.25rem;
+        color: var(--agri-gold);
+    }
+
+    /* Text shadow for better readability */
+    .text-white {
+        text-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
 </style>
 {% endblock %}

@@ -14,7 +14,7 @@
     <style>
         body {
             min-height: 100vh;
-            background-color: #f8f9fa;
+            background-color: var(--agri-bg);
         }
         .main-container {
             margin-top: 2rem;
@@ -22,16 +22,18 @@
         }
         .category-card {
             cursor: pointer;
+            transition: all 0.3s ease;
         }
         .template-card {
             cursor: pointer;
+            transition: all 0.3s ease;
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- Agribank Header -->
-    <nav class="navbar navbar-expand-lg navbar-dark agribank-header">
+    <nav class="navbar navbar-expand-lg navbar-dark agribank-header" style="background: linear-gradient(90deg, #AE1C3F 0%, #8a1230 100%) !important; border-bottom: 3px solid #D69D26;">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard' %}">
                 <img src="{% static 'images/agribank_logo.png' %}" alt="Agribank" class="agribank-logo">
@@ -178,11 +180,11 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
-                    <strong style="color: var(--agribank-red); font-family: 'Times New Roman', Times, serif;">Agribank Chi nhánh Giá Rai Bạc Liêu</strong>
+                    <strong style="color: var(--agri-red);">Agribank Chi nhánh Giá Rai Bạc Liêu</strong>
                 </div>
                 <div class="col-md-6 text-center text-md-end">
-                    <p class="mb-0 text-muted small" style="font-family: 'Times New Roman', Times, serif;">&copy; 2025 Hệ thống Mẫu biểu - Nội bộ</p>
-                    <p class="mb-0 text-muted small" style="font-family: 'Times New Roman', Times, serif;">Phiên bản 1.0</p>
+                    <p class="mb-0 text-muted small">&copy; 2025 Hệ thống Mẫu biểu - Nội bộ</p>
+                    <p class="mb-0 text-muted small">Phiên bản 1.0</p>
                 </div>
             </div>
         </div>
@@ -203,6 +205,18 @@
                   'Hệ thống quản lý mẫu biểu và hồ sơ khách hàng');
             return false;
         }
+
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    // Use Bootstrap's alert dismiss
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000); // 5 seconds
+            });
+        });
     </script>
     {% block extra_js %}{% endblock %}
 </body>

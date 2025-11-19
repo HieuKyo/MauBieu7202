@@ -35,7 +35,7 @@ def main():
 
     # Server configuration
     host = '0.0.0.0'  # Listen on all interfaces
-    port = 8000        # Default port
+    port = 8888        # Agribank internal network port
     threads = 4        # Number of threads to handle requests
 
     print("=" * 60)
