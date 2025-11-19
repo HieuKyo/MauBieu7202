@@ -11,154 +11,57 @@
                 <h2>
                     <i class="bi bi-geo-alt"></i> Tra cứu thông tin địa bàn hành chính
                 </h2>
-                <a href="{% url 'test_address_selector' %}" class="btn btn-success">
-                    <i class="bi bi-ui-checks"></i> Bộ chọn địa chỉ
-                </a>
             </div>
 
-            <!-- Form tra cứu -->
+            <!-- Chọn địa chỉ -->
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
-                    <h5 class="card-title">Tìm kiếm địa bàn hành chính</h5>
-                    <p class="text-muted">Nhập tên ấp/khóm, xã/phường, huyện/thị xã để tra cứu thông tin chi tiết</p>
+                    <h5 class="card-title">Chọn địa bàn hành chính</h5>
+                    <p class="text-muted">Chọn Tỉnh → Huyện → Xã → Ấp/Khóm để tra cứu thông tin và địa chỉ chuyển đổi</p>
 
-                    <form method="POST" action="{% url 'area_lookup' %}">
-                        {% csrf_token %}
-
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Loại tra cứu</label>
-                                <select class="form-select" name="search_type">
-                                    <option value="all" {% if search_type == 'all' %}selected{% endif %}>Tất cả</option>
-                                    <option value="khom" {% if search_type == 'khom' %}selected{% endif %}>Ấp/Khóm</option>
-                                    <option value="xa" {% if search_type == 'xa' %}selected{% endif %}>Xã/Phường</option>
-                                    <option value="huyen" {% if search_type == 'huyen' %}selected{% endif %}>Huyện/Thị xã</option>
-                                    <option value="conversion" {% if search_type == 'conversion' %}selected{% endif %}>Địa chỉ chuyển đổi</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Từ khóa tìm kiếm</label>
-                                <input type="text"
-                                       class="form-control"
-                                       name="keyword"
-                                       placeholder="VD: Phường 1, Láng Tròn, Giá Rai..."
-                                       value="{{ keyword|default:'' }}">
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="bi bi-search"></i> Tra cứu
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                    <!-- Address Selector Container -->
+                    <div id="area-address-selector"></div>
                 </div>
             </div>
 
-            <!-- Kết quả tra cứu -->
-            {% if results %}
-            <div class="card shadow-sm mb-4">
+            <!-- Kết quả địa chỉ cũ -->
+            <div class="card shadow-sm mb-4" id="old-address-card" style="display: none;">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Địa chỉ hiện tại (Bạc Liêu)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <code class="fs-5" id="old-address-display"></code>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary ms-3" onclick="copyAddress('old')">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kết quả địa chỉ mới (chuyển đổi) -->
+            <div class="card shadow-sm mb-4" id="new-address-card" style="display: none;">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-check-circle"></i>
-                        Kết quả tra cứu ({{ results|length }} kết quả)
-                    </h5>
+                    <h5 class="mb-0"><i class="bi bi-arrow-repeat"></i> Địa chỉ sau chuyển đổi (Cà Mau)</h5>
                 </div>
                 <div class="card-body">
-                    {% if search_type == 'conversion' %}
-                    <!-- Kết quả chuyển đổi địa chỉ -->
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>STT</th>
-                                    <th>Địa chỉ cũ (Bạc Liêu)</th>
-                                    <th><i class="bi bi-arrow-right"></i></th>
-                                    <th>Địa chỉ mới (Cà Mau)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in results %}
-                                <tr>
-                                    <td class="text-center">{{ forloop.counter }}</td>
-                                    <td><code>{{ item.old_address }}</code></td>
-                                    <td class="text-center"><i class="bi bi-arrow-right text-primary"></i></td>
-                                    <td><code class="text-success">{{ item.new_address }}</code></td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <!-- Kết quả địa bàn hành chính -->
-                    <div class="row">
-                        {% for item in results %}
-                        <div class="col-md-6 mb-3">
-                            <div class="card h-100">
-                                <div class="card-header bg-light">
-                                    <strong>
-                                        {% if item.type == 'khom' %}
-                                        <i class="bi bi-house-door text-info"></i> Ấp/Khóm
-                                        {% elif item.type == 'xa' %}
-                                        <i class="bi bi-building text-warning"></i> Xã/Phường
-                                        {% elif item.type == 'huyen' %}
-                                        <i class="bi bi-buildings text-danger"></i> Huyện/Thị xã
-                                        {% endif %}
-                                    </strong>
-                                </div>
-                                <div class="card-body">
-                                    <h6 class="card-title text-primary">{{ item.name }}</h6>
-                                    <ul class="list-unstyled mb-2">
-                                        {% if item.xa %}
-                                        <li><small><strong>Xã/Phường:</strong> {{ item.xa }}</small></li>
-                                        {% endif %}
-                                        {% if item.huyen %}
-                                        <li><small><strong>Huyện/Thị xã:</strong> {{ item.huyen }}</small></li>
-                                        {% endif %}
-                                        {% if item.tinh %}
-                                        <li><small><strong>Tỉnh:</strong> {{ item.tinh }}</small></li>
-                                        {% endif %}
-                                    </ul>
-
-                                    {% if item.full_address %}
-                                    <div class="alert alert-info py-1 px-2 mb-2">
-                                        <small><strong>Địa chỉ đầy đủ:</strong><br>{{ item.full_address }}</small>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if item.converted_address %}
-                                    <div class="alert alert-warning py-1 px-2 mb-2">
-                                        <small>
-                                            <i class="bi bi-arrow-repeat"></i> <strong>Địa chỉ chuyển đổi:</strong><br>
-                                            {{ item.converted_address }}
-                                        </small>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if item.sub_units %}
-                                    <div class="mt-2">
-                                        <small><strong>
-                                            {% if item.type == 'xa' %}Ấp/Khóm:{% else %}Đơn vị trực thuộc:{% endif %}
-                                        </strong></small>
-                                        <div class="d-flex flex-wrap gap-1 mt-1">
-                                            {% for unit in item.sub_units %}
-                                            <span class="badge bg-secondary">{{ unit }}</span>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="flex-grow-1">
+                            <code class="fs-5 text-success" id="new-address-display"></code>
                         </div>
-                        {% endfor %}
+                        <button type="button" class="btn btn-success ms-3" onclick="copyAddress('new')">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
                     </div>
-                    {% endif %}
                 </div>
             </div>
-            {% elif keyword %}
-            <div class="alert alert-warning">
-                <i class="bi bi-exclamation-triangle"></i> Không tìm thấy kết quả cho từ khóa "<strong>{{ keyword }}</strong>"
+
+            <!-- Thông báo không có chuyển đổi -->
+            <div class="alert alert-info mb-4" id="no-conversion-alert" style="display: none;">
+                <i class="bi bi-info-circle"></i> Địa chỉ này không có dữ liệu chuyển đổi (không thuộc vùng sáp nhập sang Cà Mau)
             </div>
-            {% endif %}
 
             <!-- Thống kê dữ liệu -->
             <div class="row">
@@ -173,19 +76,19 @@
                                     <tbody>
                                         <tr>
                                             <td><i class="bi bi-map text-primary"></i> Tỉnh/Thành phố</td>
-                                            <td class="text-end"><strong>{{ stats.tinh_count }}</strong></td>
+                                            <td class="text-end"><strong id="stat-tinh">-</strong></td>
                                         </tr>
                                         <tr>
                                             <td><i class="bi bi-buildings text-danger"></i> Huyện/Thị xã/Thành phố</td>
-                                            <td class="text-end"><strong>{{ stats.huyen_count }}</strong></td>
+                                            <td class="text-end"><strong id="stat-huyen">-</strong></td>
                                         </tr>
                                         <tr>
                                             <td><i class="bi bi-building text-warning"></i> Xã/Phường/Thị trấn</td>
-                                            <td class="text-end"><strong>{{ stats.xa_count }}</strong></td>
+                                            <td class="text-end"><strong id="stat-xa">-</strong></td>
                                         </tr>
                                         <tr>
                                             <td><i class="bi bi-house-door text-info"></i> Ấp/Khóm</td>
-                                            <td class="text-end"><strong>{{ stats.khom_count }}</strong></td>
+                                            <td class="text-end"><strong id="stat-khom">-</strong></td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -206,33 +109,12 @@
                                     <tbody>
                                         <tr>
                                             <td><i class="bi bi-journal-text text-success"></i> Tổng số địa chỉ chuyển đổi</td>
-                                            <td class="text-end"><strong>{{ stats.conversion_count }}</strong></td>
+                                            <td class="text-end"><strong id="stat-conversion">-</strong></td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Danh sách huyện/thị xã -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0"><i class="bi bi-list-nested"></i> Danh sách đơn vị hành chính cấp huyện</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% for huyen in huyen_list %}
-                        <div class="col-md-4 col-sm-6 mb-2">
-                            <a href="?keyword={{ huyen }}&search_type=huyen" class="text-decoration-none">
-                                <div class="d-flex align-items-center p-2 border rounded hover-bg-light">
-                                    <i class="bi bi-geo-alt-fill text-primary me-2"></i>
-                                    <span>{{ huyen }}</span>
-                                </div>
-                            </a>
-                        </div>
-                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -243,17 +125,164 @@
                 <ul class="mb-0">
                     <li><strong>Cấu trúc địa chỉ:</strong> Tỉnh → Huyện/Thị xã → Xã/Phường → Ấp/Khóm</li>
                     <li><strong>Dữ liệu:</strong> Bao gồm tất cả đơn vị hành chính thuộc Tỉnh Bạc Liêu</li>
-                    <li><strong>Chuyển đổi địa chỉ:</strong> Dữ liệu chuyển đổi từ địa chỉ cũ (thuộc Bạc Liêu) sang địa chỉ mới (thuộc Cà Mau) theo lịch sử thay đổi địa giới hành chính</li>
-                    <li><strong>Tìm kiếm:</strong> Có thể tìm theo tên đầy đủ hoặc một phần của tên đơn vị hành chính</li>
+                    <li><strong>Chuyển đổi địa chỉ:</strong> Một số địa bàn thuộc Thị xã Giá Rai và Huyện Vĩnh Lợi đã được sáp nhập vào Tỉnh Cà Mau. Hệ thống sẽ tự động hiển thị địa chỉ mới sau chuyển đổi.</li>
+                    <li><strong>Copy địa chỉ:</strong> Nhấn nút Copy để sao chép địa chỉ vào clipboard</li>
                 </ul>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-.hover-bg-light:hover {
-    background-color: #f8f9fa;
-}
-</style>
+<!-- Toast notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="copyToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-check-circle"></i> Đã copy địa chỉ vào clipboard!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Load Address Selector Component -->
+<script src="{% static 'js/address_selector_component.js' %}"></script>
+
+<script>
+    let addressConversionData = {};
+    let diaDanhData = {};
+    let currentOldAddress = '';
+    let currentNewAddress = '';
+
+    // Load address conversion data
+    fetch('{% static "data/chuyen_doi.json" %}')
+        .then(response => response.json())
+        .then(data => {
+            addressConversionData = data;
+            document.getElementById('stat-conversion').textContent = Object.keys(data).length;
+        })
+        .catch(error => {
+            console.error('Error loading address conversion data:', error);
+        });
+
+    // Load dia_danh data for statistics
+    fetch('{% static "data/dia_danh.json" %}')
+        .then(response => response.json())
+        .then(data => {
+            diaDanhData = data;
+            calculateStats(data);
+        })
+        .catch(error => {
+            console.error('Error loading dia_danh data:', error);
+        });
+
+    function calculateStats(data) {
+        let tinhCount = 0;
+        let huyenCount = 0;
+        let xaCount = 0;
+        let khomCount = 0;
+
+        for (const tinh in data) {
+            tinhCount++;
+            for (const huyen in data[tinh]) {
+                huyenCount++;
+                for (const xa in data[tinh][huyen]) {
+                    xaCount++;
+                    const khomList = data[tinh][huyen][xa];
+                    if (Array.isArray(khomList)) {
+                        khomCount += khomList.length;
+                    }
+                }
+            }
+        }
+
+        document.getElementById('stat-tinh').textContent = tinhCount;
+        document.getElementById('stat-huyen').textContent = huyenCount;
+        document.getElementById('stat-xa').textContent = xaCount;
+        document.getElementById('stat-khom').textContent = khomCount;
+    }
+
+    function copyAddress(type) {
+        const address = type === 'old' ? currentOldAddress : currentNewAddress;
+        if (!address) return;
+
+        navigator.clipboard.writeText(address).then(() => {
+            // Show toast notification
+            const toastEl = document.getElementById('copyToast');
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = address;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            const toastEl = document.getElementById('copyToast');
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof AddressSelector === 'undefined') {
+            console.error('AddressSelector class not found!');
+            return;
+        }
+
+        const selector = new AddressSelector('#area-address-selector', {
+            dataUrl: '{% static "data/dia_danh.json" %}',
+            showKhom: true,
+            labels: {
+                tinh: 'Tỉnh/Thành phố',
+                huyen: 'Quận/Huyện',
+                xa: 'Phường/Xã',
+                khom: 'Ấp/Khóm'
+            },
+            autoFill: function(fullAddress, parts) {
+                currentOldAddress = fullAddress;
+
+                // Check for conversion
+                let newAddress = null;
+                if (fullAddress && addressConversionData[fullAddress]) {
+                    newAddress = addressConversionData[fullAddress];
+                }
+                currentNewAddress = newAddress;
+
+                // Update display
+                const oldCard = document.getElementById('old-address-card');
+                const newCard = document.getElementById('new-address-card');
+                const noConversionAlert = document.getElementById('no-conversion-alert');
+
+                if (fullAddress) {
+                    // Show old address
+                    document.getElementById('old-address-display').textContent = fullAddress;
+                    oldCard.style.display = 'block';
+
+                    if (newAddress) {
+                        // Show converted address
+                        document.getElementById('new-address-display').textContent = newAddress;
+                        newCard.style.display = 'block';
+                        noConversionAlert.style.display = 'none';
+                    } else {
+                        // No conversion available
+                        newCard.style.display = 'none';
+                        noConversionAlert.style.display = 'block';
+                    }
+                } else {
+                    // Hide all
+                    oldCard.style.display = 'none';
+                    newCard.style.display = 'none';
+                    noConversionAlert.style.display = 'none';
+                }
+            },
+            onLoad: function(instance) {
+                console.log('Address selector loaded successfully');
+            }
+        });
+    });
+</script>
 {% endblock %}
