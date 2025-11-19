@@ -88,6 +88,7 @@ class Category(models.Model):
                 'banking',
                 'card',
                 'services',
+                'joint_savings',
                 'print_info'
             ]
         # Handle legacy field groups - convert old groups to new merged group
@@ -380,6 +381,34 @@ class Customer(models.Model):
         ('Thấp', 'Thấp'),
     ]
     ket_qua_phan_loai_kh = models.CharField(max_length=20, blank=True, choices=KET_QUA_PHAN_LOAI_CHOICES, verbose_name="Kết quả phân loại KH")
+
+    # Tiền gửi tiết kiệm chung - Thông tin người gửi tiền thứ hai
+    ho_ten_nguoi_gui_2 = models.CharField(max_length=200, blank=True, verbose_name="Họ tên người gửi tiền thứ hai")
+    so_cmnd_nguoi_gui_2 = models.CharField(max_length=20, blank=True, verbose_name="CMND/CCCD/Hộ chiếu người gửi 2")
+    ngay_cap_cmnd_nguoi_gui_2 = models.DateField(null=True, blank=True, verbose_name="Ngày cấp CMND người gửi 2")
+    noi_cap_cmnd_nguoi_gui_2 = models.CharField(max_length=200, blank=True, verbose_name="Nơi cấp CMND người gửi 2")
+    dia_chi_nguoi_gui_2 = models.TextField(blank=True, verbose_name="Địa chỉ người gửi 2")
+    sdt_nguoi_gui_2 = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại người gửi 2")
+
+    # Tiền gửi tiết kiệm chung - Giao dịch thẻ tiết kiệm
+    # Rút lãi
+    gd_rut_lai_tat_ca = models.BooleanField(default=False, verbose_name="Rút lãi - Tất cả người gửi tiền")
+    gd_rut_lai_mot_so = models.BooleanField(default=False, verbose_name="Rút lãi - Một/một số người gửi tiền")
+    # Tất toán Thẻ tiết kiệm
+    gd_tat_toan_tat_ca = models.BooleanField(default=False, verbose_name="Tất toán - Tất cả người gửi tiền")
+    gd_tat_toan_mot_so = models.BooleanField(default=False, verbose_name="Tất toán - Một/một số người gửi tiền")
+    # Báo mất thẻ TK
+    gd_bao_mat_tat_ca = models.BooleanField(default=False, verbose_name="Báo mất - Tất cả người gửi tiền")
+    gd_bao_mat_mot_so = models.BooleanField(default=False, verbose_name="Báo mất - Một/một số người gửi tiền")
+    # Báo hỏng thẻ TK
+    gd_bao_hong_tat_ca = models.BooleanField(default=False, verbose_name="Báo hỏng - Tất cả người gửi tiền")
+    gd_bao_hong_mot_so = models.BooleanField(default=False, verbose_name="Báo hỏng - Một/một số người gửi tiền")
+    # Đề nghị phong tỏa TKTG tiết kiệm
+    gd_phong_toa_tat_ca = models.BooleanField(default=False, verbose_name="Phong tỏa - Tất cả người gửi tiền")
+    gd_phong_toa_mot_so = models.BooleanField(default=False, verbose_name="Phong tỏa - Một/một số người gửi tiền")
+    # Đề nghị xác nhận số dư
+    gd_xac_nhan_so_du_tat_ca = models.BooleanField(default=False, verbose_name="Xác nhận số dư - Tất cả người gửi tiền")
+    gd_xac_nhan_so_du_mot_so = models.BooleanField(default=False, verbose_name="Xác nhận số dư - Một/một số người gửi tiền")
 
     # Thông tin in mẫu biểu
     ngay_in = models.DateField(null=True, blank=True, verbose_name="Ngày in mẫu biểu")

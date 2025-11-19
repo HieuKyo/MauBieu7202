@@ -471,6 +471,117 @@
                             </div>
                         </div>
 
+                        <!-- Joint Savings Group -->
+                        <div class="field-group" data-group="joint_savings">
+                            <h6 class="field-group-title"><i class="bi bi-piggy-bank"></i> Tiền gửi tiết kiệm chung</h6>
+                            <div class="row g-2">
+                                <!-- Thông tin người gửi tiền thứ hai -->
+                                <div class="col-12">
+                                    <small class="text-muted fw-bold"><i class="bi bi-person-plus"></i> Thông tin người gửi tiền thứ hai</small>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Họ và tên</label>
+                                    <input type="text" class="form-control" name="ho_ten_nguoi_gui_2" placeholder="Họ tên người gửi tiền thứ hai">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">CMND/CCCD/Hộ chiếu</label>
+                                    <input type="text" class="form-control" name="so_cmnd_nguoi_gui_2" placeholder="Số CMND/CCCD/Hộ chiếu">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Ngày cấp</label>
+                                    <input type="date" class="form-control" name="ngay_cap_cmnd_nguoi_gui_2">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Nơi cấp</label>
+                                    <input type="text" class="form-control" name="noi_cap_cmnd_nguoi_gui_2" placeholder="Nơi cấp">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Địa chỉ</label>
+                                    <textarea class="form-control" name="dia_chi_nguoi_gui_2" rows="2" placeholder="Địa chỉ"></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Số điện thoại</label>
+                                    <input type="text" class="form-control" name="sdt_nguoi_gui_2" placeholder="Số điện thoại">
+                                </div>
+
+                                <!-- Giao dịch thẻ tiết kiệm -->
+                                <div class="col-12 mt-3">
+                                    <hr class="my-2">
+                                    <small class="text-muted fw-bold"><i class="bi bi-list-check"></i> Giao dịch thẻ tiết kiệm</small>
+                                    <p class="text-muted small mb-2">Chọn phương thức giao dịch cho từng loại (có thể chọn 1 hoặc cả 2)</p>
+                                </div>
+                                <div class="col-12">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 40%;">Giao dịch</th>
+                                                    <th class="text-center" style="width: 30%;">Tất cả người gửi tiền (1)</th>
+                                                    <th class="text-center" style="width: 30%;">Một/một số người gửi tiền (2)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Rút lãi</td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_rut_lai_tat_ca" id="gd-rut-lai-1">
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_rut_lai_mot_so" id="gd-rut-lai-2">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Tất toán Thẻ tiết kiệm</td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_tat_toan_tat_ca" id="gd-tat-toan-1">
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_tat_toan_mot_so" id="gd-tat-toan-2">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Báo mất thẻ TK</td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_bao_mat_tat_ca" id="gd-bao-mat-1">
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_bao_mat_mot_so" id="gd-bao-mat-2">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Báo hỏng thẻ TK</td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_bao_hong_tat_ca" id="gd-bao-hong-1">
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_bao_hong_mot_so" id="gd-bao-hong-2">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Đề nghị phong tỏa TKTG tiết kiệm</td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_phong_toa_tat_ca" id="gd-phong-toa-1">
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_phong_toa_mot_so" id="gd-phong-toa-2">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Đề nghị xác nhận số dư</td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_xac_nhan_so_du_tat_ca" id="gd-xac-nhan-1">
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <input class="form-check-input" type="checkbox" name="gd_xac_nhan_so_du_mot_so" id="gd-xac-nhan-2">
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Customer Classification Group -->
                         <div class="field-group" data-group="customer_classification">
                             <h6 class="field-group-title"><i class="bi bi-person-badge"></i> Phân loại khách hàng</h6>
@@ -889,11 +1000,26 @@ function fillFormWithData(data) {
         if (radio) radio.checked = true;
     }
 
+    // Joint Savings - Second depositor info
+    if (data.ho_ten_nguoi_gui_2) document.querySelector('[name="ho_ten_nguoi_gui_2"]').value = data.ho_ten_nguoi_gui_2;
+    if (data.so_cmnd_nguoi_gui_2) document.querySelector('[name="so_cmnd_nguoi_gui_2"]').value = data.so_cmnd_nguoi_gui_2;
+    if (data.ngay_cap_cmnd_nguoi_gui_2) document.querySelector('[name="ngay_cap_cmnd_nguoi_gui_2"]').value = convertDateFormat(data.ngay_cap_cmnd_nguoi_gui_2);
+    if (data.noi_cap_cmnd_nguoi_gui_2) document.querySelector('[name="noi_cap_cmnd_nguoi_gui_2"]').value = data.noi_cap_cmnd_nguoi_gui_2;
+    if (data.dia_chi_nguoi_gui_2) document.querySelector('[name="dia_chi_nguoi_gui_2"]').value = data.dia_chi_nguoi_gui_2;
+    if (data.sdt_nguoi_gui_2) document.querySelector('[name="sdt_nguoi_gui_2"]').value = data.sdt_nguoi_gui_2;
+
     // Checkboxes - need to handle boolean values
     const checkboxFields = [
         'phat_hanh_lan_dau', 'phat_hanh_lai',
         'dv_sms_banking', 'dv_bankplus', 'dv_e_mobile', 'dv_abic',
-        'the_lap_nghiep', 'the_lien_ket', 'the_dong_thuong_hieu'
+        'the_lap_nghiep', 'the_lien_ket', 'the_dong_thuong_hieu',
+        // Joint savings transaction checkboxes
+        'gd_rut_lai_tat_ca', 'gd_rut_lai_mot_so',
+        'gd_tat_toan_tat_ca', 'gd_tat_toan_mot_so',
+        'gd_bao_mat_tat_ca', 'gd_bao_mat_mot_so',
+        'gd_bao_hong_tat_ca', 'gd_bao_hong_mot_so',
+        'gd_phong_toa_tat_ca', 'gd_phong_toa_mot_so',
+        'gd_xac_nhan_so_du_tat_ca', 'gd_xac_nhan_so_du_mot_so'
     ];
     checkboxFields.forEach(field => {
         const checkbox = document.querySelector(`[name="${field}"]`);
