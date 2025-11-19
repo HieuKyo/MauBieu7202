@@ -146,6 +146,36 @@
 {% if has_permission %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Restore accordion state after page reload
+    const savedCourseId = sessionStorage.getItem('openCourseId');
+    if (savedCourseId) {
+        // Close all accordions first
+        document.querySelectorAll('.accordion-collapse').forEach(collapse => {
+            collapse.classList.remove('show');
+        });
+        document.querySelectorAll('.accordion-button').forEach(button => {
+            button.classList.add('collapsed');
+            button.setAttribute('aria-expanded', 'false');
+        });
+
+        // Open the saved accordion
+        const targetCollapse = document.getElementById('collapse' + savedCourseId);
+        const targetButton = document.querySelector(`[data-bs-target="#collapse${savedCourseId}"]`);
+        if (targetCollapse && targetButton) {
+            targetCollapse.classList.add('show');
+            targetButton.classList.remove('collapsed');
+            targetButton.setAttribute('aria-expanded', 'true');
+
+            // Scroll to the accordion after a short delay
+            setTimeout(() => {
+                targetButton.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        // Clear the saved state
+        sessionStorage.removeItem('openCourseId');
+    }
+
     // Handle completion checkbox toggle
     const checkboxes = document.querySelectorAll('.completion-checkbox');
 
@@ -153,6 +183,14 @@ document.addEventListener('DOMContentLoaded', function() {
         checkbox.addEventListener('change', function() {
             const enrollmentId = this.dataset.enrollmentId;
             const isChecked = this.checked;
+
+            // Find the course ID of this enrollment
+            const accordionItem = this.closest('.accordion-item');
+            const collapseElement = accordionItem.querySelector('.accordion-collapse');
+            const courseId = collapseElement.id.replace('collapse', '');
+
+            // Save the current open accordion before making the request
+            sessionStorage.setItem('openCourseId', courseId);
 
             // Send AJAX request to toggle completion
             fetch(`/elearning/enrollment/${enrollmentId}/toggle/`, {
@@ -181,11 +219,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
 
                     // Update badge count
-                    updateCourseStats();
+                    updateCourseStats(courseId);
                 } else {
                     alert('Lỗi: ' + data.error);
                     // Revert checkbox
                     this.checked = !isChecked;
+                    sessionStorage.removeItem('openCourseId');
                 }
             })
             .catch(error => {
@@ -193,14 +232,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Có lỗi xảy ra khi cập nhật trạng thái');
                 // Revert checkbox
                 this.checked = !isChecked;
+                sessionStorage.removeItem('openCourseId');
             });
         });
     });
 
-    function updateCourseStats() {
-        // This is a simple way to update the stats - reload the page
-        // In production, you might want to update just the badge numbers via AJAX
-        setTimeout(() => location.reload(), 500);
+    function updateCourseStats(courseId) {
+        // Reload the page - the accordion state will be restored from sessionStorage
+        setTimeout(() => location.reload(), 300);
     }
 
     // Helper function to get CSRF token
