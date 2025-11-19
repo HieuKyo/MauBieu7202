@@ -235,8 +235,12 @@ class BankStatementParser:
         pattern1 = re.search(r'MB\((\d+)\)\((.*?)\)', rem)
         if pattern1:
             bank_name = "Agribank"
-            # Số tài khoản người nhận lấy từ cột toacctno
-            if toacctno:
+            # Số tài khoản phụ thuộc vào loại giao dịch:
+            # - Nhận tiền (amount > 0): Lấy từ cột tomgntno (tài khoản người gửi)
+            # - Chuyển tiền (amount < 0): Lấy từ cột toacctno (tài khoản người nhận)
+            if acctccyamt > 0 and tomgntno:
+                account_number = str(tomgntno)
+            elif acctccyamt < 0 and toacctno:
                 account_number = str(toacctno)
             # Để trống tên người nhận khi không chắc chắn
             beneficiary_name = ""
