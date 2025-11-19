@@ -311,10 +311,11 @@ class BankStatementParser:
 
         # Pattern 3: Ngân hàng khác với format chuẩn
         # Format 1: BANK_CODE;số_tài_khoản;nội_dung (VD: STB;070055505932;ck, Vietinbank;102006240267;...)
-        # Format 2: mã-BANK_CODE;số_tài_khoản;nội_dung (VD: 337133-BIDV;78810000156950;nam)
+        # Format 2: mã-BANK_CODE;số_tài_khoản;nội_dung (VD: 337133-BIDV;78810000156950;nam, 907666-MB;871888999;...)
         # LƯU Ý: Pattern này có thể nhầm MCC là bank code, nên MCC pattern phải check trước!
         # Cho phép cả chữ hoa và thường: [A-Za-z]
-        pattern2_general = re.search(r'(?:(\d+)-)?([A-Za-z]{2,15});(\d{10,20});(.*)', rem, re.IGNORECASE)
+        # Số tài khoản từ 6-20 số để bắt được các TK ngắn của MB, KLB
+        pattern2_general = re.search(r'(?:(\d+)-)?([A-Za-z]{2,15});(\d{6,20});(.*)', rem, re.IGNORECASE)
         if pattern2_general:
             transaction_code = pattern2_general.group(1)  # Có thể None
             bank_code = pattern2_general.group(2)
@@ -482,10 +483,10 @@ class BankStatementParser:
             else:
                 return "Chuyển khoản liên ngân hàng"
 
-        # Chuyển khoản ngân hàng khác (STB, BIDV, TCB, VCB, Vietinbank, etc.)
+        # Chuyển khoản ngân hàng khác (STB, BIDV, TCB, VCB, Vietinbank, MB, KLB, etc.)
         # Pattern: [mã]-[BANK_CODE];số_tk;nội_dung hoặc [BANK_CODE];số_tk;nội_dung
-        # Cho phép cả chữ hoa và thường
-        if re.search(r'(?:\d+-)?[A-Za-z]{2,15};\d{10,20};', rem, re.IGNORECASE):
+        # Cho phép cả chữ hoa và thường, số TK từ 6-20 số
+        if re.search(r'(?:\d+-)?[A-Za-z]{2,15};\d{6,20};', rem, re.IGNORECASE):
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
