@@ -186,6 +186,26 @@ class CustomerForm(forms.ModelForm):
             # Phân loại khách hàng
             'ket_qua_phan_loai_kh': forms.Select(attrs={'class': 'form-select'}),
             'ghi_chu': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ghi chú thêm'}),
+            # Tiền gửi tiết kiệm chung - Thông tin người gửi tiền thứ hai
+            'ho_ten_nguoi_gui_2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên người gửi tiền thứ hai'}),
+            'so_cmnd_nguoi_gui_2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số CMND/CCCD/Hộ chiếu'}),
+            'ngay_cap_cmnd_nguoi_gui_2': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'noi_cap_cmnd_nguoi_gui_2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi cấp'}),
+            'dia_chi_nguoi_gui_2': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Địa chỉ'}),
+            'sdt_nguoi_gui_2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số điện thoại'}),
+            # Tiền gửi tiết kiệm chung - Giao dịch
+            'gd_rut_lai_tat_ca': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_rut_lai_mot_so': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_tat_toan_tat_ca': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_tat_toan_mot_so': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_bao_mat_tat_ca': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_bao_mat_mot_so': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_bao_hong_tat_ca': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_bao_hong_mot_so': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_phong_toa_tat_ca': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_phong_toa_mot_so': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_xac_nhan_so_du_tat_ca': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'gd_xac_nhan_so_du_mot_so': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 
@@ -223,6 +243,7 @@ class CategoryAdminForm(forms.ModelForm):
         ('banking', 'Thông tin tài khoản (Số TK, Loại TK, Loại tiền tệ)'),
         ('card', 'Thông tin thẻ (Số thẻ, Loại thẻ, Hạng thẻ, Phát hành)'),
         ('services', 'Đăng ký dịch vụ (SMS Banking, Agribank Plus, Liên kết ví)'),
+        ('joint_savings', 'Tiền gửi tiết kiệm chung (Người gửi thứ 2, Giao dịch thẻ TK)'),
         ('customer_classification', 'Phân loại khách hàng (Kết quả phân loại KH)'),
         ('print_info', 'Thông tin in mẫu biểu (Ngày in)'),
     ]
