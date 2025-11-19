@@ -32,3 +32,11 @@ mammoth==1.8.0
 
 # HTTP library for testing
 requests==2.32.3
+
+# Web scraping (for boundary changes scraper)
+beautifulsoup4==4.12.3
+
+# Optional: for bypassing Cloudflare protection
+# cloudscraper
+# selenium
+# webdriver-manager

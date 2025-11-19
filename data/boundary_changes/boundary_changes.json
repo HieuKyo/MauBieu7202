@@ -1,0 +1,114 @@
+{
+  "metadata": {
+    "source": "https://sapnhap.bando.com.vn",
+    "description": "Dữ liệu địa bàn hành chính sau sáp nhập 1/7/2025",
+    "created_at": "2025-11-19T16:19:02.376965",
+    "note": "Dữ liệu mẫu - Cần cập nhật từ nguồn chính thức"
+  },
+  "statistics": {
+    "total_provinces_with_changes": 34,
+    "total_new_wards": 3321,
+    "effective_date": "2025-07-01"
+  },
+  "provinces_with_changes": [
+    {
+      "code": "01",
+      "name": "Hà Nội",
+      "new_wards_count": 126
+    },
+    {
+      "code": "79",
+      "name": "TP. Hồ Chí Minh",
+      "new_wards_count": 0
+    },
+    {
+      "code": "48",
+      "name": "Đà Nẵng",
+      "new_wards_count": 45
+    },
+    {
+      "code": "92",
+      "name": "Cần Thơ",
+      "new_wards_count": 38
+    },
+    {
+      "code": "31",
+      "name": "Hải Phòng",
+      "new_wards_count": 52
+    },
+    {
+      "code": "38",
+      "name": "Thanh Hóa",
+      "new_wards_count": 156
+    },
+    {
+      "code": "40",
+      "name": "Nghệ An",
+      "new_wards_count": 143
+    },
+    {
+      "code": "36",
+      "name": "Nam Định",
+      "new_wards_count": 89
+    },
+    {
+      "code": "34",
+      "name": "Thái Bình",
+      "new_wards_count": 94
+    },
+    {
+      "code": "30",
+      "name": "Hải Dương",
+      "new_wards_count": 87
+    }
+  ],
+  "sample_changes": [
+    {
+      "province": "Hà Nội",
+      "type": "merge",
+      "old_units": [
+        "Phường Phú La",
+        "Phường Yên Nghĩa"
+      ],
+      "new_unit": "Phường Phú Yên",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hà Nội",
+      "type": "merge",
+      "old_units": [
+        "Xã Đại Mỗ",
+        "Xã Trung Văn"
+      ],
+      "new_unit": "Phường Đại Trung",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Thanh Hóa",
+      "type": "merge",
+      "old_units": [
+        "Xã Đông Hòa",
+        "Xã Đông Yên"
+      ],
+      "new_unit": "Xã Đông Hòa Yên",
+      "effective_date": "2025-07-01"
+    }
+  ],
+  "data_sources": [
+    {
+      "name": "sapnhap.bando.com.vn",
+      "url": "https://sapnhap.bando.com.vn",
+      "description": "Bản đồ tra cứu địa giới hành chính sau sáp nhập"
+    },
+    {
+      "name": "diachi.vnpost.vn",
+      "url": "https://diachi.vnpost.vn",
+      "description": "Công cụ chuyển đổi địa chỉ cũ - mới của Bưu điện Việt Nam"
+    },
+    {
+      "name": "vnsdi.mae.gov.vn",
+      "url": "https://vnsdi.mae.gov.vn",
+      "description": "Hạ tầng dữ liệu không gian địa lý Việt Nam"
+    }
+  ]
+}
