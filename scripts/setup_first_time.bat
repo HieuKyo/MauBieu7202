@@ -66,8 +66,28 @@ if exist "venv\Scripts\activate.bat" (
 echo.
 
 REM Install dependencies
-echo [3/6] Installing dependencies from requirements.txt...
+echo [3/6] Installing dependencies...
 echo.
+
+REM Check if packages folder exists for offline installation
+if exist "packages" (
+    echo Found local packages folder for offline installation
+    echo.
+    set /p OFFLINE="Install from local packages (offline mode)? [Y/n]: "
+    if /i "%OFFLINE%"=="n" goto :online_install
+
+    echo Installing from local packages folder...
+    pip install --no-index --find-links=packages -r requirements.txt
+    if errorlevel 1 (
+        echo.
+        echo WARNING: Offline installation failed, trying online...
+        goto :online_install
+    )
+    goto :install_done
+)
+
+:online_install
+echo Installing from internet (requirements.txt)...
 pip install -r requirements.txt
 if errorlevel 1 (
     echo.
@@ -76,6 +96,8 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+
+:install_done
 echo.
 echo Dependencies installed successfully
 echo.
