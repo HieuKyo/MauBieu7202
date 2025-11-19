@@ -286,14 +286,24 @@ def generate_document_view(request, template_id):
 
 # Authentication views
 def login_view(request):
-    """Trang đăng nhập"""
+    """Trang đăng nhập - hỗ trợ username không phân biệt hoa/thường"""
     if request.user.is_authenticated:
         return redirect('dashboard')
 
     if request.method == 'POST':
-        username = request.POST.get('username')
+        username_input = request.POST.get('username', '').strip()
         password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
+
+        # Tìm user với username không phân biệt hoa/thường
+        # Ví dụ: kientranthihong = KIENTRANTHIHONG = KienTranThiHong
+        try:
+            user_obj = User.objects.get(username__iexact=username_input)
+            actual_username = user_obj.username
+        except User.DoesNotExist:
+            actual_username = username_input
+
+        # Authenticate với username thực tế trong database
+        user = authenticate(request, username=actual_username, password=password)
 
         if user is not None:
             login(request, user)
