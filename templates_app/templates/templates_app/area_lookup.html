@@ -1,0 +1,259 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Tra cứu địa bàn hành chính - Agribank{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="bi bi-geo-alt"></i> Tra cứu thông tin địa bàn hành chính
+                </h2>
+                <a href="{% url 'test_address_selector' %}" class="btn btn-success">
+                    <i class="bi bi-ui-checks"></i> Bộ chọn địa chỉ
+                </a>
+            </div>
+
+            <!-- Form tra cứu -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Tìm kiếm địa bàn hành chính</h5>
+                    <p class="text-muted">Nhập tên ấp/khóm, xã/phường, huyện/thị xã để tra cứu thông tin chi tiết</p>
+
+                    <form method="POST" action="{% url 'area_lookup' %}">
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Loại tra cứu</label>
+                                <select class="form-select" name="search_type">
+                                    <option value="all" {% if search_type == 'all' %}selected{% endif %}>Tất cả</option>
+                                    <option value="khom" {% if search_type == 'khom' %}selected{% endif %}>Ấp/Khóm</option>
+                                    <option value="xa" {% if search_type == 'xa' %}selected{% endif %}>Xã/Phường</option>
+                                    <option value="huyen" {% if search_type == 'huyen' %}selected{% endif %}>Huyện/Thị xã</option>
+                                    <option value="conversion" {% if search_type == 'conversion' %}selected{% endif %}>Địa chỉ chuyển đổi</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Từ khóa tìm kiếm</label>
+                                <input type="text"
+                                       class="form-control"
+                                       name="keyword"
+                                       placeholder="VD: Phường 1, Láng Tròn, Giá Rai..."
+                                       value="{{ keyword|default:'' }}">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-search"></i> Tra cứu
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Kết quả tra cứu -->
+            {% if results %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-check-circle"></i>
+                        Kết quả tra cứu ({{ results|length }} kết quả)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if search_type == 'conversion' %}
+                    <!-- Kết quả chuyển đổi địa chỉ -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Địa chỉ cũ (Bạc Liêu)</th>
+                                    <th><i class="bi bi-arrow-right"></i></th>
+                                    <th>Địa chỉ mới (Cà Mau)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in results %}
+                                <tr>
+                                    <td class="text-center">{{ forloop.counter }}</td>
+                                    <td><code>{{ item.old_address }}</code></td>
+                                    <td class="text-center"><i class="bi bi-arrow-right text-primary"></i></td>
+                                    <td><code class="text-success">{{ item.new_address }}</code></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <!-- Kết quả địa bàn hành chính -->
+                    <div class="row">
+                        {% for item in results %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-light">
+                                    <strong>
+                                        {% if item.type == 'khom' %}
+                                        <i class="bi bi-house-door text-info"></i> Ấp/Khóm
+                                        {% elif item.type == 'xa' %}
+                                        <i class="bi bi-building text-warning"></i> Xã/Phường
+                                        {% elif item.type == 'huyen' %}
+                                        <i class="bi bi-buildings text-danger"></i> Huyện/Thị xã
+                                        {% endif %}
+                                    </strong>
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary">{{ item.name }}</h6>
+                                    <ul class="list-unstyled mb-2">
+                                        {% if item.xa %}
+                                        <li><small><strong>Xã/Phường:</strong> {{ item.xa }}</small></li>
+                                        {% endif %}
+                                        {% if item.huyen %}
+                                        <li><small><strong>Huyện/Thị xã:</strong> {{ item.huyen }}</small></li>
+                                        {% endif %}
+                                        {% if item.tinh %}
+                                        <li><small><strong>Tỉnh:</strong> {{ item.tinh }}</small></li>
+                                        {% endif %}
+                                    </ul>
+
+                                    {% if item.full_address %}
+                                    <div class="alert alert-info py-1 px-2 mb-2">
+                                        <small><strong>Địa chỉ đầy đủ:</strong><br>{{ item.full_address }}</small>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if item.converted_address %}
+                                    <div class="alert alert-warning py-1 px-2 mb-2">
+                                        <small>
+                                            <i class="bi bi-arrow-repeat"></i> <strong>Địa chỉ chuyển đổi:</strong><br>
+                                            {{ item.converted_address }}
+                                        </small>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if item.sub_units %}
+                                    <div class="mt-2">
+                                        <small><strong>
+                                            {% if item.type == 'xa' %}Ấp/Khóm:{% else %}Đơn vị trực thuộc:{% endif %}
+                                        </strong></small>
+                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                            {% for unit in item.sub_units %}
+                                            <span class="badge bg-secondary">{{ unit }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% elif keyword %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> Không tìm thấy kết quả cho từ khóa "<strong>{{ keyword }}</strong>"
+            </div>
+            {% endif %}
+
+            <!-- Thống kê dữ liệu -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Thống kê địa bàn hành chính</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td><i class="bi bi-map text-primary"></i> Tỉnh/Thành phố</td>
+                                            <td class="text-end"><strong>{{ stats.tinh_count }}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="bi bi-buildings text-danger"></i> Huyện/Thị xã/Thành phố</td>
+                                            <td class="text-end"><strong>{{ stats.huyen_count }}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="bi bi-building text-warning"></i> Xã/Phường/Thị trấn</td>
+                                            <td class="text-end"><strong>{{ stats.xa_count }}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="bi bi-house-door text-info"></i> Ấp/Khóm</td>
+                                            <td class="text-end"><strong>{{ stats.khom_count }}</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0"><i class="bi bi-arrow-repeat"></i> Thông tin chuyển đổi địa chỉ</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">Dữ liệu chuyển đổi địa chỉ từ Bạc Liêu sang Cà Mau (theo lịch sử hành chính)</p>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td><i class="bi bi-journal-text text-success"></i> Tổng số địa chỉ chuyển đổi</td>
+                                            <td class="text-end"><strong>{{ stats.conversion_count }}</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách huyện/thị xã -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-list-nested"></i> Danh sách đơn vị hành chính cấp huyện</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for huyen in huyen_list %}
+                        <div class="col-md-4 col-sm-6 mb-2">
+                            <a href="?keyword={{ huyen }}&search_type=huyen" class="text-decoration-none">
+                                <div class="d-flex align-items-center p-2 border rounded hover-bg-light">
+                                    <i class="bi bi-geo-alt-fill text-primary me-2"></i>
+                                    <span>{{ huyen }}</span>
+                                </div>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ghi chú -->
+            <div class="alert alert-info mt-4">
+                <h6><i class="bi bi-info-circle"></i> Ghi chú:</h6>
+                <ul class="mb-0">
+                    <li><strong>Cấu trúc địa chỉ:</strong> Tỉnh → Huyện/Thị xã → Xã/Phường → Ấp/Khóm</li>
+                    <li><strong>Dữ liệu:</strong> Bao gồm tất cả đơn vị hành chính thuộc Tỉnh Bạc Liêu</li>
+                    <li><strong>Chuyển đổi địa chỉ:</strong> Dữ liệu chuyển đổi từ địa chỉ cũ (thuộc Bạc Liêu) sang địa chỉ mới (thuộc Cà Mau) theo lịch sử thay đổi địa giới hành chính</li>
+                    <li><strong>Tìm kiếm:</strong> Có thể tìm theo tên đầy đủ hoặc một phần của tên đơn vị hành chính</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-bg-light:hover {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}
