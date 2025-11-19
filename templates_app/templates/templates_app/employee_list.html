@@ -16,6 +16,87 @@
         </div>
     </div>
 
+    <!-- Certificate Warning Alerts -->
+    {% if expiring_count > 0 or expired_count > 0 %}
+    <div class="row mb-3">
+        {% if expired_count > 0 %}
+        <div class="col-md-6">
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
+                <div>
+                    <strong>{{ expired_count }} nhân viên</strong> có chứng thư số đã hết hạn!
+                    <a href="?cert_status=expired" class="alert-link ms-2">Xem danh sách</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if expiring_count > 0 %}
+        <div class="col-md-6">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-clock-fill me-2 fs-4"></i>
+                <div>
+                    <strong>{{ expiring_count }} nhân viên</strong> có chứng thư số sắp hết hạn (trong 20 ngày)
+                    <a href="?cert_status=expiring" class="alert-link ms-2">Xem danh sách</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Filter Card -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label">Chi nhánh</label>
+                    <select name="branch" class="form-select form-select-sm">
+                        <option value="">Tất cả</option>
+                        {% for code, name in branches %}
+                        <option value="{{ code }}" {% if filter_branch == code %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Phòng ban</label>
+                    <select name="department" class="form-select form-select-sm">
+                        <option value="">Tất cả</option>
+                        {% for code, name in departments %}
+                        <option value="{{ code }}" {% if filter_department == code %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Chức vụ</label>
+                    <select name="position" class="form-select form-select-sm">
+                        <option value="">Tất cả</option>
+                        {% for code, name in positions %}
+                        <option value="{{ code }}" {% if filter_position == code %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Trạng thái chứng thư số</label>
+                    <select name="cert_status" class="form-select form-select-sm">
+                        <option value="">Tất cả</option>
+                        <option value="expiring" {% if filter_cert_status == 'expiring' %}selected{% endif %}>Sắp hết hạn (20 ngày)</option>
+                        <option value="expired" {% if filter_cert_status == 'expired' %}selected{% endif %}>Đã hết hạn</option>
+                        <option value="valid" {% if filter_cert_status == 'valid' %}selected{% endif %}>Còn hiệu lực</option>
+                        <option value="no_cert" {% if filter_cert_status == 'no_cert' %}selected{% endif %}>Chưa có CTS</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-funnel"></i> Lọc
+                    </button>
+                    <a href="{% url 'employee_list' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-x-circle"></i> Xóa bộ lọc
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
@@ -25,39 +106,52 @@
                             <th>Mã NV</th>
                             <th>Họ và tên</th>
                             <th>Username</th>
-                            <th>Ngày sinh</th>
-                            <th>Giới tính</th>
-                            <th>Điện thoại</th>
-                            <th>Số CCCD</th>
                             <th>Phòng ban</th>
                             <th>Chức vụ</th>
+                            <th>Mã CTS</th>
+                            <th>CTS đến ngày</th>
+                            <th>Trạng thái</th>
                             <th>Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for emp in employees %}
-                        <tr id="employee-row-{{ emp.id }}">
+                        <tr id="employee-row-{{ emp.id }}" class="{% if emp.is_certificate_expired %}table-danger{% elif emp.is_certificate_expiring_soon %}table-warning{% endif %}">
                             <td>{{ emp.employee_code }}</td>
                             <td><strong>{{ emp.full_name }}</strong></td>
                             <td>{{ emp.user.username }}</td>
-                            <td>{{ emp.dob|date:"d/m/Y"|default:"-" }}</td>
-                            <td>{{ emp.gender }}</td>
-                            <td>{{ emp.phone|default:"-" }}</td>
-                            <td>{{ emp.id_card_number|default:"-" }}</td>
                             <td>{{ emp.get_department_display|default:"-" }}</td>
                             <td>{{ emp.get_position_display|default:"-" }}</td>
+                            <td>{{ emp.certificate_code|default:"-" }}</td>
+                            <td>{{ emp.certificate_end_date|date:"d/m/Y"|default:"-" }}</td>
                             <td>
-                                <button class="btn btn-sm btn-warning" onclick="editEmployee({{ emp.id }})">
+                                {% if emp.is_certificate_expired %}
+                                    <span class="badge bg-danger">Hết hạn</span>
+                                {% elif emp.is_certificate_expiring_soon %}
+                                    <span class="badge bg-warning text-dark">
+                                        Còn {{ emp.days_until_certificate_expiry }} ngày
+                                    </span>
+                                {% elif emp.certificate_code %}
+                                    <span class="badge bg-success">Hiệu lực</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Chưa có</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewEmployee({{ emp.id }})" title="Xem chi tiết">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-warning" onclick="editEmployee({{ emp.id }})" title="Chỉnh sửa">
                                     <i class="bi bi-pencil"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteEmployee({{ emp.id }}, '{{ emp.full_name }}')">
+                                <button class="btn btn-sm btn-danger" onclick="deleteEmployee({{ emp.id }}, '{{ emp.full_name }}')" title="Xóa">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="10" class="text-center text-muted">Chưa có nhân viên nào</td>
+                            <td colspan="9" class="text-center text-muted">Không có nhân viên nào phù hợp với bộ lọc</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -214,6 +308,28 @@
                             </div>
                         </div>
                     </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-shield-check"></i> Chứng thư số</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Mã chứng thư số</label>
+                                <input type="text" class="form-control" name="certificate_code" placeholder="CTS-XXX-2024">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Từ ngày</label>
+                                <input type="date" class="form-control" name="certificate_start_date">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Đến ngày</label>
+                                <input type="date" class="form-control" name="certificate_end_date">
+                            </div>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -226,7 +342,7 @@
     </div>
 </div>
 
-<!-- Edit Employee Modal (similar structure, will be populated via JS) -->
+<!-- Edit Employee Modal -->
 <div class="modal fade" id="editEmployeeModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -372,6 +488,28 @@
                             </div>
                         </div>
                     </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-shield-check"></i> Chứng thư số</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Mã chứng thư số</label>
+                                <input type="text" class="form-control" id="edit_certificate_code" name="certificate_code">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Từ ngày</label>
+                                <input type="date" class="form-control" id="edit_certificate_start_date" name="certificate_start_date">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Đến ngày</label>
+                                <input type="date" class="form-control" id="edit_certificate_end_date" name="certificate_end_date">
+                            </div>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -384,7 +522,59 @@
     </div>
 </div>
 
+<!-- View Employee Modal -->
+<div class="modal fade" id="viewEmployeeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-badge"></i> Thông tin nhân viên</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="viewEmployeeContent">
+                <!-- Content will be loaded via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Data for JavaScript -->
 <script>
+const employeeData = {
+    {% for emp in employees %}
+    {{ emp.id }}: {
+        id: {{ emp.id }},
+        employee_code: "{{ emp.employee_code }}",
+        full_name: "{{ emp.full_name }}",
+        username: "{{ emp.user.username }}",
+        dob: "{{ emp.dob|date:'Y-m-d'|default:'' }}",
+        gender: "{{ emp.gender }}",
+        phone: "{{ emp.phone }}",
+        address: "{{ emp.address|escapejs }}",
+        id_card_number: "{{ emp.id_card_number }}",
+        id_card_date: "{{ emp.id_card_date|date:'Y-m-d'|default:'' }}",
+        id_card_place: "{{ emp.id_card_place }}",
+        branch: "{{ emp.branch }}",
+        department: "{{ emp.department }}",
+        position: "{{ emp.position }}",
+        job_function: "{{ emp.job_function }}",
+        certificate_code: "{{ emp.certificate_code }}",
+        certificate_start_date: "{{ emp.certificate_start_date|date:'Y-m-d'|default:'' }}",
+        certificate_end_date: "{{ emp.certificate_end_date|date:'Y-m-d'|default:'' }}",
+        certificate_end_display: "{{ emp.certificate_end_date|date:'d/m/Y'|default:'Chưa có' }}",
+        is_expired: {{ emp.is_certificate_expired|yesno:"true,false" }},
+        is_expiring: {{ emp.is_certificate_expiring_soon|yesno:"true,false" }},
+        days_left: {{ emp.days_until_certificate_expiry|default:"null" }},
+        department_display: "{{ emp.get_department_display|default:'-' }}",
+        position_display: "{{ emp.get_position_display|default:'-' }}",
+        branch_display: "{{ emp.get_branch_display|default:'-' }}",
+        job_function_display: "{{ emp.get_job_function_display|default:'-' }}"
+    },
+    {% endfor %}
+};
+
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -425,26 +615,92 @@ function submitAddEmployee() {
     });
 }
 
+function viewEmployee(employeeId) {
+    const emp = employeeData[employeeId];
+    if (!emp) return;
+
+    let statusBadge = '';
+    if (emp.is_expired) {
+        statusBadge = '<span class="badge bg-danger">Đã hết hạn</span>';
+    } else if (emp.is_expiring) {
+        statusBadge = `<span class="badge bg-warning text-dark">Còn ${emp.days_left} ngày</span>`;
+    } else if (emp.certificate_code) {
+        statusBadge = '<span class="badge bg-success">Hiệu lực</span>';
+    } else {
+        statusBadge = '<span class="badge bg-secondary">Chưa có CTS</span>';
+    }
+
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-primary"><i class="bi bi-person"></i> Thông tin cá nhân</h6>
+                <table class="table table-sm">
+                    <tr><th width="40%">Mã nhân viên:</th><td>${emp.employee_code}</td></tr>
+                    <tr><th>Họ và tên:</th><td><strong>${emp.full_name}</strong></td></tr>
+                    <tr><th>Username:</th><td>${emp.username}</td></tr>
+                    <tr><th>Ngày sinh:</th><td>${emp.dob || '-'}</td></tr>
+                    <tr><th>Giới tính:</th><td>${emp.gender}</td></tr>
+                    <tr><th>Điện thoại:</th><td>${emp.phone || '-'}</td></tr>
+                    <tr><th>Địa chỉ:</th><td>${emp.address || '-'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-primary"><i class="bi bi-card-text"></i> Thông tin CCCD</h6>
+                <table class="table table-sm">
+                    <tr><th width="40%">Số CCCD:</th><td>${emp.id_card_number || '-'}</td></tr>
+                    <tr><th>Ngày cấp:</th><td>${emp.id_card_date || '-'}</td></tr>
+                    <tr><th>Nơi cấp:</th><td>${emp.id_card_place || '-'}</td></tr>
+                </table>
+
+                <h6 class="text-primary mt-3"><i class="bi bi-building"></i> Thông tin công việc</h6>
+                <table class="table table-sm">
+                    <tr><th width="40%">Chi nhánh:</th><td>${emp.branch_display}</td></tr>
+                    <tr><th>Phòng ban:</th><td>${emp.department_display}</td></tr>
+                    <tr><th>Chức vụ:</th><td>${emp.position_display}</td></tr>
+                    <tr><th>Nghiệp vụ:</th><td>${emp.job_function_display}</td></tr>
+                </table>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="text-primary"><i class="bi bi-shield-check"></i> Chứng thư số ${statusBadge}</h6>
+                <table class="table table-sm">
+                    <tr><th width="20%">Mã CTS:</th><td>${emp.certificate_code || '-'}</td></tr>
+                    <tr><th>Hiệu lực từ:</th><td>${emp.certificate_start_date || '-'}</td></tr>
+                    <tr><th>Đến ngày:</th><td>${emp.certificate_end_display}</td></tr>
+                </table>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('viewEmployeeContent').innerHTML = content;
+    new bootstrap.Modal(document.getElementById('viewEmployeeModal')).show();
+}
+
 function editEmployee(employeeId) {
-    // Fetch employee data and populate edit form
-    fetch(`/admin/templates_app/userprofile/${employeeId}/change/`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => {
-        // For now, we'll use a simpler approach - get data from table row
-        const row = document.getElementById(`employee-row-${employeeId}`);
-        const cells = row.cells;
+    const emp = employeeData[employeeId];
+    if (!emp) return;
 
-        document.getElementById('edit_employee_id').value = employeeId;
-        document.getElementById('edit_employee_code').value = cells[0].textContent;
-        document.getElementById('edit_full_name').value = cells[1].textContent.trim();
-        document.getElementById('edit_username').value = cells[2].textContent;
+    document.getElementById('edit_employee_id').value = emp.id;
+    document.getElementById('edit_employee_code').value = emp.employee_code;
+    document.getElementById('edit_full_name').value = emp.full_name;
+    document.getElementById('edit_username').value = emp.username;
+    document.getElementById('edit_dob').value = emp.dob;
+    document.getElementById('edit_gender').value = emp.gender;
+    document.getElementById('edit_phone').value = emp.phone;
+    document.getElementById('edit_address').value = emp.address;
+    document.getElementById('edit_id_card_number').value = emp.id_card_number;
+    document.getElementById('edit_id_card_date').value = emp.id_card_date;
+    document.getElementById('edit_id_card_place').value = emp.id_card_place;
+    document.getElementById('edit_branch').value = emp.branch;
+    document.getElementById('edit_department').value = emp.department;
+    document.getElementById('edit_position').value = emp.position;
+    document.getElementById('edit_job_function').value = emp.job_function;
+    document.getElementById('edit_certificate_code').value = emp.certificate_code;
+    document.getElementById('edit_certificate_start_date').value = emp.certificate_start_date;
+    document.getElementById('edit_certificate_end_date').value = emp.certificate_end_date;
 
-        // Show modal
-        new bootstrap.Modal(document.getElementById('editEmployeeModal')).show();
-    });
+    new bootstrap.Modal(document.getElementById('editEmployeeModal')).show();
 }
 
 function submitEditEmployee() {

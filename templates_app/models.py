@@ -1258,6 +1258,23 @@ class UserProfile(models.Model):
         verbose_name="Chức vụ"
     )
 
+    # Digital Certificate (Chứng thư số) fields
+    certificate_code = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Mã chứng thư số"
+    )
+    certificate_start_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Chứng thư số từ ngày"
+    )
+    certificate_end_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Chứng thư số đến ngày"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
 
@@ -1268,6 +1285,30 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.employee_code} - {self.full_name}"
+
+    def is_certificate_expiring_soon(self):
+        """Check if certificate expires within 20 days"""
+        if not self.certificate_end_date:
+            return False
+        from datetime import date, timedelta
+        today = date.today()
+        warning_date = today + timedelta(days=20)
+        return self.certificate_end_date <= warning_date and self.certificate_end_date >= today
+
+    def is_certificate_expired(self):
+        """Check if certificate has already expired"""
+        if not self.certificate_end_date:
+            return False
+        from datetime import date
+        return self.certificate_end_date < date.today()
+
+    def days_until_certificate_expiry(self):
+        """Return number of days until certificate expiry"""
+        if not self.certificate_end_date:
+            return None
+        from datetime import date
+        delta = self.certificate_end_date - date.today()
+        return delta.days
 
 
 # ====================
