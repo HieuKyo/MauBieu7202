@@ -187,7 +187,7 @@ class BankStatementParser:
         bin_code_str = str(bin_code).strip()
         return self.BIN_CODE_MAPPING.get(bin_code_str, 'MCC')
 
-    def parse_beneficiary_info(self, rem, tomgntno, acctccyamt):
+    def parse_beneficiary_info(self, rem, tomgntno, acctccyamt, toacctno=''):
         """
         Parse thông tin người thụ hưởng từ nội dung giao dịch
 
@@ -195,6 +195,7 @@ class BankStatementParser:
             rem: Nội dung giao dịch
             tomgntno: Tài khoản đối ứng
             acctccyamt: Số tiền (âm/dương)
+            toacctno: Tài khoản người nhận (cho giao dịch nội bộ Agribank)
 
         Returns:
             dict: {'bank_name': str, 'account_number': str, 'beneficiary_name': str}
@@ -234,24 +235,11 @@ class BankStatementParser:
         pattern1 = re.search(r'MB\((\d+)\)\((.*?)\)', rem)
         if pattern1:
             bank_name = "Agribank"
-            content = pattern1.group(2)
-            # Nếu tiền vào (acctccyamt > 0), lấy số TK từ tomgntno
-            if acctccyamt > 0 and tomgntno:
-                account_number = str(tomgntno)
-            # Parse tên người từ nội dung
-            # Thường là các từ in hoa ở đầu
-            words = content.split()
-            name_parts = []
-            for word in words:
-                # Nếu là từ in hoa hoặc chữ cái đầu viết hoa
-                if word and (word.isupper() or word[0].isupper()):
-                    # Kiểm tra không phải là từ khóa
-                    if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'mb', 'fcc', 'ct']:
-                        name_parts.append(word)
-                    else:
-                        break
-            if name_parts:
-                beneficiary_name = ' '.join(name_parts[:4])  # Lấy tối đa 4 từ
+            # Số tài khoản người nhận lấy từ cột toacctno
+            if toacctno:
+                account_number = str(toacctno)
+            # Để trống tên người nhận khi không chắc chắn
+            beneficiary_name = ""
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Pattern 2: MCC transactions with BIN code (PHẢI CHECK TRƯỚC Pattern 2 general!)
@@ -660,10 +648,12 @@ class BankStatementParser:
 
             # Parse thông tin người thụ hưởng
             tomgntno = row.get('tomgntno', '')
+            toacctno = row.get('toacctno', '')
             beneficiary_info = self.parse_beneficiary_info(
                 description,
                 tomgntno,
-                acctccyamt
+                acctccyamt,
+                toacctno
             )
 
             # Kiểm tra các loại giao dịch đặc biệt dựa vào husrid
