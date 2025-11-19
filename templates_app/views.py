@@ -2404,6 +2404,144 @@ def test_address_selector(request):
     return render(request, 'templates_app/test_address_selector.html')
 
 
+def area_lookup(request):
+    """
+    Trang tra cứu thông tin địa bàn hành chính.
+    Sử dụng dữ liệu từ dia_danh.json và chuyen_doi.json
+    """
+    import json
+    import os
+    from django.conf import settings
+
+    # Load dữ liệu từ file JSON
+    data_dir = os.path.join(settings.BASE_DIR, 'templates_app', 'static', 'data')
+
+    # Load dia_danh.json
+    dia_danh_path = os.path.join(data_dir, 'dia_danh.json')
+    with open(dia_danh_path, 'r', encoding='utf-8') as f:
+        dia_danh_data = json.load(f)
+
+    # Load chuyen_doi.json
+    chuyen_doi_path = os.path.join(data_dir, 'chuyen_doi.json')
+    with open(chuyen_doi_path, 'r', encoding='utf-8') as f:
+        chuyen_doi_data = json.load(f)
+
+    results = []
+    keyword = ''
+    search_type = 'all'
+
+    # Tính thống kê
+    stats = {
+        'tinh_count': 0,
+        'huyen_count': 0,
+        'xa_count': 0,
+        'khom_count': 0,
+        'conversion_count': len(chuyen_doi_data)
+    }
+
+    # Danh sách huyện/thị xã
+    huyen_list = []
+
+    # Duyệt qua dữ liệu để tính thống kê
+    for tinh_name, tinh_data in dia_danh_data.items():
+        stats['tinh_count'] += 1
+        for huyen_name, huyen_data in tinh_data.items():
+            stats['huyen_count'] += 1
+            huyen_list.append(huyen_name)
+            for xa_name, xa_data in huyen_data.items():
+                stats['xa_count'] += 1
+                if isinstance(xa_data, list):
+                    stats['khom_count'] += len(xa_data)
+
+    # Xử lý tìm kiếm
+    if request.method == 'POST' or request.GET.get('keyword'):
+        keyword = request.POST.get('keyword', '') or request.GET.get('keyword', '')
+        search_type = request.POST.get('search_type', 'all') or request.GET.get('search_type', 'all')
+        keyword = keyword.strip()
+
+        if keyword:
+            keyword_lower = keyword.lower()
+
+            if search_type == 'conversion':
+                # Tìm trong dữ liệu chuyển đổi
+                for old_addr, new_addr in chuyen_doi_data.items():
+                    if keyword_lower in old_addr.lower() or keyword_lower in new_addr.lower():
+                        results.append({
+                            'old_address': old_addr,
+                            'new_address': new_addr
+                        })
+            else:
+                # Tìm trong dữ liệu địa bàn hành chính
+                for tinh_name, tinh_data in dia_danh_data.items():
+                    for huyen_name, huyen_data in tinh_data.items():
+                        # Tìm huyện/thị xã
+                        if search_type in ['all', 'huyen'] and keyword_lower in huyen_name.lower():
+                            # Lấy danh sách xã/phường trong huyện
+                            sub_units = list(huyen_data.keys())
+                            results.append({
+                                'type': 'huyen',
+                                'name': huyen_name,
+                                'tinh': tinh_name,
+                                'xa': None,
+                                'huyen': None,
+                                'full_address': f"{huyen_name}, {tinh_name}",
+                                'sub_units': sub_units,
+                                'converted_address': None
+                            })
+
+                        for xa_name, xa_data in huyen_data.items():
+                            # Tìm xã/phường
+                            if search_type in ['all', 'xa'] and keyword_lower in xa_name.lower():
+                                sub_units = [str(k) for k in xa_data] if isinstance(xa_data, list) else []
+                                results.append({
+                                    'type': 'xa',
+                                    'name': xa_name,
+                                    'tinh': tinh_name,
+                                    'xa': None,
+                                    'huyen': huyen_name,
+                                    'full_address': f"{xa_name}, {huyen_name}, {tinh_name}",
+                                    'sub_units': sub_units,
+                                    'converted_address': None
+                                })
+
+                            # Tìm ấp/khóm
+                            if search_type in ['all', 'khom'] and isinstance(xa_data, list):
+                                for khom in xa_data:
+                                    khom_str = str(khom)
+                                    if keyword_lower in khom_str.lower():
+                                        # Xác định tiền tố ấp/khóm
+                                        if 'Phường' in xa_name or 'Thị trấn' in xa_name:
+                                            prefix = 'Khóm'
+                                        else:
+                                            prefix = 'Ấp'
+
+                                        full_address = f"{prefix} {khom_str}, {xa_name}, {huyen_name}, {tinh_name}"
+
+                                        # Kiểm tra xem có địa chỉ chuyển đổi không
+                                        converted = chuyen_doi_data.get(full_address)
+
+                                        results.append({
+                                            'type': 'khom',
+                                            'name': f"{prefix} {khom_str}",
+                                            'tinh': tinh_name,
+                                            'xa': xa_name,
+                                            'huyen': huyen_name,
+                                            'full_address': full_address,
+                                            'sub_units': None,
+                                            'converted_address': converted
+                                        })
+
+    context = {
+        'results': results,
+        'keyword': keyword,
+        'search_type': search_type,
+        'stats': stats,
+        'huyen_list': sorted(huyen_list),
+    }
+
+    return render(request, 'templates_app/area_lookup.html', context)
+
+
 # ====================
 # Bank Statement Analyzer Views
 # ====================
