@@ -72,6 +72,37 @@ body {
     letter-spacing: 1px;
 }
 
+/* Navbar links trong header - màu trắng */
+.navbar-dark .nav-link,
+.agribank-header .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.navbar-dark .nav-link:hover,
+.navbar-dark .nav-link:focus,
+.agribank-header .nav-link:hover,
+.agribank-header .nav-link:focus {
+    color: #000000 !important;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 4px;
+}
+
+.navbar-dark .nav-link i,
+.agribank-header .nav-link i {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.navbar-dark .nav-link:hover i,
+.agribank-header .nav-link:hover i {
+    color: #000000 !important;
+}
+
+/* Dropdown toggle trong navbar */
+.navbar-dark .dropdown-toggle::after,
+.agribank-header .dropdown-toggle::after {
+    color: rgba(255, 255, 255, 0.9);
+}
+
 /* --- 2. Sidebar / Menu bên trái --- */
 .sidebar {
     background-color: #ffffff;
