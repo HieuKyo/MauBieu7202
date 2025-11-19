@@ -3381,24 +3381,47 @@ def check_elearning_manage_permission(user):
 def course_dashboard(request):
     """
     Dashboard hiển thị danh sách khóa học (accordion style)
-    Tất cả user đã đăng nhập đều có thể xem
+    - Quản lý (Superuser, Phòng Tổng hợp): Xem tất cả khóa học và tất cả học viên
+    - Nhân viên: Chỉ xem khóa học được giao và chỉ thấy bản thân
     """
     from .models import Course, CourseEnrollment, UserProfile
 
-    courses = Course.objects.all().prefetch_related('enrollments__user__profile')
-
-    # Enrich courses with completion stats
-    for course in courses:
-        stats = course.get_completion_stats()
-        course.completed_count = stats['completed']
-        course.total_count = stats['total']
-
-        # Get enrollments with profile info
-        enrollments = course.enrollments.select_related('user__profile').order_by('user__username')
-        course.enrollment_list = enrollments
-
     # Check if user has permission to manage courses (create/edit/delete)
     has_permission = check_elearning_manage_permission(request.user)
+
+    if has_permission:
+        # Managers see all courses with all enrollments
+        courses = Course.objects.all().prefetch_related('enrollments__user__profile')
+
+        # Enrich courses with completion stats
+        for course in courses:
+            stats = course.get_completion_stats()
+            course.completed_count = stats['completed']
+            course.total_count = stats['total']
+
+            # Get all enrollments with profile info
+            enrollments = course.enrollments.select_related('user__profile').order_by('user__username')
+            course.enrollment_list = enrollments
+    else:
+        # Regular employees only see courses they are enrolled in
+        # Get courses where current user is enrolled
+        enrolled_course_ids = CourseEnrollment.objects.filter(
+            user=request.user
+        ).values_list('course_id', flat=True)
+
+        courses = Course.objects.filter(
+            id__in=enrolled_course_ids
+        ).prefetch_related('enrollments__user__profile')
+
+        # Enrich courses - only show current user's enrollment
+        for course in courses:
+            # For regular users, show their own enrollment only
+            user_enrollment = course.enrollments.filter(user=request.user).select_related('user__profile')
+            course.enrollment_list = user_enrollment
+
+            # Stats for this user only
+            course.completed_count = user_enrollment.filter(is_completed=True).count()
+            course.total_count = user_enrollment.count()
 
     context = {
         'courses': courses,
