@@ -35,7 +35,7 @@
     {% else %}
     <div class="accordion" id="coursesAccordion">
         {% for course in courses %}
-        <div class="accordion-item">
+        <div class="accordion-item" data-course-id="{{ course.id }}">
             <h2 class="accordion-header" id="heading{{ course.id }}">
                 <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button"
                         data-bs-toggle="collapse" data-bs-target="#collapse{{ course.id }}"
@@ -45,8 +45,8 @@
                         <span>
                             <i class="bi bi-book"></i> <strong>{{ course.name }}</strong>
                         </span>
-                        <span class="badge {% if course.completed_count == course.total_count and course.total_count > 0 %}bg-success{% else %}bg-warning text-dark{% endif %} ms-2">
-                            ({{ course.completed_count }}/{{ course.total_count }})
+                        <span class="badge {% if course.completed_count == course.total_count and course.total_count > 0 %}bg-success{% else %}bg-warning text-dark{% endif %} ms-2 course-badge" id="badge{{ course.id }}">
+                            (<span class="completed-count">{{ course.completed_count }}</span>/<span class="total-count">{{ course.total_count }}</span>)
                         </span>
                     </div>
                 </button>
@@ -66,6 +66,13 @@
                             <a href="{% url 'course_add_students' course.id %}" class="btn btn-sm btn-primary">
                                 <i class="bi bi-person-plus"></i> Thêm học viên
                             </a>
+                            <a href="{% url 'course_edit' course.id %}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i> Sửa
+                            </a>
+                            <button type="button" class="btn btn-sm btn-danger btn-delete-course"
+                                    data-course-id="{{ course.id }}" data-course-name="{{ course.name }}">
+                                <i class="bi bi-trash"></i> Xóa
+                            </button>
                         </div>
                         {% endif %}
                     </div>
@@ -80,12 +87,15 @@
                                     <th>Mã NV</th>
                                     <th>Họ và tên</th>
                                     <th>Phòng ban</th>
-                                    <th style="width: 100px;">Trạng thái</th>
+                                    <th style="width: 120px;">Trạng thái</th>
+                                    {% if has_permission %}
+                                    <th style="width: 60px;"></th>
+                                    {% endif %}
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for enrollment in course.enrollment_list %}
-                                <tr class="{% if not enrollment.is_completed %}table-danger{% endif %}">
+                                <tr class="{% if not enrollment.is_completed %}table-danger{% endif %}" id="enrollment-row-{{ enrollment.id }}">
                                     <td>{{ forloop.counter }}</td>
                                     <td>
                                         {% if enrollment.user.profile %}
@@ -114,17 +124,29 @@
                                                    type="checkbox"
                                                    id="enrollment{{ enrollment.id }}"
                                                    data-enrollment-id="{{ enrollment.id }}"
+                                                   data-course-id="{{ course.id }}"
                                                    {% if enrollment.is_completed %}checked{% endif %}
                                                    {% if not has_permission %}disabled{% endif %}>
                                             <label class="form-check-label" for="enrollment{{ enrollment.id }}">
                                                 {% if enrollment.is_completed %}
                                                     <span class="text-success">Hoàn thành</span>
                                                 {% else %}
-                                                    <span class="text-danger">Chưa hoàn thành</span>
+                                                    <span class="text-danger">Chưa xong</span>
                                                 {% endif %}
                                             </label>
                                         </div>
                                     </td>
+                                    {% if has_permission %}
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-student"
+                                                data-course-id="{{ course.id }}"
+                                                data-user-id="{{ enrollment.user.id }}"
+                                                data-enrollment-id="{{ enrollment.id }}"
+                                                title="Xóa học viên">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </td>
+                                    {% endif %}
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -143,105 +165,28 @@
     {% endif %}
 </div>
 
-{% if has_permission %}
+<!-- Delete Course Confirmation Modal -->
+<div class="modal fade" id="deleteCourseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xóa khóa học</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa khóa học "<strong id="deleteCourseNameText"></strong>"?</p>
+                <p class="text-danger"><small>Lưu ý: Tất cả dữ liệu học viên trong khóa học này sẽ bị xóa.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteCourse">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Restore accordion state after page reload
-    const savedCourseId = sessionStorage.getItem('openCourseId');
-    if (savedCourseId) {
-        // Close all accordions first
-        document.querySelectorAll('.accordion-collapse').forEach(collapse => {
-            collapse.classList.remove('show');
-        });
-        document.querySelectorAll('.accordion-button').forEach(button => {
-            button.classList.add('collapsed');
-            button.setAttribute('aria-expanded', 'false');
-        });
-
-        // Open the saved accordion
-        const targetCollapse = document.getElementById('collapse' + savedCourseId);
-        const targetButton = document.querySelector(`[data-bs-target="#collapse${savedCourseId}"]`);
-        if (targetCollapse && targetButton) {
-            targetCollapse.classList.add('show');
-            targetButton.classList.remove('collapsed');
-            targetButton.setAttribute('aria-expanded', 'true');
-
-            // Scroll to the accordion after a short delay
-            setTimeout(() => {
-                targetButton.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-        }
-
-        // Clear the saved state
-        sessionStorage.removeItem('openCourseId');
-    }
-
-    // Handle completion checkbox toggle
-    const checkboxes = document.querySelectorAll('.completion-checkbox');
-
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const enrollmentId = this.dataset.enrollmentId;
-            const isChecked = this.checked;
-
-            // Find the course ID of this enrollment
-            const accordionItem = this.closest('.accordion-item');
-            const collapseElement = accordionItem.querySelector('.accordion-collapse');
-            const courseId = collapseElement.id.replace('collapse', '');
-
-            // Save the current open accordion before making the request
-            sessionStorage.setItem('openCourseId', courseId);
-
-            // Send AJAX request to toggle completion
-            fetch(`/elearning/enrollment/${enrollmentId}/toggle/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update UI
-                    const label = this.nextElementSibling;
-                    const span = label.querySelector('span');
-
-                    if (data.is_completed) {
-                        span.className = 'text-success';
-                        span.textContent = 'Hoàn thành';
-                        this.closest('tr').classList.remove('table-danger');
-                    } else {
-                        span.className = 'text-danger';
-                        span.textContent = 'Chưa hoàn thành';
-                        this.closest('tr').classList.add('table-danger');
-                    }
-
-                    // Update badge count
-                    updateCourseStats(courseId);
-                } else {
-                    alert('Lỗi: ' + data.error);
-                    // Revert checkbox
-                    this.checked = !isChecked;
-                    sessionStorage.removeItem('openCourseId');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Có lỗi xảy ra khi cập nhật trạng thái');
-                // Revert checkbox
-                this.checked = !isChecked;
-                sessionStorage.removeItem('openCourseId');
-            });
-        });
-    });
-
-    function updateCourseStats(courseId) {
-        // Reload the page - the accordion state will be restored from sessionStorage
-        setTimeout(() => location.reload(), 300);
-    }
-
     // Helper function to get CSRF token
     function getCookie(name) {
         let cookieValue = null;
@@ -257,7 +202,180 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return cookieValue;
     }
+
+    // Update badge appearance based on completion
+    function updateBadgeAppearance(courseId, completed, total) {
+        const badge = document.getElementById('badge' + courseId);
+        if (badge) {
+            badge.querySelector('.completed-count').textContent = completed;
+            badge.querySelector('.total-count').textContent = total;
+
+            if (completed === total && total > 0) {
+                badge.classList.remove('bg-warning', 'text-dark');
+                badge.classList.add('bg-success');
+            } else {
+                badge.classList.remove('bg-success');
+                badge.classList.add('bg-warning', 'text-dark');
+            }
+        }
+    }
+
+    {% if has_permission %}
+    // Handle completion checkbox toggle with AJAX
+    const checkboxes = document.querySelectorAll('.completion-checkbox');
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const enrollmentId = this.dataset.enrollmentId;
+            const courseId = this.dataset.courseId;
+            const isChecked = this.checked;
+            const checkboxElement = this;
+
+            // Disable checkbox during request
+            checkboxElement.disabled = true;
+
+            // Send AJAX request to toggle completion
+            fetch(`/elearning/enrollment/${enrollmentId}/toggle/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI without page reload
+                    const label = checkboxElement.nextElementSibling;
+                    const span = label.querySelector('span');
+                    const row = checkboxElement.closest('tr');
+
+                    if (data.is_completed) {
+                        span.className = 'text-success';
+                        span.textContent = 'Hoàn thành';
+                        row.classList.remove('table-danger');
+                    } else {
+                        span.className = 'text-danger';
+                        span.textContent = 'Chưa xong';
+                        row.classList.add('table-danger');
+                    }
+
+                    // Update badge count from server response
+                    if (data.course_stats) {
+                        updateBadgeAppearance(courseId, data.course_stats.completed, data.course_stats.total);
+                    }
+                } else {
+                    alert('Lỗi: ' + data.error);
+                    // Revert checkbox
+                    checkboxElement.checked = !isChecked;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi cập nhật trạng thái');
+                // Revert checkbox
+                checkboxElement.checked = !isChecked;
+            })
+            .finally(() => {
+                // Re-enable checkbox
+                checkboxElement.disabled = false;
+            });
+        });
+    });
+
+    // Handle delete course
+    let courseToDelete = null;
+    const deleteCourseModal = new bootstrap.Modal(document.getElementById('deleteCourseModal'));
+
+    document.querySelectorAll('.btn-delete-course').forEach(btn => {
+        btn.addEventListener('click', function() {
+            courseToDelete = this.dataset.courseId;
+            document.getElementById('deleteCourseNameText').textContent = this.dataset.courseName;
+            deleteCourseModal.show();
+        });
+    });
+
+    document.getElementById('confirmDeleteCourse').addEventListener('click', function() {
+        if (!courseToDelete) return;
+
+        fetch(`/elearning/courses/${courseToDelete}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove the accordion item from DOM
+                const accordionItem = document.querySelector(`.accordion-item[data-course-id="${courseToDelete}"]`);
+                if (accordionItem) {
+                    accordionItem.remove();
+                }
+                deleteCourseModal.hide();
+
+                // Show success message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.accordion'));
+            } else {
+                alert('Lỗi: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Có lỗi xảy ra khi xóa khóa học');
+        });
+    });
+
+    // Handle remove student
+    document.querySelectorAll('.btn-remove-student').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const courseId = this.dataset.courseId;
+            const userId = this.dataset.userId;
+            const enrollmentId = this.dataset.enrollmentId;
+
+            if (!confirm('Bạn có chắc chắn muốn xóa học viên này khỏi khóa học?')) {
+                return;
+            }
+
+            fetch(`/elearning/courses/${courseId}/remove-student/${userId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove row from table
+                    const row = document.getElementById(`enrollment-row-${enrollmentId}`);
+                    if (row) {
+                        row.remove();
+                    }
+
+                    // Update badge
+                    if (data.course_stats) {
+                        updateBadgeAppearance(courseId, data.course_stats.completed, data.course_stats.total);
+                    }
+                } else {
+                    alert('Lỗi: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi xóa học viên');
+            });
+        });
+    });
+    {% endif %}
 });
 </script>
-{% endif %}
 {% endblock %}

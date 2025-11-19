@@ -70,6 +70,9 @@ urlpatterns = [
     # E-Learning
     path('elearning/', views.course_dashboard, name='course_dashboard'),
     path('elearning/courses/create/', views.course_create, name='course_create'),
+    path('elearning/courses/<int:course_id>/edit/', views.course_edit, name='course_edit'),
+    path('elearning/courses/<int:course_id>/delete/', views.course_delete, name='course_delete'),
     path('elearning/courses/<int:course_id>/add-students/', views.course_add_students, name='course_add_students'),
+    path('elearning/courses/<int:course_id>/remove-student/<int:user_id>/', views.course_remove_student, name='course_remove_student'),
     path('elearning/enrollment/<int:enrollment_id>/toggle/', views.course_toggle_completion, name='course_toggle_completion'),
 ]
