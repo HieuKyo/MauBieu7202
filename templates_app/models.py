@@ -59,12 +59,12 @@ class Category(models.Model):
     order = models.IntegerField(default=0, verbose_name="Thứ tự hiển thị")
 
     # Cấu hình các nhóm field hiển thị trong form
-    # Possible values: personal_info, id_documents, contact, employment, banking, card, services, print_info
+    # Possible values: customer_basic_info, customer_classification, banking, card, services, print_info
     visible_field_groups = models.JSONField(
         default=list,
         blank=True,
         verbose_name="Nhóm trường hiển thị",
-        help_text="Danh sách các nhóm trường cần hiển thị trong form. VD: ['personal_info', 'banking', 'services']"
+        help_text="Danh sách các nhóm trường cần hiển thị trong form. VD: ['customer_basic_info', 'banking', 'card']"
     )
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
@@ -83,17 +83,27 @@ class Category(models.Model):
         if not self.visible_field_groups:
             # Mặc định: hiển thị tất cả field groups
             return [
-                'personal_info',
-                'id_documents',
-                'contact',
-                'employment',
-                'customer_classification',  # FIX: Thêm phân loại khách hàng
+                'customer_basic_info',  # Gộp: personal_info, id_documents, contact, employment
+                'customer_classification',
                 'banking',
                 'card',
                 'services',
                 'print_info'
             ]
-        return self.visible_field_groups
+        # Handle legacy field groups - convert old groups to new merged group
+        converted_groups = []
+        old_groups = ['personal_info', 'id_documents', 'contact', 'employment']
+        has_old_groups = any(g in self.visible_field_groups for g in old_groups)
+
+        for group in self.visible_field_groups:
+            if group in old_groups:
+                if 'customer_basic_info' not in converted_groups:
+                    converted_groups.append('customer_basic_info')
+            else:
+                if group not in converted_groups:
+                    converted_groups.append(group)
+
+        return converted_groups if has_old_groups else self.visible_field_groups
 
 
 class Variable(models.Model):

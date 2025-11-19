@@ -151,6 +151,10 @@ class CustomerForm(forms.ModelForm):
             'loai_tien_te': forms.Select(attrs={'class': 'form-select'}),
             'loai_the': forms.Select(attrs={'class': 'form-select'}),
             'hang_the': forms.Select(attrs={'class': 'form-select'}),
+            'so_the_atm': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập số thẻ ATM'}),
+            'thoi_han_the': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Thời hạn thẻ (MM/YY)'}),
+            'ngay_tra_the': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'loai_phi': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Loại phí'}),
             'phat_hanh_lan_dau': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'phat_hanh_lai': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'ngay_in': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
@@ -215,12 +219,9 @@ class CategoryAdminForm(forms.ModelForm):
 
     # Define all available field groups with descriptions
     FIELD_GROUP_CHOICES = [
-        ('personal_info', 'Thông tin cá nhân (Mã KH, Họ tên, Ngày sinh, Giới tính)'),
-        ('id_documents', 'Giấy tờ tùy thân (CMND/CCCD, Ngày cấp, Nơi cấp)'),
-        ('contact', 'Thông tin liên hệ (Địa chỉ, SĐT, Email)'),
-        ('employment', 'Thông tin nghề nghiệp (Nghề nghiệp, Nơi làm việc)'),
+        ('customer_basic_info', 'Thông tin cơ bản khách hàng (Mã KH, Họ tên, CMND/CCCD, Địa chỉ, SĐT, Nghề nghiệp)'),
         ('banking', 'Thông tin tài khoản (Số TK, Loại TK, Loại tiền tệ)'),
-        ('card', 'Thông tin thẻ (Loại thẻ, Hạng thẻ, Phát hành)'),
+        ('card', 'Thông tin thẻ (Số thẻ, Loại thẻ, Hạng thẻ, Phát hành)'),
         ('services', 'Đăng ký dịch vụ (SMS Banking, Agribank Plus, Liên kết ví)'),
         ('customer_classification', 'Phân loại khách hàng (Kết quả phân loại KH)'),
         ('print_info', 'Thông tin in mẫu biểu (Ngày in)'),
