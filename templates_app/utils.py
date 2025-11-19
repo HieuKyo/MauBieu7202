@@ -279,22 +279,6 @@ class JinjaWordTemplateProcessor:
                 sym_element.set(f'{{{NSMAP["w"]}}}char', char_code)
                 checkboxes_updated += 1
 
-        # Debug: print số checkboxes đã update
-        if checkboxes_updated > 0:
-            print(f"[DEBUG] Updated {checkboxes_updated} checkboxes")
-
-        # DEBUG: Print occupation tags
-        if occupation_tags_found:
-            print(f"[DEBUG] Occupation tags found in Word template: {occupation_tags_found}")
-            # Check if nghe_nghiep_giao_vien_bac_si exists
-            if 'nghe_nghiep_giao_vien_bac_si' in occupation_tags_found:
-                print(f"[DEBUG] ✓ nghe_nghiep_giao_vien_bac_si tag FOUND in template")
-            else:
-                print(f"[DEBUG] ✗ nghe_nghiep_giao_vien_bac_si tag NOT FOUND in template!")
-                print(f"[DEBUG] Total {len(all_tags_found)} tags found in template")
-                if 'giao_vien' in str(all_tags_found).lower():
-                    print(f"[DEBUG] Found similar tags: {[t for t in all_tags_found if 'giao' in t.lower() or 'vien' in t.lower()]}")
-
     def _render_content_control_textboxes(self, context):
         """
         Render Content Control textboxes (Plain Text, Rich Text, etc.) trong document
@@ -356,13 +340,6 @@ class JinjaWordTemplateProcessor:
                     text_elem.text = ''
 
                 textboxes_updated += 1
-            else:
-                # Nếu không có text element nào, log warning
-                print(f"[WARNING] Content Control '{tag_name}' không có text element")
-
-        # Debug: print số textboxes đã update
-        if textboxes_updated > 0:
-            print(f"[DEBUG] Updated {textboxes_updated} textboxes")
 
     def _render_card_name_tables(self, context):
         """
@@ -425,7 +402,6 @@ class JinjaWordTemplateProcessor:
                         cell.text = ''
 
                 tables_filled += 1
-                print(f"[DEBUG] Filled table {tables_filled} in {location} ({num_cols} columns) with '{card_name}' ({filled_count} chars)")
                 return True
             return False
 
@@ -448,14 +424,6 @@ class JinjaWordTemplateProcessor:
                 if current_card_table_index < len(card_names):
                     if fill_table_with_name(table, card_names[current_card_table_index], 'footer'):
                         current_card_table_index += 1
-
-        # Debug summary
-        print(f"[DEBUG] Tables found: {', '.join(tables_found)}")
-        print(f"[DEBUG] Total {tables_filled} card name table(s) filled")
-        if ten_the_1:
-            print(f"[DEBUG] - Table 1 filled with: '{ten_the_1}'")
-        if ten_the_2 and tables_filled >= 2:
-            print(f"[DEBUG] - Table 2 filled with: '{ten_the_2}'")
 
     def save(self, output_path):
         """
@@ -702,22 +670,6 @@ class WordTemplateProcessor:
                 sym_element.set(f'{{{NSMAP["w"]}}}char', char_code)
                 checkboxes_updated += 1
 
-        # Debug: print số checkboxes đã update
-        if checkboxes_updated > 0:
-            print(f"[DEBUG] Updated {checkboxes_updated} checkboxes")
-
-        # DEBUG: Print occupation tags
-        if occupation_tags_found:
-            print(f"[DEBUG] Occupation tags found in Word template: {occupation_tags_found}")
-            # Check if nghe_nghiep_giao_vien_bac_si exists
-            if 'nghe_nghiep_giao_vien_bac_si' in occupation_tags_found:
-                print(f"[DEBUG] ✓ nghe_nghiep_giao_vien_bac_si tag FOUND in template")
-            else:
-                print(f"[DEBUG] ✗ nghe_nghiep_giao_vien_bac_si tag NOT FOUND in template!")
-                print(f"[DEBUG] Total {len(all_tags_found)} tags found in template")
-                if 'giao_vien' in str(all_tags_found).lower():
-                    print(f"[DEBUG] Found similar tags: {[t for t in all_tags_found if 'giao' in t.lower() or 'vien' in t.lower()]}")
-
     def _render_content_control_textboxes(self, context):
         """
         Render Content Control textboxes (Plain Text, Rich Text, etc.) trong document
@@ -779,13 +731,6 @@ class WordTemplateProcessor:
                     text_elem.text = ''
 
                 textboxes_updated += 1
-            else:
-                # Nếu không có text element nào, log warning
-                print(f"[WARNING] Content Control '{tag_name}' không có text element")
-
-        # Debug: print số textboxes đã update
-        if textboxes_updated > 0:
-            print(f"[DEBUG] Updated {textboxes_updated} textboxes")
 
     def _render_card_name_tables(self, context):
         """
@@ -848,7 +793,6 @@ class WordTemplateProcessor:
                         cell.text = ''
 
                 tables_filled += 1
-                print(f"[DEBUG] Filled table {tables_filled} in {location} ({num_cols} columns) with '{card_name}' ({filled_count} chars)")
                 return True
             return False
 
@@ -871,14 +815,6 @@ class WordTemplateProcessor:
                 if current_card_table_index < len(card_names):
                     if fill_table_with_name(table, card_names[current_card_table_index], 'footer'):
                         current_card_table_index += 1
-
-        # Debug summary
-        print(f"[DEBUG] Tables found: {', '.join(tables_found)}")
-        print(f"[DEBUG] Total {tables_filled} card name table(s) filled")
-        if ten_the_1:
-            print(f"[DEBUG] - Table 1 filled with: '{ten_the_1}'")
-        if ten_the_2 and tables_filled >= 2:
-            print(f"[DEBUG] - Table 2 filled with: '{ten_the_2}'")
 
     def save(self, output_path):
         """
