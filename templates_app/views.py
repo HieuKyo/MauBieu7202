@@ -3569,6 +3569,139 @@ def course_add_students(request, course_id):
 
 
 @login_required
+def course_edit(request, course_id):
+    """
+    Chỉnh sửa khóa học
+    Chỉ Superuser và Phòng Tổng hợp có quyền
+    """
+    from .models import Course
+
+    if not check_elearning_manage_permission(request.user):
+        messages.error(request, 'Bạn không có quyền chỉnh sửa khóa học')
+        return redirect('course_dashboard')
+
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        try:
+            from datetime import datetime
+
+            name = request.POST.get('name', '').strip()
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            description = request.POST.get('description', '').strip()
+
+            # Validate
+            if not name or not start_date or not end_date:
+                messages.error(request, 'Vui lòng điền đầy đủ thông tin')
+                return redirect('course_edit', course_id=course_id)
+
+            # Parse dates
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+            if end_date_obj < start_date_obj:
+                messages.error(request, 'Ngày kết thúc phải sau ngày bắt đầu')
+                return redirect('course_edit', course_id=course_id)
+
+            # Update course
+            course.name = name
+            course.start_date = start_date_obj
+            course.end_date = end_date_obj
+            course.description = description
+            course.save()
+
+            messages.success(request, f'Đã cập nhật khóa học "{course.name}"')
+            return redirect('course_dashboard')
+
+        except Exception as e:
+            messages.error(request, f'Lỗi: {str(e)}')
+            return redirect('course_edit', course_id=course_id)
+
+    context = {
+        'course': course,
+        'is_edit': True,
+    }
+    return render(request, 'templates_app/course_create.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def course_delete(request, course_id):
+    """
+    Xóa khóa học
+    Chỉ Superuser và Phòng Tổng hợp có quyền
+    """
+    from .models import Course
+
+    if not check_elearning_manage_permission(request.user):
+        return JsonResponse({
+            'success': False,
+            'error': 'Bạn không có quyền xóa khóa học'
+        }, status=403)
+
+    try:
+        course = get_object_or_404(Course, id=course_id)
+        course_name = course.name
+        course.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Đã xóa khóa học "{course_name}"'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def course_remove_student(request, course_id, user_id):
+    """
+    Xóa học viên khỏi khóa học
+    Chỉ Superuser và Phòng Tổng hợp có quyền
+    """
+    from .models import CourseEnrollment
+
+    if not check_elearning_manage_permission(request.user):
+        return JsonResponse({
+            'success': False,
+            'error': 'Bạn không có quyền xóa học viên'
+        }, status=403)
+
+    try:
+        enrollment = get_object_or_404(
+            CourseEnrollment,
+            course_id=course_id,
+            user_id=user_id
+        )
+        enrollment.delete()
+
+        # Get updated stats
+        from .models import Course
+        course = get_object_or_404(Course, id=course_id)
+        stats = course.get_completion_stats()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Đã xóa học viên khỏi khóa học',
+            'course_stats': {
+                'completed': stats['completed'],
+                'total': stats['total']
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
 @require_http_methods(["POST"])
 def course_toggle_completion(request, enrollment_id):
     """
@@ -3597,10 +3730,18 @@ def course_toggle_completion(request, enrollment_id):
 
         enrollment.save()
 
+        # Get updated course stats
+        course = enrollment.course
+        stats = course.get_completion_stats()
+
         return JsonResponse({
             'success': True,
             'is_completed': enrollment.is_completed,
-            'completion_date': enrollment.completion_date.strftime('%d/%m/%Y %H:%M') if enrollment.completion_date else None
+            'completion_date': enrollment.completion_date.strftime('%d/%m/%Y %H:%M') if enrollment.completion_date else None,
+            'course_stats': {
+                'completed': stats['completed'],
+                'total': stats['total']
+            }
         })
 
     except Exception as e:

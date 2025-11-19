@@ -1,10 +1,16 @@
 {% extends 'templates_app/base.html' %}
 
-{% block title %}Tạo khóa học{% endblock %}
+{% block title %}{% if is_edit %}Chỉnh sửa khóa học{% else %}Tạo khóa học{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h2><i class="bi bi-plus-circle"></i> Tạo khóa học mới</h2>
+    <h2>
+        {% if is_edit %}
+        <i class="bi bi-pencil"></i> Chỉnh sửa khóa học
+        {% else %}
+        <i class="bi bi-plus-circle"></i> Tạo khóa học mới
+        {% endif %}
+    </h2>
 
     <div class="card">
         <div class="card-body">
@@ -12,27 +18,34 @@
                 {% csrf_token %}
                 <div class="mb-3">
                     <label for="name" class="form-label">Tên khóa học *</label>
-                    <input type="text" class="form-control" id="name" name="name" required>
+                    <input type="text" class="form-control" id="name" name="name"
+                           value="{% if is_edit %}{{ course.name }}{% endif %}" required>
                 </div>
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="start_date" class="form-label">Ngày bắt đầu *</label>
-                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        <input type="date" class="form-control" id="start_date" name="start_date"
+                               value="{% if is_edit %}{{ course.start_date|date:'Y-m-d' }}{% endif %}" required>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="end_date" class="form-label">Ngày kết thúc *</label>
-                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                        <input type="date" class="form-control" id="end_date" name="end_date"
+                               value="{% if is_edit %}{{ course.end_date|date:'Y-m-d' }}{% endif %}" required>
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label for="description" class="form-label">Ghi chú</label>
-                    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    <textarea class="form-control" id="description" name="description" rows="3">{% if is_edit %}{{ course.description }}{% endif %}</textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary">
+                    {% if is_edit %}
+                    <i class="bi bi-save"></i> Cập nhật
+                    {% else %}
                     <i class="bi bi-save"></i> Tạo khóa học
+                    {% endif %}
                 </button>
                 <a href="{% url 'course_dashboard' %}" class="btn btn-secondary">Hủy</a>
             </form>
