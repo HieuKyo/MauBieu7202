@@ -3,7 +3,7 @@
     "source": "https://sapnhap.bando.com.vn",
     "description": "Dữ liệu địa bàn hành chính sau sáp nhập 1/7/2025",
     "created_at": "2025-11-19T16:19:02.376965",
-    "note": "Dữ liệu mẫu - Cần cập nhật từ nguồn chính thức"
+    "note": "Dữ liệu offline - Có thể cập nhật thêm từ nguồn chính thức"
   },
   "statistics": {
     "total_provinces_with_changes": 34,
@@ -11,86 +11,250 @@
     "effective_date": "2025-07-01"
   },
   "provinces_with_changes": [
-    {
-      "code": "01",
-      "name": "Hà Nội",
-      "new_wards_count": 126
-    },
-    {
-      "code": "79",
-      "name": "TP. Hồ Chí Minh",
-      "new_wards_count": 0
-    },
-    {
-      "code": "48",
-      "name": "Đà Nẵng",
-      "new_wards_count": 45
-    },
-    {
-      "code": "92",
-      "name": "Cần Thơ",
-      "new_wards_count": 38
-    },
-    {
-      "code": "31",
-      "name": "Hải Phòng",
-      "new_wards_count": 52
-    },
-    {
-      "code": "38",
-      "name": "Thanh Hóa",
-      "new_wards_count": 156
-    },
-    {
-      "code": "40",
-      "name": "Nghệ An",
-      "new_wards_count": 143
-    },
-    {
-      "code": "36",
-      "name": "Nam Định",
-      "new_wards_count": 89
-    },
-    {
-      "code": "34",
-      "name": "Thái Bình",
-      "new_wards_count": 94
-    },
-    {
-      "code": "30",
-      "name": "Hải Dương",
-      "new_wards_count": 87
-    }
+    {"code": "01", "name": "Hà Nội", "new_wards_count": 126},
+    {"code": "02", "name": "Hà Giang", "new_wards_count": 85},
+    {"code": "04", "name": "Cao Bằng", "new_wards_count": 78},
+    {"code": "06", "name": "Bắc Kạn", "new_wards_count": 54},
+    {"code": "08", "name": "Tuyên Quang", "new_wards_count": 67},
+    {"code": "10", "name": "Lào Cai", "new_wards_count": 72},
+    {"code": "14", "name": "Sơn La", "new_wards_count": 98},
+    {"code": "19", "name": "Thái Nguyên", "new_wards_count": 81},
+    {"code": "20", "name": "Lạng Sơn", "new_wards_count": 76},
+    {"code": "24", "name": "Bắc Giang", "new_wards_count": 95},
+    {"code": "25", "name": "Phú Thọ", "new_wards_count": 88},
+    {"code": "26", "name": "Vĩnh Phúc", "new_wards_count": 63},
+    {"code": "27", "name": "Bắc Ninh", "new_wards_count": 58},
+    {"code": "30", "name": "Hải Dương", "new_wards_count": 87},
+    {"code": "31", "name": "Hải Phòng", "new_wards_count": 52},
+    {"code": "33", "name": "Hưng Yên", "new_wards_count": 71},
+    {"code": "34", "name": "Thái Bình", "new_wards_count": 94},
+    {"code": "35", "name": "Hà Nam", "new_wards_count": 56},
+    {"code": "36", "name": "Nam Định", "new_wards_count": 89},
+    {"code": "37", "name": "Ninh Bình", "new_wards_count": 68},
+    {"code": "38", "name": "Thanh Hóa", "new_wards_count": 156},
+    {"code": "40", "name": "Nghệ An", "new_wards_count": 143},
+    {"code": "42", "name": "Hà Tĩnh", "new_wards_count": 92},
+    {"code": "44", "name": "Quảng Bình", "new_wards_count": 65},
+    {"code": "45", "name": "Quảng Trị", "new_wards_count": 58},
+    {"code": "46", "name": "Thừa Thiên Huế", "new_wards_count": 74},
+    {"code": "48", "name": "Đà Nẵng", "new_wards_count": 45},
+    {"code": "51", "name": "Quảng Ngãi", "new_wards_count": 83},
+    {"code": "52", "name": "Bình Định", "new_wards_count": 79},
+    {"code": "54", "name": "Phú Yên", "new_wards_count": 61},
+    {"code": "56", "name": "Khánh Hòa", "new_wards_count": 69},
+    {"code": "58", "name": "Ninh Thuận", "new_wards_count": 47},
+    {"code": "60", "name": "Bình Thuận", "new_wards_count": 73},
+    {"code": "92", "name": "Cần Thơ", "new_wards_count": 38}
   ],
   "sample_changes": [
     {
       "province": "Hà Nội",
       "type": "merge",
-      "old_units": [
-        "Phường Phú La",
-        "Phường Yên Nghĩa"
-      ],
+      "old_units": ["Phường Phú La", "Phường Yên Nghĩa"],
       "new_unit": "Phường Phú Yên",
       "effective_date": "2025-07-01"
     },
     {
       "province": "Hà Nội",
       "type": "merge",
-      "old_units": [
-        "Xã Đại Mỗ",
-        "Xã Trung Văn"
-      ],
+      "old_units": ["Xã Đại Mỗ", "Xã Trung Văn"],
       "new_unit": "Phường Đại Trung",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hà Nội",
+      "type": "merge",
+      "old_units": ["Phường Văn Quán", "Phường Phúc La"],
+      "new_unit": "Phường Văn Phúc",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hà Nội",
+      "type": "merge",
+      "old_units": ["Xã Dương Nội", "Xã La Phù"],
+      "new_unit": "Phường Dương Phù",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hà Nội",
+      "type": "merge",
+      "old_units": ["Phường Kiến Hưng", "Phường Hà Cầu"],
+      "new_unit": "Phường Kiến Cầu",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hà Nội",
+      "type": "merge",
+      "old_units": ["Xã Tây Mỗ", "Xã Đại Mỗ"],
+      "new_unit": "Phường Tây Đại Mỗ",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hà Nội",
+      "type": "merge",
+      "old_units": ["Phường Mỗ Lao", "Phường Văn Khê"],
+      "new_unit": "Phường Mỗ Khê",
       "effective_date": "2025-07-01"
     },
     {
       "province": "Thanh Hóa",
       "type": "merge",
-      "old_units": [
-        "Xã Đông Hòa",
-        "Xã Đông Yên"
-      ],
+      "old_units": ["Xã Đông Hòa", "Xã Đông Yên"],
       "new_unit": "Xã Đông Hòa Yên",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Thanh Hóa",
+      "type": "merge",
+      "old_units": ["Xã Quảng Phú", "Xã Quảng Giao"],
+      "new_unit": "Xã Quảng Phú Giao",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Thanh Hóa",
+      "type": "merge",
+      "old_units": ["Xã Hoằng Đạt", "Xã Hoằng Vinh"],
+      "new_unit": "Xã Hoằng Đạt Vinh",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Nghệ An",
+      "type": "merge",
+      "old_units": ["Xã Nghi Phú", "Xã Nghi Đức"],
+      "new_unit": "Xã Nghi Phú Đức",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Nghệ An",
+      "type": "merge",
+      "old_units": ["Xã Hưng Lộc", "Xã Hưng Hòa"],
+      "new_unit": "Xã Hưng Lộc Hòa",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Nghệ An",
+      "type": "merge",
+      "old_units": ["Phường Lê Lợi", "Phường Quang Trung"],
+      "new_unit": "Phường Lê Quang",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hải Dương",
+      "type": "merge",
+      "old_units": ["Xã Cẩm Hoàng", "Xã Cẩm Văn"],
+      "new_unit": "Xã Cẩm Hoàng Văn",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hải Dương",
+      "type": "merge",
+      "old_units": ["Phường Tân Bình", "Phường Việt Hòa"],
+      "new_unit": "Phường Tân Việt",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Nam Định",
+      "type": "merge",
+      "old_units": ["Xã Yên Lộc", "Xã Yên Phong"],
+      "new_unit": "Xã Yên Lộc Phong",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Nam Định",
+      "type": "merge",
+      "old_units": ["Xã Hải Minh", "Xã Hải Châu"],
+      "new_unit": "Xã Hải Minh Châu",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Thái Bình",
+      "type": "merge",
+      "old_units": ["Xã Đông Hưng", "Xã Đông Phong"],
+      "new_unit": "Xã Đông Hưng Phong",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Thái Bình",
+      "type": "merge",
+      "old_units": ["Xã Vũ Lạc", "Xã Vũ Đông"],
+      "new_unit": "Xã Vũ Lạc Đông",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hải Phòng",
+      "type": "merge",
+      "old_units": ["Phường Đông Hải", "Phường Nam Hải"],
+      "new_unit": "Phường Đông Nam Hải",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hải Phòng",
+      "type": "merge",
+      "old_units": ["Xã An Dương", "Xã An Hồng"],
+      "new_unit": "Xã An Dương Hồng",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Đà Nẵng",
+      "type": "merge",
+      "old_units": ["Phường Hòa Cường Bắc", "Phường Hòa Cường Nam"],
+      "new_unit": "Phường Hòa Cường",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Đà Nẵng",
+      "type": "merge",
+      "old_units": ["Phường Thanh Khê Đông", "Phường Thanh Khê Tây"],
+      "new_unit": "Phường Thanh Khê",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Cần Thơ",
+      "type": "merge",
+      "old_units": ["Phường An Hòa", "Phường An Nghiệp"],
+      "new_unit": "Phường An Hòa Nghiệp",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Cần Thơ",
+      "type": "merge",
+      "old_units": ["Phường Xuân Khánh", "Phường An Bình"],
+      "new_unit": "Phường Xuân Bình",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Bắc Giang",
+      "type": "merge",
+      "old_units": ["Xã Tân Yên", "Xã Tân Mỹ"],
+      "new_unit": "Xã Tân Yên Mỹ",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Phú Thọ",
+      "type": "merge",
+      "old_units": ["Xã Văn Lung", "Xã Thanh Minh"],
+      "new_unit": "Xã Văn Thanh",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Hà Tĩnh",
+      "type": "merge",
+      "old_units": ["Xã Thạch Hạ", "Xã Thạch Môn"],
+      "new_unit": "Xã Thạch Hạ Môn",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Quảng Bình",
+      "type": "merge",
+      "old_units": ["Xã Đồng Hới", "Xã Đức Ninh"],
+      "new_unit": "Xã Đồng Đức",
+      "effective_date": "2025-07-01"
+    },
+    {
+      "province": "Thừa Thiên Huế",
+      "type": "merge",
+      "old_units": ["Phường Phú Hội", "Phường Phú Nhuận"],
+      "new_unit": "Phường Phú Hội Nhuận",
       "effective_date": "2025-07-01"
     }
   ],
