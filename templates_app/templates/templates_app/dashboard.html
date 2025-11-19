@@ -160,12 +160,13 @@
 
                 <!-- Two-Pane Layout -->
                 <div class="row g-4">
-                    <!-- Left Pane: Personal & ID Info -->
+                    <!-- Left Pane: Customer Basic Info (Merged) -->
                     <div class="col-lg-6">
-                        <!-- Personal Info Group -->
-                        <div class="field-group" data-group="personal_info">
-                            <h6 class="field-group-title"><i class="bi bi-person"></i> Thông tin cá nhân</h6>
+                        <!-- Customer Basic Info Group (Merged: personal_info, id_documents, contact, employment) -->
+                        <div class="field-group" data-group="customer_basic_info">
+                            <h6 class="field-group-title"><i class="bi bi-person-vcard"></i> Thông tin cơ bản khách hàng</h6>
                             <div class="row g-2">
+                                <!-- Personal Info -->
                                 <div class="col-12">
                                     <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" name="ho_ten" required>
@@ -186,13 +187,12 @@
                                         <option value="Nữ">Nữ</option>
                                     </select>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- ID Documents Group -->
-                        <div class="field-group" data-group="id_documents">
-                            <h6 class="field-group-title"><i class="bi bi-card-heading"></i> Giấy tờ tùy thân</h6>
-                            <div class="row g-2">
+                                <!-- ID Documents -->
+                                <div class="col-12 mt-3">
+                                    <hr class="my-2">
+                                    <small class="text-muted fw-bold"><i class="bi bi-card-heading"></i> Giấy tờ tùy thân</small>
+                                </div>
                                 <div class="col-12">
                                     <label class="form-label">Số CMND/CCCD <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" name="so_cmnd" required>
@@ -213,13 +213,55 @@
                                     <label class="form-label">Ngày hết hạn</label>
                                     <input type="date" class="form-control" name="ngay_het_han_cmnd">
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Employment Group -->
-                        <div class="field-group" data-group="employment">
-                            <h6 class="field-group-title"><i class="bi bi-briefcase"></i> Nghề nghiệp</h6>
-                            <div class="row g-2">
+                                <!-- Contact Info -->
+                                <div class="col-12 mt-3">
+                                    <hr class="my-2">
+                                    <small class="text-muted fw-bold"><i class="bi bi-telephone"></i> Thông tin liên hệ</small>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Địa chỉ thường trú</label>
+                                    <textarea class="form-control" name="dia_chi" rows="2" id="dia-chi-field"></textarea>
+                                    <small class="text-muted">Hoặc chọn từ danh sách bên dưới để tự động điền</small>
+                                </div>
+
+                                <!-- Address Selector Component -->
+                                <div class="col-12">
+                                    <hr class="my-3">
+                                    <h6 class="fw-bold mb-3" style="color: var(--agribank-green);">
+                                        <i class="bi bi-geo-alt-fill"></i> Chọn địa chỉ chi tiết (Bạc Liêu)
+                                    </h6>
+                                    <div id="dashboard-address-selector-container"></div>
+
+                                    <!-- Hidden fields for address -->
+                                    <input type="hidden" name="province" id="dashboard-province">
+                                    <input type="hidden" name="district" id="dashboard-district">
+                                    <input type="hidden" name="ward" id="dashboard-ward">
+                                    <input type="hidden" name="hamlet" id="dashboard-hamlet">
+                                    <input type="hidden" name="full_address" id="dashboard-full-address">
+
+                                    <!-- Preview address -->
+                                    <div class="alert alert-info mt-3" id="dashboard-address-preview-container" style="display: none;">
+                                        <strong><i class="bi bi-check-circle"></i> Địa chỉ đã chọn:</strong>
+                                        <div id="dashboard-address-preview" class="mt-2"></div>
+                                    </div>
+                                    <hr class="my-3">
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Số điện thoại</label>
+                                    <input type="text" class="form-control" name="so_dien_thoai">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" name="email">
+                                </div>
+
+                                <!-- Employment Info -->
+                                <div class="col-12 mt-3">
+                                    <hr class="my-2">
+                                    <small class="text-muted fw-bold"><i class="bi bi-briefcase"></i> Nghề nghiệp</small>
+                                </div>
                                 <div class="col-12">
                                     <label class="form-label">Nghề nghiệp</label>
                                     <select class="form-select" name="nghe_nghiep">
@@ -299,50 +341,6 @@
                             </div>
                         </div>
 
-                        <!-- Contact Group -->
-                        <div class="field-group" data-group="contact">
-                            <h6 class="field-group-title"><i class="bi bi-telephone"></i> Thông tin liên hệ</h6>
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <label class="form-label">Địa chỉ thường trú</label>
-                                    <textarea class="form-control" name="dia_chi" rows="2" id="dia-chi-field"></textarea>
-                                    <small class="text-muted">Hoặc chọn từ danh sách bên dưới để tự động điền</small>
-                                </div>
-
-                                <!-- Address Selector Component -->
-                                <div class="col-12">
-                                    <hr class="my-3">
-                                    <h6 class="fw-bold mb-3" style="color: var(--agribank-green);">
-                                        <i class="bi bi-geo-alt-fill"></i> Chọn địa chỉ chi tiết (Bạc Liêu)
-                                    </h6>
-                                    <div id="dashboard-address-selector-container"></div>
-
-                                    <!-- Hidden fields for address -->
-                                    <input type="hidden" name="province" id="dashboard-province">
-                                    <input type="hidden" name="district" id="dashboard-district">
-                                    <input type="hidden" name="ward" id="dashboard-ward">
-                                    <input type="hidden" name="hamlet" id="dashboard-hamlet">
-                                    <input type="hidden" name="full_address" id="dashboard-full-address">
-
-                                    <!-- Preview address -->
-                                    <div class="alert alert-info mt-3" id="dashboard-address-preview-container" style="display: none;">
-                                        <strong><i class="bi bi-check-circle"></i> Địa chỉ đã chọn:</strong>
-                                        <div id="dashboard-address-preview" class="mt-2"></div>
-                                    </div>
-                                    <hr class="my-3">
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label">Số điện thoại</label>
-                                    <input type="text" class="form-control" name="so_dien_thoai">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" class="form-control" name="email">
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Banking Group -->
                         <div class="field-group" data-group="banking">
                             <h6 class="field-group-title"><i class="bi bi-bank"></i> Tài khoản</h6>
@@ -377,6 +375,10 @@
                         <div class="field-group" data-group="card">
                             <h6 class="field-group-title"><i class="bi bi-credit-card"></i> Thẻ</h6>
                             <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label">Số thẻ ATM</label>
+                                    <input type="text" class="form-control" name="so_the_atm" placeholder="Nhập số thẻ ATM (16 số)">
+                                </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Loại thẻ</label>
                                     <select class="form-select" name="loai_the">
@@ -875,6 +877,7 @@ function fillFormWithData(data) {
     if (data.loai_tien_te) document.querySelector('[name="loai_tien_te"]').value = data.loai_tien_te;
 
     // Card
+    if (data.so_the_atm) document.querySelector('[name="so_the_atm"]').value = data.so_the_atm;
     if (data.loai_the) document.querySelector('[name="loai_the"]').value = data.loai_the;
     if (data.hang_the) document.querySelector('[name="hang_the"]').value = data.hang_the;
     if (data.ten_the_1) document.querySelector('[name="ten_the_1"]').value = data.ten_the_1;
