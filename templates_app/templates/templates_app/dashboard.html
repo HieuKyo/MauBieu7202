@@ -493,11 +493,26 @@
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Nơi cấp</label>
-                                    <input type="text" class="form-control" name="noi_cap_cmnd_nguoi_gui_2" placeholder="Nơi cấp">
+                                    <select class="form-select" name="noi_cap_cmnd_nguoi_gui_2">
+                                        <option value="Cục CSQLHC về TTXH">Cục CSQLHC về TTXH</option>
+                                        <option value="Bộ Công An">Bộ Công An</option>
+                                        <option value="Khác">Khác</option>
+                                    </select>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Địa chỉ</label>
-                                    <textarea class="form-control" name="dia_chi_nguoi_gui_2" rows="2" placeholder="Địa chỉ"></textarea>
+                                    <textarea class="form-control" name="dia_chi_nguoi_gui_2" rows="2" placeholder="Địa chỉ" id="dia-chi-nguoi-gui-2"></textarea>
+                                    <small class="text-muted">Hoặc chọn từ danh sách bên dưới</small>
+                                </div>
+                                <!-- Address Selector for Second Depositor -->
+                                <div class="col-12">
+                                    <div id="address-selector-nguoi-gui-2-container"></div>
+                                    <!-- Hidden fields for address -->
+                                    <input type="hidden" name="province_nguoi_gui_2" id="province-nguoi-gui-2">
+                                    <input type="hidden" name="district_nguoi_gui_2" id="district-nguoi-gui-2">
+                                    <input type="hidden" name="ward_nguoi_gui_2" id="ward-nguoi-gui-2">
+                                    <input type="hidden" name="hamlet_nguoi_gui_2" id="hamlet-nguoi-gui-2">
+                                    <input type="hidden" name="full_address_nguoi_gui_2" id="full-address-nguoi-gui-2">
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Số điện thoại</label>
@@ -1637,6 +1652,47 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         onLoad: function(instance) {
             console.log('Address Selector loaded for Dashboard form');
+        }
+    });
+
+    // Initialize Address Selector for Second Depositor (Joint Savings)
+    new AddressSelector('#address-selector-nguoi-gui-2-container', {
+        dataUrl: '{% static "data/dia_danh.json" %}',
+        showKhom: true,
+        labels: {
+            tinh: 'Tỉnh/Thành phố',
+            huyen: 'Quận/Huyện',
+            xa: 'Phường/Xã',
+            khom: 'Ấp/Khóm'
+        },
+        placeholders: {
+            tinh: '-- Chọn Tỉnh/Thành phố --',
+            huyen: '-- Chọn Quận/Huyện --',
+            xa: '-- Chọn Phường/Xã --',
+            khom: '-- Chọn Ấp/Khóm --'
+        },
+        autoFill: function(fullAddress, parts) {
+            // Convert address if mapping exists
+            let newAddress = fullAddress;
+            if (fullAddress && addressConversionData[fullAddress]) {
+                newAddress = addressConversionData[fullAddress];
+            }
+
+            // Fill hidden fields
+            document.getElementById('province-nguoi-gui-2').value = parts.province || '';
+            document.getElementById('district-nguoi-gui-2').value = parts.district || '';
+            document.getElementById('ward-nguoi-gui-2').value = parts.ward || '';
+            document.getElementById('hamlet-nguoi-gui-2').value = parts.hamlet || '';
+            document.getElementById('full-address-nguoi-gui-2').value = newAddress || '';
+
+            // Fill address textarea
+            const diaChiField = document.getElementById('dia-chi-nguoi-gui-2');
+            if (diaChiField && newAddress) {
+                diaChiField.value = newAddress;
+            }
+        },
+        onLoad: function(instance) {
+            console.log('Address Selector loaded for Second Depositor');
         }
     });
 

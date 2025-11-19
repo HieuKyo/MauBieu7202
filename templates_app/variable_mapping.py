@@ -214,6 +214,19 @@ CUSTOMER_VARIABLES = [
     'loai_phi', 'ngay_tra_the', 'loai_tien_te'
 ]
 
+# Biến tiền gửi tiết kiệm chung (Joint Savings)
+JOINT_SAVINGS_VARIABLES = [
+    # Thông tin người gửi tiền thứ hai
+    'ho_ten_nguoi_gui_2', 'so_cmnd_nguoi_gui_2', 'ngay_cap_cmnd_nguoi_gui_2',
+    'noi_cap_cmnd_nguoi_gui_2', 'dia_chi_nguoi_gui_2', 'sdt_nguoi_gui_2',
+    # Giao dịch thẻ tiết kiệm - Tất cả người gửi tiền
+    'gd_rut_lai_tat_ca', 'gd_tat_toan_tat_ca', 'gd_bao_mat_tat_ca',
+    'gd_bao_hong_tat_ca', 'gd_phong_toa_tat_ca', 'gd_xac_nhan_so_du_tat_ca',
+    # Giao dịch thẻ tiết kiệm - Một/một số người gửi tiền
+    'gd_rut_lai_mot_so', 'gd_tat_toan_mot_so', 'gd_bao_mat_mot_so',
+    'gd_bao_hong_mot_so', 'gd_phong_toa_mot_so', 'gd_xac_nhan_so_du_mot_so',
+]
+
 AUTO_GENERATED_VARIABLES = [
     'ngay_hien_tai', 'ngay_thang_nam_text', 'date_month_year', 'so_hop_dong'
 ]
@@ -317,6 +330,8 @@ def get_variable_category(var_name):
         return 'global_config'
     elif var_name in CUSTOMER_VARIABLES:
         return 'customer'
+    elif var_name in JOINT_SAVINGS_VARIABLES:
+        return 'joint_savings'
     elif var_name in AUTO_GENERATED_VARIABLES:
         return 'auto_generated'
     elif var_name in LOAN_VARIABLES:
@@ -411,6 +426,7 @@ __all__ = [
     'NEW_TO_OLD_MAPPING',
     'GLOBAL_CONFIG_VARIABLES',
     'CUSTOMER_VARIABLES',
+    'JOINT_SAVINGS_VARIABLES',
     'AUTO_GENERATED_VARIABLES',
     'convert_old_variable',
     'convert_new_variable',
