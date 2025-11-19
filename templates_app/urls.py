@@ -67,6 +67,11 @@ urlpatterns = [
     path('employees/<int:employee_id>/update/', views.employee_update_manual, name='employee_update_manual'),
     path('employees/<int:employee_id>/delete/', views.employee_delete_manual, name='employee_delete_manual'),
 
+    # Boundary Changes Lookup (Tra cứu địa bàn sáp nhập)
+    path('boundary-lookup/', views.boundary_lookup_view, name='boundary_lookup'),
+    path('api/boundary/search/', views.boundary_search_api, name='boundary_search_api'),
+    path('api/boundary/provinces/', views.boundary_provinces_api, name='boundary_provinces_api'),
+
     # E-Learning
     path('elearning/', views.course_dashboard, name='course_dashboard'),
     path('elearning/courses/create/', views.course_create, name='course_create'),
