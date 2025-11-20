@@ -822,6 +822,26 @@ class Customer(models.Model):
             # Tên thẻ
             'ten_the_1': self.ten_the_1 or '',
             'ten_the_2': self.ten_the_2 or '',  # FIX: Thêm tên thẻ 2
+            # Tiền gửi tiết kiệm chung - Thông tin người gửi tiền thứ hai
+            'ho_ten_nguoi_gui_2': self.ho_ten_nguoi_gui_2 or '',
+            'so_cmnd_nguoi_gui_2': self.so_cmnd_nguoi_gui_2 or '',
+            'ngay_cap_cmnd_nguoi_gui_2': self.ngay_cap_cmnd_nguoi_gui_2.strftime('%d/%m/%Y') if self.ngay_cap_cmnd_nguoi_gui_2 else '',
+            'noi_cap_cmnd_nguoi_gui_2': self.noi_cap_cmnd_nguoi_gui_2 or '',
+            'dia_chi_nguoi_gui_2': self.dia_chi_nguoi_gui_2 or '',
+            'sdt_nguoi_gui_2': self.sdt_nguoi_gui_2 or '',
+            # Tiền gửi tiết kiệm chung - Giao dịch thẻ tiết kiệm
+            'gd_rut_lai_tat_ca': checkbox(self.gd_rut_lai_tat_ca),
+            'gd_rut_lai_mot_so': checkbox(self.gd_rut_lai_mot_so),
+            'gd_tat_toan_tat_ca': checkbox(self.gd_tat_toan_tat_ca),
+            'gd_tat_toan_mot_so': checkbox(self.gd_tat_toan_mot_so),
+            'gd_bao_mat_tat_ca': checkbox(self.gd_bao_mat_tat_ca),
+            'gd_bao_mat_mot_so': checkbox(self.gd_bao_mat_mot_so),
+            'gd_bao_hong_tat_ca': checkbox(self.gd_bao_hong_tat_ca),
+            'gd_bao_hong_mot_so': checkbox(self.gd_bao_hong_mot_so),
+            'gd_phong_toa_tat_ca': checkbox(self.gd_phong_toa_tat_ca),
+            'gd_phong_toa_mot_so': checkbox(self.gd_phong_toa_mot_so),
+            'gd_xac_nhan_so_du_tat_ca': checkbox(self.gd_xac_nhan_so_du_tat_ca),
+            'gd_xac_nhan_so_du_mot_so': checkbox(self.gd_xac_nhan_so_du_mot_so),
         }
 
         # Card number variables - tách số thẻ ra từng ký tự (16 ký tự)

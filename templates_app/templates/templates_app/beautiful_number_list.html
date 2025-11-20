@@ -111,7 +111,16 @@
                     <h5 class="card-title mb-3"><i class="bi bi-funnel"></i> Lọc số đẹp</h5>
                     <form method="GET" action="{% url 'beautiful_number_list' %}">
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Tìm theo mẫu số</label>
+                                <input type="text" name="pattern" class="form-control"
+                                       value="{{ pattern_filter }}"
+                                       placeholder="VD: 7202***777*** (dùng * thay cho số bất kỳ)">
+                                <small class="form-text text-muted">
+                                    Nhập mẫu số cần tìm, dùng * để đại diện cho bất kỳ chữ số nào
+                                </small>
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label">Loại số đẹp</label>
                                 <select name="category" class="form-select">
                                     <option value="">Tất cả</option>
@@ -122,7 +131,7 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Mức giá</label>
                                 <select name="price" class="form-select">
                                     <option value="">Tất cả</option>
@@ -133,14 +142,14 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Trạng thái</label>
                                 <select name="available" class="form-select">
                                     <option value="true" {% if available_only %}selected{% endif %}>Chỉ số còn</option>
                                     <option value="false" {% if not available_only %}selected{% endif %}>Tất cả</option>
                                 </select>
                             </div>
-                            <div class="col-md-3 d-flex align-items-end">
+                            <div class="col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary w-100">
                                     <i class="bi bi-search"></i> Lọc
                                 </button>
@@ -153,7 +162,10 @@
             <!-- Summary -->
             <div class="alert alert-info mb-4">
                 <i class="bi bi-info-circle"></i>
-                Tìm thấy <strong>{{ numbers.count }}</strong> số đẹp
+                Tìm thấy <strong>{{ numbers|length }}</strong> số đẹp
+                {% if pattern_filter %}
+                    - Mẫu: <strong>{{ pattern_filter }}</strong>
+                {% endif %}
                 {% if selected_category %}
                     - Loại: <strong>{{ selected_category }}</strong>
                 {% endif %}
