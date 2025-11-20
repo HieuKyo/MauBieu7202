@@ -206,6 +206,14 @@ class CustomerForm(forms.ModelForm):
             'gd_phong_toa_mot_so': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'gd_xac_nhan_so_du_tat_ca': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'gd_xac_nhan_so_du_mot_so': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            # Ngoại tệ - Nhận tiền nước ngoài
+            'quan_he_nguoi_gui_nhan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Quan hệ giữa người gửi và người nhận'}),
+            'muc_dich_giao_dich': forms.Select(attrs={'class': 'form-select'}),
+            'ho_ten_nguoi_gui_tien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên người gửi tiền'}),
+            'quoc_gia_gui_tien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Quốc gia gửi tiền'}),
+            'ma_so_nhan_tien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã số nhận tiền'}),
+            'so_tien_ngoai_te': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tiền'}),
+            'loai_tien_ngoai_te': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Loại tiền (USD, EUR, ...)'}),
         }
 
 
@@ -244,6 +252,7 @@ class CategoryAdminForm(forms.ModelForm):
         ('card', 'Thông tin thẻ (Số thẻ, Loại thẻ, Hạng thẻ, Phát hành)'),
         ('services', 'Đăng ký dịch vụ (SMS Banking, Agribank Plus, Liên kết ví)'),
         ('joint_savings', 'Tiền gửi tiết kiệm chung (Người gửi thứ 2, Giao dịch thẻ TK)'),
+        ('foreign_currency', 'Ngoại tệ - Nhận tiền nước ngoài'),
         ('customer_classification', 'Phân loại khách hàng (Kết quả phân loại KH)'),
         ('print_info', 'Thông tin in mẫu biểu (Ngày in)'),
     ]

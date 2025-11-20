@@ -620,6 +620,14 @@ def customer_create_view(request):
             gd_phong_toa_mot_so=(request.POST.get('gd_phong_toa_mot_so') == 'on'),
             gd_xac_nhan_so_du_tat_ca=(request.POST.get('gd_xac_nhan_so_du_tat_ca') == 'on'),
             gd_xac_nhan_so_du_mot_so=(request.POST.get('gd_xac_nhan_so_du_mot_so') == 'on'),
+            # Ngoại tệ - Nhận tiền nước ngoài
+            quan_he_nguoi_gui_nhan=request.POST.get('quan_he_nguoi_gui_nhan', ''),
+            muc_dich_giao_dich=request.POST.get('muc_dich_giao_dich', ''),
+            ho_ten_nguoi_gui_tien=request.POST.get('ho_ten_nguoi_gui_tien', ''),
+            quoc_gia_gui_tien=request.POST.get('quoc_gia_gui_tien', ''),
+            ma_so_nhan_tien=request.POST.get('ma_so_nhan_tien', ''),
+            so_tien_ngoai_te=request.POST.get('so_tien_ngoai_te', ''),
+            loai_tien_ngoai_te=request.POST.get('loai_tien_ngoai_te', ''),
             created_by=request.user
         )
         customer.save()
@@ -701,6 +709,14 @@ def customer_update_view(request, customer_id):
         customer.gd_phong_toa_mot_so = (request.POST.get('gd_phong_toa_mot_so') == 'on')
         customer.gd_xac_nhan_so_du_tat_ca = (request.POST.get('gd_xac_nhan_so_du_tat_ca') == 'on')
         customer.gd_xac_nhan_so_du_mot_so = (request.POST.get('gd_xac_nhan_so_du_mot_so') == 'on')
+        # Ngoại tệ - Nhận tiền nước ngoài
+        customer.quan_he_nguoi_gui_nhan = request.POST.get('quan_he_nguoi_gui_nhan', '')
+        customer.muc_dich_giao_dich = request.POST.get('muc_dich_giao_dich', '')
+        customer.ho_ten_nguoi_gui_tien = request.POST.get('ho_ten_nguoi_gui_tien', '')
+        customer.quoc_gia_gui_tien = request.POST.get('quoc_gia_gui_tien', '')
+        customer.ma_so_nhan_tien = request.POST.get('ma_so_nhan_tien', '')
+        customer.so_tien_ngoai_te = request.POST.get('so_tien_ngoai_te', '')
+        customer.loai_tien_ngoai_te = request.POST.get('loai_tien_ngoai_te', '')
         customer.save()
 
         return JsonResponse({
@@ -1377,6 +1393,15 @@ def generate_document_direct(request, template_id):
         data['gd_phong_toa_mot_so'] = 'Có' if request.POST.get('gd_phong_toa_mot_so') == 'on' else 'Không'
         data['gd_xac_nhan_so_du_tat_ca'] = 'Có' if request.POST.get('gd_xac_nhan_so_du_tat_ca') == 'on' else 'Không'
         data['gd_xac_nhan_so_du_mot_so'] = 'Có' if request.POST.get('gd_xac_nhan_so_du_mot_so') == 'on' else 'Không'
+
+        # Ngoại tệ - Nhận tiền nước ngoài
+        data['quan_he_nguoi_gui_nhan'] = request.POST.get('quan_he_nguoi_gui_nhan', '')
+        data['muc_dich_giao_dich'] = request.POST.get('muc_dich_giao_dich', '')
+        data['ho_ten_nguoi_gui_tien'] = request.POST.get('ho_ten_nguoi_gui_tien', '')
+        data['quoc_gia_gui_tien'] = request.POST.get('quoc_gia_gui_tien', '')
+        data['ma_so_nhan_tien'] = request.POST.get('ma_so_nhan_tien', '')
+        data['so_tien_ngoai_te'] = request.POST.get('so_tien_ngoai_te', '')
+        data['loai_tien_ngoai_te'] = request.POST.get('loai_tien_ngoai_te', '')
 
         # FIX: Checkbox - CMND/CCCD/CĂN CƯỚC based on digit length and issue date
         # - 9 digits = CMND
