@@ -11030,5 +11030,206 @@
       "Phường Bắc Kạn",
       "Phường Đức Xuân"
     ]
+  },
+  "Tỉnh Thanh Hóa": {
+    "Huyện Tĩnh Gia": [
+      "Xã Các Sơn",
+      "Xã Trường Lâm"
+    ],
+    "Huyện Hà Trung": [
+      "Xã Hoạt Giang",
+      "Xã Hà Long",
+      "Xã Hà Trung",
+      "Xã Lĩnh Toại",
+      "Xã Triệu Lộc",
+      "Xã Tống Sơn"
+    ],
+    "Huyện Hậu Lộc": [
+      "Xã Hoa Lộc",
+      "Xã Hậu Lộc",
+      "Xã Vạn Lộc",
+      "Xã Đông Thành"
+    ],
+    "Huyện Nga Sơn": [
+      "Xã Ba Đình",
+      "Xã Hồ Vương",
+      "Xã Nga An",
+      "Xã Nga Sơn",
+      "Xã Nga Thắng",
+      "Xã Tân Tiến"
+    ],
+    "Huyện Hoằng Hóa": [
+      "Xã Hoằng Châu",
+      "Xã Hoằng Giang",
+      "Xã Hoằng Hóa",
+      "Xã Hoằng Lộc",
+      "Xã Hoằng Phú",
+      "Xã Hoằng Sơn",
+      "Xã Hoằng Thanh",
+      "Xã Hoằng Tiến"
+    ],
+    "Huyện Quảng Xương": [
+      "Xã Lưu Vệ",
+      "Xã Quảng Bình",
+      "Xã Quảng Chính",
+      "Xã Quảng Ngọc",
+      "Xã Quảng Ninh",
+      "Xã Quảng Yên",
+      "Xã Tiên Trang"
+    ],
+    "Huyện Nông Cống": [
+      "Xã Nông Cống",
+      "Xã Thăng Bình",
+      "Xã Thắng Lợi",
+      "Xã Trung Chính",
+      "Xã Trường Văn",
+      "Xã Tượng Lĩnh"
+    ],
+    "Huyện Thiệu Hóa": [
+      "Xã Công Chính",
+      "Xã Thiệu Hóa",
+      "Xã Thiệu Quang",
+      "Xã Thiệu Tiến",
+      "Xã Thiệu Toán",
+      "Xã Thiệu Trung"
+    ],
+    "Huyện Yên Định": [
+      "Xã Quý Lộc",
+      "Xã Yên Ninh",
+      "Xã Yên Phú",
+      "Xã Yên Trường",
+      "Xã Yên Định",
+      "Xã Định Hòa",
+      "Xã Định Tân"
+    ],
+    "Huyện Thọ Xuân": [
+      "Xã Lam Sơn",
+      "Xã Sao Vàng",
+      "Xã Thọ Long",
+      "Xã Thọ Lập",
+      "Xã Thọ Xuân",
+      "Xã Xuân Hòa",
+      "Xã Xuân Lập",
+      "Xã Xuân Tín"
+    ],
+    "Huyện Vĩnh Lộc": [
+      "Xã Biện Thượng",
+      "Xã Tây Đô",
+      "Xã Vĩnh Lộc"
+    ],
+    "Huyện Triệu Sơn": [
+      "Xã An Nông",
+      "Xã Hợp Tiến",
+      "Xã Thọ Bình",
+      "Xã Thọ Ngọc",
+      "Xã Thọ Phú",
+      "Xã Triệu Sơn",
+      "Xã Tân Ninh",
+      "Xã Đồng Tiến"
+    ],
+    "Huyện Quan Hóa": [
+      "Xã Hiền Kiệt",
+      "Xã Hồi Xuân",
+      "Xã Nam Xuân",
+      "Xã Phú Lệ",
+      "Xã Thiên Phủ",
+      "Xã Trung Thành"
+    ],
+    "Huyện Quan Sơn": [
+      "Xã Quan Sơn",
+      "Xã Tam Lư",
+      "Xã Trung Hạ"
+    ],
+    "Huyện Lang Chánh": [
+      "Xã Giao An",
+      "Xã Linh Sơn",
+      "Xã Văn Phú",
+      "Xã Đồng Lương"
+    ],
+    "Huyện Bá Thước": [
+      "Xã Bá Thước",
+      "Xã Cổ Lũng",
+      "Xã Pù Luông",
+      "Xã Quý Lương",
+      "Xã Thiết Ống",
+      "Xã Văn Nho",
+      "Xã Điền Lư",
+      "Xã Điền Quang"
+    ],
+    "Huyện Ngọc Lặc": [
+      "Xã Kiên Thọ",
+      "Xã Minh Sơn",
+      "Xã Nguyệt Ấn",
+      "Xã Ngọc Liên",
+      "Xã Ngọc Lặc",
+      "Xã Thạch Lập"
+    ],
+    "Huyện Cẩm Thủy": [
+      "Xã Cẩm Thạch",
+      "Xã Cẩm Thủy",
+      "Xã Cẩm Tân",
+      "Xã Cẩm Tú",
+      "Xã Cẩm Vân"
+    ],
+    "Huyện Thạch Thành": [
+      "Xã Kim Tân",
+      "Xã Ngọc Trạo",
+      "Xã Thành Vinh",
+      "Xã Thạch Bình",
+      "Xã Thạch Quảng",
+      "Xã Vân Du"
+    ],
+    "Huyện Như Xuân": [
+      "Xã Hóa Quỳ",
+      "Xã Như Xuân",
+      "Xã Thanh Phong",
+      "Xã Thanh Quân",
+      "Xã Thượng Ninh",
+      "Xã Xuân Bình"
+    ],
+    "Huyện Như Thanh": [
+      "Xã Mậu Lâm",
+      "Xã Như Thanh",
+      "Xã Thanh Kỳ",
+      "Xã Xuân Du",
+      "Xã Yên Thọ"
+    ],
+    "Huyện Thường Xuân": [
+      "Xã Luận Thành",
+      "Xã Thường Xuân",
+      "Xã Thắng Lộc",
+      "Xã Tân Thành",
+      "Xã Xuân Chinh"
+    ],
+    "Huyện Mường Lát": [
+      "Xã Mường Lát"
+    ],
+    "Thành phố Thanh Hóa": [
+      "Phường Hàm Rồng",
+      "Phường Hạc Thành",
+      "Phường Nguyệt Viên",
+      "Phường Quảng Phú",
+      "Phường Đông Quang",
+      "Phường Đông Sơn",
+      "Phường Đông Tiến"
+    ],
+    "Thành phố Sầm Sơn": [
+      "Phường Nam Sầm Sơn",
+      "Phường Sầm Sơn"
+    ],
+    "Thị xã Bỉm Sơn": [
+      "Phường Bỉm Sơn",
+      "Phường Quang Trung"
+    ],
+    "Thị xã Nghi Sơn": [
+      "Phường Hải Bình",
+      "Phường Hải Lĩnh",
+      "Phường Nghi Sơn",
+      "Phường Ngọc Sơn",
+      "Phường Trúc Lâm",
+      "Phường Tân Dân",
+      "Phường Tĩnh Gia",
+      "Phường Đào Duy Từ"
+    ]
   }
 }
