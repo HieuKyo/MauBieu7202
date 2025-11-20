@@ -1,0 +1,319 @@
+{
+  "Tỉnh Quảng Ninh": {
+    "Huyện Ba Chẽ": {
+      "Xã Ba Chẽ": [
+        "Thị trấn Ba Chẽ",
+        "Xã Hải Lạng",
+        "Xã Nam Sơn",
+        "Xã Thanh Sơn",
+        "Xã Đồn Đạc"
+      ],
+      "Xã Kỳ Thượng": [
+        "Xã Kỳ Thượng",
+        "Xã Thanh Lâm",
+        "Xã Đạp Thanh"
+      ],
+      "Xã Lương Minh": [
+        "Xã Lương Minh",
+        "Xã Đồng Sơn"
+      ]
+    },
+    "Huyện Bình Liêu": {
+      "Xã Bình Liêu": [
+        "Thị trấn Bình Liêu",
+        "Xã Húc Động",
+        "Xã Vô Ngại"
+      ],
+      "Xã Hoành Mô": [
+        "Xã Hoành Mô",
+        "Xã Đồng Văn"
+      ],
+      "Xã Lục Hồn": [
+        "Xã Lục Hồn",
+        "Xã Đồng Tâm"
+      ]
+    },
+    "Huyện Hải Hà": {
+      "Xã Quảng Hà": [
+        "Thị trấn Quảng Hà",
+        "Xã Quảng Chính",
+        "Xã Quảng Long",
+        "Xã Quảng Minh",
+        "Xã Quảng Phong"
+      ],
+      "Xã Quảng Đức": [
+        "Xã Quảng Thành",
+        "Xã Quảng Thịnh",
+        "Xã Quảng Đức"
+      ],
+      "Xã Đường Hoa": [
+        "Xã Quảng Long",
+        "Xã Quảng Sơn",
+        "Xã Đường Hoa"
+      ]
+    },
+    "Huyện Tiên Yên": {
+      "Xã Hải Hòa": [
+        "Xã Hải Hòa",
+        "Xã Hải Lạng"
+      ],
+      "Xã Hải Lạng": [
+        "Xã Hải Hòa",
+        "Xã Hải Lạng",
+        "Xã Đồng Rui"
+      ],
+      "Xã Tiên Yên": [
+        "Thị trấn Tiên Yên",
+        "Xã Phong Dụ",
+        "Xã Tiên Lãng",
+        "Xã Vô Ngại",
+        "Xã Yên Than",
+        "Xã Đông Ngũ",
+        "Xã Đại Dực"
+      ],
+      "Xã Điền Xá": [
+        "Xã Hà Lâu",
+        "Xã Yên Than",
+        "Xã Điền Xá"
+      ],
+      "Xã Đông Ngũ": [
+        "Xã Đông Hải",
+        "Xã Đông Ngũ",
+        "Xã Đại Dực"
+      ]
+    },
+    "Huyện Đầm Hà": {
+      "Xã Quảng Tân": [
+        "Xã Dực Yên",
+        "Xã Quảng An",
+        "Xã Quảng Lâm",
+        "Xã Quảng Tân"
+      ],
+      "Xã Đầm Hà": [
+        "Thị trấn Đầm Hà",
+        "Xã Tân Bình",
+        "Xã Tân Lập",
+        "Xã Đại Bình",
+        "Xã Đầm Hà"
+      ]
+    },
+    "Thành phố Cẩm Phả": {
+      "Phường Cẩm Phả": [
+        "Phường Cẩm Bình",
+        "Phường Cẩm Thành",
+        "Phường Cẩm Trung",
+        "Phường Cẩm Tây",
+        "Phường Cẩm Đông"
+      ],
+      "Phường Cửa Ông": [
+        "Phường Cẩm Phú",
+        "Phường Cẩm Sơn",
+        "Phường Cẩm Thịnh",
+        "Phường Cửa Ông"
+      ],
+      "Phường Mông Dương": [
+        "Phường Mông Dương",
+        "Xã Dương Huy"
+      ],
+      "Phường Quang Hanh": [
+        "Phường Cẩm Thạch",
+        "Phường Cẩm Thủy",
+        "Phường Quang Hanh"
+      ]
+    },
+    "Thành phố Hạ Long": {
+      "Phường Bãi Cháy": [
+        "Phường Bãi Cháy",
+        "Phường Hùng Thắng"
+      ],
+      "Phường Cao Xanh": [
+        "Phường Cao Xanh",
+        "Phường Hà Khánh"
+      ],
+      "Phường Hoành Bồ": [
+        "Phường Hoành Bồ",
+        "Xã Lê Lợi",
+        "Xã Sơn Dương",
+        "Xã Đồng Lâm"
+      ],
+      "Phường Hà Lầm": [
+        "Phường Cao Thắng",
+        "Phường Hà Lầm",
+        "Phường Hà Trung"
+      ],
+      "Phường Hà Tu": [
+        "Phường Hà Phong",
+        "Phường Hà Tu"
+      ],
+      "Phường Hạ Long": [
+        "Phường Hồng Hà",
+        "Phường Hồng Hải"
+      ],
+      "Phường Hồng Gai": [
+        "Phường Bạch Đằng",
+        "Phường Hồng Gai",
+        "Phường Trần Hưng Đạo"
+      ],
+      "Phường Tuần Châu": [
+        "Phường Hà Khẩu",
+        "Phường Tuần Châu",
+        "Phường Đại Yên"
+      ],
+      "Phường Việt Hưng": [
+        "Phường Giếng Đáy",
+        "Phường Hà Khẩu",
+        "Phường Việt Hưng"
+      ],
+      "Xã Quảng La": [
+        "Xã Bằng Cả",
+        "Xã Dân Chủ",
+        "Xã Quảng La",
+        "Xã Tân Dân"
+      ],
+      "Xã Thống Nhất": [
+        "Xã Hòa Bình",
+        "Xã Thống Nhất",
+        "Xã Vũ Oai",
+        "Xã Đồng Lâm"
+      ]
+    },
+    "Thành phố Móng Cái": {
+      "Phường Móng Cái 1": [
+        "Phường Bình Ngọc",
+        "Phường Hải Hòa",
+        "Phường Trà Cổ",
+        "Phường Trần Phú",
+        "Xã Hải Xuân"
+      ],
+      "Phường Móng Cái 2": [
+        "Phường Ka Long",
+        "Phường Ninh Dương",
+        "Xã Vạn Ninh"
+      ],
+      "Phường Móng Cái 3": [
+        "Phường Hải Yên",
+        "Xã Hải Đông"
+      ],
+      "Xã Hải Ninh": [
+        "Xã Hải Tiến",
+        "Xã Quảng Nghĩa"
+      ],
+      "Xã Hải Sơn": [
+        "Xã Bắc Sơn",
+        "Xã Hải Sơn"
+      ],
+      "Xã Vĩnh Thực": [
+        "Xã Vĩnh Thực",
+        "Xã Vĩnh Trung"
+      ]
+    },
+    "Thành phố Uông Bí": {
+      "Phường Uông Bí": [
+        "Phường Quang Trung",
+        "Phường Thanh Sơn",
+        "Phường Trưng Vương",
+        "Phường Yên Thanh"
+      ],
+      "Phường Vàng Danh": [
+        "Phường Bắc Sơn",
+        "Phường Nam Khê",
+        "Phường Trưng Vương",
+        "Phường Vàng Danh"
+      ],
+      "Phường Yên Tử": [
+        "Phường Phương Nam",
+        "Phường Phương Đông",
+        "Xã Thượng Yên Công"
+      ]
+    },
+    "Thị xã Quảng Yên": {
+      "Phường Hiệp Hòa": [
+        "Phường Cộng Hòa",
+        "Xã Hiệp Hòa",
+        "Xã Sông Khoai"
+      ],
+      "Phường Hà An": [
+        "Phường Hà An",
+        "Phường Tân An",
+        "Xã Hoàng Tân",
+        "Xã Liên Hòa"
+      ],
+      "Phường Liên Hòa": [
+        "Phường Phong Hải",
+        "Xã Liên Hòa",
+        "Xã Liên Vị",
+        "Xã Tiền Phong"
+      ],
+      "Phường Phong Cốc": [
+        "Phường Nam Hòa",
+        "Phường Phong Cốc",
+        "Phường Yên Hải",
+        "Xã Cẩm La"
+      ],
+      "Phường Quảng Yên": [
+        "Phường Quảng Yên",
+        "Phường Yên Giang",
+        "Xã Tiền An"
+      ],
+      "Phường Đông Mai": [
+        "Phường Minh Thành",
+        "Phường Đông Mai"
+      ]
+    },
+    "Thị xã Đông Triều": {
+      "Phường An Sinh": [
+        "Phường Bình Dương",
+        "Phường Đức Chính",
+        "Xã An Sinh",
+        "Xã Việt Dân"
+      ],
+      "Phường Bình Khê": [
+        "Phường Bình Khê",
+        "Phường Tràng An",
+        "Xã Tràng Lương"
+      ],
+      "Phường Hoàng Quế": [
+        "Phường Hoàng Quế",
+        "Phường Yên Đức",
+        "Xã Hồng Thái Tây",
+        "Xã Hồng Thái Đông"
+      ],
+      "Phường Mạo Khê": [
+        "Phường Kim Sơn",
+        "Phường Mạo Khê",
+        "Phường Xuân Sơn",
+        "Phường Yên Thọ"
+      ],
+      "Phường Đông Triều": [
+        "Phường Hưng Đạo",
+        "Phường Hồng Phong",
+        "Phường Thủy An",
+        "Phường Đức Chính",
+        "Xã Nguyễn Huệ"
+      ]
+    },
+    "Đặc khu Cô Tô": {
+      "Đặc khu Cô Tô": [
+        "Thị trấn Cô Tô",
+        "Xã Thanh Lân",
+        "Xã Đồng Tiến"
+      ]
+    },
+    "Đặc khu Vân Đồn": {
+      "Đặc khu Vân Đồn": [
+        "Thị trấn Cái Rồng",
+        "Xã Bình Dân",
+        "Xã Bản Sen",
+        "Xã Hạ Long",
+        "Xã Minh Châu",
+        "Xã Ngọc Vừng",
+        "Xã Quan Lạn",
+        "Xã Thắng Lợi",
+        "Xã Vạn Yên",
+        "Xã Đoàn Kết",
+        "Xã Đài Xuyên",
+        "Xã Đông Xá"
+      ]
+    }
+  }
+}
