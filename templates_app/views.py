@@ -600,6 +600,26 @@ def customer_create_view(request):
             dv_bankplus=(request.POST.get('dv_bankplus') == 'on'),
             dv_e_mobile=(request.POST.get('dv_e_mobile') == 'on'),
             dv_abic=(request.POST.get('dv_abic') == 'on'),
+            # Tiền gửi tiết kiệm chung - Thông tin người gửi tiền thứ hai
+            ho_ten_nguoi_gui_2=request.POST.get('ho_ten_nguoi_gui_2', ''),
+            so_cmnd_nguoi_gui_2=request.POST.get('so_cmnd_nguoi_gui_2', ''),
+            ngay_cap_cmnd_nguoi_gui_2=request.POST.get('ngay_cap_cmnd_nguoi_gui_2') or None,
+            noi_cap_cmnd_nguoi_gui_2=request.POST.get('noi_cap_cmnd_nguoi_gui_2', ''),
+            dia_chi_nguoi_gui_2=request.POST.get('dia_chi_nguoi_gui_2', ''),
+            sdt_nguoi_gui_2=request.POST.get('sdt_nguoi_gui_2', ''),
+            # Tiền gửi tiết kiệm chung - Giao dịch
+            gd_rut_lai_tat_ca=(request.POST.get('gd_rut_lai_tat_ca') == 'on'),
+            gd_rut_lai_mot_so=(request.POST.get('gd_rut_lai_mot_so') == 'on'),
+            gd_tat_toan_tat_ca=(request.POST.get('gd_tat_toan_tat_ca') == 'on'),
+            gd_tat_toan_mot_so=(request.POST.get('gd_tat_toan_mot_so') == 'on'),
+            gd_bao_mat_tat_ca=(request.POST.get('gd_bao_mat_tat_ca') == 'on'),
+            gd_bao_mat_mot_so=(request.POST.get('gd_bao_mat_mot_so') == 'on'),
+            gd_bao_hong_tat_ca=(request.POST.get('gd_bao_hong_tat_ca') == 'on'),
+            gd_bao_hong_mot_so=(request.POST.get('gd_bao_hong_mot_so') == 'on'),
+            gd_phong_toa_tat_ca=(request.POST.get('gd_phong_toa_tat_ca') == 'on'),
+            gd_phong_toa_mot_so=(request.POST.get('gd_phong_toa_mot_so') == 'on'),
+            gd_xac_nhan_so_du_tat_ca=(request.POST.get('gd_xac_nhan_so_du_tat_ca') == 'on'),
+            gd_xac_nhan_so_du_mot_so=(request.POST.get('gd_xac_nhan_so_du_mot_so') == 'on'),
             created_by=request.user
         )
         customer.save()
@@ -661,6 +681,26 @@ def customer_update_view(request, customer_id):
         customer.noi_lam_viec = request.POST.get('noi_lam_viec', '')
         customer.so_tai_khoan = request.POST.get('so_tai_khoan', '')
         customer.ghi_chu = request.POST.get('ghi_chu', '')
+        # Tiền gửi tiết kiệm chung - Thông tin người gửi tiền thứ hai
+        customer.ho_ten_nguoi_gui_2 = request.POST.get('ho_ten_nguoi_gui_2', '')
+        customer.so_cmnd_nguoi_gui_2 = request.POST.get('so_cmnd_nguoi_gui_2', '')
+        customer.ngay_cap_cmnd_nguoi_gui_2 = request.POST.get('ngay_cap_cmnd_nguoi_gui_2') or None
+        customer.noi_cap_cmnd_nguoi_gui_2 = request.POST.get('noi_cap_cmnd_nguoi_gui_2', '')
+        customer.dia_chi_nguoi_gui_2 = request.POST.get('dia_chi_nguoi_gui_2', '')
+        customer.sdt_nguoi_gui_2 = request.POST.get('sdt_nguoi_gui_2', '')
+        # Tiền gửi tiết kiệm chung - Giao dịch
+        customer.gd_rut_lai_tat_ca = (request.POST.get('gd_rut_lai_tat_ca') == 'on')
+        customer.gd_rut_lai_mot_so = (request.POST.get('gd_rut_lai_mot_so') == 'on')
+        customer.gd_tat_toan_tat_ca = (request.POST.get('gd_tat_toan_tat_ca') == 'on')
+        customer.gd_tat_toan_mot_so = (request.POST.get('gd_tat_toan_mot_so') == 'on')
+        customer.gd_bao_mat_tat_ca = (request.POST.get('gd_bao_mat_tat_ca') == 'on')
+        customer.gd_bao_mat_mot_so = (request.POST.get('gd_bao_mat_mot_so') == 'on')
+        customer.gd_bao_hong_tat_ca = (request.POST.get('gd_bao_hong_tat_ca') == 'on')
+        customer.gd_bao_hong_mot_so = (request.POST.get('gd_bao_hong_mot_so') == 'on')
+        customer.gd_phong_toa_tat_ca = (request.POST.get('gd_phong_toa_tat_ca') == 'on')
+        customer.gd_phong_toa_mot_so = (request.POST.get('gd_phong_toa_mot_so') == 'on')
+        customer.gd_xac_nhan_so_du_tat_ca = (request.POST.get('gd_xac_nhan_so_du_tat_ca') == 'on')
+        customer.gd_xac_nhan_so_du_mot_so = (request.POST.get('gd_xac_nhan_so_du_mot_so') == 'on')
         customer.save()
 
         return JsonResponse({
