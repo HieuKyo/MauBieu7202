@@ -1355,6 +1355,39 @@ def generate_document_direct(request, template_id):
         data['pl_trungbinh'] = checkbox(ket_qua_phan_loai_kh == 'Trung bình')
         data['pl_thap'] = checkbox(ket_qua_phan_loai_kh == 'Thấp')
 
+        # Tiền gửi tiết kiệm chung - Thông tin người gửi tiền thứ hai
+        data['ho_ten_nguoi_gui_2'] = request.POST.get('ho_ten_nguoi_gui_2', '')
+        data['so_cmnd_nguoi_gui_2'] = request.POST.get('so_cmnd_nguoi_gui_2', '')
+        data['noi_cap_cmnd_nguoi_gui_2'] = request.POST.get('noi_cap_cmnd_nguoi_gui_2', '')
+        data['dia_chi_nguoi_gui_2'] = request.POST.get('dia_chi_nguoi_gui_2', '')
+        data['sdt_nguoi_gui_2'] = request.POST.get('sdt_nguoi_gui_2', '')
+
+        # Ngày cấp CMND người gửi 2 - format date
+        ngay_cap_cmnd_nguoi_gui_2_str = request.POST.get('ngay_cap_cmnd_nguoi_gui_2', '')
+        if ngay_cap_cmnd_nguoi_gui_2_str:
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(ngay_cap_cmnd_nguoi_gui_2_str, '%Y-%m-%d')
+                data['ngay_cap_cmnd_nguoi_gui_2'] = date_obj.strftime('%d/%m/%Y')
+            except ValueError:
+                data['ngay_cap_cmnd_nguoi_gui_2'] = ngay_cap_cmnd_nguoi_gui_2_str
+        else:
+            data['ngay_cap_cmnd_nguoi_gui_2'] = ''
+
+        # Tiền gửi tiết kiệm chung - Giao dịch thẻ tiết kiệm (Text: "Có" hoặc "Không")
+        data['gd_rut_lai_tat_ca'] = 'Có' if request.POST.get('gd_rut_lai_tat_ca') == 'on' else 'Không'
+        data['gd_rut_lai_mot_so'] = 'Có' if request.POST.get('gd_rut_lai_mot_so') == 'on' else 'Không'
+        data['gd_tat_toan_tat_ca'] = 'Có' if request.POST.get('gd_tat_toan_tat_ca') == 'on' else 'Không'
+        data['gd_tat_toan_mot_so'] = 'Có' if request.POST.get('gd_tat_toan_mot_so') == 'on' else 'Không'
+        data['gd_bao_mat_tat_ca'] = 'Có' if request.POST.get('gd_bao_mat_tat_ca') == 'on' else 'Không'
+        data['gd_bao_mat_mot_so'] = 'Có' if request.POST.get('gd_bao_mat_mot_so') == 'on' else 'Không'
+        data['gd_bao_hong_tat_ca'] = 'Có' if request.POST.get('gd_bao_hong_tat_ca') == 'on' else 'Không'
+        data['gd_bao_hong_mot_so'] = 'Có' if request.POST.get('gd_bao_hong_mot_so') == 'on' else 'Không'
+        data['gd_phong_toa_tat_ca'] = 'Có' if request.POST.get('gd_phong_toa_tat_ca') == 'on' else 'Không'
+        data['gd_phong_toa_mot_so'] = 'Có' if request.POST.get('gd_phong_toa_mot_so') == 'on' else 'Không'
+        data['gd_xac_nhan_so_du_tat_ca'] = 'Có' if request.POST.get('gd_xac_nhan_so_du_tat_ca') == 'on' else 'Không'
+        data['gd_xac_nhan_so_du_mot_so'] = 'Có' if request.POST.get('gd_xac_nhan_so_du_mot_so') == 'on' else 'Không'
+
         # FIX: Checkbox - CMND/CCCD/CĂN CƯỚC based on digit length and issue date
         # - 9 digits = CMND
         # - 12 digits + issue date ≤ 01/07/2024 = CCCD
