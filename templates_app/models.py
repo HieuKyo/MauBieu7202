@@ -89,6 +89,7 @@ class Category(models.Model):
                 'card',
                 'services',
                 'joint_savings',
+                'foreign_currency',
                 'print_info'
             ]
         # Handle legacy field groups - convert old groups to new merged group
@@ -409,6 +410,19 @@ class Customer(models.Model):
     # Đề nghị xác nhận số dư
     gd_xac_nhan_so_du_tat_ca = models.BooleanField(default=False, verbose_name="Xác nhận số dư - Tất cả người gửi tiền")
     gd_xac_nhan_so_du_mot_so = models.BooleanField(default=False, verbose_name="Xác nhận số dư - Một/một số người gửi tiền")
+
+    # Ngoại tệ - Nhận tiền nước ngoài
+    quan_he_nguoi_gui_nhan = models.CharField(max_length=200, blank=True, verbose_name="Quan hệ giữa người gửi và người nhận")
+    MUC_DICH_GIAO_DICH_CHOICES = [
+        ('Hỗ trợ gia đình', 'Hỗ trợ gia đình'),
+        ('Quà tặng', 'Quà tặng'),
+    ]
+    muc_dich_giao_dich = models.CharField(max_length=50, blank=True, choices=MUC_DICH_GIAO_DICH_CHOICES, verbose_name="Mục đích giao dịch")
+    ho_ten_nguoi_gui_tien = models.CharField(max_length=200, blank=True, verbose_name="Họ tên người gửi tiền")
+    quoc_gia_gui_tien = models.CharField(max_length=100, blank=True, verbose_name="Quốc gia gửi tiền")
+    ma_so_nhan_tien = models.CharField(max_length=50, blank=True, verbose_name="Mã số nhận tiền")
+    so_tien_ngoai_te = models.CharField(max_length=50, blank=True, verbose_name="Số tiền ngoại tệ")
+    loai_tien_ngoai_te = models.CharField(max_length=20, blank=True, verbose_name="Loại tiền ngoại tệ")
 
     # Thông tin in mẫu biểu
     ngay_in = models.DateField(null=True, blank=True, verbose_name="Ngày in mẫu biểu")

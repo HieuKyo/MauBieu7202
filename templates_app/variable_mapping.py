@@ -227,6 +227,12 @@ JOINT_SAVINGS_VARIABLES = [
     'gd_bao_hong_mot_so', 'gd_phong_toa_mot_so', 'gd_xac_nhan_so_du_mot_so',
 ]
 
+# Biến ngoại tệ - Nhận tiền nước ngoài (Foreign Currency)
+FOREIGN_CURRENCY_VARIABLES = [
+    'quan_he_nguoi_gui_nhan', 'muc_dich_giao_dich', 'ho_ten_nguoi_gui_tien',
+    'quoc_gia_gui_tien', 'ma_so_nhan_tien', 'so_tien_ngoai_te', 'loai_tien_ngoai_te',
+]
+
 AUTO_GENERATED_VARIABLES = [
     'ngay_hien_tai', 'ngay_thang_nam_text', 'date_month_year', 'so_hop_dong'
 ]
@@ -332,6 +338,8 @@ def get_variable_category(var_name):
         return 'customer'
     elif var_name in JOINT_SAVINGS_VARIABLES:
         return 'joint_savings'
+    elif var_name in FOREIGN_CURRENCY_VARIABLES:
+        return 'foreign_currency'
     elif var_name in AUTO_GENERATED_VARIABLES:
         return 'auto_generated'
     elif var_name in LOAN_VARIABLES:
@@ -427,6 +435,7 @@ __all__ = [
     'GLOBAL_CONFIG_VARIABLES',
     'CUSTOMER_VARIABLES',
     'JOINT_SAVINGS_VARIABLES',
+    'FOREIGN_CURRENCY_VARIABLES',
     'AUTO_GENERATED_VARIABLES',
     'convert_old_variable',
     'convert_new_variable',
