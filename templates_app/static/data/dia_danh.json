@@ -11231,5 +11231,567 @@
       "Phường Tĩnh Gia",
       "Phường Đào Duy Từ"
     ]
+  },
+  "Thành phố Hồ Chí Minh": {
+    "Quận 1": [
+      "Phường Bến Thành",
+      "Phường Cầu Ông Lãnh",
+      "Phường Sài Gòn",
+      "Phường Tân Định"
+    ],
+    "Quận 3": [
+      "Phường Bàn Cờ",
+      "Phường Nhiêu Lộc",
+      "Phường Xuân Hòa"
+    ],
+    "Quận 4": [
+      "Phường Khánh Hội",
+      "Phường Vĩnh Hội",
+      "Phường Xóm Chiếu"
+    ],
+    "Quận 5": [
+      "Phường An Đông",
+      "Phường Chợ Lớn",
+      "Phường Chợ Quán"
+    ],
+    "Quận 6": [
+      "Phường Bình Phú",
+      "Phường Bình Tiên",
+      "Phường Bình Tây",
+      "Phường Phú Lâm"
+    ],
+    "Quận 7": [
+      "Phường Phú Thuận",
+      "Phường Tân Hưng",
+      "Phường Tân Mỹ",
+      "Phường Tân Thuận"
+    ],
+    "Quận 8": [
+      "Phường Bình Đông",
+      "Phường Chánh Hưng",
+      "Phường Phú Định"
+    ],
+    "Quận 10": [
+      "Phường Diên Hồng",
+      "Phường Hòa Hưng",
+      "Phường Vườn Lài"
+    ],
+    "Quận 11": [
+      "Phường Bình Thới",
+      "Phường Hòa Bình",
+      "Phường Minh Phụng",
+      "Phường Phú Thọ"
+    ],
+    "Quận 12": [
+      "Phường An Phú Đông",
+      "Phường Thới An",
+      "Phường Trung Mỹ Tây",
+      "Phường Tân Thới Hiệp",
+      "Phường Đông Hưng Thuận"
+    ],
+    "Quận Bình Tân": [
+      "Phường An Lạc",
+      "Phường Bình Hưng Hòa",
+      "Phường Bình Trị Đông",
+      "Phường Bình Tân",
+      "Phường Tân Tạo"
+    ],
+    "Quận Bình Thạnh": [
+      "Phường Bình Lợi Trung",
+      "Phường Bình Quới",
+      "Phường Bình Thạnh",
+      "Phường Gia Định",
+      "Phường Thạnh Mỹ Tây"
+    ],
+    "Quận Gò Vấp": [
+      "Phường An Hội Tây",
+      "Phường An Hội Đông",
+      "Phường An Nhơn",
+      "Phường Gò Vấp",
+      "Phường Hạnh Thông",
+      "Phường Thông Tây Hội"
+    ],
+    "Quận Phú Nhuận": [
+      "Phường Cầu Kiệu",
+      "Phường Phú Nhuận",
+      "Phường Đức Nhuận"
+    ],
+    "Quận Tân Bình": [
+      "Phường Bảy Hiền",
+      "Phường Tân Bình",
+      "Phường Tân Hòa",
+      "Phường Tân Sơn",
+      "Phường Tân Sơn Hòa",
+      "Phường Tân Sơn Nhất"
+    ],
+    "Quận Tân Phú": [
+      "Phường Phú Thạnh",
+      "Phường Phú Thọ Hòa",
+      "Phường Tân Phú",
+      "Phường Tân Sơn Nhì",
+      "Phường Tây Thạnh"
+    ],
+    "Thành phố Thủ Đức": [
+      "Phường An Khánh",
+      "Phường Bình Trưng",
+      "Phường Cát Lái",
+      "Phường Hiệp Bình",
+      "Phường Linh Xuân",
+      "Phường Long Bình",
+      "Phường Long Phước",
+      "Phường Long Trường",
+      "Phường Phước Long",
+      "Phường Tam Bình",
+      "Phường Thủ Đức",
+      "Phường Tăng Nhơn Phú"
+    ],
+    "Thành phố Dĩ An": [
+      "Phường Dĩ An",
+      "Phường Tân Đông Hiệp",
+      "Phường Đông Hòa"
+    ],
+    "Thành phố Thuận An": [
+      "Phường An Phú",
+      "Phường Bình Hòa",
+      "Phường Lái Thiêu",
+      "Phường Thuận An",
+      "Phường Thuận Giao"
+    ],
+    "Thành phố Thủ Dầu Một": [
+      "Phường Bình Dương",
+      "Phường Chánh Hiệp",
+      "Phường Phú Lợi",
+      "Phường Thủ Dầu Một"
+    ],
+    "Thành phố Bến Cát": [
+      "Phường Bình Cơ",
+      "Phường Bến Cát",
+      "Phường Chánh Phú Hòa",
+      "Phường Hòa Lợi",
+      "Phường Long Nguyên",
+      "Phường Phú An",
+      "Phường Tây Nam",
+      "Phường Vĩnh Tân"
+    ],
+    "Thành phố Tân Uyên": [
+      "Phường Tân Hiệp",
+      "Phường Tân Khánh",
+      "Phường Tân Uyên"
+    ],
+    "Thành phố Vũng Tàu": [
+      "Phường Phước Thắng",
+      "Phường Rạch Dừa",
+      "Phường Tam Thắng",
+      "Phường Vũng Tàu"
+    ],
+    "Thành phố Bà Rịa": [
+      "Phường Bà Rịa",
+      "Phường Long Hương",
+      "Phường Tam Long",
+      "Phường Tân Hải",
+      "Phường Tân Phước"
+    ],
+    "Thành phố Phú Mỹ": [
+      "Phường Phú Mỹ",
+      "Phường Tân Thành",
+      "Xã Châu Pha"
+    ],
+    "Huyện Bình Chánh": [
+      "Xã Bình Chánh",
+      "Xã Bình Hưng",
+      "Xã Bình Lợi",
+      "Xã Hưng Long",
+      "Xã Tân Nhựt",
+      "Xã Tân Vĩnh Lộc",
+      "Xã Vĩnh Lộc"
+    ],
+    "Huyện Cần Giờ": [
+      "Xã An Thới Đông",
+      "Xã Bình Khánh",
+      "Xã Cần Giờ"
+    ],
+    "Huyện Củ Chi": [
+      "Xã An Nhơn Tây",
+      "Xã Bình Mỹ",
+      "Xã Củ Chi",
+      "Xã Nhuận Đức",
+      "Xã Phú Hòa Đông",
+      "Xã Thái Mỹ",
+      "Xã Tân An Hội"
+    ],
+    "Huyện Hóc Môn": [
+      "Xã Bà Điểm",
+      "Xã Hóc Môn",
+      "Xã Xuân Thới Sơn",
+      "Xã Đông Thạnh"
+    ],
+    "Huyện Nhà Bè": [
+      "Xã Hiệp Phước",
+      "Xã Nhà Bè"
+    ],
+    "Huyện Bắc Tân Uyên": [
+      "Xã Bắc Tân Uyên",
+      "Xã Thường Tân"
+    ],
+    "Huyện Phú Giáo": [
+      "Xã An Long",
+      "Xã Phú Giáo",
+      "Xã Phước Hòa",
+      "Xã Phước Thành"
+    ],
+    "Huyện Bàu Bàng": [
+      "Xã Bàu Bàng",
+      "Xã Trừ Văn Thố"
+    ],
+    "Huyện Dầu Tiếng": [
+      "Xã Dầu Tiếng",
+      "Xã Long Hòa",
+      "Xã Minh Thạnh",
+      "Xã Thanh An"
+    ],
+    "Huyện Long Điền": [
+      "Xã Long Hải",
+      "Xã Long Điền",
+      "Xã Phước Hải",
+      "Xã Đất Đỏ"
+    ],
+    "Huyện Châu Đức": [
+      "Xã Bình Giã",
+      "Xã Châu Đức",
+      "Xã Kim Long",
+      "Xã Nghĩa Thành",
+      "Xã Ngãi Giao",
+      "Xã Xuân Sơn"
+    ],
+    "Huyện Xuyên Mộc": [
+      "Xã Bàu Lâm",
+      "Xã Hòa Hội",
+      "Xã Hồ Tràm",
+      "Xã Xuyên Mộc"
+    ],
+    "Huyện Côn Đảo": [
+      "Đặc khu Côn Đảo"
+    ]
+  },
+  "Tỉnh Tuyên Quang": {
+    "Huyện Lâm Bình": [
+      "Xã Lâm Bình",
+      "Xã Thượng Lâm"
+    ],
+    "Huyện Nà Hang": [
+      "Xã Bình An",
+      "Xã Côn Lôn",
+      "Xã Hồng Thái",
+      "Xã Minh Quang",
+      "Xã Nà Hang",
+      "Xã Thượng Nông",
+      "Xã Yên Hoa"
+    ],
+    "Huyện Chiêm Hóa": [
+      "Xã Chiêm Hóa",
+      "Xã Hòa An",
+      "Xã Kim Bình",
+      "Xã Kiên Đài",
+      "Xã Tri Phú",
+      "Xã Tân An",
+      "Xã Tân Mỹ",
+      "Xã Yên Lập",
+      "Xã Yên Nguyên"
+    ],
+    "Huyện Hàm Yên": [
+      "Xã Bình Xa",
+      "Xã Bạch Xa",
+      "Xã Hàm Yên",
+      "Xã Phù Lưu",
+      "Xã Thái Hòa",
+      "Xã Thái Sơn",
+      "Xã Yên Phú"
+    ],
+    "Huyện Yên Sơn": [
+      "Xã Hùng Lợi",
+      "Xã Lực Hành",
+      "Xã Minh Thanh",
+      "Xã Nhữ Khê",
+      "Xã Thái Bình",
+      "Xã Trung Sơn",
+      "Xã Tân Long",
+      "Xã Tân Trào",
+      "Xã Xuân Vân",
+      "Xã Yên Sơn"
+    ],
+    "Huyện Sơn Dương": [
+      "Xã Bình Ca",
+      "Xã Hồng Sơn",
+      "Xã Phú Lương",
+      "Xã Sơn Dương",
+      "Xã Sơn Thủy",
+      "Xã Trường Sinh",
+      "Xã Tân Thanh",
+      "Xã Đông Thọ"
+    ],
+    "Huyện Đồng Văn": [
+      "Xã Lũng Cú",
+      "Xã Lũng Phìn",
+      "Xã Phố Bảng",
+      "Xã Sà Phìn",
+      "Xã Đồng Văn"
+    ],
+    "Huyện Mèo Vạc": [
+      "Xã Khâu Vai",
+      "Xã Mèo Vạc",
+      "Xã Niêm Sơn",
+      "Xã Sơn Vĩ",
+      "Xã Sủng Máng",
+      "Xã Tát Ngà"
+    ],
+    "Huyện Yên Minh": [
+      "Xã Bạch Đích",
+      "Xã Du Già",
+      "Xã Lùng Tám",
+      "Xã Mậu Duệ",
+      "Xã Thắng Mố",
+      "Xã Yên Minh",
+      "Xã Đường Thượng"
+    ],
+    "Huyện Quản Bạ": [
+      "Xã Cán Tỷ",
+      "Xã Nghĩa Thuận",
+      "Xã Quản Bạ",
+      "Xã Tùng Vài"
+    ],
+    "Huyện Bắc Mê": [
+      "Xã Bắc Mê",
+      "Xã Minh Ngọc",
+      "Xã Ngọc Đường",
+      "Xã Yên Cường",
+      "Xã Đường Hồng"
+    ],
+    "Huyện Vị Xuyên": [
+      "Xã Bạch Ngọc",
+      "Xã Lao Chải",
+      "Xã Linh Hồ",
+      "Xã Phú Linh",
+      "Xã Thanh Thủy",
+      "Xã Việt Lâm",
+      "Xã Vị Xuyên"
+    ],
+    "Huyện Bắc Quang": [
+      "Xã Bắc Quang",
+      "Xã Bằng Hành",
+      "Xã Hùng An",
+      "Xã Liên Hiệp",
+      "Xã Tân Quang",
+      "Xã Vĩnh Tuy",
+      "Xã Đồng Tâm",
+      "Xã Đồng Yên"
+    ],
+    "Huyện Quang Bình": [
+      "Xã Bằng Lang",
+      "Xã Quang Bình",
+      "Xã Thông Nguyên",
+      "Xã Tiên Yên",
+      "Xã Tân Trịnh",
+      "Xã Xuân Giang",
+      "Xã Yên Thành"
+    ],
+    "Huyện Hoàng Su Phì": [
+      "Xã Bản Máy",
+      "Xã Hoàng Su Phì",
+      "Xã Hồ Thầu",
+      "Xã Nậm Dịch",
+      "Xã Pờ Ly Ngài",
+      "Xã Thàng Tín",
+      "Xã Tân Tiến"
+    ],
+    "Huyện Xín Mần": [
+      "Xã Khuôn Lùng",
+      "Xã Nấm Dẩn",
+      "Xã Pà Vầy Sủ",
+      "Xã Trung Thịnh",
+      "Xã Xín Mần"
+    ],
+    "Thành phố Tuyên Quang": [
+      "Phường An Tường",
+      "Phường Bình Thuận",
+      "Phường Minh Xuân",
+      "Phường Mỹ Lâm",
+      "Phường Nông Tiến"
+    ],
+    "Thành phố Hà Giang": [
+      "Phường Hà Giang 1",
+      "Phường Hà Giang 2"
+    ]
+  },
+  "Tỉnh Vĩnh Long": {
+    "Huyện Mang Thít": [
+      "Xã Bình Phước",
+      "Xã Cái Nhum",
+      "Xã Nhơn Phú",
+      "Xã Tân Long Hội"
+    ],
+    "Huyện Long Hồ": [
+      "Xã An Bình",
+      "Xã Long Hồ",
+      "Xã Phú Quới",
+      "Xã Quới Thiện"
+    ],
+    "Huyện Vũng Liêm": [
+      "Xã Hiếu Phụng",
+      "Xã Hiếu Thành",
+      "Xã Quới An",
+      "Xã Trung Hiệp",
+      "Xã Trung Ngãi",
+      "Xã Trung Thành"
+    ],
+    "Huyện Trà Ôn": [
+      "Xã Lục Sĩ Thành",
+      "Xã Trà Côn",
+      "Xã Trà Ôn",
+      "Xã Vĩnh Xuân"
+    ],
+    "Huyện Tam Bình": [
+      "Xã Cái Ngang",
+      "Xã Hòa Bình",
+      "Xã Hòa Hiệp",
+      "Xã Ngãi Tứ",
+      "Xã Song Phú",
+      "Xã Tam Bình"
+    ],
+    "Huyện Bình Tân": [
+      "Xã Mỹ Thuận",
+      "Xã Tân Lược",
+      "Xã Tân Quới"
+    ],
+    "Huyện Càng Long": [
+      "Xã An Trường",
+      "Xã Bình Phú",
+      "Xã Càng Long",
+      "Xã Long Hữu",
+      "Xã Nhị Long",
+      "Xã Tân An"
+    ],
+    "Huyện Châu Thành": [
+      "Xã Châu Thành",
+      "Xã Giao Long",
+      "Xã Hưng Mỹ",
+      "Xã Phú Phụng",
+      "Xã Phú Túc",
+      "Xã Song Lộc",
+      "Xã Tiên Thủy",
+      "Xã Tân Phú"
+    ],
+    "Huyện Cầu Kè": [
+      "Xã An Phú Tân",
+      "Xã Cầu Kè",
+      "Xã Phong Thạnh",
+      "Xã Tam Ngãi"
+    ],
+    "Huyện Tiểu Cần": [
+      "Xã Hùng Hoà",
+      "Xã Tiểu Cần",
+      "Xã Tân Hoà",
+      "Xã Tập Ngãi"
+    ],
+    "Huyện Cầu Ngang": [
+      "Xã Cầu Ngang",
+      "Xã Hiệp Mỹ",
+      "Xã Mỹ Long",
+      "Xã Nhị Trường",
+      "Xã Vinh Kim"
+    ],
+    "Huyện Trà Cú": [
+      "Xã Hàm Giang",
+      "Xã Long Hiệp",
+      "Xã Lưu Nghiệp Anh",
+      "Xã Trà Cú",
+      "Xã Tập Sơn",
+      "Xã Đại An"
+    ],
+    "Huyện Duyên Hải": [
+      "Xã Long Thành",
+      "Xã Ngũ Lạc",
+      "Xã Đôn Châu"
+    ],
+    "Huyện Chợ Lách": [
+      "Xã Chợ Lách",
+      "Xã Hưng Khánh Trung",
+      "Xã Vĩnh Thành"
+    ],
+    "Huyện Mỏ Cày Bắc": [
+      "Xã Nhuận Phú Tân",
+      "Xã Phước Mỹ Trung",
+      "Xã Tân Thành Bình"
+    ],
+    "Huyện Mỏ Cày Nam": [
+      "Xã An Định",
+      "Xã Hương Mỹ",
+      "Xã Mỏ Cày",
+      "Xã Thành Thới",
+      "Xã Đồng Khởi"
+    ],
+    "Huyện Thạnh Phú": [
+      "Xã An Qui",
+      "Xã Quới Điền",
+      "Xã Thạnh Hải",
+      "Xã Thạnh Phong",
+      "Xã Thạnh Phú",
+      "Xã Đại Điền"
+    ],
+    "Huyện Ba Tri": [
+      "Xã An Hiệp",
+      "Xã An Ngãi Trung",
+      "Xã Ba Tri",
+      "Xã Bảo Thạnh",
+      "Xã Mỹ Chánh Hòa",
+      "Xã Tân Thủy",
+      "Xã Tân Xuân"
+    ],
+    "Huyện Giồng Trôm": [
+      "Xã Châu Hòa",
+      "Xã Giồng Trôm",
+      "Xã Hưng Nhượng",
+      "Xã Lương Hòa",
+      "Xã Lương Phú",
+      "Xã Phước Long",
+      "Xã Tân Hào"
+    ],
+    "Huyện Bình Đại": [
+      "Xã Bình Đại",
+      "Xã Châu Hưng",
+      "Xã Lộc Thuận",
+      "Xã Phú Thuận",
+      "Xã Thạnh Phước",
+      "Xã Thạnh Trị",
+      "Xã Thới Thuận"
+    ],
+    "Thành phố Vĩnh Long": [
+      "Phường Long Châu",
+      "Phường Phước Hậu",
+      "Phường Thanh Đức",
+      "Phường Tân Hạnh",
+      "Phường Tân Ngãi"
+    ],
+    "Thị xã Bình Minh": [
+      "Phường Bình Minh",
+      "Phường Cái Vồn",
+      "Phường Đông Thành"
+    ],
+    "Thành phố Trà Vinh": [
+      "Phường Hoà Thuận",
+      "Phường Long Đức",
+      "Phường Nguyệt Hoá",
+      "Phường Trà Vinh"
+    ],
+    "Thị xã Duyên Hải": [
+      "Phường Duyên Hải",
+      "Phường Trường Long Hoà"
+    ],
+    "Thành phố Bến Tre": [
+      "Phường An Hội",
+      "Phường Bến Tre",
+      "Phường Phú Khương",
+      "Phường Phú Tân",
+      "Phường Sơn Đông"
+    ]
   }
 }
