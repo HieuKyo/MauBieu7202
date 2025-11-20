@@ -2335,6 +2335,7 @@ def beautiful_number_list(request):
     category_filter = request.GET.get('category', '')
     price_filter = request.GET.get('price', '')
     available_only = request.GET.get('available', 'true') == 'true'
+    pattern_filter = request.GET.get('pattern', '').strip()
 
     # Query base
     numbers_queryset = BeautifulNumber.objects.all()
@@ -2348,6 +2349,23 @@ def beautiful_number_list(request):
 
     if price_filter:
         numbers_queryset = numbers_queryset.filter(price_tier=price_filter)
+
+    # Pattern search - convert * to regex wildcard
+    # Example: "7202***777***" -> matches numbers with 777 in the middle
+    if pattern_filter:
+        import re
+        # Convert pattern to regex: * matches any single digit
+        regex_pattern = ''
+        for char in pattern_filter:
+            if char == '*':
+                regex_pattern += r'\d'  # Match any single digit
+            elif char.isdigit():
+                regex_pattern += char
+            # Ignore other characters
+
+        if regex_pattern:
+            # Use regex filter on account_number
+            numbers_queryset = numbers_queryset.filter(account_number__regex=f'^{regex_pattern}$')
 
     # Order by price and category
     numbers_queryset = numbers_queryset.order_by('price_tier', 'category', 'account_number')
@@ -2381,6 +2399,7 @@ def beautiful_number_list(request):
         'selected_category': category_filter,
         'selected_price': price_filter,
         'available_only': available_only,
+        'pattern_filter': pattern_filter,
     }
 
     return render(request, 'templates_app/beautiful_number_list.html', context)
