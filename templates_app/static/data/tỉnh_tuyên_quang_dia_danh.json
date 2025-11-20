@@ -1,0 +1,151 @@
+{
+  "Tỉnh Tuyên Quang": {
+    "Huyện Lâm Bình": [
+      "Xã Lâm Bình",
+      "Xã Thượng Lâm"
+    ],
+    "Huyện Nà Hang": [
+      "Xã Bình An",
+      "Xã Côn Lôn",
+      "Xã Hồng Thái",
+      "Xã Minh Quang",
+      "Xã Nà Hang",
+      "Xã Thượng Nông",
+      "Xã Yên Hoa"
+    ],
+    "Huyện Chiêm Hóa": [
+      "Xã Chiêm Hóa",
+      "Xã Hòa An",
+      "Xã Kim Bình",
+      "Xã Kiên Đài",
+      "Xã Tri Phú",
+      "Xã Tân An",
+      "Xã Tân Mỹ",
+      "Xã Yên Lập",
+      "Xã Yên Nguyên"
+    ],
+    "Huyện Hàm Yên": [
+      "Xã Bình Xa",
+      "Xã Bạch Xa",
+      "Xã Hàm Yên",
+      "Xã Phù Lưu",
+      "Xã Thái Hòa",
+      "Xã Thái Sơn",
+      "Xã Yên Phú"
+    ],
+    "Huyện Yên Sơn": [
+      "Xã Hùng Lợi",
+      "Xã Lực Hành",
+      "Xã Minh Thanh",
+      "Xã Nhữ Khê",
+      "Xã Thái Bình",
+      "Xã Trung Sơn",
+      "Xã Tân Long",
+      "Xã Tân Trào",
+      "Xã Xuân Vân",
+      "Xã Yên Sơn"
+    ],
+    "Huyện Sơn Dương": [
+      "Xã Bình Ca",
+      "Xã Hồng Sơn",
+      "Xã Phú Lương",
+      "Xã Sơn Dương",
+      "Xã Sơn Thủy",
+      "Xã Trường Sinh",
+      "Xã Tân Thanh",
+      "Xã Đông Thọ"
+    ],
+    "Huyện Đồng Văn": [
+      "Xã Lũng Cú",
+      "Xã Lũng Phìn",
+      "Xã Phố Bảng",
+      "Xã Sà Phìn",
+      "Xã Đồng Văn"
+    ],
+    "Huyện Mèo Vạc": [
+      "Xã Khâu Vai",
+      "Xã Mèo Vạc",
+      "Xã Niêm Sơn",
+      "Xã Sơn Vĩ",
+      "Xã Sủng Máng",
+      "Xã Tát Ngà"
+    ],
+    "Huyện Yên Minh": [
+      "Xã Bạch Đích",
+      "Xã Du Già",
+      "Xã Lùng Tám",
+      "Xã Mậu Duệ",
+      "Xã Thắng Mố",
+      "Xã Yên Minh",
+      "Xã Đường Thượng"
+    ],
+    "Huyện Quản Bạ": [
+      "Xã Cán Tỷ",
+      "Xã Nghĩa Thuận",
+      "Xã Quản Bạ",
+      "Xã Tùng Vài"
+    ],
+    "Huyện Bắc Mê": [
+      "Xã Bắc Mê",
+      "Xã Minh Ngọc",
+      "Xã Ngọc Đường",
+      "Xã Yên Cường",
+      "Xã Đường Hồng"
+    ],
+    "Huyện Vị Xuyên": [
+      "Xã Bạch Ngọc",
+      "Xã Lao Chải",
+      "Xã Linh Hồ",
+      "Xã Phú Linh",
+      "Xã Thanh Thủy",
+      "Xã Việt Lâm",
+      "Xã Vị Xuyên"
+    ],
+    "Huyện Bắc Quang": [
+      "Xã Bắc Quang",
+      "Xã Bằng Hành",
+      "Xã Hùng An",
+      "Xã Liên Hiệp",
+      "Xã Tân Quang",
+      "Xã Vĩnh Tuy",
+      "Xã Đồng Tâm",
+      "Xã Đồng Yên"
+    ],
+    "Huyện Quang Bình": [
+      "Xã Bằng Lang",
+      "Xã Quang Bình",
+      "Xã Thông Nguyên",
+      "Xã Tiên Yên",
+      "Xã Tân Trịnh",
+      "Xã Xuân Giang",
+      "Xã Yên Thành"
+    ],
+    "Huyện Hoàng Su Phì": [
+      "Xã Bản Máy",
+      "Xã Hoàng Su Phì",
+      "Xã Hồ Thầu",
+      "Xã Nậm Dịch",
+      "Xã Pờ Ly Ngài",
+      "Xã Thàng Tín",
+      "Xã Tân Tiến"
+    ],
+    "Huyện Xín Mần": [
+      "Xã Khuôn Lùng",
+      "Xã Nấm Dẩn",
+      "Xã Pà Vầy Sủ",
+      "Xã Trung Thịnh",
+      "Xã Xín Mần"
+    ],
+    "Thành phố Tuyên Quang": [
+      "Phường An Tường",
+      "Phường Bình Thuận",
+      "Phường Minh Xuân",
+      "Phường Mỹ Lâm",
+      "Phường Nông Tiến"
+    ],
+    "Thành phố Hà Giang": [
+      "Phường Hà Giang 1",
+      "Phường Hà Giang 2"
+    ]
+  }
+}
