@@ -188,7 +188,7 @@ class BankStatementParser:
         bin_code_str = str(bin_code).strip()
         return self.BIN_CODE_MAPPING.get(bin_code_str, 'MCC')
 
-    def parse_beneficiary_info(self, rem, tomgntno, acctccyamt, toacctno=''):
+    def parse_beneficiary_info(self, rem, tomgntno, acctccyamt, toacctno='', lclbrnm=''):
         """
         Parse thông tin người thụ hưởng từ nội dung giao dịch
 
@@ -197,6 +197,7 @@ class BankStatementParser:
             tomgntno: Tài khoản đối ứng
             acctccyamt: Số tiền (âm/dương)
             toacctno: Tài khoản người nhận (cho giao dịch nội bộ Agribank)
+            lclbrnm: Tên chi nhánh địa phương (Local Branch Name)
 
         Returns:
             dict: {'bank_name': str, 'account_number': str, 'beneficiary_name': str}
@@ -205,6 +206,22 @@ class BankStatementParser:
         bank_name = ""
         account_number = ""
         beneficiary_name = ""
+
+        # Priority 0: Check lclbrnm để xác định bank_name
+        # Nếu lclbrnm có "Agribank" → bank_name = "Agribank" + chi tiết chi nhánh
+        if lclbrnm and ('agribank' in lclbrnm.lower() or 'agri' in lclbrnm.lower()):
+            # Parse tên chi nhánh từ lclbrnm
+            # Format: "Agribank CN Vĩnh Châu Sóc Trăng" hoặc "Agribank CN Giá Rai Bạc Liêu"
+            if 'CN ' in lclbrnm or 'cn ' in lclbrnm.lower():
+                # Lấy phần sau "CN" làm tên chi nhánh
+                parts = lclbrnm.split('CN', 1)
+                if len(parts) > 1:
+                    branch_name = parts[1].strip()
+                    bank_name = f"Agribank CN {branch_name}"
+                else:
+                    bank_name = "Agribank"
+            else:
+                bank_name = lclbrnm.strip() if lclbrnm else "Agribank"
 
         # Pattern 0: Nộp tiền tại Agribank
         # Format: "TÊN NGƯỜI NỘP nộp tiền :" hoặc "TÊN nộp tiền", "NOP TIEN"
@@ -496,6 +513,7 @@ class BankStatementParser:
         tomgntno = str(row.get('tomgntno', '')).strip()
         toacctno = str(row.get('toacctno', '')).strip()
         husrid = str(row.get('husrid', '')).strip()
+        lclbrnm = str(row.get('lclbrnm', '')).strip()  # Local branch name
 
         # Giải ngân: Nội dung có chứa '7202LDS'
         if '7202LDS' in rem:
@@ -508,14 +526,20 @@ class BankStatementParser:
             else:
                 return "Chuyển khoản nội bộ Agribank"
 
-        # Chuyển khoản nội bộ Agribank - Pattern 2: Xác định dựa trên rem/husrid
-        # Ưu tiên 1: Check rem có mã ngân hàng không
-        # Ưu tiên 2: Check husrid có format 8 ký tự (mã chi nhánh + tên GDV)
+        # Chuyển khoản nội bộ Agribank - Pattern 2: Xác định dựa trên lclbrnm/rem/husrid
+        # Priority 0: Check lclbrnm (Local Branch Name) - indicator mạnh nhất
+        # Priority 1: Check rem có mã ngân hàng không
+        # Priority 2: Check husrid có format 8 ký tự (mã chi nhánh + tên GDV)
         is_internal_agribank = False
         is_interbank = False
 
-        # Priority 1: Check rem có mã ngân hàng không
-        if rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
+        # Priority 0: Check lclbrnm có "Agribank" không
+        # Nếu lclbrnm chứa "Agribank" → Giao dịch tại chi nhánh Agribank hoặc ATM Agribank
+        if lclbrnm and ('agribank' in lclbrnm.lower() or 'agri' in lclbrnm.lower()):
+            is_internal_agribank = True
+
+        # Priority 1: Check rem có mã ngân hàng không (nếu chưa xác định từ lclbrnm)
+        if not is_internal_agribank and rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
             rem_upper = rem.strip().upper()
             # Check xem rem có trong BANK_CODE_MAPPING không
             if rem_upper in self.BANK_CODE_MAPPING or rem_upper in ['AGRIBANK', 'AGRI']:
@@ -777,11 +801,13 @@ class BankStatementParser:
             # Parse thông tin người thụ hưởng
             tomgntno = row.get('tomgntno', '')
             toacctno = row.get('toacctno', '')
+            lclbrnm = row.get('lclbrnm', '')
             beneficiary_info = self.parse_beneficiary_info(
                 description,
                 tomgntno,
                 acctccyamt,
-                toacctno
+                toacctno,
+                lclbrnm
             )
 
             # Kiểm tra các loại giao dịch đặc biệt dựa vào husrid
