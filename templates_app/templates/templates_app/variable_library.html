@@ -672,27 +672,29 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// Event Listeners - Removing inline onclick for CSP compliance
-document.addEventListener('DOMContentLoaded', function() {
-    // Copy variable buttons
-    document.querySelectorAll('[data-action="copy-variable"]').forEach(button => {
-        button.addEventListener('click', function() {
-            const variableName = this.dataset.variableName;
-            if (variableName) {
-                copyVariable(variableName);
-            }
-        });
-    });
+// Event Delegation - More reliable for CSP compliance
+document.addEventListener('click', function(e) {
+    // Handle copy variable buttons
+    const copyVarBtn = e.target.closest('[data-action="copy-variable"]');
+    if (copyVarBtn) {
+        e.preventDefault();
+        const variableName = copyVarBtn.dataset.variableName;
+        if (variableName) {
+            copyVariable(variableName);
+        }
+        return;
+    }
 
-    // Copy Jinja code buttons
-    document.querySelectorAll('[data-action="copy-jinja"]').forEach(button => {
-        button.addEventListener('click', function() {
-            const jinjaCode = this.dataset.jinjaCode;
-            if (jinjaCode) {
-                copyJinjaCode(jinjaCode);
-            }
-        });
-    });
+    // Handle copy Jinja code buttons
+    const copyJinjaBtn = e.target.closest('[data-action="copy-jinja"]');
+    if (copyJinjaBtn) {
+        e.preventDefault();
+        const jinjaCode = copyJinjaBtn.dataset.jinjaCode;
+        if (jinjaCode) {
+            copyJinjaCode(jinjaCode);
+        }
+        return;
+    }
 });
 {% endverbatim %}
 </script>
