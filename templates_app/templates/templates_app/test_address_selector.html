@@ -162,38 +162,41 @@
                 log('ERROR: ' + error.message);
                 console.error('Error initializing AddressSelector:', error);
             }
+        });
 
-            // Copy address button handler
-            const btnCopyAddress = document.getElementById('btn-copy-address');
-            if (btnCopyAddress) {
-                btnCopyAddress.addEventListener('click', function() {
-                    const fullAddress = document.getElementById('test-full-address').value;
+        // Event Delegation - More reliable for CSP compliance
+        document.addEventListener('click', function(e) {
+            // Handle copy address button
+            if (e.target.id === 'btn-copy-address' || e.target.closest('#btn-copy-address')) {
+                e.preventDefault();
+                const fullAddress = document.getElementById('test-full-address').value;
 
-                    if (!fullAddress) {
-                        alert('Chưa có địa chỉ để copy!');
-                        return;
-                    }
+                if (!fullAddress) {
+                    alert('Chưa có địa chỉ để copy!');
+                    return;
+                }
 
-                    // Use Clipboard API
-                    navigator.clipboard.writeText(fullAddress).then(() => {
-                        // Visual feedback
-                        const originalHTML = this.innerHTML;
-                        this.innerHTML = '<i class="bi bi-check"></i> Đã copy!';
-                        this.classList.remove('btn-primary');
-                        this.classList.add('btn-success');
+                const btn = e.target.closest('#btn-copy-address') || e.target;
 
-                        setTimeout(() => {
-                            this.innerHTML = originalHTML;
-                            this.classList.remove('btn-success');
-                            this.classList.add('btn-primary');
-                        }, 2000);
+                // Use Clipboard API
+                navigator.clipboard.writeText(fullAddress).then(() => {
+                    // Visual feedback
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="bi bi-check"></i> Đã copy!';
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-success');
 
-                        log('✓ Copied address to clipboard: ' + fullAddress);
-                    }).catch(err => {
-                        console.error('Failed to copy:', err);
-                        alert('Lỗi khi copy địa chỉ!');
-                        log('✗ ERROR copying to clipboard: ' + err.message);
-                    });
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('btn-success');
+                        btn.classList.add('btn-primary');
+                    }, 2000);
+
+                    log('✓ Copied address to clipboard: ' + fullAddress);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    alert('Lỗi khi copy địa chỉ!');
+                    log('✗ ERROR copying to clipboard: ' + err.message);
                 });
             }
         });

@@ -754,35 +754,39 @@ function deleteEmployee(employeeId, fullName) {
     });
 }
 
-// Event Listeners - Removing inline onclick for CSP compliance
-document.addEventListener('DOMContentLoaded', function() {
-    // Action buttons (View, Edit, Delete)
-    document.querySelectorAll('.btn-action').forEach(button => {
-        button.addEventListener('click', function() {
-            const action = this.dataset.action;
-            const employeeId = parseInt(this.dataset.employeeId);
-            const employeeName = this.dataset.employeeName;
+// Event Delegation - More reliable for CSP compliance
+// Listen at document level instead of individual elements
+document.addEventListener('click', function(e) {
+    // Handle action buttons (View, Edit, Delete)
+    const actionBtn = e.target.closest('.btn-action');
+    if (actionBtn) {
+        e.preventDefault();
+        const action = actionBtn.dataset.action;
+        const employeeId = parseInt(actionBtn.dataset.employeeId);
+        const employeeName = actionBtn.dataset.employeeName;
 
-            if (action === 'view') {
-                viewEmployee(employeeId);
-            } else if (action === 'edit') {
-                editEmployee(employeeId);
-            } else if (action === 'delete') {
-                deleteEmployee(employeeId, employeeName);
-            }
-        });
-    });
-
-    // Submit Add Employee button
-    const btnSubmitAdd = document.getElementById('btnSubmitAddEmployee');
-    if (btnSubmitAdd) {
-        btnSubmitAdd.addEventListener('click', submitAddEmployee);
+        if (action === 'view') {
+            viewEmployee(employeeId);
+        } else if (action === 'edit') {
+            editEmployee(employeeId);
+        } else if (action === 'delete') {
+            deleteEmployee(employeeId, employeeName);
+        }
+        return;
     }
 
-    // Submit Edit Employee button
-    const btnSubmitEdit = document.getElementById('btnSubmitEditEmployee');
-    if (btnSubmitEdit) {
-        btnSubmitEdit.addEventListener('click', submitEditEmployee);
+    // Handle Submit Add Employee button
+    if (e.target.id === 'btnSubmitAddEmployee' || e.target.closest('#btnSubmitAddEmployee')) {
+        e.preventDefault();
+        submitAddEmployee();
+        return;
+    }
+
+    // Handle Submit Edit Employee button
+    if (e.target.id === 'btnSubmitEditEmployee' || e.target.closest('#btnSubmitEditEmployee')) {
+        e.preventDefault();
+        submitEditEmployee();
+        return;
     }
 });
 </script>
