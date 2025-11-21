@@ -622,9 +622,19 @@ class BankStatementParser:
             return "Nộp tiền mặt"
 
         # Thanh toán
+        # Pattern 1: Debit Purchase (thẻ ghi nợ)
         if 'Debit Purchase' in trcdnm:
             if 'POS' in rem:
                 return "Thanh toán POS"
+            return "Thanh toán thẻ"
+
+        # Pattern 2: Purchase BankNet POS (thanh toán POS qua BankNet)
+        # Check: trcdnm có "Purchase" và "POS", hoặc husrid có pattern "1000PO"
+        if ('Purchase' in trcdnm and 'POS' in trcdnm) or (husrid and husrid.startswith('1000PO')):
+            return "Thanh toán POS"
+
+        # Pattern 3: Purchase tổng quát (không phải POS)
+        if 'Purchase' in trcdnm and amount < 0:
             return "Thanh toán thẻ"
 
         # Dịch vụ
