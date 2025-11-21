@@ -48,6 +48,7 @@ class BankStatementParser:
         'NAB': 'NamABank',
         'NAMABANK': 'NamABank',
         'VAB': 'VietABank',
+        'VBA': 'VietABank',  # Alias for VAB
         'VIETABANK': 'VietABank',
         'PGBANK': 'PGBank',
         'ABB': 'ABBank',
@@ -460,6 +461,43 @@ class BankStatementParser:
 
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
+        # Pattern 5: Fallback cho liên ngân hàng (tomgntno/toacctno không phải Agribank)
+        # Check nếu có tomgntno/toacctno >= 10 số và KHÔNG bắt đầu bằng 7
+        tomgntno_str = str(tomgntno).strip()
+        toacctno_str = str(toacctno).strip()
+
+        if tomgntno_str and len(tomgntno_str) >= 10 and tomgntno_str.isdigit() and tomgntno_str[0] != '7':
+            # Đây là tài khoản liên ngân hàng
+            account_number = tomgntno_str
+
+            # Try to parse bank name from rem
+            if rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
+                rem_upper = rem.strip().upper()
+                bank_name = self.get_bank_name_from_code(rem_upper)
+                # Nếu không tìm thấy trong mapping, giữ nguyên rem
+                if bank_name == rem_upper:
+                    bank_name = rem.strip()
+            else:
+                bank_name = "Liên ngân hàng"
+
+            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
+        elif toacctno_str and len(toacctno_str) >= 10 and toacctno_str.isdigit() and toacctno_str[0] != '7':
+            # Đây là tài khoản liên ngân hàng
+            account_number = toacctno_str
+
+            # Try to parse bank name from rem
+            if rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
+                rem_upper = rem.strip().upper()
+                bank_name = self.get_bank_name_from_code(rem_upper)
+                # Nếu không tìm thấy trong mapping, giữ nguyên rem
+                if bank_name == rem_upper:
+                    bank_name = rem.strip()
+            else:
+                bank_name = "Liên ngân hàng"
+
+            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
         # Không parse được
         return {'bank_name': '', 'account_number': '', 'beneficiary_name': ''}
 
@@ -586,6 +624,28 @@ class BankStatementParser:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
                 return "Chuyển khoản liên ngân hàng"
+
+        # Fallback cho chuyển khoản liên ngân hàng (chưa match các pattern cụ thể)
+        # Kiểm tra tomgntno/toacctno là tài khoản KHÔNG phải Agribank (không bắt đầu bằng 7)
+        # Điều kiện:
+        # 1. Có tomgntno/toacctno (số tài khoản đối ứng)
+        # 2. Tài khoản >= 10 số và là số
+        # 3. KHÔNG bắt đầu bằng 7 (không phải Agribank)
+        # 4. Không phải các giao dịch đặc biệt khác đã check ở trên
+        if tomgntno and len(tomgntno) >= 10 and tomgntno.isdigit():
+            # Nếu KHÔNG bắt đầu bằng 7 → Liên ngân hàng
+            if tomgntno[0] != '7':
+                if amount > 0:
+                    return "Nhận chuyển khoản liên ngân hàng"
+                else:
+                    return "Chuyển khoản liên ngân hàng"
+        elif toacctno and len(toacctno) >= 10 and toacctno.isdigit():
+            # Nếu KHÔNG bắt đầu bằng 7 → Liên ngân hàng
+            if toacctno[0] != '7':
+                if amount > 0:
+                    return "Nhận chuyển khoản liên ngân hàng"
+                else:
+                    return "Chuyển khoản liên ngân hàng"
 
         # Rút tiền với phí cụ thể
         # 1,100 đồng: Rút tiền mặt cùng hệ thống (từ thẻ rút tiền mặt)
