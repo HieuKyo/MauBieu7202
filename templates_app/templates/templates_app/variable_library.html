@@ -106,7 +106,7 @@
                                 <td class="variable-desc">{{ var.description }}</td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                                            onclick="copyVariable('{{ var.name }}')"
+                                            data-action="copy-variable" data-variable-name='{{ var.name }}'
                                             title="Copy {{ var.name }}">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -154,7 +154,7 @@
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                                            onclick="copyVariable('{{ var.name }}')"
+                                            data-action="copy-variable" data-variable-name='{{ var.name }}'
                                             title="Copy {{ var.name }}">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -202,7 +202,7 @@
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                                            onclick="copyVariable('{{ var.name }}')"
+                                            data-action="copy-variable" data-variable-name='{{ var.name }}'
                                             title="Copy {{ var.name }}">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -250,7 +250,7 @@
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                                            onclick="copyVariable('{{ var.name }}')"
+                                            data-action="copy-variable" data-variable-name='{{ var.name }}'
                                             title="Copy {{ var.name }}">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -304,7 +304,7 @@
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                                            onclick="copyVariable('{{ var.name }}')"
+                                            data-action="copy-variable" data-variable-name='{{ var.name }}'
                                             title="Copy {{ var.name }}">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -358,7 +358,7 @@
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                                            onclick="copyVariable('{{ var.name }}')"
+                                            data-action="copy-variable" data-variable-name='{{ var.name }}'
                                             title="Copy {{ var.name }}">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -406,7 +406,7 @@
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                                            onclick="copyVariable('{{ var.name }}')"
+                                            data-action="copy-variable" data-variable-name='{{ var.name }}'
                                             title="Copy {{ var.name }}">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -459,7 +459,7 @@
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                                            onclick="copyJinjaCode('{{ var.example }}')"
+                                            data-action="copy-jinja" data-jinja-code='{{ var.example }}'
                                             title="Copy example">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -512,7 +512,7 @@ function copyVariable(variableName) {
         showNotification(`Đã copy: ${textToCopy}`, 'success');
 
         // Visual feedback on button
-        const buttons = document.querySelectorAll(`button[onclick="copyVariable('${variableName}')"]`);
+        const buttons = document.querySelectorAll(`button[data-action="copy-variable" data-variable-name='${variableName}']`);
         buttons.forEach(btn => {
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
@@ -620,7 +620,7 @@ document.getElementById('variable-search').addEventListener('input', function(e)
                 <td><span class="badge bg-secondary">${result.categoryName}</span></td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-primary copy-btn"
-                            onclick="copyVariable('${result.name}')"
+                            data-action="copy-variable" data-variable-name='${result.name}'
                             title="Copy ${result.name}">
                         <i class="bi bi-clipboard"></i>
                     </button>
@@ -671,6 +671,29 @@ function showNotification(message, type = 'info') {
         alert.remove();
     }, 3000);
 }
+
+// Event Listeners - Removing inline onclick for CSP compliance
+document.addEventListener('DOMContentLoaded', function() {
+    // Copy variable buttons
+    document.querySelectorAll('[data-action="copy-variable"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const variableName = this.dataset.variableName;
+            if (variableName) {
+                copyVariable(variableName);
+            }
+        });
+    });
+
+    // Copy Jinja code buttons
+    document.querySelectorAll('[data-action="copy-jinja"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const jinjaCode = this.dataset.jinjaCode;
+            if (jinjaCode) {
+                copyJinjaCode(jinjaCode);
+            }
+        });
+    });
+});
 {% endverbatim %}
 </script>
 {% endblock %}

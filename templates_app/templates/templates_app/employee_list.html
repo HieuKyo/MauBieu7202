@@ -138,13 +138,13 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-info" onclick="viewEmployee({{ emp.id }})" title="Xem chi tiết">
+                                <button class="btn btn-sm btn-info btn-action" data-action="view" data-employee-id="{{ emp.id }}" title="Xem chi tiết">
                                     <i class="bi bi-eye"></i>
                                 </button>
-                                <button class="btn btn-sm btn-warning" onclick="editEmployee({{ emp.id }})" title="Chỉnh sửa">
+                                <button class="btn btn-sm btn-warning btn-action" data-action="edit" data-employee-id="{{ emp.id }}" title="Chỉnh sửa">
                                     <i class="bi bi-pencil"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteEmployee({{ emp.id }}, '{{ emp.full_name }}')" title="Xóa">
+                                <button class="btn btn-sm btn-danger btn-action" data-action="delete" data-employee-id="{{ emp.id }}" data-employee-name="{{ emp.full_name }}" title="Xóa">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
@@ -334,7 +334,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-primary" onclick="submitAddEmployee()">
+                <button type="button" class="btn btn-primary" id="btnSubmitAddEmployee">
                     <i class="bi bi-save"></i> Lưu
                 </button>
             </div>
@@ -514,7 +514,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-primary" onclick="submitEditEmployee()">
+                <button type="button" class="btn btn-primary" id="btnSubmitEditEmployee">
                     <i class="bi bi-save"></i> Cập nhật
                 </button>
             </div>
@@ -753,5 +753,37 @@ function deleteEmployee(employeeId, fullName) {
         alert('Đã xảy ra lỗi: ' + error);
     });
 }
+
+// Event Listeners - Removing inline onclick for CSP compliance
+document.addEventListener('DOMContentLoaded', function() {
+    // Action buttons (View, Edit, Delete)
+    document.querySelectorAll('.btn-action').forEach(button => {
+        button.addEventListener('click', function() {
+            const action = this.dataset.action;
+            const employeeId = parseInt(this.dataset.employeeId);
+            const employeeName = this.dataset.employeeName;
+
+            if (action === 'view') {
+                viewEmployee(employeeId);
+            } else if (action === 'edit') {
+                editEmployee(employeeId);
+            } else if (action === 'delete') {
+                deleteEmployee(employeeId, employeeName);
+            }
+        });
+    });
+
+    // Submit Add Employee button
+    const btnSubmitAdd = document.getElementById('btnSubmitAddEmployee');
+    if (btnSubmitAdd) {
+        btnSubmitAdd.addEventListener('click', submitAddEmployee);
+    }
+
+    // Submit Edit Employee button
+    const btnSubmitEdit = document.getElementById('btnSubmitEditEmployee');
+    if (btnSubmitEdit) {
+        btnSubmitEdit.addEventListener('click', submitEditEmployee);
+    }
+});
 </script>
 {% endblock %}
