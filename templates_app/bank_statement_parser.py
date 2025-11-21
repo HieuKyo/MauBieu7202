@@ -48,8 +48,8 @@ class BankStatementParser:
         'NAB': 'NamABank',
         'NAMABANK': 'NamABank',
         'VAB': 'VietABank',
-        'VBA': 'VietABank',  # Alias for VAB
         'VIETABANK': 'VietABank',
+        'VBA': 'Agribank',  # Vietnam Bank for Agriculture (Agribank)
         'PGBANK': 'PGBank',
         'ABB': 'ABBank',
         'ABBANK': 'ABBank',
@@ -247,37 +247,45 @@ class BankStatementParser:
             beneficiary_name = ""
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
-        # Pattern 1.5: Chuyển khoản nội bộ Agribank (không có MB pattern)
-        # Check tomgntno/toacctno là tài khoản Agribank (10-13 số bắt đầu bằng 7)
+        # Pattern 1.5: Chuyển khoản nội bộ/liên ngân hàng (không có MB pattern)
+        # Ưu tiên check rem có mã ngân hàng không
         tomgntno_str = str(tomgntno).strip()
         toacctno_str = str(toacctno).strip()
 
-        is_agribank_account = False
-        if tomgntno_str and len(tomgntno_str) >= 10 and tomgntno_str.isdigit() and tomgntno_str[0] == '7':
-            is_agribank_account = True
-            bank_name = "Agribank"
-            if acctccyamt > 0:  # Nhận tiền
-                account_number = tomgntno_str
-            # Parse tên từ rem nếu có
-            if rem and rem.strip() and rem.strip() not in ['CK', 'CT', 'ck', 'ct']:
-                # Tách tên từ nội dung (bỏ các từ khóa)
-                rem_words = rem.split()
-                name_parts = []
-                for word in rem_words:
-                    word_clean = word.strip()
-                    if word_clean.lower() not in ['ck', 'ct', 'chuyen', 'khoan', 'tien']:
-                        name_parts.append(word_clean)
-                if name_parts:
-                    beneficiary_name = ' '.join(name_parts[:5])
+        # Kiểm tra rem có phải mã ngân hàng không
+        is_bank_code_in_rem = False
+        bank_from_rem = ""
+        if rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
+            rem_upper = rem.strip().upper()
+            bank_from_rem = self.get_bank_name_from_code(rem_upper)
+            # Nếu tìm thấy trong mapping (không phải giữ nguyên rem_upper)
+            if bank_from_rem != rem_upper:
+                is_bank_code_in_rem = True
+                bank_name = bank_from_rem
 
-        elif toacctno_str and len(toacctno_str) >= 10 and toacctno_str.isdigit() and toacctno_str[0] == '7':
-            is_agribank_account = True
-            bank_name = "Agribank"
-            if acctccyamt < 0:  # Chuyển tiền
-                account_number = toacctno_str
+        # Nếu có tomgntno/toacctno và rem chứa mã ngân hàng
+        if (tomgntno_str and len(tomgntno_str) >= 10 and tomgntno_str.isdigit()) or \
+           (toacctno_str and len(toacctno_str) >= 10 and toacctno_str.isdigit()):
 
-        if is_agribank_account:
-            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+            if is_bank_code_in_rem:
+                # Đã xác định được bank_name từ rem
+                if acctccyamt > 0 and tomgntno_str:
+                    account_number = tomgntno_str
+                elif acctccyamt < 0 and toacctno_str:
+                    account_number = toacctno_str
+
+                # Parse tên từ rem nếu có (trừ khi rem chỉ là mã NH)
+                if rem and rem.strip() and rem.strip().upper() not in self.BANK_CODE_MAPPING:
+                    rem_words = rem.split()
+                    name_parts = []
+                    for word in rem_words:
+                        word_clean = word.strip()
+                        if word_clean.lower() not in ['ck', 'ct', 'chuyen', 'khoan', 'tien']:
+                            name_parts.append(word_clean)
+                    if name_parts:
+                        beneficiary_name = ' '.join(name_parts[:5])
+
+                return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Pattern 2: MCC transactions with BIN code (PHẢI CHECK TRƯỚC Pattern 2 general!)
         # Format 1: 1000A17202 - 337221-NGUYEN THI KIM THOA chuyen khoan;MCC;20231220224051;0976831420123;970422
@@ -461,43 +469,6 @@ class BankStatementParser:
 
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
-        # Pattern 5: Fallback cho liên ngân hàng (tomgntno/toacctno không phải Agribank)
-        # Check nếu có tomgntno/toacctno >= 10 số và KHÔNG bắt đầu bằng 7
-        tomgntno_str = str(tomgntno).strip()
-        toacctno_str = str(toacctno).strip()
-
-        if tomgntno_str and len(tomgntno_str) >= 10 and tomgntno_str.isdigit() and tomgntno_str[0] != '7':
-            # Đây là tài khoản liên ngân hàng
-            account_number = tomgntno_str
-
-            # Try to parse bank name from rem
-            if rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
-                rem_upper = rem.strip().upper()
-                bank_name = self.get_bank_name_from_code(rem_upper)
-                # Nếu không tìm thấy trong mapping, giữ nguyên rem
-                if bank_name == rem_upper:
-                    bank_name = rem.strip()
-            else:
-                bank_name = "Liên ngân hàng"
-
-            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
-
-        elif toacctno_str and len(toacctno_str) >= 10 and toacctno_str.isdigit() and toacctno_str[0] != '7':
-            # Đây là tài khoản liên ngân hàng
-            account_number = toacctno_str
-
-            # Try to parse bank name from rem
-            if rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
-                rem_upper = rem.strip().upper()
-                bank_name = self.get_bank_name_from_code(rem_upper)
-                # Nếu không tìm thấy trong mapping, giữ nguyên rem
-                if bank_name == rem_upper:
-                    bank_name = rem.strip()
-            else:
-                bank_name = "Liên ngân hàng"
-
-            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
-
         # Không parse được
         return {'bank_name': '', 'account_number': '', 'beneficiary_name': ''}
 
@@ -537,23 +508,32 @@ class BankStatementParser:
             else:
                 return "Chuyển khoản nội bộ Agribank"
 
-        # Chuyển khoản nội bộ Agribank - Pattern 2: tomgntno/toacctno là tài khoản Agribank (13 số bắt đầu bằng 7xxx)
-        # hoặc husrid có format 8 ký tự (3 ký tự mã chi nhánh + 5 ký tự tên GDV: GRA/HOB + TNNHI/TKIEN/...)
+        # Chuyển khoản nội bộ Agribank - Pattern 2: Xác định dựa trên rem/husrid
+        # Ưu tiên 1: Check rem có mã ngân hàng không
+        # Ưu tiên 2: Check husrid có format 8 ký tự (mã chi nhánh + tên GDV)
         is_internal_agribank = False
+        is_interbank = False
 
-        # Check tomgntno/toacctno: Tài khoản Agribank thường 13 số và bắt đầu bằng 7
-        if tomgntno and len(tomgntno) >= 10 and tomgntno.isdigit() and tomgntno[0] == '7':
-            is_internal_agribank = True
-        elif toacctno and len(toacctno) >= 10 and toacctno.isdigit() and toacctno[0] == '7':
-            is_internal_agribank = True
+        # Priority 1: Check rem có mã ngân hàng không
+        if rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
+            rem_upper = rem.strip().upper()
+            # Check xem rem có trong BANK_CODE_MAPPING không
+            if rem_upper in self.BANK_CODE_MAPPING or rem_upper in ['AGRIBANK', 'AGRI']:
+                bank_from_rem = self.BANK_CODE_MAPPING.get(rem_upper, rem_upper)
+                if bank_from_rem == 'Agribank' or rem_upper in ['AGRIBANK', 'AGRI']:
+                    is_internal_agribank = True
+                else:
+                    is_interbank = True
 
-        # Check husrid: 8 ký tự (3 chữ cái mã chi nhánh + 5 ký tự tên GDV)
-        # VD: GRATNNHI, GRATKIEN, GRALTHUC, GRANSINH, HOBXXXXX
-        if husrid and len(husrid) == 8 and husrid[:3].isalpha() and husrid[3:].isalpha():
-            # Kiểm tra mã chi nhánh phổ biến (GRA, HOB, HAN, SGN, v.v.)
-            branch_codes = ['GRA', 'HOB', 'HAN', 'SGN', 'DNA', 'CTO', 'BTR', 'BDG', 'HUE', 'VTU', 'QNI', 'KHA', 'DLK', 'BIN', 'PTH', 'GLA', 'NTR', 'BTE', 'KGI', 'BLU', 'CMU', 'VLO', 'LAI', 'YEN']
-            if husrid[:3].upper() in branch_codes or True:  # Accept any 3-letter prefix for flexibility
-                is_internal_agribank = True
+        # Priority 2: Check husrid (nếu chưa xác định được từ rem)
+        if not is_internal_agribank and not is_interbank:
+            # Check husrid: 8 ký tự (3 chữ cái mã chi nhánh + 5 ký tự tên GDV)
+            # VD: GRATNNHI, GRATKIEN, GRALTHUC, GRANSINH, HOBXXXXX
+            if husrid and len(husrid) == 8 and husrid[:3].isalpha() and husrid[3:].isalpha():
+                # Kiểm tra mã chi nhánh phổ biến (GRA, HOB, HAN, SGN, v.v.)
+                branch_codes = ['GRA', 'HOB', 'HAN', 'SGN', 'DNA', 'CTO', 'BTR', 'BDG', 'HUE', 'VTU', 'QNI', 'KHA', 'DLK', 'BIN', 'PTH', 'GLA', 'NTR', 'BTE', 'KGI', 'BLU', 'CMU', 'VLO', 'LAI', 'YEN']
+                if husrid[:3].upper() in branch_codes or True:  # Accept any 3-letter prefix for flexibility
+                    is_internal_agribank = True
 
         # Nếu là giao dịch nội bộ Agribank
         if is_internal_agribank:
@@ -625,27 +605,12 @@ class BankStatementParser:
             else:
                 return "Chuyển khoản liên ngân hàng"
 
-        # Fallback cho chuyển khoản liên ngân hàng (chưa match các pattern cụ thể)
-        # Kiểm tra tomgntno/toacctno là tài khoản KHÔNG phải Agribank (không bắt đầu bằng 7)
-        # Điều kiện:
-        # 1. Có tomgntno/toacctno (số tài khoản đối ứng)
-        # 2. Tài khoản >= 10 số và là số
-        # 3. KHÔNG bắt đầu bằng 7 (không phải Agribank)
-        # 4. Không phải các giao dịch đặc biệt khác đã check ở trên
-        if tomgntno and len(tomgntno) >= 10 and tomgntno.isdigit():
-            # Nếu KHÔNG bắt đầu bằng 7 → Liên ngân hàng
-            if tomgntno[0] != '7':
-                if amount > 0:
-                    return "Nhận chuyển khoản liên ngân hàng"
-                else:
-                    return "Chuyển khoản liên ngân hàng"
-        elif toacctno and len(toacctno) >= 10 and toacctno.isdigit():
-            # Nếu KHÔNG bắt đầu bằng 7 → Liên ngân hàng
-            if toacctno[0] != '7':
-                if amount > 0:
-                    return "Nhận chuyển khoản liên ngân hàng"
-                else:
-                    return "Chuyển khoản liên ngân hàng"
+        # Interbank transfers (đã xác định từ rem ở trên)
+        if is_interbank:
+            if amount > 0:
+                return "Nhận chuyển khoản liên ngân hàng"
+            else:
+                return "Chuyển khoản liên ngân hàng"
 
         # Rút tiền với phí cụ thể
         # 1,100 đồng: Rút tiền mặt cùng hệ thống (từ thẻ rút tiền mặt)
