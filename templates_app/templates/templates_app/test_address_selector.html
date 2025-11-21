@@ -164,6 +164,39 @@
             }
         });
 
+        // Universal copy to clipboard function with fallback
+        function copyToClipboard(text) {
+            // Try modern Clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            } else {
+                // Fallback for browsers without Clipboard API or non-HTTPS contexts
+                return new Promise((resolve, reject) => {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+
+                    try {
+                        const successful = document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        if (successful) {
+                            resolve();
+                        } else {
+                            reject(new Error('execCommand failed'));
+                        }
+                    } catch (err) {
+                        document.body.removeChild(textArea);
+                        reject(err);
+                    }
+                });
+            }
+        }
+
         // Event Delegation - More reliable for CSP compliance
         document.addEventListener('click', function(e) {
             // Handle copy address button
@@ -178,8 +211,8 @@
 
                 const btn = e.target.closest('#btn-copy-address') || e.target;
 
-                // Use Clipboard API
-                navigator.clipboard.writeText(fullAddress).then(() => {
+                // Use universal copy function
+                copyToClipboard(fullAddress).then(() => {
                     // Visual feedback
                     const originalHTML = btn.innerHTML;
                     btn.innerHTML = '<i class="bi bi-check"></i> Đã copy!';
