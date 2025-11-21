@@ -56,6 +56,9 @@
         <div class="alert alert-success mt-4" id="test-preview" style="display: none;">
             <strong>✓ Địa chỉ đã chọn:</strong>
             <div id="test-address-display" class="mt-2"></div>
+            <button type="button" class="btn btn-sm btn-primary mt-2" id="btn-copy-address">
+                <i class="bi bi-clipboard"></i> Copy địa chỉ
+            </button>
         </div>
 
         <!-- Debug info -->
@@ -158,6 +161,40 @@
             } catch (error) {
                 log('ERROR: ' + error.message);
                 console.error('Error initializing AddressSelector:', error);
+            }
+
+            // Copy address button handler
+            const btnCopyAddress = document.getElementById('btn-copy-address');
+            if (btnCopyAddress) {
+                btnCopyAddress.addEventListener('click', function() {
+                    const fullAddress = document.getElementById('test-full-address').value;
+
+                    if (!fullAddress) {
+                        alert('Chưa có địa chỉ để copy!');
+                        return;
+                    }
+
+                    // Use Clipboard API
+                    navigator.clipboard.writeText(fullAddress).then(() => {
+                        // Visual feedback
+                        const originalHTML = this.innerHTML;
+                        this.innerHTML = '<i class="bi bi-check"></i> Đã copy!';
+                        this.classList.remove('btn-primary');
+                        this.classList.add('btn-success');
+
+                        setTimeout(() => {
+                            this.innerHTML = originalHTML;
+                            this.classList.remove('btn-success');
+                            this.classList.add('btn-primary');
+                        }, 2000);
+
+                        log('✓ Copied address to clipboard: ' + fullAddress);
+                    }).catch(err => {
+                        console.error('Failed to copy:', err);
+                        alert('Lỗi khi copy địa chỉ!');
+                        log('✗ ERROR copying to clipboard: ' + err.message);
+                    });
+                });
             }
         });
     </script>
