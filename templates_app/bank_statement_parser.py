@@ -246,6 +246,38 @@ class BankStatementParser:
             beneficiary_name = ""
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
+        # Pattern 1.5: Chuyển khoản nội bộ Agribank (không có MB pattern)
+        # Check tomgntno/toacctno là tài khoản Agribank (10-13 số bắt đầu bằng 7)
+        tomgntno_str = str(tomgntno).strip()
+        toacctno_str = str(toacctno).strip()
+
+        is_agribank_account = False
+        if tomgntno_str and len(tomgntno_str) >= 10 and tomgntno_str.isdigit() and tomgntno_str[0] == '7':
+            is_agribank_account = True
+            bank_name = "Agribank"
+            if acctccyamt > 0:  # Nhận tiền
+                account_number = tomgntno_str
+            # Parse tên từ rem nếu có
+            if rem and rem.strip() and rem.strip() not in ['CK', 'CT', 'ck', 'ct']:
+                # Tách tên từ nội dung (bỏ các từ khóa)
+                rem_words = rem.split()
+                name_parts = []
+                for word in rem_words:
+                    word_clean = word.strip()
+                    if word_clean.lower() not in ['ck', 'ct', 'chuyen', 'khoan', 'tien']:
+                        name_parts.append(word_clean)
+                if name_parts:
+                    beneficiary_name = ' '.join(name_parts[:5])
+
+        elif toacctno_str and len(toacctno_str) >= 10 and toacctno_str.isdigit() and toacctno_str[0] == '7':
+            is_agribank_account = True
+            bank_name = "Agribank"
+            if acctccyamt < 0:  # Chuyển tiền
+                account_number = toacctno_str
+
+        if is_agribank_account:
+            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
         # Pattern 2: MCC transactions with BIN code (PHẢI CHECK TRƯỚC Pattern 2 general!)
         # Format 1: 1000A17202 - 337221-NGUYEN THI KIM THOA chuyen khoan;MCC;20231220224051;0976831420123;970422
         # Format 2: 679450-7202205158872;MCC;20231226044837;0702281569;970422
@@ -451,16 +483,72 @@ class BankStatementParser:
         rem_lower = rem.lower()
         trcdnm_lower = trcdnm.lower()
 
+        # Lấy thông tin bổ sung
+        tomgntno = str(row.get('tomgntno', '')).strip()
+        toacctno = str(row.get('toacctno', '')).strip()
+        husrid = str(row.get('husrid', '')).strip()
+
         # Giải ngân: Nội dung có chứa '7202LDS'
         if '7202LDS' in rem:
             return "Giải ngân"
 
-        # Chuyển khoản nội bộ Agribank
+        # Chuyển khoản nội bộ Agribank - Pattern 1: MB(xxx)(yyy)
         if 'MB(' in rem:
             if amount > 0:
                 return "Nhận chuyển khoản nội bộ Agribank"
             else:
                 return "Chuyển khoản nội bộ Agribank"
+
+        # Chuyển khoản nội bộ Agribank - Pattern 2: tomgntno/toacctno là tài khoản Agribank (13 số bắt đầu bằng 7xxx)
+        # hoặc husrid có format 8 ký tự (3 ký tự mã chi nhánh + 5 ký tự tên GDV: GRA/HOB + TNNHI/TKIEN/...)
+        is_internal_agribank = False
+
+        # Check tomgntno/toacctno: Tài khoản Agribank thường 13 số và bắt đầu bằng 7
+        if tomgntno and len(tomgntno) >= 10 and tomgntno.isdigit() and tomgntno[0] == '7':
+            is_internal_agribank = True
+        elif toacctno and len(toacctno) >= 10 and toacctno.isdigit() and toacctno[0] == '7':
+            is_internal_agribank = True
+
+        # Check husrid: 8 ký tự (3 chữ cái mã chi nhánh + 5 ký tự tên GDV)
+        # VD: GRATNNHI, GRATKIEN, GRALTHUC, GRANSINH, HOBXXXXX
+        if husrid and len(husrid) == 8 and husrid[:3].isalpha() and husrid[3:].isalpha():
+            # Kiểm tra mã chi nhánh phổ biến (GRA, HOB, HAN, SGN, v.v.)
+            branch_codes = ['GRA', 'HOB', 'HAN', 'SGN', 'DNA', 'CTO', 'BTR', 'BDG', 'HUE', 'VTU', 'QNI', 'KHA', 'DLK', 'BIN', 'PTH', 'GLA', 'NTR', 'BTE', 'KGI', 'BLU', 'CMU', 'VLO', 'LAI', 'YEN']
+            if husrid[:3].upper() in branch_codes or True:  # Accept any 3-letter prefix for flexibility
+                is_internal_agribank = True
+
+        # Nếu là giao dịch nội bộ Agribank
+        if is_internal_agribank:
+            # Kiểm tra có phải rút tiền không (ưu tiên check trước)
+            if amount < 0 and ('rut' in rem_lower or 'rút' in rem_lower or
+                               'rut tien' in trcdnm_lower or 'rút tiền' in trcdnm_lower):
+                # Sẽ xử lý ở phần rút tiền bên dưới
+                pass
+            # Kiểm tra có phải nộp tiền không (ưu tiên check trước cho giao dịch tiền vào)
+            elif amount > 0 and ('nop tien' in rem_lower or 'nộp tiền' in rem_lower or
+                                 'nop tm' in rem.upper() or 'deposit' in trcdnm_lower):
+                # Sẽ xử lý ở phần nộp tiền bên dưới
+                pass
+            # Kiểm tra chuyển khoản
+            # Chấp nhận nếu:
+            # 1. Có từ khóa CK/chuyển khoản
+            # 2. rem rỗng hoặc chỉ là CK/CT
+            # 3. rem có nội dung (có thể là tên người) nhưng không phải các giao dịch đặc biệt khác
+            elif ('ck' in rem_lower or 'chuyen khoan' in rem_lower or 'chuyển khoản' in rem_lower or
+                  'chuyen tien' in rem_lower or 'chuyển tiền' in rem_lower or
+                  rem.strip() == '' or rem.strip().upper() in ['CK', 'CT']):
+                if amount > 0:
+                    return "Nhận chuyển khoản nội bộ Agribank"
+                else:
+                    return "Chuyển khoản nội bộ Agribank"
+            # Nếu rem chứa tên người (chữ cái) và không có từ khóa đặc biệt khác
+            # thì cũng coi là chuyển khoản nội bộ
+            elif rem.strip() and not any(keyword in rem_lower for keyword in
+                                        ['atm', 'pos', 'mcc', 'phi', 'lai', 'vnpt', 'ma_gd']):
+                if amount > 0:
+                    return "Nhận chuyển khoản nội bộ Agribank"
+                else:
+                    return "Chuyển khoản nội bộ Agribank"
 
         # MCC transactions (merchant/payment)
         if ';MCC;' in rem and re.search(r'\d{6}$', rem):  # Check for BIN code at end
