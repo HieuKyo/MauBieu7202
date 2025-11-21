@@ -571,7 +571,7 @@ const employeeData = {
         position_display: "{{ emp.get_position_display|default:'-' }}",
         branch_display: "{{ emp.get_branch_display|default:'-' }}",
         job_function_display: "{{ emp.get_job_function_display|default:'-' }}"
-    },
+    }{% if not forloop.last %},{% endif %}
     {% endfor %}
 };
 

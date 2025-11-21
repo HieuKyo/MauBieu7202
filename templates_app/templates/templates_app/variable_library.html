@@ -502,13 +502,46 @@
 {% block extra_js %}
 <script>
 {% verbatim %}
+// Universal copy to clipboard function with fallback
+function copyToClipboard(text) {
+    // Try modern Clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+    } else {
+        // Fallback for browsers without Clipboard API or non-HTTPS contexts
+        return new Promise((resolve, reject) => {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                if (successful) {
+                    resolve();
+                } else {
+                    reject(new Error('execCommand failed'));
+                }
+            } catch (err) {
+                document.body.removeChild(textArea);
+                reject(err);
+            }
+        });
+    }
+}
+
 // Copy variable to clipboard
 function copyVariable(variableName) {
     // Format: {{ variable_name }}
     const textToCopy = `{{ ${variableName} }}`;
 
-    // Use Clipboard API
-    navigator.clipboard.writeText(textToCopy).then(() => {
+    // Use universal copy function
+    copyToClipboard(textToCopy).then(() => {
         showNotification(`Đã copy: ${textToCopy}`, 'success');
 
         // Visual feedback on button
@@ -533,7 +566,7 @@ function copyVariable(variableName) {
 
 // Copy Jinja2 code to clipboard (for syntax examples)
 function copyJinjaCode(code) {
-    navigator.clipboard.writeText(code).then(() => {
+    copyToClipboard(code).then(() => {
         showNotification(`Đã copy: ${code}`, 'success');
     }).catch(err => {
         console.error('Failed to copy:', err);
