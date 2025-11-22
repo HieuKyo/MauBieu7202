@@ -346,21 +346,41 @@ class BankStatementParser:
                 return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Pattern 2.5: MBVCB/IBVCB - Chuyển khoản Vietcombank format đặc biệt
-        # Format: MBVCB.5667288555.032551.931922.CT tu 1988944725 NGUYEN DINH TRUONG toi 7202205158872 Phan Giang Nam tai AGRIBANK
+        # Format 1: MBVCB.5667288555.032551.931922.CT tu 1988944725 NGUYEN DINH TRUONG toi 7202205158872 Phan Giang Nam tai AGRIBANK
+        # Format 2: 969816-MBVCB.3250279254.057991.PHAM LE NGOC TRAN chuyen tien.CT tu 0891000651394 PHAM LE NGOC TRAN toi 7202205158872 PHAN GIANG NAM Ngan hang...
         # MBVCB = Mobile Banking VCB, IBVCB = Internet Banking VCB
         if 'VCB.' in rem and ('CT tu' in rem or 'CT TU' in rem.upper()):
-            pattern_vcb = re.search(
-                r'(?:MB|IB)VCB\.[^.]+\.[^.]+\.[^.]+\.CT tu\s+(\d+)\s+([A-Z\s]+?)\s+toi\s+(\d+)\s+([A-Z\s]+?)\s+tai\s+([A-Z\s]+)',
+            # Try Pattern 1 (with "tai" keyword)
+            pattern_vcb_v1 = re.search(
+                r'(?:\d+-)?(?:MB|IB)VCB\.[^.]+\.[^.]+\.[^.]+\.CT tu\s+(\d+)\s+([A-Z\s]+?)\s+toi\s+(\d+)\s+([A-Z\s]+?)\s+tai\s+([A-Z\s]+)',
                 rem,
                 re.IGNORECASE
             )
-            if pattern_vcb:
+            if pattern_vcb_v1:
                 bank_name = "Vietcombank"
-                account_number = pattern_vcb.group(1)  # Số TK người chuyển
-                sender_name = pattern_vcb.group(2).strip()  # Tên người chuyển
-                receiver_account = pattern_vcb.group(3)  # Số TK người nhận (TK của user)
-                receiver_name = pattern_vcb.group(4).strip()  # Tên người nhận
-                receiver_bank = pattern_vcb.group(5).strip()  # Ngân hàng đích
+                account_number = pattern_vcb_v1.group(1)  # Số TK người chuyển
+                sender_name = pattern_vcb_v1.group(2).strip()  # Tên người chuyển
+                receiver_account = pattern_vcb_v1.group(3)  # Số TK người nhận (TK của user)
+                receiver_name = pattern_vcb_v1.group(4).strip()  # Tên người nhận
+                receiver_bank = pattern_vcb_v1.group(5).strip()  # Ngân hàng đích
+
+                # Beneficiary là người chuyển tiền
+                beneficiary_name = sender_name
+
+                return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
+            # Try Pattern 2 (without "tai", ending with "Ngan hang" or similar)
+            pattern_vcb_v2 = re.search(
+                r'(?:\d+-)?(?:MB|IB)VCB\.[^.]+\.[^.]+\.[^.]+\.CT tu\s+(\d+)\s+([A-Z\s]+?)\s+toi\s+(\d+)\s+([A-Z\s]+?)(?:\s+Ngan\s+hang|\s+NH|\s*$)',
+                rem,
+                re.IGNORECASE
+            )
+            if pattern_vcb_v2:
+                bank_name = "Vietcombank"
+                account_number = pattern_vcb_v2.group(1)  # Số TK người chuyển
+                sender_name = pattern_vcb_v2.group(2).strip()  # Tên người chuyển
+                receiver_account = pattern_vcb_v2.group(3)  # Số TK người nhận (TK của user)
+                receiver_name = pattern_vcb_v2.group(4).strip()  # Tên người nhận
 
                 # Beneficiary là người chuyển tiền
                 beneficiary_name = sender_name
