@@ -75,7 +75,7 @@ class BankStatementParser:
     # BIN code gồm 6 số dùng để định danh ngân hàng trong giao dịch thẻ
     BIN_CODE_MAPPING = {
         '970405': 'Agribank',
-        '970422': 'Vietinbank',  # CTG
+        '970422': 'MB Bank',  # MB
         '970436': 'Vietcombank',  # VCB
         '970418': 'BIDV',
         '970407': 'Techcombank',  # TCB
@@ -384,6 +384,31 @@ class BankStatementParser:
 
                 # Beneficiary là người chuyển tiền
                 beneficiary_name = sender_name
+
+                return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
+        # Pattern 2.6: IBFT with BIN code format
+        # Format: 025045-0388988822;970422;IBTMB;10000000
+        # Format: 1000A07202 - 209030-0388988822;970422;IBTMB;3900000
+        # Format: 209030-0388988822;970422;IBTMB;10000000
+        # account;BIN;type;amount
+        if re.search(r';\d{6};[A-Z]+;\d+', rem):  # Quick check for BIN pattern
+            pattern_ibft_bin = re.search(
+                r'(?:[\w\s]+-\s*)?(\d+);(\d{6});([A-Z]+);(\d+)',
+                rem
+            )
+            if pattern_ibft_bin:
+                account_number = pattern_ibft_bin.group(1)
+                bin_code = pattern_ibft_bin.group(2)
+                transaction_type = pattern_ibft_bin.group(3)  # IBTMB, etc.
+                amount = pattern_ibft_bin.group(4)
+
+                # Tra cứu tên ngân hàng từ BIN code
+                bank_name = self.get_bank_name_from_bin(bin_code)
+
+                # Với IBFT format này, không có thông tin tên người trong rem
+                # Beneficiary name sẽ được lấy từ các pattern khác hoặc để trống
+                beneficiary_name = ''
 
                 return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
