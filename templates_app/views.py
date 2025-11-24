@@ -1651,6 +1651,87 @@ def generate_document_direct(request, template_id):
                 pass  # Customer not found, generate document without saving
             except Exception as e:
                 pass  # Failed to update customer, continue with document generation
+        else:
+            # No customer_id provided - this is a new customer
+            # Create new customer from form data
+            try:
+                from datetime import datetime
+
+                # Prepare customer data
+                customer_data = {
+                    'ma_khach_hang': data.get('ma_khach_hang', ''),
+                    'ho_ten': data.get('ho_ten', ''),
+                    'ho_ten_tieng_anh': data.get('ho_ten_tieng_anh', ''),
+                    'gioi_tinh': data.get('gioi_tinh', 'Nam'),
+                    'dan_toc': data.get('dan_toc', 'Kinh'),
+                    'so_cmnd': data.get('so_cmnd', ''),
+                    'noi_cap_cmnd': data.get('noi_cap_cmnd', 'Cục CSQLHC về TTXH'),
+                    'dia_chi': data.get('dia_chi', ''),
+                    'ho_khau': data.get('ho_khau', ''),
+                    'so_dien_thoai': data.get('so_dien_thoai', ''),
+                    'email': data.get('email', ''),
+                    'nghe_nghiep': data.get('nghe_nghiep', ''),
+                    'noi_lam_viec': data.get('noi_lam_viec', ''),
+                    'so_tai_khoan': data.get('so_tai_khoan', ''),
+                    'loai_tai_khoan': data.get('loai_tai_khoan', ''),
+                    'so_tai_khoan_yc': data.get('so_tai_khoan_yc', ''),
+                    'loai_tien_te': data.get('loai_tien_te', 'VND'),
+                    'loai_the': data.get('loai_the', ''),
+                    'hang_the': data.get('hang_the', ''),
+                    'so_the_atm': data.get('so_the_atm', ''),
+                    'ten_the_1': (data.get('ten_the_1', '') or '').strip(),
+                    'ket_qua_phan_loai_kh': data.get('ket_qua_phan_loai_kh', ''),
+                    'created_by': request.user,
+
+                    # Service checkboxes (convert from ☑/☐ to boolean)
+                    'phat_hanh_lan_dau': (request.POST.get('phat_hanh_lan_dau') == 'on'),
+                    'phat_hanh_lai': (request.POST.get('phat_hanh_lai') == 'on'),
+                    'dv_sms_banking': (request.POST.get('dv_sms_banking') == 'on'),
+                    'dv_bankplus': (request.POST.get('dv_bankplus') == 'on'),
+                    'dv_e_mobile': (request.POST.get('dv_e_mobile') == 'on'),
+                    'dv_e_commerce': (request.POST.get('dv_e_commerce') == 'on'),
+                    'dv_soft_otp': (request.POST.get('dv_soft_otp') == 'on'),
+                    'dv_smart_otp': (request.POST.get('dv_smart_otp') == 'on'),
+                    'dv_retail_ebanking': (request.POST.get('dv_retail_ebanking') == 'on'),
+                    'dv_thu_ho_tien_nuoc': (request.POST.get('dv_thu_ho_tien_nuoc') == 'on'),
+                    'dv_thu_ho_tien_dien': (request.POST.get('dv_thu_ho_tien_dien') == 'on'),
+                    'dv_thu_ho_vien_thong': (request.POST.get('dv_thu_ho_vien_thong') == 'on'),
+                    'dv_thu_ho_hoc_phi': (request.POST.get('dv_thu_ho_hoc_phi') == 'on'),
+                    'dv_thu_ho_bao_hiem': (request.POST.get('dv_thu_ho_bao_hiem') == 'on'),
+                    'dv_abic': (request.POST.get('dv_abic') == 'on'),
+                    'kenh_mobile': (request.POST.get('kenh_mobile') == 'on'),
+                    'kenh_internet': (request.POST.get('kenh_internet') == 'on'),
+                    'the_lap_nghiep': (request.POST.get('the_lap_nghiep') == 'on'),
+                    'the_lien_ket': (request.POST.get('the_lien_ket') == 'on'),
+                    'the_dong_thuong_hieu': (request.POST.get('the_dong_thuong_hieu') == 'on'),
+                }
+
+                # Parse and add dates
+                if data.get('ngay_sinh'):
+                    try:
+                        customer_data['ngay_sinh'] = datetime.strptime(data['ngay_sinh'], '%d/%m/%Y').date()
+                    except (ValueError, TypeError):
+                        pass  # Invalid date format - skip
+
+                if data.get('ngay_cap_cmnd'):
+                    try:
+                        customer_data['ngay_cap_cmnd'] = datetime.strptime(data['ngay_cap_cmnd'], '%d/%m/%Y').date()
+                    except (ValueError, TypeError):
+                        pass  # Invalid date format - skip
+
+                if data.get('ngay_het_han_cmnd'):
+                    try:
+                        customer_data['ngay_het_han_cmnd'] = datetime.strptime(data['ngay_het_han_cmnd'], '%d/%m/%Y').date()
+                    except (ValueError, TypeError):
+                        pass  # Invalid date format - skip
+
+                # Only create customer if required fields are present
+                if customer_data['ho_ten'] and customer_data['so_cmnd']:
+                    customer = Customer.objects.create(**customer_data)
+
+            except Exception as e:
+                # Failed to create customer, continue with document generation
+                pass
 
         # Add ALL GlobalConfig variables (branch info + custom variables + auto-generated date variables)
         data.update(config.get_all_variables())
