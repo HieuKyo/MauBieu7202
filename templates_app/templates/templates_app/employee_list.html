@@ -182,7 +182,11 @@
                                         Còn {{ emp.days_until_certificate_expiry }} ngày
                                     </span>
                                 {% elif emp.certificate_code %}
-                                    <span class="badge bg-success">Hiệu lực</span>
+                                    {% if emp.days_until_certificate_expiry and emp.days_until_certificate_expiry > 36500 %}
+                                        <span class="badge bg-success">Vĩnh viễn</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Hiệu lực</span>
+                                    {% endif %}
                                 {% else %}
                                     <span class="badge bg-secondary">Chưa có</span>
                                 {% endif %}
@@ -605,7 +609,7 @@ const employeeData = {
         certificate_end_display: "{{ emp.certificate_end_date|date:'d/m/Y'|default:'Chưa có'|escapejs }}",
         is_expired: {{ emp.is_certificate_expired|yesno:"true,false" }},
         is_expiring: {{ emp.is_certificate_expiring_soon|yesno:"true,false" }},
-        days_left: {% if emp.days_until_certificate_expiry != None %}{{ emp.days_until_certificate_expiry }}{% else %}null{% endif %},
+        days_left: {% if emp.days_until_certificate_expiry != None %}{% if emp.days_until_certificate_expiry > 36500 %}999999{% else %}{{ emp.days_until_certificate_expiry }}{% endif %}{% else %}null{% endif %},
         department_display: "{{ emp.get_department_display|default:'-'|escapejs }}",
         position_display: "{{ emp.get_position_display|default:'-'|escapejs }}",
         branch_display: "{{ emp.get_branch_display|default:'-'|escapejs }}",
@@ -670,7 +674,12 @@ function viewEmployee(employeeId) {
     } else if (emp.is_expiring) {
         statusBadge = `<span class="badge bg-warning text-dark">Còn ${emp.days_left} ngày</span>`;
     } else if (emp.certificate_code) {
-        statusBadge = '<span class="badge bg-success">Hiệu lực</span>';
+        // Check if days_left is very large (permanent certificate)
+        if (emp.days_left && emp.days_left > 36500) {
+            statusBadge = '<span class="badge bg-success">Vĩnh viễn</span>';
+        } else {
+            statusBadge = '<span class="badge bg-success">Hiệu lực</span>';
+        }
     } else {
         statusBadge = '<span class="badge bg-secondary">Chưa có CTS</span>';
     }
