@@ -164,8 +164,8 @@
                         <tr id="employee-row-{{ emp.id }}"
                             class="employee-row {% if emp.is_certificate_expired %}table-danger{% elif emp.is_certificate_expiring_soon %}table-warning{% endif %}"
                             data-employee-id="{{ emp.id }}"
-                            data-employee-name="{{ emp.full_name }}"
-                            data-employee-code="{{ emp.employee_code }}"
+                            data-employee-name="{{ emp.full_name|escapejs }}"
+                            data-employee-code="{{ emp.employee_code|escapejs }}"
                             style="cursor: pointer;">
                             <td>{{ emp.employee_code }}</td>
                             <td><strong>{{ emp.full_name }}</strong></td>
@@ -602,7 +602,7 @@ const employeeData = {
         certificate_code: "{{ emp.certificate_code|default:''|escapejs }}",
         certificate_start_date: "{{ emp.certificate_start_date|date:'Y-m-d'|default:'' }}",
         certificate_end_date: "{{ emp.certificate_end_date|date:'Y-m-d'|default:'' }}",
-        certificate_end_display: "{{ emp.certificate_end_date|date:'d/m/Y'|default:'Chưa có' }}",
+        certificate_end_display: "{{ emp.certificate_end_date|date:'d/m/Y'|default:'Chưa có'|escapejs }}",
         is_expired: {{ emp.is_certificate_expired|yesno:"true,false" }},
         is_expiring: {{ emp.is_certificate_expiring_soon|yesno:"true,false" }},
         days_left: {% if emp.days_until_certificate_expiry != None %}{{ emp.days_until_certificate_expiry }}{% else %}null{% endif %},
