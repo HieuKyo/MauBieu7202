@@ -64,6 +64,7 @@ urlpatterns = [
 
     # Employee Management
     path('employees/', views.employee_list, name='employee_list'),
+    path('employees/export/', views.employee_export_excel, name='employee_export_excel'),
     path('employees/import/', views.employee_import_excel, name='employee_import_excel'),
     path('employees/import/template/', views.download_employee_template, name='download_employee_template'),
     path('employees/create/', views.employee_create_manual, name='employee_create_manual'),

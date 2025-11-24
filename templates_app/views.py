@@ -3307,6 +3307,168 @@ def employee_import_excel(request):
 
 
 @login_required
+def employee_export_excel(request):
+    """
+    View để export danh sách nhân viên ra file Excel
+    Chỉ Superuser có quyền
+    """
+    if not check_employee_import_permission(request.user):
+        messages.error(request, 'Bạn không có quyền export nhân viên')
+        return redirect('dashboard')
+
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+        from openpyxl.utils import get_column_letter
+        from django.http import HttpResponse
+        from .models import UserProfile
+        from datetime import datetime
+
+        # Create workbook
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Danh sách nhân viên"
+
+        # Define headers
+        headers = [
+            'STT',
+            'Mã NV',
+            'Họ và tên',
+            'Username',
+            'Ngày sinh',
+            'Giới tính',
+            'Điện thoại',
+            'Địa chỉ',
+            'Số CCCD',
+            'Ngày cấp CCCD',
+            'Nơi cấp CCCD',
+            'Chi nhánh',
+            'Phòng ban',
+            'Chức vụ',
+            'Nghiệp vụ',
+            'Mã CTS',
+            'CTS từ ngày',
+            'CTS đến ngày',
+            'Trạng thái CTS'
+        ]
+
+        # Write headers
+        ws.append(headers)
+
+        # Style headers
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        for col_num in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+
+        # Get all employees
+        employees = UserProfile.objects.select_related('user').all().order_by('employee_code')
+
+        # Write data
+        for idx, emp in enumerate(employees, start=2):
+            # Determine certificate status
+            cert_status = '-'
+            if emp.certificate_code:
+                if emp.is_certificate_expired:
+                    cert_status = 'Hết hạn'
+                elif emp.is_certificate_expiring_soon:
+                    cert_status = f'Còn {emp.days_until_certificate_expiry} ngày'
+                elif emp.days_until_certificate_expiry and emp.days_until_certificate_expiry > 36500:
+                    cert_status = 'Vĩnh viễn'
+                else:
+                    cert_status = 'Hiệu lực'
+            else:
+                cert_status = 'Chưa có'
+
+            row_data = [
+                idx - 1,  # STT
+                emp.employee_code or '',
+                emp.full_name or '',
+                emp.user.username if emp.user else '',
+                emp.dob.strftime('%d/%m/%Y') if emp.dob else '',
+                emp.gender or '',
+                emp.phone or '',
+                emp.address or '',
+                emp.id_card_number or '',
+                emp.id_card_date.strftime('%d/%m/%Y') if emp.id_card_date else '',
+                emp.id_card_place or '',
+                emp.get_branch_display() or '',
+                emp.get_department_display() or '',
+                emp.get_position_display() or '',
+                emp.get_job_function_display() or '',
+                emp.certificate_code or '',
+                emp.certificate_start_date.strftime('%d/%m/%Y') if emp.certificate_start_date else '',
+                emp.certificate_end_date.strftime('%d/%m/%Y') if emp.certificate_end_date else '',
+                cert_status
+            ]
+            ws.append(row_data)
+
+        # Auto-adjust column widths
+        column_widths = {
+            'A': 6,   # STT
+            'B': 12,  # Mã NV
+            'C': 25,  # Họ và tên
+            'D': 15,  # Username
+            'E': 12,  # Ngày sinh
+            'F': 10,  # Giới tính
+            'G': 13,  # Điện thoại
+            'H': 30,  # Địa chỉ
+            'I': 13,  # Số CCCD
+            'J': 13,  # Ngày cấp CCCD
+            'K': 20,  # Nơi cấp CCCD
+            'L': 20,  # Chi nhánh
+            'M': 20,  # Phòng ban
+            'N': 20,  # Chức vụ
+            'O': 18,  # Nghiệp vụ
+            'P': 15,  # Mã CTS
+            'Q': 13,  # CTS từ ngày
+            'R': 13,  # CTS đến ngày
+            'S': 15   # Trạng thái CTS
+        }
+
+        for col, width in column_widths.items():
+            ws.column_dimensions[col].width = width
+
+        # Set row height for header
+        ws.row_dimensions[1].height = 30
+
+        # Apply borders and alignment to all cells
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+            for cell in row:
+                cell.border = thin_border
+                if cell.row > 1:  # Not header
+                    cell.alignment = Alignment(vertical="center", wrap_text=True)
+
+        # Prepare response
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        filename = f'DanhSachNhanVien_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        # Save workbook to response
+        wb.save(response)
+
+        return response
+
+    except Exception as e:
+        messages.error(request, f'Lỗi khi export: {str(e)}')
+        return redirect('employee_list')
+
+
+@login_required
 def employee_list(request):
     """
     Hiển thị danh sách nhân viên và form thêm/sửa
