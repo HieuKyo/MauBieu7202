@@ -583,7 +583,7 @@
 <script>
 const employeeData = {
     {% for emp in employees %}
-    "{{ emp.id }}": {
+    {{ emp.id }}: {
         id: {{ emp.id }},
         employee_code: "{{ emp.employee_code|default:'' }}",
         full_name: "{{ emp.full_name|default:'' }}",
@@ -613,6 +613,12 @@ const employeeData = {
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
 };
+
+// Debug log
+console.log('Employee data loaded:', Object.keys(employeeData).length, 'employees');
+if (Object.keys(employeeData).length > 0) {
+    console.log('Sample employee:', employeeData[Object.keys(employeeData)[0]]);
+}
 
 function getCookie(name) {
     let cookieValue = null;
