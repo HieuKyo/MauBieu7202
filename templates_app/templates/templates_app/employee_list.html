@@ -3,6 +3,27 @@
 {% block title %}Quản lý nhân viên{% endblock %}
 
 {% block content %}
+<style>
+    .employee-row:hover {
+        background-color: #f8f9fa !important;
+    }
+
+    .employee-row.selected {
+        background-color: #cfe2ff !important;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .employee-row.table-danger.selected {
+        background-color: #f8d7da !important;
+        border-left: 4px solid #dc3545;
+    }
+
+    .employee-row.table-warning.selected {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #ffc107;
+    }
+</style>
+
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-people-fill"></i> Quản lý nhân viên</h2>
@@ -13,6 +34,31 @@
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
                 <i class="bi bi-person-plus-fill"></i> Thêm nhân viên mới
             </button>
+
+            <!-- Action buttons for selected employee (hidden by default) -->
+            <div id="employee-action-buttons" style="display: none;" class="d-inline-block ms-2">
+                <button class="btn btn-info" id="btn-view-selected" title="Xem chi tiết">
+                    <i class="bi bi-eye"></i> Xem
+                </button>
+                <button class="btn btn-warning" id="btn-edit-selected" title="Chỉnh sửa">
+                    <i class="bi bi-pencil"></i> Sửa
+                </button>
+                <button class="btn btn-danger" id="btn-delete-selected" title="Xóa">
+                    <i class="bi bi-trash"></i> Xóa
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selected employee info banner -->
+    <div id="selected-employee-banner" class="alert alert-info mb-3" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-check-circle-fill"></i>
+                <strong>Đã chọn:</strong> <span id="selected-employee-name"></span>
+                <span class="badge bg-primary ms-2" id="selected-employee-code"></span>
+            </div>
+            <button type="button" class="btn-close" id="btn-clear-selection" title="Bỏ chọn"></button>
         </div>
     </div>
 
@@ -111,12 +157,16 @@
                             <th>Mã CTS</th>
                             <th>CTS đến ngày</th>
                             <th>Trạng thái</th>
-                            <th>Thao tác</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="employee-table-body">
                         {% for emp in employees %}
-                        <tr id="employee-row-{{ emp.id }}" class="{% if emp.is_certificate_expired %}table-danger{% elif emp.is_certificate_expiring_soon %}table-warning{% endif %}">
+                        <tr id="employee-row-{{ emp.id }}"
+                            class="employee-row {% if emp.is_certificate_expired %}table-danger{% elif emp.is_certificate_expiring_soon %}table-warning{% endif %}"
+                            data-employee-id="{{ emp.id }}"
+                            data-employee-name="{{ emp.full_name }}"
+                            data-employee-code="{{ emp.employee_code }}"
+                            style="cursor: pointer;">
                             <td>{{ emp.employee_code }}</td>
                             <td><strong>{{ emp.full_name }}</strong></td>
                             <td>{{ emp.user.username }}</td>
@@ -137,21 +187,10 @@
                                     <span class="badge bg-secondary">Chưa có</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <button class="btn btn-sm btn-info btn-action" data-action="view" data-employee-id="{{ emp.id }}" title="Xem chi tiết">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-warning btn-action" data-action="edit" data-employee-id="{{ emp.id }}" title="Chỉnh sửa">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button class="btn btn-sm btn-danger btn-action" data-action="delete" data-employee-id="{{ emp.id }}" data-employee-name="{{ emp.full_name }}" title="Xóa">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="text-center text-muted">Không có nhân viên nào phù hợp với bộ lọc</td>
+                            <td colspan="8" class="text-center text-muted">Không có nhân viên nào phù hợp với bộ lọc</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -754,24 +793,98 @@ function deleteEmployee(employeeId, fullName) {
     });
 }
 
+// Track selected employee
+let selectedEmployeeId = null;
+
+// Function to select an employee
+function selectEmployee(employeeId, employeeName, employeeCode) {
+    // Clear previous selection
+    document.querySelectorAll('.employee-row').forEach(row => {
+        row.classList.remove('selected');
+    });
+
+    // Mark new selection
+    const row = document.getElementById(`employee-row-${employeeId}`);
+    if (row) {
+        row.classList.add('selected');
+    }
+
+    // Update selected employee tracking
+    selectedEmployeeId = employeeId;
+
+    // Show action buttons
+    document.getElementById('employee-action-buttons').style.display = 'inline-block';
+    document.getElementById('selected-employee-banner').style.display = 'block';
+    document.getElementById('selected-employee-name').textContent = employeeName;
+    document.getElementById('selected-employee-code').textContent = employeeCode;
+}
+
+// Function to clear selection
+function clearSelection() {
+    document.querySelectorAll('.employee-row').forEach(row => {
+        row.classList.remove('selected');
+    });
+
+    selectedEmployeeId = null;
+
+    // Hide action buttons
+    document.getElementById('employee-action-buttons').style.display = 'none';
+    document.getElementById('selected-employee-banner').style.display = 'none';
+}
+
 // Event Delegation - More reliable for CSP compliance
 // Listen at document level instead of individual elements
 document.addEventListener('click', function(e) {
-    // Handle action buttons (View, Edit, Delete)
-    const actionBtn = e.target.closest('.btn-action');
-    if (actionBtn) {
-        e.preventDefault();
-        const action = actionBtn.dataset.action;
-        const employeeId = parseInt(actionBtn.dataset.employeeId);
-        const employeeName = actionBtn.dataset.employeeName;
+    // Handle row selection
+    const employeeRow = e.target.closest('.employee-row');
+    if (employeeRow) {
+        const employeeId = parseInt(employeeRow.dataset.employeeId);
+        const employeeName = employeeRow.dataset.employeeName;
+        const employeeCode = employeeRow.dataset.employeeCode;
 
-        if (action === 'view') {
-            viewEmployee(employeeId);
-        } else if (action === 'edit') {
-            editEmployee(employeeId);
-        } else if (action === 'delete') {
-            deleteEmployee(employeeId, employeeName);
+        // Toggle selection if same row clicked again
+        if (selectedEmployeeId === employeeId) {
+            clearSelection();
+        } else {
+            selectEmployee(employeeId, employeeName, employeeCode);
         }
+        return;
+    }
+
+    // Handle View button
+    if (e.target.id === 'btn-view-selected' || e.target.closest('#btn-view-selected')) {
+        e.preventDefault();
+        if (selectedEmployeeId) {
+            viewEmployee(selectedEmployeeId);
+        }
+        return;
+    }
+
+    // Handle Edit button
+    if (e.target.id === 'btn-edit-selected' || e.target.closest('#btn-edit-selected')) {
+        e.preventDefault();
+        if (selectedEmployeeId) {
+            editEmployee(selectedEmployeeId);
+        }
+        return;
+    }
+
+    // Handle Delete button
+    if (e.target.id === 'btn-delete-selected' || e.target.closest('#btn-delete-selected')) {
+        e.preventDefault();
+        if (selectedEmployeeId) {
+            const emp = employeeData[selectedEmployeeId];
+            if (emp) {
+                deleteEmployee(selectedEmployeeId, emp.full_name);
+            }
+        }
+        return;
+    }
+
+    // Handle clear selection button
+    if (e.target.id === 'btn-clear-selection' || e.target.closest('#btn-clear-selection')) {
+        e.preventDefault();
+        clearSelection();
         return;
     }
 
