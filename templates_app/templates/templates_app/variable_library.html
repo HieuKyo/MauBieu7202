@@ -568,19 +568,21 @@ function copyVariable(variableName) {
     copyToClipboard(textToCopy).then(() => {
         showNotification(`Đã copy: ${textToCopy}`, 'success');
 
-        // Visual feedback on button
-        const buttons = document.querySelectorAll(`button[data-action="copy-variable" data-variable-name='${variableName}']`);
-        buttons.forEach(btn => {
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
-            btn.classList.remove('btn-outline-primary');
-            btn.classList.add('btn-success');
+        // Visual feedback on button - use safer selector approach
+        const allCopyButtons = document.querySelectorAll('button[data-action="copy-variable"]');
+        allCopyButtons.forEach(btn => {
+            if (btn.getAttribute('data-variable-name') === variableName) {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-success');
 
-            setTimeout(() => {
-                btn.innerHTML = originalHTML;
-                btn.classList.remove('btn-success');
-                btn.classList.add('btn-outline-primary');
-            }, 1500);
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-primary');
+                }, 1500);
+            }
         });
     }).catch(err => {
         console.error('Failed to copy:', err);
