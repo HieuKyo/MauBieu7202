@@ -7,7 +7,8 @@ from .models import (
     Category, Template, Variable, TemplateVariable, Customer, GlobalConfig,
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction,
-    UserProfile, Course, CourseEnrollment
+    UserProfile, Course, CourseEnrollment,
+    ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment
 )
 from .import_helpers import (
     import_variables_from_csv,
@@ -740,4 +741,125 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ['enrolled_at']
+
+
+# ====================
+# ATM Management Admin
+# ====================
+
+@admin.register(ATM)
+class ATMAdmin(admin.ModelAdmin):
+    """Admin cho Máy ATM"""
+    list_display = ['machine_id', 'address', 'machine_type', 'machine_line', 'is_active']
+    list_filter = ['is_active', 'machine_type']
+    list_editable = ['is_active']
+    search_fields = ['machine_id', 'address', 'machine_type']
+    ordering = ['machine_id']
+
+    fieldsets = (
+        ('Thông tin máy ATM', {
+            'fields': ('machine_id', 'address', 'machine_type', 'machine_line')
+        }),
+        ('Trạng thái', {
+            'fields': ('is_active',)
+        }),
+    )
+
+
+@admin.register(ATMManagementBoard)
+class ATMManagementBoardAdmin(admin.ModelAdmin):
+    """Admin cho Ban quản lý ATM"""
+    list_display = ['position', 'full_name', 'title', 'is_active']
+    list_filter = ['position', 'is_active']
+    list_editable = ['is_active']
+    ordering = ['position']
+
+    fieldsets = (
+        ('Thông tin chức vụ', {
+            'fields': ('position', 'full_name', 'title')
+        }),
+        ('Trạng thái', {
+            'fields': ('is_active',)
+        }),
+    )
+
+
+@admin.register(Vehicle)
+class VehicleAdmin(admin.ModelAdmin):
+    """Admin cho Phương tiện"""
+    list_display = ['license_plate', 'vehicle_type', 'is_active']
+    list_filter = ['is_active']
+    list_editable = ['is_active']
+    search_fields = ['license_plate', 'vehicle_type']
+    ordering = ['license_plate']
+
+    fieldsets = (
+        ('Thông tin phương tiện', {
+            'fields': ('license_plate', 'vehicle_type')
+        }),
+        ('Trạng thái', {
+            'fields': ('is_active',)
+        }),
+    )
+
+
+@admin.register(Person)
+class PersonAdmin(admin.ModelAdmin):
+    """Admin cho Nhân viên vận chuyển"""
+    list_display = ['person_type', 'full_name', 'id_number', 'id_issue_date', 'is_active']
+    list_filter = ['person_type', 'is_active']
+    list_editable = ['is_active']
+    search_fields = ['full_name', 'id_number']
+    ordering = ['person_type', 'full_name']
+
+    fieldsets = (
+        ('Thông tin cơ bản', {
+            'fields': ('person_type', 'full_name')
+        }),
+        ('Giấy tờ tùy thân', {
+            'fields': ('id_number', 'id_issue_date', 'id_issue_place')
+        }),
+        ('Trạng thái', {
+            'fields': ('is_active',)
+        }),
+    )
+
+
+@admin.register(ATMReplenishment)
+class ATMReplenishmentAdmin(admin.ModelAdmin):
+    """Admin cho Phiếu tiếp quỹ ATM"""
+    list_display = ['atm', 'replenishment_date', 'total_amount_display', 'vehicle', 'driver', 'created_by']
+    list_filter = ['replenishment_date', 'atm', 'created_by']
+    search_fields = ['atm__machine_id', 'atm__address']
+    readonly_fields = ['created_by', 'created_at', 'updated_at', 'total_amount_display']
+    ordering = ['-replenishment_date', '-created_at']
+    date_hierarchy = 'replenishment_date'
+
+    fieldsets = (
+        ('Thông tin tiếp quỹ', {
+            'fields': ('atm', 'replenishment_date')
+        }),
+        ('Số lượng tờ tiền', {
+            'fields': ('bills_50k', 'bills_100k', 'bills_200k', 'bills_500k', 'total_amount_display'),
+            'description': 'Nhập số lượng tờ tiền theo từng mệnh giá'
+        }),
+        ('Lệnh điều chuyển', {
+            'fields': ('vehicle', 'driver', 'guard')
+        }),
+        ('Thông tin hệ thống', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def total_amount_display(self, obj):
+        """Hiển thị tổng số tiền"""
+        return f"{obj.total_amount:,} VNĐ"
+    total_amount_display.short_description = 'Tổng số tiền'
+
+    def save_model(self, request, obj, form, change):
+        """Tự động gán người tạo khi tạo mới"""
+        if not change:  # Chỉ khi tạo mới
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 

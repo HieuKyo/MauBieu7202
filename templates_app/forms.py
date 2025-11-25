@@ -274,3 +274,38 @@ class CategoryAdminForm(forms.ModelForm):
         # Pre-select existing values
         if self.instance and self.instance.visible_field_groups:
             self.initial['visible_field_groups'] = self.instance.visible_field_groups
+
+
+# ====================
+# ATM Management Forms
+# ====================
+
+from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment
+
+
+class ATMReplenishmentForm(forms.ModelForm):
+    """Form cho tạo phiếu tiếp quỹ ATM"""
+
+    class Meta:
+        model = ATMReplenishment
+        fields = ['atm', 'replenishment_date', 'bills_50k', 'bills_100k',
+                  'bills_200k', 'bills_500k', 'vehicle', 'driver', 'guard']
+        widgets = {
+            'atm': forms.Select(attrs={'class': 'form-select'}),
+            'replenishment_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'bills_50k': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Số tờ 50.000đ', 'min': '0'}),
+            'bills_100k': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Số tờ 100.000đ', 'min': '0'}),
+            'bills_200k': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Số tờ 200.000đ', 'min': '0'}),
+            'bills_500k': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Số tờ 500.000đ', 'min': '0'}),
+            'vehicle': forms.Select(attrs={'class': 'form-select'}),
+            'driver': forms.Select(attrs={'class': 'form-select'}),
+            'guard': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lọc chỉ hiển thị các mục active
+        self.fields['atm'].queryset = ATM.objects.filter(is_active=True)
+        self.fields['vehicle'].queryset = Vehicle.objects.filter(is_active=True)
+        self.fields['driver'].queryset = Person.objects.filter(person_type='driver', is_active=True)
+        self.fields['guard'].queryset = Person.objects.filter(person_type='guard', is_active=True)

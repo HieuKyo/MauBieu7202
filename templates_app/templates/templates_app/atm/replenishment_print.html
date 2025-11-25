@@ -1,0 +1,303 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Phiếu tiếp quỹ ATM - {{ replenishment.atm.machine_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .print-only {
+            display: block !important;
+        }
+        body {
+            background: white;
+        }
+        .container-fluid {
+            padding: 0;
+        }
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+    }
+
+    .print-content {
+        background: white;
+        padding: 30px;
+        max-width: 21cm;
+        margin: 0 auto;
+        font-family: 'Times New Roman', serif;
+    }
+
+    .print-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .print-header h1 {
+        font-size: 18pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .print-header p {
+        margin: 5px 0;
+    }
+
+    .info-section {
+        margin: 20px 0;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+    }
+
+    .info-label {
+        font-weight: bold;
+        width: 40%;
+    }
+
+    .info-value {
+        width: 60%;
+        border-bottom: 1px dotted #000;
+    }
+
+    .table-print {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+
+    .table-print th,
+    .table-print td {
+        border: 1px solid #000;
+        padding: 8px;
+    }
+
+    .table-print th {
+        background-color: #f0f0f0;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .table-print td.text-right {
+        text-align: right;
+    }
+
+    .table-print td.text-center {
+        text-align: center;
+    }
+
+    .signature-section {
+        margin-top: 40px;
+        display: flex;
+        justify-content: space-around;
+    }
+
+    .signature-box {
+        text-align: center;
+        width: 30%;
+    }
+
+    .signature-box .title {
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .signature-box .subtitle {
+        font-style: italic;
+        font-size: 11pt;
+        margin-bottom: 60px;
+    }
+
+    .signature-box .name {
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Print Toolbar -->
+    <div class="row mb-3 no-print">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
+                    <li class="breadcrumb-item active">Phiếu tiếp quỹ</li>
+                </ol>
+            </nav>
+            <div class="d-flex gap-2">
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="bi bi-printer"></i> In phiếu
+                </button>
+                <a href="{% url 'atm_replenishment_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Tạo phiếu mới
+                </a>
+                <a href="{% url 'atm_replenishment_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-list-ul"></i> Danh sách phiếu
+                </a>
+                <a href="{% url 'atm_dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Content -->
+    <div class="print-content">
+        <!-- Header -->
+        <div class="row">
+            <div class="col-6">
+                <p><strong>NGÂN HÀNG NÔNG NGHIỆP VÀ<br>PHÁT TRIỂN NÔNG THÔN VIỆT NAM</strong></p>
+                <p><strong>{{ config.ten_chi_nhanh_hoa|upper|default:"CHI NHÁNH GIÁ RAI BẠC LIÊU" }}</strong></p>
+                <p style="text-decoration: underline;">Địa chỉ: {{ config.dia_chi_chi_nhanh|default:"" }}</p>
+            </div>
+            <div class="col-6 text-end">
+                <p><strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong></p>
+                <p><strong>Độc lập - Tự do - Hạnh phúc</strong></p>
+                <p style="text-decoration: underline; display: inline-block; margin-top: 20px;">
+                    {{ config.dia_danh|default:"Bạc Liêu" }}, ngày {{ replenishment.replenishment_date.day }} tháng {{ replenishment.replenishment_date.month }} năm {{ replenishment.replenishment_date.year }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <div class="print-header">
+            <h1>PHIẾU TIẾP QUỸ MÁY ATM</h1>
+        </div>
+
+        <!-- ATM Info -->
+        <div class="info-section">
+            <div class="info-row">
+                <div class="info-label">Mã máy ATM:</div>
+                <div class="info-value"><strong>{{ replenishment.atm.machine_id }}</strong></div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Địa chỉ lắp đặt:</div>
+                <div class="info-value">{{ replenishment.atm.address }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Loại máy:</div>
+                <div class="info-value">{{ replenishment.atm.machine_type }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Dòng máy:</div>
+                <div class="info-value">{{ replenishment.atm.machine_line }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Ngày tiếp quỹ:</div>
+                <div class="info-value"><strong>{{ replenishment.replenishment_date|date:"d/m/Y" }}</strong></div>
+            </div>
+        </div>
+
+        <!-- Cash Details Table -->
+        <table class="table-print">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">STT</th>
+                    <th style="width: 30%;">Mệnh giá</th>
+                    <th style="width: 30%;">Số lượng tờ</th>
+                    <th style="width: 30%;">Thành tiền (VNĐ)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center">1</td>
+                    <td class="text-center">50.000 đ</td>
+                    <td class="text-right">{{ replenishment.bills_50k|floatformat:0 }}</td>
+                    <td class="text-right">{{ replenishment.bills_50k|floatformat:0|default:"0"|add:"000" }}</td>
+                </tr>
+                <tr>
+                    <td class="text-center">2</td>
+                    <td class="text-center">100.000 đ</td>
+                    <td class="text-right">{{ replenishment.bills_100k|floatformat:0 }}</td>
+                    <td class="text-right">{% widthratio replenishment.bills_100k 1 100000 %}</td>
+                </tr>
+                <tr>
+                    <td class="text-center">3</td>
+                    <td class="text-center">200.000 đ</td>
+                    <td class="text-right">{{ replenishment.bills_200k|floatformat:0 }}</td>
+                    <td class="text-right">{% widthratio replenishment.bills_200k 1 200000 %}</td>
+                </tr>
+                <tr>
+                    <td class="text-center">4</td>
+                    <td class="text-center">500.000 đ</td>
+                    <td class="text-right">{{ replenishment.bills_500k|floatformat:0 }}</td>
+                    <td class="text-right">{% widthratio replenishment.bills_500k 1 500000 %}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-center"><strong>TỔNG CỘNG</strong></td>
+                    <td class="text-right"><strong>{{ replenishment.total_amount|floatformat:0 }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Amount in Words -->
+        <p><strong>Số tiền bằng chữ:</strong> <em>{{ replenishment.get_amount_in_words }}</em></p>
+
+        <!-- Transport Info -->
+        <div class="info-section">
+            <h5 style="text-align: center; margin-bottom: 15px;">LỆNH ĐIỀU CHUYỂN - ÁP TẢI TIỀN</h5>
+            <div class="info-row">
+                <div class="info-label">Biển số xe:</div>
+                <div class="info-value"><strong>{{ replenishment.vehicle.license_plate }}</strong></div>
+            </div>
+        </div>
+
+        <!-- Driver and Guard Info Table -->
+        <table class="table-print">
+            <thead>
+                <tr>
+                    <th>Chức vụ</th>
+                    <th>Họ và tên</th>
+                    <th>Số CCCD</th>
+                    <th>Ngày cấp</th>
+                    <th>Nơi cấp</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Tài xế</td>
+                    <td><strong>{{ replenishment.driver.full_name }}</strong></td>
+                    <td>{{ replenishment.driver.id_number }}</td>
+                    <td>{{ replenishment.driver.id_issue_date|date:"d/m/Y" }}</td>
+                    <td>{{ replenishment.driver.id_issue_place }}</td>
+                </tr>
+                <tr>
+                    <td>Bảo vệ</td>
+                    <td><strong>{{ replenishment.guard.full_name }}</strong></td>
+                    <td>{{ replenishment.guard.id_number }}</td>
+                    <td>{{ replenishment.guard.id_issue_date|date:"d/m/Y" }}</td>
+                    <td>{{ replenishment.guard.id_issue_place }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Signatures -->
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="title">{{ management_board.team_leader.get_position_display|default:"Trưởng Ban" }}</div>
+                <div class="subtitle">(Ký, ghi rõ họ tên)</div>
+                <div class="name">{{ management_board.team_leader.full_name|default:"________________" }}</div>
+            </div>
+            <div class="signature-box">
+                <div class="title">{{ management_board.treasury_head.get_position_display|default:"Trưởng phòng KTNQ" }}</div>
+                <div class="subtitle">(Ký, ghi rõ họ tên)</div>
+                <div class="name">{{ management_board.treasury_head.full_name|default:"________________" }}</div>
+            </div>
+            <div class="signature-box">
+                <div class="title">{{ management_board.atm_officer.get_position_display|default:"CB phụ trách ATM" }}</div>
+                <div class="subtitle">(Ký, ghi rõ họ tên)</div>
+                <div class="name">{{ management_board.atm_officer.full_name|default:"________________" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
