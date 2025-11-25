@@ -129,9 +129,23 @@
                                     <td>{{ rep.vehicle.license_plate }}</td>
                                     <td>{{ rep.created_by.username }}</td>
                                     <td>
-                                        <a href="{% url 'atm_replenishment_print' rep.pk %}" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-printer"></i> In
-                                        </a>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="bi bi-file-earmark-text"></i> Tạo mẫu biểu
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                {% for template in templates %}
+                                                <li>
+                                                    <a class="dropdown-item" href="{% url 'atm_load_replenishment_data' rep.pk template.id %}">
+                                                        {{ template.category.name }} - {{ template.name }}
+                                                    </a>
+                                                </li>
+                                                {% endfor %}
+                                                {% if not templates %}
+                                                <li><span class="dropdown-item text-muted">Chưa có mẫu biểu nào</span></li>
+                                                {% endif %}
+                                            </ul>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}

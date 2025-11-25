@@ -4160,10 +4160,23 @@ def atm_dashboard(request):
         'atm', 'vehicle', 'driver', 'guard', 'created_by'
     ).order_by('-replenishment_date', '-created_at')[:10]
 
+    # Lấy danh sách templates (tất cả templates mà user có quyền truy cập)
+    if request.user.is_superuser:
+        templates = Template.objects.filter(is_active=True).select_related('category').order_by('category__order', 'order', 'name')
+    else:
+        # Lấy các groups của user
+        user_groups = request.user.groups.all()
+        templates = Template.objects.filter(
+            is_active=True
+        ).filter(
+            models.Q(allowed_groups__isnull=True) | models.Q(allowed_groups__in=user_groups)
+        ).distinct().select_related('category').order_by('category__order', 'order', 'name')
+
     context = {
         'total_atms': total_atms,
         'total_replenishments': total_replenishments,
         'recent_replenishments': recent_replenishments,
+        'templates': templates,
     }
     return render(request, 'templates_app/atm/dashboard.html', context)
 
@@ -4182,7 +4195,7 @@ def atm_replenishment_create(request):
             replenishment.created_by = request.user
             replenishment.save()
             messages.success(request, 'Đã tạo phiếu tiếp quỹ thành công')
-            return redirect('atm_replenishment_print', pk=replenishment.pk)
+            return redirect('atm_dashboard')
     else:
         form = ATMReplenishmentForm()
 
@@ -4202,37 +4215,34 @@ def atm_replenishment_create(request):
 
 
 @login_required
-def atm_replenishment_print(request, pk):
-    """In phiếu tiếp quỹ ATM"""
+def atm_load_replenishment_data(request, replenishment_id, template_id):
+    """Load dữ liệu phiếu tiếp quỹ vào session để tạo mẫu biểu"""
     if not request.user.is_superuser:
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
+    # Lấy replenishment
     replenishment = get_object_or_404(
         ATMReplenishment.objects.select_related(
             'atm', 'vehicle', 'driver', 'guard', 'created_by'
         ),
-        pk=pk
+        pk=replenishment_id
     )
 
-    # Lấy thông tin ban quản lý ATM
-    management_board = {}
-    for position in ['team_leader', 'treasury_head', 'atm_officer']:
-        member = ATMManagementBoard.objects.filter(
-            position=position, is_active=True
-        ).first()
-        management_board[position] = member
+    # Lấy template và kiểm tra quyền
+    template = get_object_or_404(Template, id=template_id, is_active=True)
+    if not template.user_has_access(request.user):
+        raise Http404("Bạn không có quyền truy cập mẫu biểu này")
 
-    # Lấy thông tin chi nhánh
-    from .models import GlobalConfig
-    config = GlobalConfig.get_instance()
+    # Load dữ liệu vào session
+    session_data = replenishment.get_data_dict()
+    session_data['_atm_replenishment_id'] = replenishment_id
+    request.session[f'template_{template_id}_data'] = session_data
 
-    context = {
-        'replenishment': replenishment,
-        'management_board': management_board,
-        'config': config,
-    }
-    return render(request, 'templates_app/atm/replenishment_print.html', context)
+    messages.success(request, 'Đã load dữ liệu phiếu tiếp quỹ')
+
+    # Redirect tới print preview
+    return redirect('print_preview', template_id=template_id)
 
 
 @login_required
@@ -4252,7 +4262,19 @@ def atm_replenishment_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    # Lấy danh sách templates
+    if request.user.is_superuser:
+        templates = Template.objects.filter(is_active=True).select_related('category').order_by('category__order', 'order', 'name')
+    else:
+        user_groups = request.user.groups.all()
+        templates = Template.objects.filter(
+            is_active=True
+        ).filter(
+            Q(allowed_groups__isnull=True) | Q(allowed_groups__in=user_groups)
+        ).distinct().select_related('category').order_by('category__order', 'order', 'name')
+
     context = {
         'page_obj': page_obj,
+        'templates': templates,
     }
     return render(request, 'templates_app/atm/replenishment_list.html', context)
