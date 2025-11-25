@@ -1585,3 +1585,297 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.stt}. {self.transaction_date.strftime('%d/%m/%Y')} - {self.transaction_type}"
+
+
+# ============================================================================
+# ATM Management Models
+# ============================================================================
+
+class ATM(models.Model):
+    """Quản lý máy ATM"""
+    machine_id = models.CharField(
+        max_length=50,
+        primary_key=True,
+        verbose_name="ID Máy ATM"
+    )
+    address = models.CharField(
+        max_length=500,
+        verbose_name="Địa chỉ máy"
+    )
+    machine_type = models.CharField(
+        max_length=100,
+        verbose_name="Loại máy"
+    )
+    machine_line = models.CharField(
+        max_length=100,
+        verbose_name="Dòng máy"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Đang hoạt động"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Máy ATM"
+        verbose_name_plural = "Máy ATM"
+        ordering = ['machine_id']
+
+    def __str__(self):
+        return f"{self.machine_id} - {self.address}"
+
+
+class ATMManagementBoard(models.Model):
+    """Ban quản lý ATM"""
+    POSITION_CHOICES = [
+        ('team_leader', 'Trưởng Ban'),
+        ('treasury_head', 'Trưởng phòng KTNQ'),
+        ('atm_officer', 'Cán bộ phụ trách ATM'),
+    ]
+
+    position = models.CharField(
+        max_length=50,
+        choices=POSITION_CHOICES,
+        unique=True,
+        verbose_name="Chức vụ"
+    )
+    full_name = models.CharField(
+        max_length=200,
+        verbose_name="Họ và tên"
+    )
+    title = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Chức danh"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Đang hoạt động"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Ban quản lý ATM"
+        verbose_name_plural = "Ban quản lý ATM"
+        ordering = ['position']
+
+    def __str__(self):
+        return f"{self.get_position_display()} - {self.full_name}"
+
+
+class Vehicle(models.Model):
+    """Phương tiện vận chuyển tiền"""
+    license_plate = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Biển số xe"
+    )
+    vehicle_type = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Loại xe"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Đang hoạt động"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Phương tiện"
+        verbose_name_plural = "Phương tiện"
+        ordering = ['license_plate']
+
+    def __str__(self):
+        return self.license_plate
+
+
+class Person(models.Model):
+    """Base model cho nhân viên vận chuyển (tài xế, bảo vệ)"""
+    PERSON_TYPE_CHOICES = [
+        ('driver', 'Tài xế'),
+        ('guard', 'Bảo vệ'),
+    ]
+
+    person_type = models.CharField(
+        max_length=20,
+        choices=PERSON_TYPE_CHOICES,
+        verbose_name="Loại nhân viên"
+    )
+    full_name = models.CharField(
+        max_length=200,
+        verbose_name="Họ và tên"
+    )
+    id_number = models.CharField(
+        max_length=50,
+        verbose_name="Số CCCD"
+    )
+    id_issue_date = models.DateField(
+        verbose_name="Ngày cấp"
+    )
+    id_issue_place = models.CharField(
+        max_length=200,
+        verbose_name="Nơi cấp"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Đang hoạt động"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Nhân viên vận chuyển"
+        verbose_name_plural = "Nhân viên vận chuyển"
+        ordering = ['person_type', 'full_name']
+        unique_together = ['id_number', 'person_type']
+
+    def __str__(self):
+        return f"{self.get_person_type_display()} - {self.full_name}"
+
+
+class ATMReplenishment(models.Model):
+    """Phiếu tiếp quỹ ATM"""
+    atm = models.ForeignKey(
+        ATM,
+        on_delete=models.PROTECT,
+        verbose_name="Máy ATM"
+    )
+    replenishment_date = models.DateField(
+        verbose_name="Ngày tiếp quỹ"
+    )
+
+    # Số lượng tờ tiền theo mệnh giá
+    bills_50k = models.IntegerField(
+        default=0,
+        verbose_name="Số tờ 50.000đ"
+    )
+    bills_100k = models.IntegerField(
+        default=0,
+        verbose_name="Số tờ 100.000đ"
+    )
+    bills_200k = models.IntegerField(
+        default=0,
+        verbose_name="Số tờ 200.000đ"
+    )
+    bills_500k = models.IntegerField(
+        default=0,
+        verbose_name="Số tờ 500.000đ"
+    )
+
+    # Lệnh điều chuyển
+    vehicle = models.ForeignKey(
+        Vehicle,
+        on_delete=models.PROTECT,
+        verbose_name="Phương tiện"
+    )
+    driver = models.ForeignKey(
+        Person,
+        on_delete=models.PROTECT,
+        related_name='replenishments_as_driver',
+        limit_choices_to={'person_type': 'driver'},
+        verbose_name="Tài xế"
+    )
+    guard = models.ForeignKey(
+        Person,
+        on_delete=models.PROTECT,
+        related_name='replenishments_as_guard',
+        limit_choices_to={'person_type': 'guard'},
+        verbose_name="Bảo vệ"
+    )
+
+    # Thông tin người tạo
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        verbose_name="Người tạo"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Phiếu tiếp quỹ ATM"
+        verbose_name_plural = "Phiếu tiếp quỹ ATM"
+        ordering = ['-replenishment_date', '-created_at']
+
+    def __str__(self):
+        return f"Tiếp quỹ {self.atm.machine_id} - {self.replenishment_date.strftime('%d/%m/%Y')}"
+
+    @property
+    def total_amount(self):
+        """Tính tổng số tiền tiếp quỹ"""
+        return (
+            self.bills_50k * 50000 +
+            self.bills_100k * 100000 +
+            self.bills_200k * 200000 +
+            self.bills_500k * 500000
+        )
+
+    def get_amount_in_words(self):
+        """Chuyển số tiền sang chữ"""
+        return num_to_vietnamese_words(self.total_amount)
+
+
+def num_to_vietnamese_words(num):
+    """Chuyển đổi số thành chữ tiếng Việt"""
+    if num == 0:
+        return "Không đồng"
+
+    units = ["", "nghìn", "triệu", "tỷ"]
+
+    def read_group(n):
+        """Đọc nhóm 3 chữ số"""
+        hundred = n // 100
+        ten = (n % 100) // 10
+        unit = n % 10
+
+        result = []
+
+        if hundred > 0:
+            result.append(f"{read_digit(hundred)} trăm")
+
+        if ten > 1:
+            result.append(f"{read_digit(ten)} mươi")
+            if unit == 1:
+                result.append("mốt")
+            elif unit > 0:
+                result.append(read_digit(unit))
+        elif ten == 1:
+            result.append("mười")
+            if unit > 0:
+                result.append(read_digit(unit))
+        else:
+            if hundred > 0 and unit > 0:
+                result.append("lẻ")
+            if unit > 0:
+                result.append(read_digit(unit))
+
+        return " ".join(result)
+
+    def read_digit(d):
+        """Đọc một chữ số"""
+        digits = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"]
+        return digits[d]
+
+    # Chia số thành các nhóm 3 chữ số
+    groups = []
+    temp = num
+    while temp > 0:
+        groups.append(temp % 1000)
+        temp //= 1000
+
+    # Đọc từng nhóm
+    result = []
+    for i in range(len(groups) - 1, -1, -1):
+        if groups[i] > 0:
+            group_text = read_group(groups[i])
+            if i > 0:
+                group_text += f" {units[i]}"
+            result.append(group_text)
+
+    # Viết hoa chữ cái đầu và thêm "đồng"
+    final_result = " ".join(result)
+    return final_result.capitalize() + " đồng"

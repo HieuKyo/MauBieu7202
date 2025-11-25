@@ -4136,3 +4136,123 @@ def course_toggle_completion(request, enrollment_id):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+# ============================================================================
+# ATM Management Views
+# ============================================================================
+
+from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment
+from .forms import ATMReplenishmentForm
+
+
+@login_required
+def atm_dashboard(request):
+    """Dashboard cho quản lý ATM (chỉ admin)"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    # Thống kê
+    total_atms = ATM.objects.filter(is_active=True).count()
+    total_replenishments = ATMReplenishment.objects.count()
+    recent_replenishments = ATMReplenishment.objects.select_related(
+        'atm', 'vehicle', 'driver', 'guard', 'created_by'
+    ).order_by('-replenishment_date', '-created_at')[:10]
+
+    context = {
+        'total_atms': total_atms,
+        'total_replenishments': total_replenishments,
+        'recent_replenishments': recent_replenishments,
+    }
+    return render(request, 'templates_app/atm/dashboard.html', context)
+
+
+@login_required
+def atm_replenishment_create(request):
+    """Tạo phiếu tiếp quỹ ATM mới"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        form = ATMReplenishmentForm(request.POST)
+        if form.is_valid():
+            replenishment = form.save(commit=False)
+            replenishment.created_by = request.user
+            replenishment.save()
+            messages.success(request, 'Đã tạo phiếu tiếp quỹ thành công')
+            return redirect('atm_replenishment_print', pk=replenishment.pk)
+    else:
+        form = ATMReplenishmentForm()
+
+    # Lấy thông tin ban quản lý ATM
+    management_board = {}
+    for position in ['team_leader', 'treasury_head', 'atm_officer']:
+        member = ATMManagementBoard.objects.filter(
+            position=position, is_active=True
+        ).first()
+        management_board[position] = member
+
+    context = {
+        'form': form,
+        'management_board': management_board,
+    }
+    return render(request, 'templates_app/atm/replenishment_form.html', context)
+
+
+@login_required
+def atm_replenishment_print(request, pk):
+    """In phiếu tiếp quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    replenishment = get_object_or_404(
+        ATMReplenishment.objects.select_related(
+            'atm', 'vehicle', 'driver', 'guard', 'created_by'
+        ),
+        pk=pk
+    )
+
+    # Lấy thông tin ban quản lý ATM
+    management_board = {}
+    for position in ['team_leader', 'treasury_head', 'atm_officer']:
+        member = ATMManagementBoard.objects.filter(
+            position=position, is_active=True
+        ).first()
+        management_board[position] = member
+
+    # Lấy thông tin chi nhánh
+    from .models import GlobalConfig
+    config = GlobalConfig.get_instance()
+
+    context = {
+        'replenishment': replenishment,
+        'management_board': management_board,
+        'config': config,
+    }
+    return render(request, 'templates_app/atm/replenishment_print.html', context)
+
+
+@login_required
+def atm_replenishment_list(request):
+    """Danh sách phiếu tiếp quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    replenishments = ATMReplenishment.objects.select_related(
+        'atm', 'vehicle', 'driver', 'guard', 'created_by'
+    ).order_by('-replenishment_date', '-created_at')
+
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(replenishments, 20)  # 20 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+    }
+    return render(request, 'templates_app/atm/replenishment_list.html', context)

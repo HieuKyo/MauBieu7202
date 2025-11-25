@@ -65,11 +65,13 @@
                                 <i class="bi bi-cash-stack"></i> Kế toán Ngân quỹ
                             </a>
                         </li>
+                        {% if user.is_superuser %}
                         <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="showComingSoon('Tín dụng')">
-                                <i class="bi bi-credit-card"></i> Tín dụng
+                            <a class="nav-link" href="{% url 'atm_dashboard' %}">
+                                <i class="bi bi-credit-card-2-front"></i> ATM
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-tools"></i> Tiện ích

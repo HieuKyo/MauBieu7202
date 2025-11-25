@@ -1,0 +1,251 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Tạo phiếu tiếp quỹ ATM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
+                    <li class="breadcrumb-item active">Tạo phiếu tiếp quỹ</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-file-earmark-plus"></i> Tạo phiếu tiếp quỹ ATM</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Thông tin tiếp quỹ</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="replenishmentForm">
+                        {% csrf_token %}
+
+                        <!-- Thông tin ATM -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">Thông tin máy ATM</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.atm.id_for_label }}" class="form-label">
+                                        Máy ATM <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.atm }}
+                                    {% if form.atm.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.atm.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.replenishment_date.id_for_label }}" class="form-label">
+                                        Ngày tiếp quỹ <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.replenishment_date }}
+                                    {% if form.replenishment_date.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.replenishment_date.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Số lượng tờ tiền -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">Số lượng tờ tiền theo mệnh giá</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.bills_50k.id_for_label }}" class="form-label">
+                                        Số tờ 50.000đ
+                                    </label>
+                                    {{ form.bills_50k }}
+                                    {% if form.bills_50k.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.bills_50k.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.bills_100k.id_for_label }}" class="form-label">
+                                        Số tờ 100.000đ
+                                    </label>
+                                    {{ form.bills_100k }}
+                                    {% if form.bills_100k.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.bills_100k.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.bills_200k.id_for_label }}" class="form-label">
+                                        Số tờ 200.000đ
+                                    </label>
+                                    {{ form.bills_200k }}
+                                    {% if form.bills_200k.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.bills_200k.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.bills_500k.id_for_label }}" class="form-label">
+                                        Số tờ 500.000đ
+                                    </label>
+                                    {{ form.bills_500k }}
+                                    {% if form.bills_500k.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.bills_500k.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Tổng tiền tự động -->
+                            <div class="alert alert-info">
+                                <strong>Tổng số tiền tiếp quỹ:</strong>
+                                <span id="totalAmount" class="fs-5 fw-bold">0 VNĐ</span>
+                            </div>
+                        </div>
+
+                        <!-- Lệnh điều chuyển -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">Lệnh điều chuyển - Áp tải tiền</h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.vehicle.id_for_label }}" class="form-label">
+                                        Phương tiện <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.vehicle }}
+                                    {% if form.vehicle.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.vehicle.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.driver.id_for_label }}" class="form-label">
+                                        Tài xế <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.driver }}
+                                    {% if form.driver.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.driver.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.guard.id_for_label }}" class="form-label">
+                                        Bảo vệ <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.guard }}
+                                    {% if form.guard.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.guard.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Tạo phiếu và In
+                            </button>
+                            <a href="{% url 'atm_dashboard' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Hủy
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Hướng dẫn</h6>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Chọn máy ATM cần tiếp quỹ</li>
+                        <li>Chọn ngày tiếp quỹ</li>
+                        <li>Nhập số lượng tờ tiền theo từng mệnh giá</li>
+                        <li>Chọn phương tiện vận chuyển</li>
+                        <li>Chọn tài xế và bảo vệ</li>
+                        <li>Nhấn "Tạo phiếu và In" để tạo phiếu và in ngay</li>
+                    </ol>
+                </div>
+            </div>
+
+            {% if management_board %}
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-people"></i> Ban quản lý ATM</h6>
+                </div>
+                <div class="card-body">
+                    {% if management_board.team_leader %}
+                    <div class="mb-2">
+                        <strong>Trưởng Ban:</strong><br>
+                        {{ management_board.team_leader.full_name }}
+                    </div>
+                    {% endif %}
+                    {% if management_board.treasury_head %}
+                    <div class="mb-2">
+                        <strong>Trưởng phòng KTNQ:</strong><br>
+                        {{ management_board.treasury_head.full_name }}
+                    </div>
+                    {% endif %}
+                    {% if management_board.atm_officer %}
+                    <div class="mb-2">
+                        <strong>Cán bộ phụ trách ATM:</strong><br>
+                        {{ management_board.atm_officer.full_name }}
+                    </div>
+                    {% endif %}
+                    <hr>
+                    <small class="text-muted">
+                        <i class="bi bi-gear"></i>
+                        <a href="/admin/templates_app/atmmanagementboard/">Cập nhật thông tin</a>
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-calculate total amount
+    const billInputs = [
+        { id: 'id_bills_50k', value: 50000 },
+        { id: 'id_bills_100k', value: 100000 },
+        { id: 'id_bills_200k', value: 200000 },
+        { id: 'id_bills_500k', value: 500000 }
+    ];
+
+    function calculateTotal() {
+        let total = 0;
+        billInputs.forEach(bill => {
+            const input = document.getElementById(bill.id);
+            if (input) {
+                const count = parseInt(input.value) || 0;
+                total += count * bill.value;
+            }
+        });
+
+        const totalElement = document.getElementById('totalAmount');
+        if (totalElement) {
+            totalElement.textContent = total.toLocaleString('vi-VN') + ' VNĐ';
+        }
+    }
+
+    // Add event listeners
+    billInputs.forEach(bill => {
+        const input = document.getElementById(bill.id);
+        if (input) {
+            input.addEventListener('input', calculateTotal);
+        }
+    });
+
+    // Set today's date as default
+    const dateInput = document.getElementById('id_replenishment_date');
+    if (dateInput && !dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+
+    // Initial calculation
+    calculateTotal();
+});
+</script>
+{% endblock %}
