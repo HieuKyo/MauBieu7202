@@ -85,4 +85,11 @@ urlpatterns = [
     path('atm/replenishment/create/', views.atm_replenishment_create, name='atm_replenishment_create'),
     path('atm/replenishment/list/', views.atm_replenishment_list, name='atm_replenishment_list'),
     path('atm/replenishment/<int:replenishment_id>/template/<int:template_id>/', views.atm_load_replenishment_data, name='atm_load_replenishment_data'),
+
+    # ATM Discrepancy Management
+    path('atm/discrepancy/list/', views.atm_discrepancy_list, name='atm_discrepancy_list'),
+    path('atm/discrepancy/create/', views.atm_discrepancy_create, name='atm_discrepancy_create'),
+    path('atm/discrepancy/<int:discrepancy_id>/edit/', views.atm_discrepancy_edit, name='atm_discrepancy_edit'),
+    path('atm/discrepancy/<int:discrepancy_id>/delete/', views.atm_discrepancy_delete, name='atm_discrepancy_delete'),
+    path('atm/discrepancy/<int:discrepancy_id>/template/<int:template_id>/', views.atm_load_discrepancy_data, name='atm_load_discrepancy_data'),
 ]

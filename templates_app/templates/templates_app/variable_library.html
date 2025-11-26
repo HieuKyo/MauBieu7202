@@ -312,6 +312,54 @@
         </div>
     </div>
 
+    <!-- Biến Giao dịch Thừa/Thiếu quỹ ATM -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header" style="background: linear-gradient(135deg, #e65100 0%, #ff6f00 100%); color: white;">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Biến Thừa/Thiếu quỹ ATM
+                    <span class="badge bg-light text-dark">{{ atm_discrepancy_variables|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle"></i> Các biến này được load khi tạo báo cáo giao dịch thừa/thiếu quỹ ATM
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover variable-table" data-category="atm-discrepancy">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 35%;">Tên biến</th>
+                                <th style="width: 50%;">Mô tả</th>
+                                <th style="width: 15%;" class="text-end">Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for var in atm_discrepancy_variables %}
+                            <tr class="variable-row" data-variable-name="{{ var.name }}" data-description="{{ var.description }}">
+                                <td><code class="variable-name">{{ var.name }}</code></td>
+                                <td class="variable-desc">
+                                    {{ var.description }}
+                                    {% if var.example %}
+                                    <br><span class="badge bg-light text-dark small">VD: {{ var.example }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                                            data-variable="{{ var.name }}"
+                                            title="Copy biến {{ var.name }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Biến Tùy chỉnh -->
     <div class="col-lg-6 mb-4">
         <div class="card shadow-sm h-100">

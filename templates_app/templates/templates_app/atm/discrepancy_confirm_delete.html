@@ -1,0 +1,133 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Xác nhận xóa giao dịch thừa/thiếu quỹ{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'atm_discrepancy_list' %}">Danh sách thừa/thiếu quỹ</a></li>
+                    <li class="breadcrumb-item active">Xác nhận xóa</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-trash"></i> Xác nhận xóa giao dịch</h2>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Xác nhận xóa giao dịch thừa/thiếu quỹ</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Cảnh báo:</strong> Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác!
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title border-bottom pb-2">Thông tin giao dịch sẽ bị xóa:</h6>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Máy ATM:</strong></div>
+                                <div class="col-md-8">{{ discrepancy.atm.machine_id }} - {{ discrepancy.atm.address }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Họ tên:</strong></div>
+                                <div class="col-md-8">{{ discrepancy.full_name }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Số tài khoản:</strong></div>
+                                <div class="col-md-8">{{ discrepancy.account_number }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Số thẻ:</strong></div>
+                                <div class="col-md-8">{{ discrepancy.card_number }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Số trace:</strong></div>
+                                <div class="col-md-8">{{ discrepancy.trace_number }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>ID giao dịch:</strong></div>
+                                <div class="col-md-8">{{ discrepancy.transaction_id }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Loại:</strong></div>
+                                <div class="col-md-8">
+                                    {% if discrepancy.discrepancy_type == 'surplus' %}
+                                    <span class="badge bg-success">Thừa</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Thiếu</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Số tiền:</strong></div>
+                                <div class="col-md-8"><strong class="text-danger">{{ discrepancy.amount|floatformat:0 }} VNĐ</strong></div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Chu kỳ kiểm quỹ:</strong></div>
+                                <div class="col-md-8">
+                                    {{ discrepancy.audit_cycle_start|date:"d/m/Y" }} - {{ discrepancy.audit_cycle_end|date:"d/m/Y" }}
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Trạng thái:</strong></div>
+                                <div class="col-md-8">
+                                    {% if discrepancy.status == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Chờ xử lý</span>
+                                    {% elif discrepancy.status == 'resolved' %}
+                                    <span class="badge bg-success">Đã xử lý</span>
+                                    {% else %}
+                                    <span class="badge bg-info">Đã báo cáo</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if discrepancy.notes %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Ghi chú:</strong></div>
+                                <div class="col-md-8">{{ discrepancy.notes }}</div>
+                            </div>
+                            {% endif %}
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Người tạo:</strong></div>
+                                <div class="col-md-8">{{ discrepancy.created_by.username }} - {{ discrepancy.created_at|date:"d/m/Y H:i" }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'atm_discrepancy_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Hủy
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Xác nhận xóa
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

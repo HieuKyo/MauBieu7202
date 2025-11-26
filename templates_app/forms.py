@@ -280,7 +280,7 @@ class CategoryAdminForm(forms.ModelForm):
 # ATM Management Forms
 # ====================
 
-from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment
+from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy
 
 
 class ATMReplenishmentForm(forms.ModelForm):
@@ -309,3 +309,48 @@ class ATMReplenishmentForm(forms.ModelForm):
         self.fields['vehicle'].queryset = Vehicle.objects.filter(is_active=True)
         self.fields['driver'].queryset = Person.objects.filter(person_type='driver', is_active=True)
         self.fields['guard'].queryset = Person.objects.filter(person_type='guard', is_active=True)
+
+
+class ATMDiscrepancyForm(forms.ModelForm):
+    """Form cho tạo giao dịch thừa/thiếu quỹ ATM"""
+
+    class Meta:
+        model = ATMDiscrepancy
+        fields = [
+            'atm', 'full_name', 'account_number', 'card_number',
+            'trace_number', 'transaction_id', 'discrepancy_type', 'amount',
+            'audit_cycle_start', 'audit_cycle_end', 'status', 'notes'
+        ]
+        widgets = {
+            'atm': forms.Select(attrs={'class': 'form-select'}),
+            'full_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập họ tên'}),
+            'account_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản'}),
+            'card_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số thẻ'}),
+            'trace_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số trace'}),
+            'transaction_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ID giao dịch'}),
+            'discrepancy_type': forms.Select(attrs={'class': 'form-select'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Số tiền', 'min': '0', 'step': '1000'}),
+            'audit_cycle_start': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'audit_cycle_end': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Ghi chú'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lọc chỉ hiển thị các máy ATM active
+        self.fields['atm'].queryset = ATM.objects.filter(is_active=True)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        audit_cycle_start = cleaned_data.get('audit_cycle_start')
+        audit_cycle_end = cleaned_data.get('audit_cycle_end')
+
+        # Kiểm tra ngày kết thúc phải sau ngày bắt đầu
+        if audit_cycle_start and audit_cycle_end:
+            if audit_cycle_end < audit_cycle_start:
+                raise forms.ValidationError(
+                    'Ngày kết thúc chu kỳ phải sau ngày bắt đầu'
+                )
+
+        return cleaned_data

@@ -8,7 +8,7 @@ from .models import (
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction,
     UserProfile, Course, CourseEnrollment,
-    ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment
+    ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy
 )
 from .import_helpers import (
     import_variables_from_csv,
@@ -856,6 +856,68 @@ class ATMReplenishmentAdmin(admin.ModelAdmin):
         """Hiển thị tổng số tiền"""
         return f"{obj.total_amount:,} VNĐ"
     total_amount_display.short_description = 'Tổng số tiền'
+
+    def save_model(self, request, obj, form, change):
+        """Tự động gán người tạo khi tạo mới"""
+        if not change:  # Chỉ khi tạo mới
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(ATMDiscrepancy)
+class ATMDiscrepancyAdmin(admin.ModelAdmin):
+    """Admin cho Giao dịch thừa/thiếu quỹ ATM"""
+    list_display = [
+        'atm', 'full_name', 'discrepancy_type', 'amount_display',
+        'audit_cycle_display', 'status', 'created_by', 'created_at'
+    ]
+    list_filter = ['discrepancy_type', 'status', 'atm', 'audit_cycle_start', 'created_by']
+    search_fields = [
+        'atm__machine_id', 'full_name', 'account_number',
+        'card_number', 'trace_number', 'transaction_id'
+    ]
+    readonly_fields = ['created_by', 'created_at', 'updated_at', 'amount_words_display']
+    list_editable = ['status']
+    ordering = ['-audit_cycle_end', '-created_at']
+    date_hierarchy = 'audit_cycle_end'
+
+    fieldsets = (
+        ('Thông tin máy ATM', {
+            'fields': ('atm',)
+        }),
+        ('Thông tin khách hàng/Giao dịch', {
+            'fields': ('full_name', 'account_number', 'card_number', 'trace_number', 'transaction_id')
+        }),
+        ('Thông tin thừa/thiếu', {
+            'fields': ('discrepancy_type', 'amount', 'amount_words_display'),
+            'description': 'Nhập số tiền thừa hoặc thiếu'
+        }),
+        ('Chu kỳ kiểm quỹ', {
+            'fields': ('audit_cycle_start', 'audit_cycle_end')
+        }),
+        ('Xử lý', {
+            'fields': ('status', 'notes')
+        }),
+        ('Thông tin hệ thống', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def amount_display(self, obj):
+        """Hiển thị số tiền"""
+        return f"{obj.amount:,} VNĐ"
+    amount_display.short_description = 'Số tiền'
+
+    def amount_words_display(self, obj):
+        """Hiển thị số tiền bằng chữ"""
+        return obj.get_amount_in_words()
+    amount_words_display.short_description = 'Số tiền bằng chữ'
+
+    def audit_cycle_display(self, obj):
+        """Hiển thị chu kỳ kiểm quỹ"""
+        return f"{obj.audit_cycle_start.strftime('%d/%m/%Y')} - {obj.audit_cycle_end.strftime('%d/%m/%Y')}"
+    audit_cycle_display.short_description = 'Chu kỳ kiểm quỹ'
 
     def save_model(self, request, obj, form, change):
         """Tự động gán người tạo khi tạo mới"""
