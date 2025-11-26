@@ -1144,7 +1144,103 @@ def variable_library_view(request):
         {'name': 'logic', 'description': 'Logic: and, or, not', 'example': '{% if tuoi >= 15 and cccd_con_han %}'},
     ]
 
-    # 4. Biến Tùy chỉnh - From GlobalConfig.custom_variables
+    # 4. Biến ATM - From ATM replenishment
+    atm_variables = [
+        # Thông tin máy ATM
+        {'name': 'atm_machine_id', 'description': 'ID máy ATM', 'example': 'ATM-001'},
+        {'name': 'atm_serial_number', 'description': 'Số Serial máy ATM', 'example': 'SN123456789'},
+        {'name': 'atm_address', 'description': 'Địa chỉ lắp đặt máy ATM', 'example': '123 Đường ABC, Phường XYZ'},
+        {'name': 'atm_machine_type', 'description': 'Loại máy ATM', 'example': 'NCR'},
+        {'name': 'atm_machine_line', 'description': 'Dòng máy ATM', 'example': 'SelfServ'},
+        {'name': 'atm_installation_date', 'description': 'Ngày lắp đặt máy ATM (dd/mm/yyyy)', 'example': '15/01/2023'},
+
+        # Date variables - Ngày lắp đặt
+        {'name': 'atm_ld_d1', 'description': 'Ngày lắp đặt - Chữ số thứ nhất', 'example': '1'},
+        {'name': 'atm_ld_d2', 'description': 'Ngày lắp đặt - Chữ số thứ hai', 'example': '5'},
+        {'name': 'atm_ld_m1', 'description': 'Tháng lắp đặt - Chữ số thứ nhất', 'example': '0'},
+        {'name': 'atm_ld_m2', 'description': 'Tháng lắp đặt - Chữ số thứ hai', 'example': '1'},
+        {'name': 'atm_ld_y1', 'description': 'Năm lắp đặt - Chữ số thứ nhất', 'example': '2'},
+        {'name': 'atm_ld_y2', 'description': 'Năm lắp đặt - Chữ số thứ hai', 'example': '0'},
+        {'name': 'atm_ld_y3', 'description': 'Năm lắp đặt - Chữ số thứ ba', 'example': '2'},
+        {'name': 'atm_ld_y4', 'description': 'Năm lắp đặt - Chữ số thứ tư', 'example': '3'},
+
+        # Thông tin tiếp quỹ
+        {'name': 'replenishment_date', 'description': 'Ngày tiếp quỹ (dd/mm/yyyy)', 'example': '20/12/2024'},
+
+        # Date variables - Ngày tiếp quỹ
+        {'name': 'tq_d1', 'description': 'Ngày tiếp quỹ - Chữ số thứ nhất', 'example': '2'},
+        {'name': 'tq_d2', 'description': 'Ngày tiếp quỹ - Chữ số thứ hai', 'example': '0'},
+        {'name': 'tq_m1', 'description': 'Tháng tiếp quỹ - Chữ số thứ nhất', 'example': '1'},
+        {'name': 'tq_m2', 'description': 'Tháng tiếp quỹ - Chữ số thứ hai', 'example': '2'},
+        {'name': 'tq_y1', 'description': 'Năm tiếp quỹ - Chữ số thứ nhất', 'example': '2'},
+        {'name': 'tq_y2', 'description': 'Năm tiếp quỹ - Chữ số thứ hai', 'example': '0'},
+        {'name': 'tq_y3', 'description': 'Năm tiếp quỹ - Chữ số thứ ba', 'example': '2'},
+        {'name': 'tq_y4', 'description': 'Năm tiếp quỹ - Chữ số thứ tư', 'example': '4'},
+
+        # Số lượng tờ tiền
+        {'name': 'bills_50k', 'description': 'Số tờ 50.000đ', 'example': '100'},
+        {'name': 'bills_100k', 'description': 'Số tờ 100.000đ', 'example': '200'},
+        {'name': 'bills_200k', 'description': 'Số tờ 200.000đ', 'example': '150'},
+        {'name': 'bills_500k', 'description': 'Số tờ 500.000đ', 'example': '300'},
+
+        # Thành tiền
+        {'name': 'amount_50k', 'description': 'Thành tiền mệnh giá 50k (có dấu phẩy)', 'example': '5,000,000'},
+        {'name': 'amount_100k', 'description': 'Thành tiền mệnh giá 100k (có dấu phẩy)', 'example': '20,000,000'},
+        {'name': 'amount_200k', 'description': 'Thành tiền mệnh giá 200k (có dấu phẩy)', 'example': '30,000,000'},
+        {'name': 'amount_500k', 'description': 'Thành tiền mệnh giá 500k (có dấu phẩy)', 'example': '150,000,000'},
+        {'name': 'total_amount', 'description': 'Tổng số tiền tiếp quỹ (có dấu phẩy)', 'example': '205,000,000'},
+        {'name': 'total_amount_words', 'description': 'Số tiền bằng chữ', 'example': 'Hai trăm lẻ năm triệu đồng'},
+
+        # Thông tin phương tiện
+        {'name': 'vehicle_license_plate', 'description': 'Biển số xe vận chuyển', 'example': '94A - 021.46'},
+        {'name': 'vehicle_type', 'description': 'Loại xe', 'example': 'Xe tải'},
+
+        # Thông tin tài xế
+        {'name': 'driver_full_name', 'description': 'Họ tên tài xế', 'example': 'Nguyễn Văn A'},
+        {'name': 'driver_id_number', 'description': 'Số CCCD tài xế', 'example': '001234567890'},
+        {'name': 'driver_id_issue_date', 'description': 'Ngày cấp CCCD tài xế (dd/mm/yyyy)', 'example': '01/01/2020'},
+        {'name': 'driver_id_issue_place', 'description': 'Nơi cấp CCCD tài xế', 'example': 'CA Bạc Liêu'},
+
+        # Date variables - CCCD tài xế
+        {'name': 'tx_d1', 'description': 'Ngày cấp CCCD tài xế - Chữ số thứ nhất', 'example': '0'},
+        {'name': 'tx_d2', 'description': 'Ngày cấp CCCD tài xế - Chữ số thứ hai', 'example': '1'},
+        {'name': 'tx_m1', 'description': 'Tháng cấp CCCD tài xế - Chữ số thứ nhất', 'example': '0'},
+        {'name': 'tx_m2', 'description': 'Tháng cấp CCCD tài xế - Chữ số thứ hai', 'example': '1'},
+        {'name': 'tx_y1', 'description': 'Năm cấp CCCD tài xế - Chữ số thứ nhất', 'example': '2'},
+        {'name': 'tx_y2', 'description': 'Năm cấp CCCD tài xế - Chữ số thứ hai', 'example': '0'},
+        {'name': 'tx_y3', 'description': 'Năm cấp CCCD tài xế - Chữ số thứ ba', 'example': '2'},
+        {'name': 'tx_y4', 'description': 'Năm cấp CCCD tài xế - Chữ số thứ tư', 'example': '0'},
+
+        # Thông tin bảo vệ
+        {'name': 'guard_full_name', 'description': 'Họ tên bảo vệ', 'example': 'Trần Văn B'},
+        {'name': 'guard_id_number', 'description': 'Số CCCD bảo vệ', 'example': '001234567891'},
+        {'name': 'guard_id_issue_date', 'description': 'Ngày cấp CCCD bảo vệ (dd/mm/yyyy)', 'example': '01/01/2020'},
+        {'name': 'guard_id_issue_place', 'description': 'Nơi cấp CCCD bảo vệ', 'example': 'CA Bạc Liêu'},
+
+        # Date variables - CCCD bảo vệ
+        {'name': 'bv_d1', 'description': 'Ngày cấp CCCD bảo vệ - Chữ số thứ nhất', 'example': '0'},
+        {'name': 'bv_d2', 'description': 'Ngày cấp CCCD bảo vệ - Chữ số thứ hai', 'example': '1'},
+        {'name': 'bv_m1', 'description': 'Tháng cấp CCCD bảo vệ - Chữ số thứ nhất', 'example': '0'},
+        {'name': 'bv_m2', 'description': 'Tháng cấp CCCD bảo vệ - Chữ số thứ hai', 'example': '1'},
+        {'name': 'bv_y1', 'description': 'Năm cấp CCCD bảo vệ - Chữ số thứ nhất', 'example': '2'},
+        {'name': 'bv_y2', 'description': 'Năm cấp CCCD bảo vệ - Chữ số thứ hai', 'example': '0'},
+        {'name': 'bv_y3', 'description': 'Năm cấp CCCD bảo vệ - Chữ số thứ ba', 'example': '2'},
+        {'name': 'bv_y4', 'description': 'Năm cấp CCCD bảo vệ - Chữ số thứ tư', 'example': '0'},
+
+        # Ban quản lý ATM
+        {'name': 'team_leader_name', 'description': 'Họ tên Trưởng Ban quản lý ATM', 'example': 'Nguyễn Văn C'},
+        {'name': 'team_leader_title', 'description': 'Chức danh Trưởng Ban', 'example': 'Trưởng Ban'},
+        {'name': 'treasury_head_name', 'description': 'Họ tên Trưởng phòng KTNQ', 'example': 'Trần Văn D'},
+        {'name': 'treasury_head_title', 'description': 'Chức danh Trưởng phòng KTNQ', 'example': 'Trưởng phòng'},
+        {'name': 'atm_officer_name', 'description': 'Họ tên Cán bộ phụ trách ATM', 'example': 'Lê Văn E'},
+        {'name': 'atm_officer_title', 'description': 'Chức danh Cán bộ phụ trách ATM', 'example': 'Cán bộ'},
+
+        # Metadata
+        {'name': 'created_by', 'description': 'Username người tạo phiếu tiếp quỹ', 'example': 'admin'},
+        {'name': 'created_at', 'description': 'Thời gian tạo phiếu (dd/mm/yyyy HH:MM)', 'example': '20/12/2024 14:30'},
+    ]
+
+    # 5. Biến Tùy chỉnh - From GlobalConfig.custom_variables
     config = GlobalConfig.get_instance()
     custom_variables = []
     if config.custom_variables:
@@ -1163,6 +1259,7 @@ def variable_library_view(request):
         'jinja_filters': jinja_filters,
         'jinja_syntax': jinja_syntax,
         'branch_variables': branch_variables,
+        'atm_variables': atm_variables,
         'custom_variables': custom_variables,
     }
 
