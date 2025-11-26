@@ -4257,14 +4257,15 @@ def atm_dashboard(request):
         'atm', 'vehicle', 'driver', 'guard', 'created_by'
     ).order_by('-replenishment_date', '-created_at')[:10]
 
-    # Lấy danh sách templates (tất cả templates mà user có quyền truy cập)
+    # Lấy danh sách templates (chỉ templates có tên chứa "ATM")
     if request.user.is_superuser:
-        templates = Template.objects.filter(is_active=True).select_related('category').order_by('category__order', 'order', 'name')
+        templates = Template.objects.filter(is_active=True, name__icontains='ATM').select_related('category').order_by('category__order', 'order', 'name')
     else:
         # Lấy các groups của user
         user_groups = request.user.groups.all()
         templates = Template.objects.filter(
-            is_active=True
+            is_active=True,
+            name__icontains='ATM'
         ).filter(
             models.Q(allowed_groups__isnull=True) | models.Q(allowed_groups__in=user_groups)
         ).distinct().select_related('category').order_by('category__order', 'order', 'name')
@@ -4359,13 +4360,14 @@ def atm_replenishment_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Lấy danh sách templates
+    # Lấy danh sách templates (chỉ templates có tên chứa "ATM")
     if request.user.is_superuser:
-        templates = Template.objects.filter(is_active=True).select_related('category').order_by('category__order', 'order', 'name')
+        templates = Template.objects.filter(is_active=True, name__icontains='ATM').select_related('category').order_by('category__order', 'order', 'name')
     else:
         user_groups = request.user.groups.all()
         templates = Template.objects.filter(
-            is_active=True
+            is_active=True,
+            name__icontains='ATM'
         ).filter(
             Q(allowed_groups__isnull=True) | Q(allowed_groups__in=user_groups)
         ).distinct().select_related('category').order_by('category__order', 'order', 'name')
