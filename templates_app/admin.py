@@ -750,15 +750,15 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
 @admin.register(ATM)
 class ATMAdmin(admin.ModelAdmin):
     """Admin cho Máy ATM"""
-    list_display = ['machine_id', 'address', 'machine_type', 'machine_line', 'is_active']
+    list_display = ['machine_id', 'serial_number', 'address', 'machine_type', 'machine_line', 'installation_date', 'is_active']
     list_filter = ['is_active', 'machine_type']
     list_editable = ['is_active']
-    search_fields = ['machine_id', 'address', 'machine_type']
+    search_fields = ['machine_id', 'serial_number', 'address', 'machine_type']
     ordering = ['machine_id']
 
     fieldsets = (
         ('Thông tin máy ATM', {
-            'fields': ('machine_id', 'address', 'machine_type', 'machine_line')
+            'fields': ('machine_id', 'serial_number', 'address', 'machine_type', 'machine_line', 'installation_date')
         }),
         ('Trạng thái', {
             'fields': ('is_active',)

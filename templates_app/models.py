@@ -1598,6 +1598,11 @@ class ATM(models.Model):
         primary_key=True,
         verbose_name="ID Máy ATM"
     )
+    serial_number = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Số Serial máy"
+    )
     address = models.CharField(
         max_length=500,
         verbose_name="Địa chỉ máy"
@@ -1609,6 +1614,11 @@ class ATM(models.Model):
     machine_line = models.CharField(
         max_length=100,
         verbose_name="Dòng máy"
+    )
+    installation_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày lắp đặt"
     )
     is_active = models.BooleanField(
         default=True,
@@ -1817,6 +1827,137 @@ class ATMReplenishment(models.Model):
     def get_amount_in_words(self):
         """Chuyển số tiền sang chữ"""
         return num_to_vietnamese_words(self.total_amount)
+
+    def get_data_dict(self):
+        """
+        Trả về dictionary chứa thông tin phiếu tiếp quỹ ATM
+        Dùng để tạo mẫu biểu Word
+        """
+        # Date variables cho ngày tiếp quỹ
+        tq_d1, tq_d2, tq_m1, tq_m2, tq_y1, tq_y2, tq_y3, tq_y4 = '', '', '', '', '', '', '', ''
+        if self.replenishment_date:
+            date_str = self.replenishment_date.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                tq_d1, tq_d2 = date_str[0], date_str[1]
+                tq_m1, tq_m2 = date_str[2], date_str[3]
+                tq_y1, tq_y2, tq_y3, tq_y4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
+        # Date variables cho ngày lắp đặt ATM
+        ld_d1, ld_d2, ld_m1, ld_m2, ld_y1, ld_y2, ld_y3, ld_y4 = '', '', '', '', '', '', '', ''
+        if self.atm.installation_date:
+            date_str = self.atm.installation_date.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                ld_d1, ld_d2 = date_str[0], date_str[1]
+                ld_m1, ld_m2 = date_str[2], date_str[3]
+                ld_y1, ld_y2, ld_y3, ld_y4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
+        # Date variables cho ngày cấp CCCD tài xế
+        tx_d1, tx_d2, tx_m1, tx_m2, tx_y1, tx_y2, tx_y3, tx_y4 = '', '', '', '', '', '', '', ''
+        if self.driver.id_issue_date:
+            date_str = self.driver.id_issue_date.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                tx_d1, tx_d2 = date_str[0], date_str[1]
+                tx_m1, tx_m2 = date_str[2], date_str[3]
+                tx_y1, tx_y2, tx_y3, tx_y4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
+        # Date variables cho ngày cấp CCCD bảo vệ
+        bv_d1, bv_d2, bv_m1, bv_m2, bv_y1, bv_y2, bv_y3, bv_y4 = '', '', '', '', '', '', '', ''
+        if self.guard.id_issue_date:
+            date_str = self.guard.id_issue_date.strftime('%d%m%Y')
+            if len(date_str) == 8:
+                bv_d1, bv_d2 = date_str[0], date_str[1]
+                bv_m1, bv_m2 = date_str[2], date_str[3]
+                bv_y1, bv_y2, bv_y3, bv_y4 = date_str[4], date_str[5], date_str[6], date_str[7]
+
+        # Lấy thông tin ban quản lý ATM
+        team_leader = ATMManagementBoard.objects.filter(position='team_leader', is_active=True).first()
+        treasury_head = ATMManagementBoard.objects.filter(position='treasury_head', is_active=True).first()
+        atm_officer = ATMManagementBoard.objects.filter(position='atm_officer', is_active=True).first()
+
+        # Tính tiền cho từng mệnh giá
+        amount_50k = self.bills_50k * 50000
+        amount_100k = self.bills_100k * 100000
+        amount_200k = self.bills_200k * 200000
+        amount_500k = self.bills_500k * 500000
+
+        data = {
+            # Thông tin máy ATM
+            'atm_machine_id': self.atm.machine_id,
+            'atm_serial_number': self.atm.serial_number or '',
+            'atm_address': self.atm.address,
+            'atm_machine_type': self.atm.machine_type,
+            'atm_machine_line': self.atm.machine_line,
+            'atm_installation_date': self.atm.installation_date.strftime('%d/%m/%Y') if self.atm.installation_date else '',
+
+            # Date variables cho ngày lắp đặt
+            'atm_ld_d1': ld_d1, 'atm_ld_d2': ld_d2,
+            'atm_ld_m1': ld_m1, 'atm_ld_m2': ld_m2,
+            'atm_ld_y1': ld_y1, 'atm_ld_y2': ld_y2, 'atm_ld_y3': ld_y3, 'atm_ld_y4': ld_y4,
+
+            # Thông tin tiếp quỹ
+            'replenishment_date': self.replenishment_date.strftime('%d/%m/%Y'),
+
+            # Date variables cho ngày tiếp quỹ
+            'tq_d1': tq_d1, 'tq_d2': tq_d2,
+            'tq_m1': tq_m1, 'tq_m2': tq_m2,
+            'tq_y1': tq_y1, 'tq_y2': tq_y2, 'tq_y3': tq_y3, 'tq_y4': tq_y4,
+
+            # Số lượng tờ tiền
+            'bills_50k': str(self.bills_50k),
+            'bills_100k': str(self.bills_100k),
+            'bills_200k': str(self.bills_200k),
+            'bills_500k': str(self.bills_500k),
+
+            # Thành tiền từng mệnh giá
+            'amount_50k': f"{amount_50k:,}",
+            'amount_100k': f"{amount_100k:,}",
+            'amount_200k': f"{amount_200k:,}",
+            'amount_500k': f"{amount_500k:,}",
+
+            # Tổng tiền
+            'total_amount': f"{self.total_amount:,}",
+            'total_amount_words': self.get_amount_in_words(),
+
+            # Thông tin phương tiện
+            'vehicle_license_plate': self.vehicle.license_plate,
+            'vehicle_type': self.vehicle.vehicle_type or '',
+
+            # Thông tin tài xế
+            'driver_full_name': self.driver.full_name,
+            'driver_id_number': self.driver.id_number,
+            'driver_id_issue_date': self.driver.id_issue_date.strftime('%d/%m/%Y'),
+            'driver_id_issue_place': self.driver.id_issue_place,
+
+            # Date variables cho tài xế
+            'tx_d1': tx_d1, 'tx_d2': tx_d2,
+            'tx_m1': tx_m1, 'tx_m2': tx_m2,
+            'tx_y1': tx_y1, 'tx_y2': tx_y2, 'tx_y3': tx_y3, 'tx_y4': tx_y4,
+
+            # Thông tin bảo vệ
+            'guard_full_name': self.guard.full_name,
+            'guard_id_number': self.guard.id_number,
+            'guard_id_issue_date': self.guard.id_issue_date.strftime('%d/%m/%Y'),
+            'guard_id_issue_place': self.guard.id_issue_place,
+
+            # Date variables cho bảo vệ
+            'bv_d1': bv_d1, 'bv_d2': bv_d2,
+            'bv_m1': bv_m1, 'bv_m2': bv_m2,
+            'bv_y1': bv_y1, 'bv_y2': bv_y2, 'bv_y3': bv_y3, 'bv_y4': bv_y4,
+
+            # Ban quản lý ATM
+            'team_leader_name': team_leader.full_name if team_leader else '',
+            'team_leader_title': team_leader.title if team_leader else '',
+            'treasury_head_name': treasury_head.full_name if treasury_head else '',
+            'treasury_head_title': treasury_head.title if treasury_head else '',
+            'atm_officer_name': atm_officer.full_name if atm_officer else '',
+            'atm_officer_title': atm_officer.title if atm_officer else '',
+
+            # Thông tin người tạo
+            'created_by': self.created_by.username,
+            'created_at': self.created_at.strftime('%d/%m/%Y %H:%M'),
+        }
+
+        return data
 
 
 def num_to_vietnamese_words(num):

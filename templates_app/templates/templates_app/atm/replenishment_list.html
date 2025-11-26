@@ -61,11 +61,23 @@
                                         <small class="text-muted">{{ rep.created_at|date:"d/m/Y H:i" }}</small>
                                     </td>
                                     <td class="text-center">
-                                        <a href="{% url 'atm_replenishment_print' rep.pk %}"
-                                           class="btn btn-sm btn-outline-primary"
-                                           title="In phiếu">
-                                            <i class="bi bi-printer"></i>
-                                        </a>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                {% for template in templates %}
+                                                <li>
+                                                    <a class="dropdown-item" href="{% url 'atm_load_replenishment_data' rep.pk template.id %}">
+                                                        {{ template.category.name }} - {{ template.name }}
+                                                    </a>
+                                                </li>
+                                                {% endfor %}
+                                                {% if not templates %}
+                                                <li><span class="dropdown-item text-muted">Chưa có mẫu biểu</span></li>
+                                                {% endif %}
+                                            </ul>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}

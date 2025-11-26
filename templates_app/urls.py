@@ -83,6 +83,6 @@ urlpatterns = [
     # ATM Management
     path('atm/', views.atm_dashboard, name='atm_dashboard'),
     path('atm/replenishment/create/', views.atm_replenishment_create, name='atm_replenishment_create'),
-    path('atm/replenishment/<int:pk>/print/', views.atm_replenishment_print, name='atm_replenishment_print'),
     path('atm/replenishment/list/', views.atm_replenishment_list, name='atm_replenishment_list'),
+    path('atm/replenishment/<int:replenishment_id>/template/<int:template_id>/', views.atm_load_replenishment_data, name='atm_load_replenishment_data'),
 ]
