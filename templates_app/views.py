@@ -1240,6 +1240,66 @@ def variable_library_view(request):
         {'name': 'created_at', 'description': 'Thời gian tạo phiếu (dd/mm/yyyy HH:MM)', 'example': '20/12/2024 14:30'},
     ]
 
+    # Biến giao dịch thừa/thiếu quỹ ATM
+    atm_discrepancy_variables = [
+        # Thông tin máy ATM
+        {'name': 'disc_atm_machine_id', 'description': 'ID máy ATM', 'example': 'ATM-001'},
+        {'name': 'disc_atm_serial_number', 'description': 'Số Serial máy ATM', 'example': 'SN123456789'},
+        {'name': 'disc_atm_address', 'description': 'Địa chỉ lắp đặt máy ATM', 'example': '123 Đường ABC, Phường XYZ'},
+        {'name': 'disc_atm_machine_type', 'description': 'Loại máy ATM', 'example': 'NCR'},
+        {'name': 'disc_atm_machine_line', 'description': 'Dòng máy ATM', 'example': 'SelfServ'},
+
+        # Thông tin khách hàng/Giao dịch
+        {'name': 'disc_full_name', 'description': 'Họ tên khách hàng', 'example': 'Nguyễn Văn A'},
+        {'name': 'disc_account_number', 'description': 'Số tài khoản', 'example': '0123456789'},
+        {'name': 'disc_card_number', 'description': 'Số thẻ', 'example': '9704123456789012'},
+        {'name': 'disc_trace_number', 'description': 'Số trace', 'example': '123456'},
+        {'name': 'disc_transaction_id', 'description': 'ID giao dịch', 'example': 'TXN20241220123456'},
+
+        # Thông tin thừa/thiếu
+        {'name': 'disc_type', 'description': 'Loại giao dịch (Thừa/Thiếu)', 'example': 'Thừa'},
+        {'name': 'disc_amount', 'description': 'Số tiền thừa/thiếu (có dấu phẩy)', 'example': '500,000'},
+        {'name': 'disc_amount_words', 'description': 'Số tiền bằng chữ', 'example': 'Năm trăm nghìn đồng'},
+
+        # Chu kỳ kiểm quỹ - Ngày bắt đầu
+        {'name': 'disc_audit_cycle_start', 'description': 'Ngày bắt đầu chu kỳ kiểm quỹ (dd/mm/yyyy)', 'example': '01/12/2024'},
+        {'name': 'acs_d1', 'description': 'Ngày bắt đầu - Chữ số thứ nhất', 'example': '0'},
+        {'name': 'acs_d2', 'description': 'Ngày bắt đầu - Chữ số thứ hai', 'example': '1'},
+        {'name': 'acs_m1', 'description': 'Tháng bắt đầu - Chữ số thứ nhất', 'example': '1'},
+        {'name': 'acs_m2', 'description': 'Tháng bắt đầu - Chữ số thứ hai', 'example': '2'},
+        {'name': 'acs_y1', 'description': 'Năm bắt đầu - Chữ số thứ nhất', 'example': '2'},
+        {'name': 'acs_y2', 'description': 'Năm bắt đầu - Chữ số thứ hai', 'example': '0'},
+        {'name': 'acs_y3', 'description': 'Năm bắt đầu - Chữ số thứ ba', 'example': '2'},
+        {'name': 'acs_y4', 'description': 'Năm bắt đầu - Chữ số thứ tư', 'example': '4'},
+
+        # Chu kỳ kiểm quỹ - Ngày kết thúc
+        {'name': 'disc_audit_cycle_end', 'description': 'Ngày kết thúc chu kỳ kiểm quỹ (dd/mm/yyyy)', 'example': '31/12/2024'},
+        {'name': 'ace_d1', 'description': 'Ngày kết thúc - Chữ số thứ nhất', 'example': '3'},
+        {'name': 'ace_d2', 'description': 'Ngày kết thúc - Chữ số thứ hai', 'example': '1'},
+        {'name': 'ace_m1', 'description': 'Tháng kết thúc - Chữ số thứ nhất', 'example': '1'},
+        {'name': 'ace_m2', 'description': 'Tháng kết thúc - Chữ số thứ hai', 'example': '2'},
+        {'name': 'ace_y1', 'description': 'Năm kết thúc - Chữ số thứ nhất', 'example': '2'},
+        {'name': 'ace_y2', 'description': 'Năm kết thúc - Chữ số thứ hai', 'example': '0'},
+        {'name': 'ace_y3', 'description': 'Năm kết thúc - Chữ số thứ ba', 'example': '2'},
+        {'name': 'ace_y4', 'description': 'Năm kết thúc - Chữ số thứ tư', 'example': '4'},
+
+        # Trạng thái và ghi chú
+        {'name': 'disc_status', 'description': 'Trạng thái xử lý', 'example': 'Chờ xử lý'},
+        {'name': 'disc_notes', 'description': 'Ghi chú', 'example': 'Đã liên hệ khách hàng'},
+
+        # Ban quản lý ATM
+        {'name': 'disc_team_leader_name', 'description': 'Họ tên Trưởng Ban quản lý ATM', 'example': 'Nguyễn Văn C'},
+        {'name': 'disc_team_leader_title', 'description': 'Chức danh Trưởng Ban', 'example': 'Trưởng Ban'},
+        {'name': 'disc_treasury_head_name', 'description': 'Họ tên Trưởng phòng KTNQ', 'example': 'Trần Văn D'},
+        {'name': 'disc_treasury_head_title', 'description': 'Chức danh Trưởng phòng KTNQ', 'example': 'Trưởng phòng'},
+        {'name': 'disc_atm_officer_name', 'description': 'Họ tên Cán bộ phụ trách ATM', 'example': 'Lê Văn E'},
+        {'name': 'disc_atm_officer_title', 'description': 'Chức danh Cán bộ phụ trách ATM', 'example': 'Cán bộ'},
+
+        # Metadata
+        {'name': 'disc_created_by', 'description': 'Username người tạo giao dịch', 'example': 'admin'},
+        {'name': 'disc_created_at', 'description': 'Thời gian tạo giao dịch (dd/mm/yyyy HH:MM)', 'example': '20/12/2024 14:30'},
+    ]
+
     # 5. Biến Tùy chỉnh - From GlobalConfig.custom_variables
     config = GlobalConfig.get_instance()
     custom_variables = []
@@ -1260,6 +1320,7 @@ def variable_library_view(request):
         'jinja_syntax': jinja_syntax,
         'branch_variables': branch_variables,
         'atm_variables': atm_variables,
+        'atm_discrepancy_variables': atm_discrepancy_variables,
         'custom_variables': custom_variables,
     }
 
@@ -4239,8 +4300,8 @@ def course_toggle_completion(request, enrollment_id):
 # ATM Management Views
 # ============================================================================
 
-from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment
-from .forms import ATMReplenishmentForm
+from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy
+from .forms import ATMReplenishmentForm, ATMDiscrepancyForm
 
 
 @login_required
@@ -4253,9 +4314,16 @@ def atm_dashboard(request):
     # Thống kê
     total_atms = ATM.objects.filter(is_active=True).count()
     total_replenishments = ATMReplenishment.objects.count()
+    total_discrepancies = ATMDiscrepancy.objects.count()
+    pending_discrepancies = ATMDiscrepancy.objects.filter(status='pending').count()
+
     recent_replenishments = ATMReplenishment.objects.select_related(
         'atm', 'vehicle', 'driver', 'guard', 'created_by'
     ).order_by('-replenishment_date', '-created_at')[:10]
+
+    recent_discrepancies = ATMDiscrepancy.objects.select_related(
+        'atm', 'created_by'
+    ).order_by('-audit_cycle_end', '-created_at')[:5]
 
     # Lấy danh sách templates (chỉ templates có tên chứa "ATM")
     if request.user.is_superuser:
@@ -4273,7 +4341,10 @@ def atm_dashboard(request):
     context = {
         'total_atms': total_atms,
         'total_replenishments': total_replenishments,
+        'total_discrepancies': total_discrepancies,
+        'pending_discrepancies': pending_discrepancies,
         'recent_replenishments': recent_replenishments,
+        'recent_discrepancies': recent_discrepancies,
         'templates': templates,
     }
     return render(request, 'templates_app/atm/dashboard.html', context)
@@ -4377,3 +4448,142 @@ def atm_replenishment_list(request):
         'templates': templates,
     }
     return render(request, 'templates_app/atm/replenishment_list.html', context)
+
+
+# ============================================================================
+# ATM Discrepancy Views
+# ============================================================================
+
+@login_required
+def atm_discrepancy_list(request):
+    """Danh sách giao dịch thừa/thiếu quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    discrepancies = ATMDiscrepancy.objects.select_related(
+        'atm', 'created_by'
+    ).order_by('-audit_cycle_end', '-created_at')
+
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(discrepancies, 20)  # 20 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Lấy danh sách templates (chỉ templates có tên chứa "ATM")
+    if request.user.is_superuser:
+        templates = Template.objects.filter(is_active=True, name__icontains='ATM').select_related('category').order_by('category__order', 'order', 'name')
+    else:
+        user_groups = request.user.groups.all()
+        templates = Template.objects.filter(
+            is_active=True,
+            name__icontains='ATM'
+        ).filter(
+            Q(allowed_groups__isnull=True) | Q(allowed_groups__in=user_groups)
+        ).distinct().select_related('category').order_by('category__order', 'order', 'name')
+
+    context = {
+        'page_obj': page_obj,
+        'templates': templates,
+    }
+    return render(request, 'templates_app/atm/discrepancy_list.html', context)
+
+
+@login_required
+def atm_discrepancy_create(request):
+    """Tạo giao dịch thừa/thiếu quỹ ATM mới"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        form = ATMDiscrepancyForm(request.POST)
+        if form.is_valid():
+            discrepancy = form.save(commit=False)
+            discrepancy.created_by = request.user
+            discrepancy.save()
+            messages.success(request, 'Đã tạo giao dịch thừa/thiếu quỹ thành công')
+            return redirect('atm_discrepancy_list')
+    else:
+        form = ATMDiscrepancyForm()
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'templates_app/atm/discrepancy_form.html', context)
+
+
+@login_required
+def atm_discrepancy_edit(request, discrepancy_id):
+    """Sửa giao dịch thừa/thiếu quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    discrepancy = get_object_or_404(ATMDiscrepancy, pk=discrepancy_id)
+
+    if request.method == 'POST':
+        form = ATMDiscrepancyForm(request.POST, instance=discrepancy)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Đã cập nhật giao dịch thành công')
+            return redirect('atm_discrepancy_list')
+    else:
+        form = ATMDiscrepancyForm(instance=discrepancy)
+
+    context = {
+        'form': form,
+        'discrepancy': discrepancy,
+        'is_edit': True,
+    }
+    return render(request, 'templates_app/atm/discrepancy_form.html', context)
+
+
+@login_required
+def atm_discrepancy_delete(request, discrepancy_id):
+    """Xóa giao dịch thừa/thiếu quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    discrepancy = get_object_or_404(ATMDiscrepancy, pk=discrepancy_id)
+
+    if request.method == 'POST':
+        discrepancy.delete()
+        messages.success(request, 'Đã xóa giao dịch thành công')
+        return redirect('atm_discrepancy_list')
+
+    context = {
+        'discrepancy': discrepancy,
+    }
+    return render(request, 'templates_app/atm/discrepancy_confirm_delete.html', context)
+
+
+@login_required
+def atm_load_discrepancy_data(request, discrepancy_id, template_id):
+    """Load dữ liệu giao dịch thừa/thiếu quỹ vào session để tạo mẫu biểu"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    # Lấy discrepancy
+    discrepancy = get_object_or_404(
+        ATMDiscrepancy.objects.select_related('atm', 'created_by'),
+        pk=discrepancy_id
+    )
+
+    # Lấy template và kiểm tra quyền
+    template = get_object_or_404(Template, id=template_id, is_active=True)
+    if not template.user_has_access(request.user):
+        raise Http404("Bạn không có quyền truy cập mẫu biểu này")
+
+    # Load dữ liệu vào session
+    session_data = discrepancy.get_data_dict()
+    session_data['_atm_discrepancy_id'] = discrepancy_id
+    request.session[f'template_{template_id}_data'] = session_data
+
+    messages.success(request, 'Đã load dữ liệu giao dịch thừa/thiếu quỹ')
+
+    # Redirect tới print preview
+    return redirect('print_preview', template_id=template_id)

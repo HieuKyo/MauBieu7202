@@ -1,0 +1,258 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Sửa{% else %}Thêm{% endif %} giao dịch thừa/thiếu quỹ ATM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'atm_discrepancy_list' %}">Danh sách thừa/thiếu quỹ</a></li>
+                    <li class="breadcrumb-item active">{% if is_edit %}Sửa{% else %}Thêm{% endif %} giao dịch</li>
+                </ol>
+            </nav>
+            <h2>
+                <i class="bi bi-{% if is_edit %}pencil{% else %}plus-circle{% endif %}"></i>
+                {% if is_edit %}Sửa{% else %}Thêm{% endif %} giao dịch thừa/thiếu quỹ ATM
+            </h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Thông tin giao dịch</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="discrepancyForm">
+                        {% csrf_token %}
+
+                        <!-- Thông tin ATM -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">Thông tin máy ATM</h6>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="{{ form.atm.id_for_label }}" class="form-label">
+                                        Máy ATM <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.atm }}
+                                    {% if form.atm.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.atm.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Thông tin khách hàng/Giao dịch -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">Thông tin khách hàng và giao dịch</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.full_name.id_for_label }}" class="form-label">
+                                        Họ tên <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.full_name }}
+                                    {% if form.full_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.full_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.account_number.id_for_label }}" class="form-label">
+                                        Số tài khoản <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.account_number }}
+                                    {% if form.account_number.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.account_number.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.card_number.id_for_label }}" class="form-label">
+                                        Số thẻ <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.card_number }}
+                                    {% if form.card_number.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.card_number.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.trace_number.id_for_label }}" class="form-label">
+                                        Số trace <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.trace_number }}
+                                    {% if form.trace_number.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.trace_number.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label for="{{ form.transaction_id.id_for_label }}" class="form-label">
+                                        ID giao dịch <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.transaction_id }}
+                                    {% if form.transaction_id.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.transaction_id.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Thông tin thừa/thiếu -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">Thông tin thừa/thiếu quỹ</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.discrepancy_type.id_for_label }}" class="form-label">
+                                        Loại <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.discrepancy_type }}
+                                    {% if form.discrepancy_type.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.discrepancy_type.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.amount.id_for_label }}" class="form-label">
+                                        Số tiền (VNĐ) <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.amount }}
+                                    {% if form.amount.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.amount.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chu kỳ kiểm quỹ -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">Chu kỳ kiểm quỹ</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.audit_cycle_start.id_for_label }}" class="form-label">
+                                        Từ ngày <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.audit_cycle_start }}
+                                    {% if form.audit_cycle_start.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.audit_cycle_start.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.audit_cycle_end.id_for_label }}" class="form-label">
+                                        Đến ngày <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.audit_cycle_end }}
+                                    {% if form.audit_cycle_end.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.audit_cycle_end.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Xử lý -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">Xử lý và ghi chú</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.status.id_for_label }}" class="form-label">
+                                        Trạng thái <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.status }}
+                                    {% if form.status.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                        Ghi chú
+                                    </label>
+                                    {{ form.notes }}
+                                    {% if form.notes.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.notes.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form errors -->
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> {% if is_edit %}Cập nhật{% else %}Thêm giao dịch{% endif %}
+                            </button>
+                            <a href="{% url 'atm_discrepancy_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Hủy
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Hướng dẫn</h6>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Chọn máy ATM có giao dịch thừa/thiếu</li>
+                        <li>Nhập thông tin khách hàng</li>
+                        <li>Nhập thông tin giao dịch (trace, ID giao dịch)</li>
+                        <li>Chọn loại: Thừa hoặc Thiếu</li>
+                        <li>Nhập số tiền thừa/thiếu</li>
+                        <li>Chọn chu kỳ kiểm quỹ</li>
+                        <li>Chọn trạng thái xử lý</li>
+                        <li>Ghi chú thêm (nếu cần)</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Lưu ý</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Thừa:</strong> Khách hàng rút tiền ít hơn số tiền ghi nhận</li>
+                        <li><strong>Thiếu:</strong> Khách hàng rút tiền nhiều hơn số tiền ghi nhận</li>
+                        <li>Cần ghi đầy đủ thông tin để truy vết và xử lý</li>
+                        <li>Sau khi thêm giao dịch, có thể tạo mẫu biểu báo cáo</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set today's date as default for audit cycle end
+    const auditEndInput = document.getElementById('id_audit_cycle_end');
+    if (auditEndInput && !auditEndInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        auditEndInput.value = today;
+    }
+
+    // Format amount input with thousand separators
+    const amountInput = document.getElementById('id_amount');
+    if (amountInput) {
+        amountInput.addEventListener('blur', function() {
+            if (this.value) {
+                const value = parseFloat(this.value.replace(/,/g, ''));
+                if (!isNaN(value)) {
+                    this.value = Math.round(value);
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

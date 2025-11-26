@@ -1960,6 +1960,163 @@ class ATMReplenishment(models.Model):
         return data
 
 
+class ATMDiscrepancy(models.Model):
+    """Quản lý các giao dịch thừa/thiếu quỹ ATM"""
+
+    DISCREPANCY_TYPES = [
+        ('surplus', 'Thừa'),
+        ('deficit', 'Thiếu'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Chờ xử lý'),
+        ('resolved', 'Đã xử lý'),
+        ('escalated', 'Đã báo cáo lên'),
+    ]
+
+    atm = models.ForeignKey(
+        ATM,
+        on_delete=models.PROTECT,
+        related_name='discrepancies',
+        verbose_name="Máy ATM"
+    )
+    full_name = models.CharField(max_length=200, verbose_name="Họ tên")
+    account_number = models.CharField(max_length=50, verbose_name="Số tài khoản")
+    card_number = models.CharField(max_length=50, verbose_name="Số thẻ")
+    trace_number = models.CharField(max_length=100, verbose_name="Số trace")
+    transaction_id = models.CharField(max_length=100, verbose_name="ID giao dịch")
+
+    discrepancy_type = models.CharField(
+        max_length=10,
+        choices=DISCREPANCY_TYPES,
+        verbose_name="Loại"
+    )
+    amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=0,
+        verbose_name="Số tiền"
+    )
+
+    audit_cycle_start = models.DateField(verbose_name="Chu kỳ kiểm quỹ từ ngày")
+    audit_cycle_end = models.DateField(verbose_name="Chu kỳ kiểm quỹ đến ngày")
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        verbose_name="Trạng thái"
+    )
+    notes = models.TextField(blank=True, verbose_name="Ghi chú")
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='atm_discrepancies_created',
+        verbose_name="Người tạo"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Giao dịch thừa/thiếu quỹ ATM"
+        verbose_name_plural = "Giao dịch thừa/thiếu quỹ ATM"
+        ordering = ['-audit_cycle_end', '-created_at']
+
+    def __str__(self):
+        type_display = "Thừa" if self.discrepancy_type == 'surplus' else "Thiếu"
+        return f"{self.atm.machine_id} - {type_display} {self.amount:,}đ - {self.full_name}"
+
+    def get_amount_in_words(self):
+        """Chuyển số tiền thành chữ"""
+        return num_to_vietnamese_words(int(self.amount))
+
+    def get_data_dict(self):
+        """Trả về dictionary chứa tất cả biến cho Word template"""
+        # Phân tách ngày bắt đầu chu kỳ
+        acs_d1 = self.audit_cycle_start.strftime('%d')[0]
+        acs_d2 = self.audit_cycle_start.strftime('%d')[1]
+        acs_m1 = self.audit_cycle_start.strftime('%m')[0]
+        acs_m2 = self.audit_cycle_start.strftime('%m')[1]
+        acs_y1 = self.audit_cycle_start.strftime('%Y')[0]
+        acs_y2 = self.audit_cycle_start.strftime('%Y')[1]
+        acs_y3 = self.audit_cycle_start.strftime('%Y')[2]
+        acs_y4 = self.audit_cycle_start.strftime('%Y')[3]
+
+        # Phân tách ngày kết thúc chu kỳ
+        ace_d1 = self.audit_cycle_end.strftime('%d')[0]
+        ace_d2 = self.audit_cycle_end.strftime('%d')[1]
+        ace_m1 = self.audit_cycle_end.strftime('%m')[0]
+        ace_m2 = self.audit_cycle_end.strftime('%m')[1]
+        ace_y1 = self.audit_cycle_end.strftime('%Y')[0]
+        ace_y2 = self.audit_cycle_end.strftime('%Y')[1]
+        ace_y3 = self.audit_cycle_end.strftime('%Y')[2]
+        ace_y4 = self.audit_cycle_end.strftime('%Y')[3]
+
+        # Lấy thông tin ban quản lý ATM
+        team_leader = ATMManagementBoard.objects.filter(
+            position='team_leader', is_active=True
+        ).first()
+        treasury_head = ATMManagementBoard.objects.filter(
+            position='treasury_head', is_active=True
+        ).first()
+        atm_officer = ATMManagementBoard.objects.filter(
+            position='atm_officer', is_active=True
+        ).first()
+
+        data = {
+            # Thông tin máy ATM
+            'disc_atm_machine_id': self.atm.machine_id,
+            'disc_atm_serial_number': self.atm.serial_number or '',
+            'disc_atm_address': self.atm.address,
+            'disc_atm_machine_type': self.atm.machine_type,
+            'disc_atm_machine_line': self.atm.machine_line,
+
+            # Thông tin khách hàng/giao dịch
+            'disc_full_name': self.full_name,
+            'disc_account_number': self.account_number,
+            'disc_card_number': self.card_number,
+            'disc_trace_number': self.trace_number,
+            'disc_transaction_id': self.transaction_id,
+
+            # Thông tin số tiền
+            'disc_type': self.get_discrepancy_type_display(),
+            'disc_amount': f"{self.amount:,}",
+            'disc_amount_words': self.get_amount_in_words(),
+
+            # Chu kỳ kiểm quỹ
+            'disc_audit_cycle_start': self.audit_cycle_start.strftime('%d/%m/%Y'),
+            'disc_audit_cycle_end': self.audit_cycle_end.strftime('%d/%m/%Y'),
+
+            # Date variables cho ngày bắt đầu chu kỳ
+            'acs_d1': acs_d1, 'acs_d2': acs_d2,
+            'acs_m1': acs_m1, 'acs_m2': acs_m2,
+            'acs_y1': acs_y1, 'acs_y2': acs_y2, 'acs_y3': acs_y3, 'acs_y4': acs_y4,
+
+            # Date variables cho ngày kết thúc chu kỳ
+            'ace_d1': ace_d1, 'ace_d2': ace_d2,
+            'ace_m1': ace_m1, 'ace_m2': ace_m2,
+            'ace_y1': ace_y1, 'ace_y2': ace_y2, 'ace_y3': ace_y3, 'ace_y4': ace_y4,
+
+            # Trạng thái
+            'disc_status': self.get_status_display(),
+            'disc_notes': self.notes or '',
+
+            # Ban quản lý ATM
+            'disc_team_leader_name': team_leader.full_name if team_leader else '',
+            'disc_team_leader_title': team_leader.title if team_leader else '',
+            'disc_treasury_head_name': treasury_head.full_name if treasury_head else '',
+            'disc_treasury_head_title': treasury_head.title if treasury_head else '',
+            'disc_atm_officer_name': atm_officer.full_name if atm_officer else '',
+            'disc_atm_officer_title': atm_officer.title if atm_officer else '',
+
+            # Thông tin người tạo
+            'disc_created_by': self.created_by.username,
+            'disc_created_at': self.created_at.strftime('%d/%m/%Y %H:%M'),
+        }
+
+        return data
+
+
 def num_to_vietnamese_words(num):
     """Chuyển đổi số thành chữ tiếng Việt"""
     if num == 0:

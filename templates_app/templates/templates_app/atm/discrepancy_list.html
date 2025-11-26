@@ -1,0 +1,174 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Danh sách giao dịch thừa/thiếu quỹ ATM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
+                    <li class="breadcrumb-item active">Danh sách thừa/thiếu quỹ</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="bi bi-exclamation-triangle"></i> Danh sách giao dịch thừa/thiếu quỹ ATM</h2>
+                <a href="{% url 'atm_discrepancy_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Thêm giao dịch mới
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-0">
+                    {% if page_obj %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 5%;">#</th>
+                                    <th style="width: 10%;">Mã ATM</th>
+                                    <th style="width: 15%;">Họ tên</th>
+                                    <th style="width: 12%;">Số tài khoản</th>
+                                    <th style="width: 8%;">Loại</th>
+                                    <th style="width: 12%;" class="text-end">Số tiền</th>
+                                    <th style="width: 15%;">Chu kỳ kiểm quỹ</th>
+                                    <th style="width: 10%;">Trạng thái</th>
+                                    <th style="width: 13%;" class="text-center">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for disc in page_obj %}
+                                <tr>
+                                    <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
+                                    <td><strong>{{ disc.atm.machine_id }}</strong></td>
+                                    <td>{{ disc.full_name|truncatewords:3 }}</td>
+                                    <td>{{ disc.account_number }}</td>
+                                    <td>
+                                        {% if disc.discrepancy_type == 'surplus' %}
+                                        <span class="badge bg-success">Thừa</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Thiếu</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ disc.amount|floatformat:0 }} VNĐ</strong>
+                                    </td>
+                                    <td>
+                                        <small>{{ disc.audit_cycle_start|date:"d/m/Y" }} - {{ disc.audit_cycle_end|date:"d/m/Y" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if disc.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Chờ xử lý</span>
+                                        {% elif disc.status == 'resolved' %}
+                                        <span class="badge bg-success">Đã xử lý</span>
+                                        {% else %}
+                                        <span class="badge bg-info">Đã báo cáo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'atm_discrepancy_edit' disc.pk %}" class="btn btn-sm btn-outline-primary" title="Sửa">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Tạo mẫu biểu">
+                                                    <i class="bi bi-file-earmark-text"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    {% for template in templates %}
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'atm_load_discrepancy_data' disc.pk template.id %}">
+                                                            {{ template.category.name }} - {{ template.name }}
+                                                        </a>
+                                                    </li>
+                                                    {% endfor %}
+                                                    {% if not templates %}
+                                                    <li><span class="dropdown-item text-muted">Chưa có mẫu biểu</span></li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                            <a href="{% url 'atm_discrepancy_delete' disc.pk %}" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <div class="card-footer">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination mb-0 justify-content-center">
+                                {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">
+                                        <i class="bi bi-chevron-bar-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+                                        <i class="bi bi-chevron-bar-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        <div class="text-center mt-2 text-muted">
+                            <small>
+                                Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                                (Tổng {{ page_obj.paginator.count }} giao dịch)
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-2">Chưa có giao dịch thừa/thiếu quỹ nào</p>
+                        <a href="{% url 'atm_discrepancy_create' %}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Thêm giao dịch đầu tiên
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

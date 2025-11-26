@@ -14,7 +14,7 @@
 
     <!-- Statistics Cards -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-primary">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -29,7 +29,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-success">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -44,11 +44,32 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Thừa/Thiếu quỹ</h6>
+                            <h3 class="mb-0">{{ total_discrepancies }}</h3>
+                            <small class="text-danger">
+                                <i class="bi bi-exclamation-circle"></i> {{ pending_discrepancies }} chờ xử lý
+                            </small>
+                        </div>
+                        <div class="text-warning">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
             <div class="card border-info">
                 <div class="card-body text-center">
-                    <a href="{% url 'atm_replenishment_create' %}" class="btn btn-primary btn-lg">
+                    <a href="{% url 'atm_replenishment_create' %}" class="btn btn-primary btn-sm mb-1 w-100">
                         <i class="bi bi-plus-circle"></i> Tạo phiếu tiếp quỹ
+                    </a>
+                    <a href="{% url 'atm_discrepancy_create' %}" class="btn btn-warning btn-sm w-100">
+                        <i class="bi bi-plus-circle"></i> Thêm thừa/thiếu quỹ
                     </a>
                 </div>
             </div>
@@ -64,24 +85,34 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-2 mb-2">
                             <a href="{% url 'atm_replenishment_create' %}" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-plus-circle"></i> Tạo phiếu tiếp quỹ mới
+                                <i class="bi bi-plus-circle"></i> Tạo phiếu tiếp quỹ
                             </a>
                         </div>
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-2 mb-2">
                             <a href="{% url 'atm_replenishment_list' %}" class="btn btn-outline-secondary w-100">
-                                <i class="bi bi-list-ul"></i> Danh sách phiếu tiếp quỹ
+                                <i class="bi bi-list-ul"></i> Danh sách tiếp quỹ
                             </a>
                         </div>
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-2 mb-2">
+                            <a href="{% url 'atm_discrepancy_create' %}" class="btn btn-outline-warning w-100">
+                                <i class="bi bi-plus-circle"></i> Thêm thừa/thiếu quỹ
+                            </a>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <a href="{% url 'atm_discrepancy_list' %}" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-list-ul"></i> DS thừa/thiếu quỹ
+                            </a>
+                        </div>
+                        <div class="col-md-2 mb-2">
                             <a href="/admin/templates_app/atm/" class="btn btn-outline-info w-100">
                                 <i class="bi bi-gear"></i> Quản lý máy ATM
                             </a>
                         </div>
-                        <div class="col-md-3 mb-2">
-                            <a href="/admin/templates_app/atmmanagementboard/" class="btn btn-outline-warning w-100">
-                                <i class="bi bi-people"></i> Ban quản lý ATM
+                        <div class="col-md-2 mb-2">
+                            <a href="/admin/templates_app/atmmanagementboard/" class="btn btn-outline-success w-100">
+                                <i class="bi bi-people"></i> Ban quản lý
                             </a>
                         </div>
                     </div>
@@ -91,8 +122,8 @@
     </div>
 
     <!-- Recent Replenishments -->
-    <div class="row">
-        <div class="col-md-12">
+    <div class="row mb-4">
+        <div class="col-md-7">
             <div class="card">
                 <div class="card-header bg-light">
                     <div class="d-flex justify-content-between align-items-center">
@@ -158,6 +189,70 @@
                         <p class="mt-2">Chưa có phiếu tiếp quỹ nào</p>
                         <a href="{% url 'atm_replenishment_create' %}" class="btn btn-primary">
                             <i class="bi bi-plus-circle"></i> Tạo phiếu tiếp quỹ đầu tiên
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Discrepancies -->
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Thừa/Thiếu quỹ gần đây</h5>
+                        <a href="{% url 'atm_discrepancy_list' %}" class="btn btn-sm btn-outline-warning">
+                            Xem tất cả <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_discrepancies %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Máy ATM</th>
+                                    <th>Họ tên</th>
+                                    <th>Loại</th>
+                                    <th>Số tiền</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for disc in recent_discrepancies %}
+                                <tr>
+                                    <td><strong>{{ disc.atm.machine_id }}</strong></td>
+                                    <td>{{ disc.full_name|truncatewords:2 }}</td>
+                                    <td>
+                                        {% if disc.discrepancy_type == 'surplus' %}
+                                        <span class="badge bg-success">Thừa</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Thiếu</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end"><small>{{ disc.amount|floatformat:0 }}</small></td>
+                                    <td>
+                                        {% if disc.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Chờ</span>
+                                        {% elif disc.status == 'resolved' %}
+                                        <span class="badge bg-success">Xong</span>
+                                        {% else %}
+                                        <span class="badge bg-info">Báo cáo</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                        <p class="mt-2">Chưa có giao dịch thừa/thiếu quỹ</p>
+                        <a href="{% url 'atm_discrepancy_create' %}" class="btn btn-sm btn-warning">
+                            <i class="bi bi-plus-circle"></i> Thêm giao dịch
                         </a>
                     </div>
                     {% endif %}
