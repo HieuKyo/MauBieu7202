@@ -4385,7 +4385,7 @@ def atm_replenishment_create(request):
 
 @login_required
 def atm_load_replenishment_data(request, replenishment_id, template_id):
-    """Load dữ liệu phiếu tiếp quỹ vào session để tạo mẫu biểu"""
+    """Tạo và tải file Word trực tiếp từ phiếu tiếp quỹ"""
     if not request.user.is_superuser:
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
@@ -4403,15 +4403,31 @@ def atm_load_replenishment_data(request, replenishment_id, template_id):
     if not template.user_has_access(request.user):
         raise Http404("Bạn không có quyền truy cập mẫu biểu này")
 
-    # Load dữ liệu vào session
-    session_data = replenishment.get_data_dict()
-    session_data['_atm_replenishment_id'] = replenishment_id
-    request.session[f'template_{template_id}_data'] = session_data
+    try:
+        # Lấy dữ liệu từ replenishment
+        data = replenishment.get_data_dict()
 
-    messages.success(request, 'Đã load dữ liệu phiếu tiếp quỹ')
+        # Thêm biến chung (chi nhánh + custom variables)
+        global_config = GlobalConfig.get_instance()
+        data.update(global_config.get_all_variables())
 
-    # Redirect tới print preview
-    return redirect('print_preview', template_id=template_id)
+        # Render template Word với dữ liệu
+        template_path = template.file.path
+        output_stream = render_word_template(template_path, data)
+
+        # Trả về file Word để download
+        response = HttpResponse(
+            output_stream.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        filename = f"{template.name}_ATM_{replenishment.atm.machine_id}_{replenishment.replenishment_date.strftime('%Y%m%d')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('atm_dashboard')
 
 
 @login_required
@@ -4562,7 +4578,7 @@ def atm_discrepancy_delete(request, discrepancy_id):
 
 @login_required
 def atm_load_discrepancy_data(request, discrepancy_id, template_id):
-    """Load dữ liệu giao dịch thừa/thiếu quỹ vào session để tạo mẫu biểu"""
+    """Tạo và tải file Word trực tiếp từ giao dịch thừa/thiếu quỹ"""
     if not request.user.is_superuser:
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
@@ -4578,12 +4594,29 @@ def atm_load_discrepancy_data(request, discrepancy_id, template_id):
     if not template.user_has_access(request.user):
         raise Http404("Bạn không có quyền truy cập mẫu biểu này")
 
-    # Load dữ liệu vào session
-    session_data = discrepancy.get_data_dict()
-    session_data['_atm_discrepancy_id'] = discrepancy_id
-    request.session[f'template_{template_id}_data'] = session_data
+    try:
+        # Lấy dữ liệu từ discrepancy
+        data = discrepancy.get_data_dict()
 
-    messages.success(request, 'Đã load dữ liệu giao dịch thừa/thiếu quỹ')
+        # Thêm biến chung (chi nhánh + custom variables)
+        global_config = GlobalConfig.get_instance()
+        data.update(global_config.get_all_variables())
 
-    # Redirect tới print preview
-    return redirect('print_preview', template_id=template_id)
+        # Render template Word với dữ liệu
+        template_path = template.file.path
+        output_stream = render_word_template(template_path, data)
+
+        # Trả về file Word để download
+        response = HttpResponse(
+            output_stream.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        disc_type = "Thua" if discrepancy.discrepancy_type == 'surplus' else "Thieu"
+        filename = f"{template.name}_ATM_{discrepancy.atm.machine_id}_{disc_type}_{discrepancy.audit_cycle_end.strftime('%Y%m%d')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('atm_discrepancy_list')
