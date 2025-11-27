@@ -344,8 +344,14 @@ def customer_list_view(request):
 
     customers = customers.order_by('-created_at')
 
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(customers, 20)  # 20 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        'customers': customers,
+        'page_obj': page_obj,
         'search_query': search_query,
     }
     return render(request, 'templates_app/customer_list.html', context)
