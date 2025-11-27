@@ -316,11 +316,13 @@
                 `;
             });
 
-            // Thêm page-break-after cho mỗi ngày (trừ ngày cuối)
-            const pageBreakStyle = pageIndex < sortedDates.length - 1 ? 'page-break-after: always;' : '';
+            // Ước tính số trang cho ngày này (khoảng 20 giao dịch = 1 trang, cộng thêm 1 trang cho header/footer)
+            const estimatedPages = Math.ceil(filteredData.length / 20) + 1;
+            const isOddPages = estimatedPages % 2 === 1;
+            const isLastDay = pageIndex === sortedDates.length - 1;
 
             allPagesHtml += `
-                <div style="${pageBreakStyle}">
+                <div style="page-break-after: always;">
                     <div class="header-container">
                         <div class="header-left">
                             <p>NGÂN HÀNG NÔNG NGHIỆP</p>
@@ -376,12 +378,22 @@
                     </div>
                 </div>
             `;
+
+            // Thêm trang trắng nếu số trang lẻ (để phù hợp với in 2 mặt)
+            // Không thêm trang trắng cho ngày cuối cùng
+            if (isOddPages && !isLastDay) {
+                allPagesHtml += `
+                    <div style="page-break-after: always;">
+                        <!-- Trang trắng cho in 2 mặt -->
+                    </div>
+                `;
+            }
         });
 
         const printHtml = `
             <html>
             <head>
-                <title>Bảng kê giao dịch điện lực - Tháng ${month}/${year}</title>
+                <title>Bảng kê giao dịch điện lực</title>
                 <style>
                     body { font-family: 'Times New Roman', Times, serif; margin: 20px; font-size: 12pt;}
                     table { width: 100%; border-collapse: collapse; font-size: 12pt; margin-top: 10px;}
