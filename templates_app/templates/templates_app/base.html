@@ -15,10 +15,16 @@
         body {
             min-height: 100vh;
             background-color: var(--agri-bg);
+            display: flex;
+            flex-direction: column;
         }
         .main-container {
             margin-top: 2rem;
             margin-bottom: 2rem;
+            flex: 1 0 auto;
+        }
+        footer {
+            flex-shrink: 0;
         }
         .category-card {
             cursor: pointer;
