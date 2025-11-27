@@ -40,7 +40,7 @@ def process_lai_ton_dong_report(request):
         try:
             config_obj = ReportConfiguration.objects.get(report_type='lai_ton_dong', is_active=True)
             ltd_config = config_obj.config_data
-        except ReportConfiguration.DoesNotExist:
+        except (ReportConfiguration.DoesNotExist, Exception):
             # Cấu hình mặc định
             ltd_config = {
                 'allowed_acctcd': [701001, 701002, 701003],
@@ -217,7 +217,7 @@ def process_phat_hanh_the_report(request):
         try:
             config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
             pht_config = config_obj.config_data
-        except ReportConfiguration.DoesNotExist:
+        except (ReportConfiguration.DoesNotExist, Exception):
             # Cấu hình mặc định
             pht_config = {
                 'pgd_user_map': {
