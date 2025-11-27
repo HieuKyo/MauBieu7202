@@ -129,7 +129,7 @@
             reportBodyHtml += `
                 <tr>
                     <td style="text-align: center;">${index + 1}</td>
-                    <td>${formatCellDate(row[1])}</td>
+                    <td>${formatCellDate(row[0])}</td>
                     <td>${row[36] || ''}</td>
                     <td style="text-align: right;">${new Intl.NumberFormat('vi-VN').format(soTien)}</td>
                 </tr>
@@ -190,7 +190,7 @@
                     <thead>
                         <tr>
                             <th style="width: 7%;">STT</th>
-                            <th style="width: 15%;">NGÀY GT</th>
+                            <th style="width: 15%;">Ngày GD</th>
                             <th>NỘI DUNG</th>
                             <th style="width: 20%;">SỐ TIỀN</th>
                         </tr>
@@ -309,18 +309,28 @@
                 reportBodyHtml += `
                     <tr>
                         <td style="text-align: center;">${index + 1}</td>
-                        <td>${formatCellDate(row[1])}</td>
+                        <td>${formatCellDate(row[0])}</td>
                         <td>${row[36] || ''}</td>
                         <td style="text-align: right;">${new Intl.NumberFormat('vi-VN').format(soTien)}</td>
                     </tr>
                 `;
             });
 
-            // Thêm page-break-after cho mỗi ngày (trừ ngày cuối)
-            const pageBreakStyle = pageIndex < sortedDates.length - 1 ? 'page-break-after: always;' : '';
+            // Ước tính số trang cho ngày này
+            // Tính tổng số dòng:
+            // - Header + Title + Info ≈ 12 dòng
+            // - Table header + TỔNG CỘNG ≈ 2 dòng
+            // - Signatures (với margin-top: 50px) ≈ 10 dòng
+            // - Các dòng giao dịch: filteredData.length
+            // Tổng: 24 dòng cố định + số dòng giao dịch
+            // Một trang A4 (12pt, margin 1cm) ≈ 40 dòng
+            const totalLines = 24 + filteredData.length;
+            const estimatedPages = Math.ceil(totalLines / 40);
+            const isOddPages = estimatedPages % 2 === 1;
+            const isLastDay = pageIndex === sortedDates.length - 1;
 
             allPagesHtml += `
-                <div style="${pageBreakStyle}">
+                <div style="page-break-after: always;">
                     <div class="header-container">
                         <div class="header-left">
                             <p>NGÂN HÀNG NÔNG NGHIỆP</p>
@@ -348,7 +358,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 7%;">STT</th>
-                                <th style="width: 15%;">NGÀY GT</th>
+                                <th style="width: 15%;">Ngày GD</th>
                                 <th>NỘI DUNG</th>
                                 <th style="width: 20%;">SỐ TIỀN</th>
                             </tr>
@@ -376,12 +386,22 @@
                     </div>
                 </div>
             `;
+
+            // Thêm trang trắng nếu số trang lẻ (để phù hợp với in 2 mặt)
+            // Không thêm trang trắng cho ngày cuối cùng
+            if (isOddPages && !isLastDay) {
+                allPagesHtml += `
+                    <div style="page-break-after: always;">
+                        <!-- Trang trắng cho in 2 mặt -->
+                    </div>
+                `;
+            }
         });
 
         const printHtml = `
             <html>
             <head>
-                <title>Bảng kê giao dịch điện lực - Tháng ${month}/${year}</title>
+                <title>Bảng kê giao dịch điện lực</title>
                 <style>
                     body { font-family: 'Times New Roman', Times, serif; margin: 20px; font-size: 12pt;}
                     table { width: 100%; border-collapse: collapse; font-size: 12pt; margin-top: 10px;}
