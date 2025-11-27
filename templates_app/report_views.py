@@ -80,17 +80,29 @@ def process_lai_ton_dong_report(request):
             'bceqa': 'Lãi kỳ này'
         })
         df_comparison_sel = df_comparison[cols_to_keep].rename(columns={
+            'custseq': 'Mã khách hàng SS',
+            'custnm': 'Tên khách hàng SS',
             'refno': 'LDS',
             'acrbamt': 'Dư nợ gốc kỳ SS',
             'bceqa': 'Lãi kỳ SS'
         })
 
+        # OUTER JOIN để lấy tất cả LDS từ cả 2 kỳ
         merged_df = pd.merge(
             df_current_sel,
-            df_comparison_sel[['LDS', 'Dư nợ gốc kỳ SS', 'Lãi kỳ SS']],
+            df_comparison_sel,
             on='LDS',
-            how='left'
+            how='outer'
         )
+
+        # Điền thông tin khách hàng: ưu tiên kỳ hiện tại, nếu không có thì lấy từ kỳ so sánh
+        merged_df['Mã khách hàng'] = merged_df['Mã khách hàng'].fillna(merged_df['Mã khách hàng SS'])
+        merged_df['Tên khách hàng'] = merged_df['Tên khách hàng'].fillna(merged_df['Tên khách hàng SS'])
+
+        # Xóa cột tạm
+        merged_df.drop(['Mã khách hàng SS', 'Tên khách hàng SS'], axis=1, inplace=True)
+
+        # Điền 0 cho các giá trị số còn thiếu
         merged_df.fillna(0, inplace=True)
 
         merged_df['Lãi Tăng'] = (merged_df['Lãi kỳ này'] - merged_df['Lãi kỳ SS']).clip(lower=0)
