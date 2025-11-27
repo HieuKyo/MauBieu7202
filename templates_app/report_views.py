@@ -218,6 +218,7 @@ def process_phat_hanh_the_report(request):
             config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
             pht_config = config_obj.config_data
         except ReportConfiguration.DoesNotExist:
+            # Cấu hình mặc định
             pht_config = {
                 'pgd_user_map': {
                     "PGD Phường 1": ["GRALTHUC", "GRATTHAO"],
@@ -225,6 +226,7 @@ def process_phat_hanh_the_report(request):
                     "Hội Sở": ["GRATNNHI", "GRANSINH", "GRATHIEU", "GRACACHI", "Yến Mi"]
                 }
             }
+            messages.info(request, "Sử dụng cấu hình mặc định vì chưa có cấu hình trong database.")
 
         data_file = request.FILES.get('data_file')
         start_date_str = request.POST.get('start_date')
@@ -236,8 +238,17 @@ def process_phat_hanh_the_report(request):
 
         df = pd.read_excel(data_file)
 
+        # Debug: Kiểm tra columns
+        print(f"DEBUG: Columns in file: {df.columns.tolist()}")
+        print(f"DEBUG: Total rows: {len(df)}")
+
         if 'acctseq' in df.columns:
             df['acctseq'] = df['acctseq'].astype(str)
+
+        # Kiểm tra cột dlvrydt tồn tại
+        if 'dlvrydt' not in df.columns:
+            messages.error(request, "File không có cột 'dlvrydt' (Ngày phát hành). Vui lòng kiểm tra lại file Excel.")
+            return redirect('phat_hanh_the_report')
 
         df['dlvrydt_datetime'] = pd.to_datetime(df['dlvrydt'], format='%d/%m/%Y', errors='coerce').dt.normalize()
 
@@ -247,18 +258,31 @@ def process_phat_hanh_the_report(request):
         mask = (df['dlvrydt_datetime'] >= start_date) & (df['dlvrydt_datetime'] <= end_date)
         filtered_df = df.loc[mask].copy()
 
+        print(f"DEBUG: Filtered rows (by date): {len(filtered_df)}")
+
         if filtered_df.empty:
             messages.warning(request, "Không có dữ liệu phát hành thẻ trong khoảng thời gian đã chọn.")
             return redirect('phat_hanh_the_report')
 
         pgd_user_map = pht_config.get('pgd_user_map', {})
+        print(f"DEBUG: PGD user map: {pgd_user_map}")
+
         user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
+        print(f"DEBUG: User to PGD map: {user_to_pgd_map}")
+
+        # Kiểm tra cột dlvryusrid tồn tại
+        if 'dlvryusrid' not in filtered_df.columns:
+            messages.error(request, "File không có cột 'dlvryusrid' (User phát hành). Vui lòng kiểm tra lại file Excel.")
+            return redirect('phat_hanh_the_report')
 
         filtered_df['PGD'] = filtered_df['dlvryusrid'].map(user_to_pgd_map)
         final_df = filtered_df.dropna(subset=['PGD'])
 
+        print(f"DEBUG: Final rows (after PGD mapping): {len(final_df)}")
+        print(f"DEBUG: Unique users in data: {filtered_df['dlvryusrid'].unique().tolist()}")
+
         if final_df.empty:
-            messages.warning(request, "Không có dữ liệu nào khớp với các user trong cấu hình.")
+            messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình. Users trong file: {filtered_df['dlvryusrid'].unique().tolist()}")
             return redirect('phat_hanh_the_report')
 
         # Tạo Excel với nhiều sheet
@@ -271,6 +295,13 @@ def process_phat_hanh_the_report(request):
                     pgd_df_to_output = pgd_df.copy()
                     pgd_df_to_output['dlvrydt_str'] = pgd_df_to_output['dlvrydt_datetime'].dt.strftime('%d/%m/%Y')
 
+                    # Kiểm tra các cột cần thiết
+                    required_cols = ['custnm', 'acctseq', 'cdtpcdnm', 'dlvryusrid']
+                    missing_cols = [col for col in required_cols if col not in pgd_df_to_output.columns]
+                    if missing_cols:
+                        print(f"WARNING: Missing columns for PGD {pgd_name}: {missing_cols}")
+                        continue
+
                     output_cols = ['custnm', 'acctseq', 'cdtpcdnm', 'dlvryusrid', 'dlvrydt_str']
                     pgd_df_final = pgd_df_to_output[output_cols].rename(columns={
                         'custnm': 'Họ tên',
@@ -279,6 +310,8 @@ def process_phat_hanh_the_report(request):
                         'dlvryusrid': 'User phát hành',
                         'dlvrydt_str': 'Ngày phát hành'
                     })
+
+                    print(f"DEBUG: Creating sheet for {pgd_name} with {len(pgd_df_final)} rows")
 
                     pgd_df_final.to_excel(writer, sheet_name=pgd_name, index=False, startrow=3)
 
@@ -344,12 +377,21 @@ def process_phat_hanh_the_report(request):
                         adjusted_width = min((max_length + 2), 60)
                         worksheet.column_dimensions[column_letter].width = adjusted_width
 
+        # Kiểm tra xem có sheet nào được tạo không
+        if not writer.sheets:
+            messages.warning(request, "Không có dữ liệu nào để tạo báo cáo. Vui lòng kiểm tra lại file và cấu hình.")
+            return redirect('phat_hanh_the_report')
+
+        print(f"DEBUG: Total sheets created: {len(writer.sheets)}")
+
         output.seek(0)
         response = HttpResponse(
             output.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = f'attachment; filename="BaoCao_PhatHanhThe_{start_date_str}_den_{end_date_str}.xlsx"'
+
+        print("DEBUG: Returning file response")
         return response
 
     except Exception as e:
