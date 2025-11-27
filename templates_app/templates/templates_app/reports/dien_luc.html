@@ -316,8 +316,16 @@
                 `;
             });
 
-            // Ước tính số trang cho ngày này (khoảng 20 giao dịch = 1 trang, cộng thêm 1 trang cho header/footer)
-            const estimatedPages = Math.ceil(filteredData.length / 20) + 1;
+            // Ước tính số trang cho ngày này
+            // Tính tổng số dòng:
+            // - Header + Title + Info ≈ 12 dòng
+            // - Table header + TỔNG CỘNG ≈ 2 dòng
+            // - Signatures (với margin-top: 50px) ≈ 10 dòng
+            // - Các dòng giao dịch: filteredData.length
+            // Tổng: 24 dòng cố định + số dòng giao dịch
+            // Một trang A4 (12pt, margin 1cm) ≈ 40 dòng
+            const totalLines = 24 + filteredData.length;
+            const estimatedPages = Math.ceil(totalLines / 40);
             const isOddPages = estimatedPages % 2 === 1;
             const isLastDay = pageIndex === sortedDates.length - 1;
 
