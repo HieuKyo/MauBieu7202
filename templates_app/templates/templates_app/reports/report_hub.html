@@ -81,6 +81,38 @@
                 </div>
             </div>
         </div>
+
+        <!-- Báo cáo Điện lực -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-lightning-charge-fill" style="font-size: 3rem; color: var(--agri-red);"></i>
+                    </div>
+                    <h5 class="card-title">Báo cáo Điện lực</h5>
+                    <p class="card-text text-muted">In bảng kê giao dịch điện lực</p>
+                    <a href="{% url 'dien_luc_report' %}" class="btn btn-primary">
+                        <i class="bi bi-box-arrow-in-right"></i> Vào báo cáo
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Báo cáo Tồn quỹ ATM -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-cash-stack" style="font-size: 3rem; color: var(--agri-red);"></i>
+                    </div>
+                    <h5 class="card-title">Báo cáo Tồn quỹ ATM</h5>
+                    <p class="card-text text-muted">Tính tồn quỹ bình quân ATM</p>
+                    <a href="{% url 'atm_fund_balance' %}" class="btn btn-primary">
+                        <i class="bi bi-box-arrow-in-right"></i> Vào báo cáo
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

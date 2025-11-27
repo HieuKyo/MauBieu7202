@@ -1,0 +1,209 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Báo cáo Điện lực{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+    .report-container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 800px; margin: 20px auto; }
+    .report-container label { font-weight: bold; display: block; margin-top: 1.5em; color: #444; }
+    .report-container input[type="file"], .report-container input[type="date"] { display: block; width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    .report-container button { display: block; width: 100%; padding: 12px; margin-top: 25px; border: none; border-radius: 4px; background-color: var(--agri-red); color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .report-container button:hover { background-color: #7d1c23; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-lightning-charge"></i> BÁO CÁO ĐIỆN LỰC
+            </h2>
+            <p class="text-center text-muted">In bảng kê giao dịch điện lực</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="report-container">
+                <label for="fileInput">1. Chọn file số liệu Excel:</label>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" required />
+
+                <label for="reportDate">2. Chọn ngày báo cáo:</label>
+                <input type="date" id="reportDate" required>
+
+                <button id="printButton">
+                    <i class="bi bi-printer"></i> 3. Xem & In Báo Cáo
+                </button>
+
+                <a href="{% url 'report_hub' %}" class="btn btn-secondary mt-3 w-100">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let fullDataRows = [];
+    const fileInput = document.getElementById('fileInput');
+    document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) { fullDataRows = []; return; }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = e.target.result;
+            const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            fullDataRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            alert("Đã tải xong file. Bạn có thể chọn ngày và in báo cáo.");
+        };
+        reader.readAsBinaryString(file);
+    });
+
+    document.getElementById('printButton').addEventListener('click', function() {
+        if (fullDataRows.length === 0) { alert("Vui lòng chọn file số liệu trước."); return; }
+        const reportDateStr = document.getElementById('reportDate').value;
+        if (!reportDateStr) { alert("Vui lòng chọn ngày báo cáo."); return; }
+
+        const parts = reportDateStr.split('-');
+        const selectedDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+
+        const filteredData = fullDataRows.slice(1).filter(row => {
+            const cellValue = row[0];
+            let rowDate;
+            if (cellValue instanceof Date) {
+                rowDate = new Date(Date.UTC(cellValue.getFullYear(), cellValue.getMonth(), cellValue.getDate()));
+            } else if (typeof cellValue === 'number' && cellValue > 1) {
+                const excelDate = new Date(Math.round((cellValue - 25569) * 86400 * 1000));
+                rowDate = new Date(Date.UTC(excelDate.getFullYear(), excelDate.getMonth(), excelDate.getDate()));
+            } else {
+                return false;
+            }
+            return rowDate.getTime() === selectedDate.getTime() && (row[22] > 0);
+        });
+
+        if (filteredData.length === 0) { alert("Không tìm thấy giao dịch nào hợp lệ cho ngày đã chọn."); return; }
+
+        let totalAmount = 0;
+        let reportBodyHtml = '';
+
+        function formatCellDate(cellValue) {
+            if (cellValue instanceof Date) return cellValue.toLocaleDateString('vi-VN');
+            if (typeof cellValue === 'number' && cellValue > 1) {
+                const date = new Date(Math.round((cellValue - 25569) * 86400 * 1000));
+                return date.toLocaleDateString('vi-VN');
+            }
+            return '';
+        }
+
+        filteredData.forEach((row, index) => {
+            const soTien = parseFloat(row[22]) || 0;
+            totalAmount += soTien;
+            reportBodyHtml += `
+                <tr>
+                    <td style="text-align: center;">${index + 1}</td>
+                    <td>${formatCellDate(row[1])}</td>
+                    <td>${row[36] || ''}</td>
+                    <td style="text-align: right;">${new Intl.NumberFormat('vi-VN').format(soTien)}</td>
+                </tr>
+            `;
+        });
+
+        const printHtml = `
+            <html>
+            <head>
+                <title>Báo Cáo Giao Dịch Ngày ${selectedDate.toLocaleDateString('vi-VN')}</title>
+                <style>
+                    body { font-family: 'Times New Roman', Times, serif; margin: 20px; font-size: 12pt;}
+                    table { width: 100%; border-collapse: collapse; font-size: 12pt; margin-top: 10px;}
+                    th, td { border: 1px solid black; padding: 5px; text-align: left; }
+                    th { text-align: center; font-weight: bold; }
+                    .header-container { display: flex; justify-content: space-between; }
+                    .header-left, .header-right { text-align: center; width: 50%; }
+                    .header-left p, .header-right p { margin: 0; padding: 1px 0; }
+                    .header-right p:first-child { font-weight: bold; }
+                    .title-container { text-align: center; margin: 20px 0; }
+                    .title-container h3 { margin: 0; font-weight: bold; }
+                    .info { margin: 20px 0; }
+                    .signature-container { display: flex; justify-content: space-around; margin-top: 50px; page-break-inside: avoid; }
+                    .signature-box { text-align: center; }
+                    .signature-box p { margin: 5px 0; }
+                    .signature-box .signer-name { margin-top: 60px; }
+                    @page { size: A4; margin: 1cm; @bottom-center { content: "Trang " counter(page); } }
+                    @media print { body { -webkit-print-color-adjust: exact; } .no-print { display: none; } }
+                </style>
+            </head>
+            <body>
+                <button class="no-print" onclick="window.print()">In Báo Cáo</button>
+
+                <div class="header-container">
+                    <div class="header-left">
+                        <p>NGÂN HÀNG NÔNG NGHIỆP</p>
+                        <p>VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM</p>
+                        <p><u><strong>CHI NHÁNH GIÁ RAI BẠC LIÊU</u></strong></p>
+                    </div>
+                    <div class="header-right">
+                        <p><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b></p>
+                        <p><b><u>Độc lập - Tự do - Hạnh phúc</u><b></p>
+                    </div>
+                </div>
+
+                <div class="title-container">
+                    <h3>BẢNG KÊ GIAO DỊCH PHÁT SINH CÓ</h3>
+                    <h3>Ngày giao dịch: ${selectedDate.toLocaleDateString('vi-VN')}</h3>
+                </div>
+
+                <div class="info">
+                    <div>Số tài khoản: 7202201001510</div>
+                    <div>Số lượng giao dịch: ${filteredData.length}</div>
+                    <div>Tổng số tiền: ${new Intl.NumberFormat('vi-VN').format(totalAmount)}</div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 7%;">STT</th>
+                            <th style="width: 15%;">NGÀY GT</th>
+                            <th>NỘI DUNG</th>
+                            <th style="width: 20%;">SỐ TIỀN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${reportBodyHtml}
+                        <tr>
+                            <td colspan="3" style="text-align: center; font-weight: bold;">TỔNG CỘNG</td>
+                            <td style="text-align: right; font-weight: bold;">${new Intl.NumberFormat('vi-VN').format(totalAmount)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="signature-container">
+                    <div class="signature-box">
+                        <p><strong>GIAO DỊCH VIÊN</strong></p>
+                        <p>(Ký, Ghi rõ họ tên)</p>
+                        <p class="signer-name"></p>
+                    </div>
+                    <div class="signature-box">
+                        <p><strong>KIỂM SOÁT</strong></p>
+                        <p>(Ký, Ghi rõ họ tên)</p>
+                        <p class="signer-name"></p>
+                    </div>
+                </div>
+
+            </body>
+            </html>
+        `;
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(printHtml);
+        printWindow.document.close();
+        printWindow.focus();
+    });
+</script>
+{% endblock %}

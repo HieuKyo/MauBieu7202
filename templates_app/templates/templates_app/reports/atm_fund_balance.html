@@ -1,0 +1,263 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Báo cáo Tồn quỹ ATM{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+    .report-container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 800px; margin: 20px auto; }
+    .report-container label { font-weight: bold; display: block; margin-top: 1.5em; color: #444; }
+    .report-container input[type="file"], .report-container input[type="month"] { display: block; width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    .report-container button { display: block; width: 100%; padding: 12px; margin-top: 25px; border: none; border-radius: 4px; background-color: var(--agri-red); color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .report-container button:hover:not(:disabled) { background-color: #7d1c23; }
+    .report-container button:disabled { background-color: #cccccc; cursor: not-allowed; }
+    #file-count { color: #28a745; font-weight: bold; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-cash-stack"></i> BÁO CÁO TỒN QUỸ BÌNH QUÂN ATM
+            </h2>
+            <p class="text-center text-muted">Tính toán và in báo cáo tồn quỹ bình quân ATM theo tháng</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="report-container">
+                <label for="reportMonth">1. Chọn tháng báo cáo:</label>
+                <input type="month" id="reportMonth" required>
+
+                <label for="filesInput">2. Chọn TẤT CẢ các file Excel của tháng đó:</label>
+                <input type="file" id="filesInput" multiple required />
+                <p>Đã chọn: <span id="file-count">0</span> file.</p>
+
+                <button id="calculateButton">
+                    <i class="bi bi-calculator"></i> 3. Tạo Báo Cáo
+                </button>
+
+                <a href="{% url 'report_hub' %}" class="btn btn-secondary mt-3 w-100">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const filesInput = document.getElementById('filesInput');
+    const calculateButton = document.getElementById('calculateButton');
+    const fileCountSpan = document.getElementById('file-count');
+
+    filesInput.addEventListener('change', () => {
+        fileCountSpan.textContent = filesInput.files.length;
+    });
+
+    calculateButton.addEventListener('click', async () => {
+        const files = filesInput.files;
+        const monthStr = document.getElementById('reportMonth').value;
+
+        if (files.length === 0) { alert("Vui lòng chọn các file Excel."); return; }
+        if (!monthStr) { alert("Vui lòng chọn tháng báo cáo."); return; }
+
+        calculateButton.textContent = 'Đang xử lý...';
+        calculateButton.disabled = true;
+
+        try {
+            const atmInfo = {
+                "7202ATM04": { name: "ATM tại PGD Láng Tròn (ATM04)", address: "207, Quốc lộ 1A, Khóm 2, P. Láng Tròn, Cà Mau", totalBalance: 0 },
+                "7202ATM05": { name: "ATM tại Hội sở (ATM05)", address: "173, QL 1A,Khóm 1A, Phường Giá Rai, Cà Mau", totalBalance: 0 },
+                "7202ATM06": { name: "ATM tại Thuế Cơ sở 7 (ATM06)", address: "Thuế Cơ sở 7, QL 1A, Khóm 1, Phường Giá Rai, Cà Mau", totalBalance: 0 }
+            };
+
+            function readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                            resolve(XLSX.utils.sheet_to_json(worksheet, { header: 1 }));
+                        } catch (err) { reject(new Error(`Lỗi đọc file: ${file.name}`)); }
+                    };
+                    reader.onerror = () => reject(new Error(`Không thể đọc file: ${file.name}`));
+                    reader.readAsBinaryString(file);
+                });
+            }
+
+            const allFilesData = await Promise.all(Array.from(files).map(readFile));
+
+            allFilesData.forEach(sheetData => {
+                for(let i = 1; i < sheetData.length; i++) {
+                    const row = sheetData[i];
+                    if (!row) continue;
+                    const atmID = row[5];
+                    const balance = parseFloat(row[6]) || 0;
+                    if (atmInfo[atmID]) {
+                        atmInfo[atmID].totalBalance += balance;
+                    }
+                }
+            });
+
+            const [year, month] = monthStr.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            generatePrintPage(atmInfo, daysInMonth, month, year);
+
+        } catch (error) {
+            alert(`Đã xảy ra lỗi: ${error.message}`);
+        } finally {
+            calculateButton.textContent = '3. Tạo Báo Cáo';
+            calculateButton.disabled = false;
+        }
+    });
+
+    function generatePrintPage(atmInfo, daysInMonth, month, year) {
+        let reportBodyHtml = '';
+        let grandTotalAverage = 0;
+        let stt = 1;
+        const displayOrder = ["7202ATM04", "7202ATM06", "7202ATM05"];
+
+        const dataForCopy = [];
+
+        displayOrder.forEach(atmID => {
+            const info = atmInfo[atmID];
+            const averageBalance = info.totalBalance / daysInMonth;
+
+            const roundedAverageBalance = Math.round(averageBalance);
+            grandTotalAverage += roundedAverageBalance;
+
+            dataForCopy.push({
+                stt: stt,
+                maCN: "7202",
+                tenCN: info.name,
+                diaChi: info.address,
+                soTienBinhQuan: roundedAverageBalance
+            });
+
+            reportBodyHtml += `
+                <tr>
+                    <td style="text-align: center;">${stt++}</td>
+                    <td style="text-align: center;">7202</td>
+                    <td>${info.name}</td>
+                    <td>${info.address}</td>
+                    <td style="text-align: right;">${new Intl.NumberFormat('vi-VN').format(roundedAverageBalance)}</td>
+                </tr>
+            `;
+        });
+
+        const today = new Date();
+        const reportDateString = `Giá Rai, ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}`;
+        const firstDayStr = `01/${String(month).padStart(2, '0')}/${year}`;
+        const lastDayStr = `${daysInMonth}/${String(month).padStart(2, '0')}/${year}`;
+
+        const printHtml = `
+            <html>
+            <head>
+                <title>Báo Cáo Tồn Quỹ ATM Tháng ${month}/${year}</title>
+                <style>
+                    body { font-family: 'Times New Roman', Times, serif; margin: 0; font-size: 12pt; }
+                    .page-container { width: 100%; height: 100%; padding: 1cm; box-sizing: border-box; }
+                    .controls { text-align: center; margin-bottom: 20px; }
+                    .controls button { display: inline-block; width: auto; padding: 10px 20px; margin: 0 10px; font-size: 14pt; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+                    .controls button.copy-btn { background-color: #28a745; }
+                    .header-container { display: flex; justify-content: space-between; font-weight: bold; }
+                    .header-left, .header-right { text-align: center; width: 50%; }
+                    .header-left p, .header-right p { margin: 0; padding: 2px 0; }
+                    .title-container { text-align: center; margin: 20px 0; font-weight: bold; }
+                    .title-container h1, .title-container h3 { margin: 5px 0; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                    th, td { border: 1px solid black; padding: 6px; vertical-align: top; }
+                    th { text-align: center; font-weight: bold; }
+                    .signature-container { display: flex; justify-content: space-between; margin-top: 40px; text-align: center; font-weight: bold; page-break-inside: avoid; }
+                    .signature-box { width: 30%; }
+                    .signature-box .signer-title { margin-bottom: 70px; }
+                    @page { size: A4 landscape; margin: 1cm; }
+                    @media print { body { margin: 0; } .no-print { display: none; } }
+                </style>
+            </head>
+            <body>
+                <div class="page-container">
+                    <div class="controls no-print">
+                        <button onclick="window.print()">In Báo Cáo</button>
+                        <button onclick="copyDataToClipboard()" class="copy-btn">Copy Dữ Liệu</button>
+                    </div>
+                    <div class="header-container">
+                        <div class="header-left">
+                            <p>NGÂN HÀNG NÔNG NGHIỆP</p>
+                            <p>VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM</p>
+                            <p><u>CHI NHÁNH GIÁ RAI BẠC LIÊU</u></p>
+                        </div>
+                        <div class="header-right">
+                            <p>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
+                            <p>Độc lập - Tự do - Hạnh phúc</p>
+                            <p>&nbsp;</p>
+                            <p style="font-weight: normal; font-style: italic;">${reportDateString}</p>
+                        </div>
+                    </div>
+                    <div class="title-container">
+                        <h1>BẢNG KÊ SỐ LIỆU BÌNH QUÂN TỒN QUỸ TRÊN TỪNG MÁY ATM</h1>
+                        <h3>Từ ngày ${firstDayStr} đến ${lastDayStr}</h3>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">STT</th>
+                                <th style="width: 10%;">Mã CN</th>
+                                <th style="width: 25%;">Tên chi nhánh</th>
+                                <th>Địa chỉ</th>
+                                <th style="width: 20%;">TIỀN TẠI ATM BÌNH QUÂN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reportBodyHtml}
+                            <tr>
+                                <td colspan="4" style="text-align: center; font-weight: bold;">TỔNG CỘNG</td>
+                                <td style="text-align: right; font-weight: bold;">${new Intl.NumberFormat('vi-VN').format(grandTotalAverage)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="signature-container">
+                        <div class="signature-box"><p class="signer-title">Lập bảng</p></div>
+                        <div class="signature-box"><p class="signer-title">Kiểm soát</p></div>
+                        <div class="signature-box"><p class="signer-title">Giám đốc</p></div>
+                    </div>
+                </div>
+
+                <script>
+                    const dataForCopyToClipboard = ${JSON.stringify(dataForCopy)};
+
+                    function copyDataToClipboard() {
+                        const headers = ["STT", "Mã CN", "Tên chi nhánh", "Địa chỉ", "TIỀN TẠI ATM BÌNH QUÂN"];
+                        let textToCopy = headers.join('\\t') + '\\n';
+
+                        let total = 0;
+                        dataForCopyToClipboard.forEach(row => {
+                            textToCopy += [row.stt, row.maCN, row.tenCN, row.diaChi, row.soTienBinhQuan].join('\\t') + '\\n';
+                            total += row.soTienBinhQuan;
+                        });
+
+                        textToCopy += ['','','','TỔNG CỘNG', total].join('\\t');
+
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            alert('Đã sao chép dữ liệu vào bộ nhớ đệm!');
+                        }, (err) => {
+                            alert('Lỗi khi sao chép: ' + err);
+                        });
+                    }
+                <\/script>
+            </body>
+            </html>`;
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(printHtml);
+        printWindow.document.close();
+        printWindow.focus();
+    }
+</script>
+{% endblock %}
