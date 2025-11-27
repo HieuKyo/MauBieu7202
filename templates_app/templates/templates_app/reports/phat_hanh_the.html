@@ -1,0 +1,66 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Báo cáo Phát hành thẻ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-credit-card-2-front"></i> BÁO CÁO PHÁT HÀNH THẺ
+            </h2>
+            <p class="text-center text-muted">Thống kê phát hành thẻ theo PGD trong khoảng thời gian</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="post" action="{% url 'process_phat_hanh_the' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="data_file" class="form-label">
+                                <i class="bi bi-file-earmark-excel"></i> File dữ liệu phát hành thẻ
+                            </label>
+                            <input type="file" class="form-control" id="data_file" name="data_file"
+                                   accept=".xlsx,.xls" required>
+                            <div class="form-text">Chọn file Excel chứa dữ liệu phát hành thẻ</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="start_date" class="form-label">
+                                    <i class="bi bi-calendar"></i> Từ ngày
+                                </label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="end_date" class="form-label">
+                                    <i class="bi bi-calendar"></i> Đến ngày
+                                </label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" required>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Lưu ý:</strong> File Excel cần có các cột: custnm, acctseq, cdtpcdnm, dlvryusrid, dlvrydt
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-gear"></i> Xử lý và tạo báo cáo
+                            </button>
+                            <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

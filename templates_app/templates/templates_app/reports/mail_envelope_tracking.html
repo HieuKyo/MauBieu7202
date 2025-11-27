@@ -1,0 +1,112 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Nhận bì thư{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-envelope-fill"></i> NHẬN BÌ THƯ
+            </h2>
+            <p class="text-center text-muted">Ghi nhận thông tin nhận bì thư</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form id="mailEnvelopeForm">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="ma_bithu" class="form-label">
+                                <i class="bi bi-upc-scan"></i> Mã bì thư
+                            </label>
+                            <input type="text" class="form-control" id="ma_bithu" name="ma_bithu"
+                                   placeholder="Nhập mã bì thư" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="ngay_nhan" class="form-label">
+                                <i class="bi bi-calendar"></i> Ngày nhận
+                            </label>
+                            <input type="date" class="form-control" id="ngay_nhan" name="ngay_nhan" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="nguoi_nhan" class="form-label">
+                                <i class="bi bi-person"></i> Người nhận
+                            </label>
+                            {% if all_users %}
+                            <select class="form-select" id="nguoi_nhan" name="nguoi_nhan" required>
+                                <option value="">Chọn người nhận</option>
+                                {% for user in all_users %}
+                                <option value="{{ user }}">{{ user }}</option>
+                                {% endfor %}
+                            </select>
+                            {% else %}
+                            <input type="text" class="form-control" id="nguoi_nhan" name="nguoi_nhan"
+                                   placeholder="Nhập tên người nhận" required>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-save"></i> Lưu thông tin
+                            </button>
+                            <a href="{% url 'mail_envelope_report' %}" class="btn btn-info">
+                                <i class="bi bi-search"></i> Xem báo cáo
+                            </a>
+                            <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('mailEnvelopeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = {
+        ma_bithu: document.getElementById('ma_bithu').value,
+        ngay_nhan: document.getElementById('ngay_nhan').value,
+        nguoi_nhan: document.getElementById('nguoi_nhan').value
+    };
+
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    try {
+        const response = await fetch('{% url "save_mail_envelope" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('Đã lưu thành công!');
+            document.getElementById('mailEnvelopeForm').reset();
+        } else {
+            alert('Lỗi: ' + result.message);
+        }
+    } catch (error) {
+        alert('Đã xảy ra lỗi khi lưu dữ liệu!');
+        console.error(error);
+    }
+});
+
+// Set today's date as default
+document.getElementById('ngay_nhan').valueAsDate = new Date();
+</script>
+{% endblock %}

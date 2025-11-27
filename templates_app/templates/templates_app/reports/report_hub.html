@@ -1,0 +1,96 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Báo cáo - Hệ thống Mẫu biểu{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-4" style="color: var(--agri-red);">
+                <i class="bi bi-bar-chart-fill"></i> HỆ THỐNG BÁO CÁO
+            </h2>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Báo cáo Lãi tồn đọng -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-file-earmark-bar-graph" style="font-size: 3rem; color: var(--agri-red);"></i>
+                    </div>
+                    <h5 class="card-title">Báo cáo Lãi tồn đọng</h5>
+                    <p class="card-text text-muted">So sánh lãi tồn đọng giữa 2 kỳ</p>
+                    <a href="{% url 'lai_ton_dong_report' %}" class="btn btn-primary">
+                        <i class="bi bi-box-arrow-in-right"></i> Vào báo cáo
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Báo cáo Phát hành thẻ -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-credit-card-2-front" style="font-size: 3rem; color: var(--agri-red);"></i>
+                    </div>
+                    <h5 class="card-title">Báo cáo Phát hành thẻ</h5>
+                    <p class="card-text text-muted">Thống kê phát hành thẻ theo PGD</p>
+                    <a href="{% url 'phat_hanh_the_report' %}" class="btn btn-primary">
+                        <i class="bi bi-box-arrow-in-right"></i> Vào báo cáo
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quản lý Bì thư -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-envelope-fill" style="font-size: 3rem; color: var(--agri-red);"></i>
+                    </div>
+                    <h5 class="card-title">Quản lý Bì thư</h5>
+                    <p class="card-text text-muted">Nhận và tra cứu bì thư</p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="{% url 'mail_envelope_tracking' %}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-circle"></i> Nhận bì thư
+                        </a>
+                        <a href="{% url 'mail_envelope_report' %}" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-search"></i> Tra cứu
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chuyển đổi file Lương -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-file-earmark-spreadsheet" style="font-size: 3rem; color: var(--agri-red);"></i>
+                    </div>
+                    <h5 class="card-title">Chuyển đổi file Lương</h5>
+                    <p class="card-text text-muted">Chuyển file Excel sang CSV batch</p>
+                    <a href="{% url 'salary_conversion' %}" class="btn btn-primary">
+                        <i class="bi bi-arrow-repeat"></i> Chuyển đổi
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-card {
+    transition: transform 0.2s;
+}
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+</style>
+{% endblock %}

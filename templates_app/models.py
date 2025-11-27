@@ -2177,3 +2177,44 @@ def num_to_vietnamese_words(num):
     # Viết hoa chữ cái đầu và thêm "đồng"
     final_result = " ".join(result)
     return final_result.capitalize() + " đồng"
+
+
+# ===== REPORT MODELS =====
+
+class MailEnvelopeTracking(models.Model):
+    """Model để theo dõi việc nhận bì thư"""
+    envelope_code = models.CharField(max_length=50, verbose_name="Mã bì thư", unique=True)
+    receive_date = models.DateField(verbose_name="Ngày nhận")
+    receiver = models.CharField(max_length=200, verbose_name="Người nhận")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo record")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Bì thư"
+        verbose_name_plural = "Quản lý Bì thư"
+        ordering = ['-receive_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.envelope_code} - {self.receive_date}"
+
+
+class ReportConfiguration(models.Model):
+    """Cấu hình cho các loại báo cáo"""
+    REPORT_TYPES = [
+        ('lai_ton_dong', 'Báo cáo Lãi tồn đọng'),
+        ('phat_hanh_the', 'Báo cáo Phát hành thẻ'),
+        ('luong', 'Chuyển đổi file Lương'),
+    ]
+
+    report_type = models.CharField(max_length=50, choices=REPORT_TYPES, unique=True, verbose_name="Loại báo cáo")
+    config_data = models.JSONField(default=dict, verbose_name="Dữ liệu cấu hình")
+    is_active = models.BooleanField(default=True, verbose_name="Kích hoạt")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Cấu hình báo cáo"
+        verbose_name_plural = "Cấu hình báo cáo"
+
+    def __str__(self):
+        return self.get_report_type_display()
