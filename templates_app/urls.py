@@ -105,4 +105,6 @@ urlpatterns = [
     path('reports/mail-envelope/report/', report_views.mail_envelope_report_view, name='mail_envelope_report'),
     path('reports/salary-conversion/', report_views.salary_conversion_view, name='salary_conversion'),
     path('reports/salary-conversion/process/', report_views.process_salary_conversion, name='process_salary_conversion'),
+    path('reports/dien-luc/', report_views.dien_luc_report_view, name='dien_luc_report'),
+    path('reports/atm-fund-balance/', report_views.atm_fund_balance_view, name='atm_fund_balance'),
 ]

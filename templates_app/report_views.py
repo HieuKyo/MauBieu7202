@@ -547,3 +547,15 @@ def process_salary_conversion(request):
         traceback.print_exc()
         messages.error(request, f"Đã xảy ra lỗi: {e}")
         return redirect('salary_conversion')
+
+
+@login_required
+def dien_luc_report_view(request):
+    """Giao diện báo cáo Điện lực - xử lý client-side"""
+    return render(request, 'templates_app/reports/dien_luc.html')
+
+
+@login_required
+def atm_fund_balance_view(request):
+    """Giao diện báo cáo Tồn quỹ ATM - xử lý client-side"""
+    return render(request, 'templates_app/reports/atm_fund_balance.html')
