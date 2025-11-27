@@ -31,15 +31,18 @@
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 5%;">#</th>
-                                    <th style="width: 10%;">Mã ATM</th>
-                                    <th style="width: 15%;">Họ tên</th>
-                                    <th style="width: 12%;">Số tài khoản</th>
-                                    <th style="width: 8%;">Loại</th>
-                                    <th style="width: 12%;" class="text-end">Số tiền</th>
-                                    <th style="width: 15%;">Chu kỳ kiểm quỹ</th>
-                                    <th style="width: 10%;">Trạng thái</th>
-                                    <th style="width: 13%;" class="text-center">Thao tác</th>
+                                    <th style="width: 3%;">#</th>
+                                    <th style="width: 7%;">Mã ATM</th>
+                                    <th style="width: 12%;">Họ tên</th>
+                                    <th style="width: 9%;">Số TK</th>
+                                    <th style="width: 10%;">Số thẻ</th>
+                                    <th style="width: 8%;">Số trace</th>
+                                    <th style="width: 8%;">ID GD</th>
+                                    <th style="width: 6%;">Loại</th>
+                                    <th style="width: 10%;" class="text-end">Số tiền</th>
+                                    <th style="width: 10%;">Chu kỳ kiểm quỹ</th>
+                                    <th style="width: 8%;">Trạng thái</th>
+                                    <th style="width: 9%;" class="text-center">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -47,8 +50,11 @@
                                 <tr>
                                     <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
                                     <td><strong>{{ disc.atm.machine_id }}</strong></td>
-                                    <td>{{ disc.full_name|truncatewords:3 }}</td>
-                                    <td>{{ disc.account_number }}</td>
+                                    <td>{{ disc.full_name }}</td>
+                                    <td><code>{{ disc.account_number }}</code></td>
+                                    <td><small>{{ disc.card_number }}</small></td>
+                                    <td><small>{{ disc.trace_number }}</small></td>
+                                    <td><small class="text-muted">{{ disc.transaction_id|truncatechars:12 }}</small></td>
                                     <td>
                                         {% if disc.discrepancy_type == 'surplus' %}
                                         <span class="badge bg-success">Thừa</span>
@@ -57,10 +63,10 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <strong>{{ disc.amount|floatformat:0 }} VNĐ</strong>
+                                        <strong>{{ disc.amount|floatformat:0 }}</strong>
                                     </td>
                                     <td>
-                                        <small>{{ disc.audit_cycle_start|date:"d/m/Y" }} - {{ disc.audit_cycle_end|date:"d/m/Y" }}</small>
+                                        <small>{{ disc.audit_cycle_start|date:"d/m/y" }}<br>{{ disc.audit_cycle_end|date:"d/m/y" }}</small>
                                     </td>
                                     <td>
                                         {% if disc.status == 'pending' %}
