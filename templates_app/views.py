@@ -2095,6 +2095,12 @@ def customer_get(request, customer_id):
                 'noi_lam_viec': customer.noi_lam_viec,
                 'so_tai_khoan': customer.so_tai_khoan,
                 'ghi_chu': customer.ghi_chu,
+                # Address fields
+                'province': customer.province or '',
+                'district': customer.district or '',
+                'ward': customer.ward or '',
+                'hamlet': customer.hamlet or '',
+                'full_address': customer.full_address or '',
             }
         })
 
