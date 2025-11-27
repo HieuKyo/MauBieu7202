@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('templates_app', '0031_alter_category_visible_field_groups'),
+        ('templates_app', '0030_add_joint_savings_fields'),
     ]
 
     operations = [

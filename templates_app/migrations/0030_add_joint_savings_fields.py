@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('templates_app', '0029_userprofile_certificate_code_and_more'),
+        ('templates_app', '0026_bankstatement_transaction'),
     ]
 
     operations = [

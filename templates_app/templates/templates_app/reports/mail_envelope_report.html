@@ -1,0 +1,110 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Báo cáo Bì thư{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-envelope-open"></i> BÁO CÁO BÌ THƯ
+            </h2>
+            <p class="text-center text-muted">Tra cứu thông tin bì thư đã nhận</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="{% url 'mail_envelope_report' %}">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="ma_bithu" class="form-label">
+                                    <i class="bi bi-upc-scan"></i> Tìm theo mã bì thư
+                                </label>
+                                <input type="text" class="form-control" id="ma_bithu" name="ma_bithu"
+                                       value="{{ ma_bithu_search }}" placeholder="Nhập mã bì thư">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="start_date" class="form-label">
+                                    <i class="bi bi-calendar"></i> Từ ngày
+                                </label>
+                                <input type="date" class="form-control" id="start_date" name="start_date"
+                                       value="{{ start_date }}">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="end_date" class="form-label">
+                                    <i class="bi bi-calendar"></i> Đến ngày
+                                </label>
+                                <input type="date" class="form-control" id="end_date" name="end_date"
+                                       value="{{ end_date }}">
+                            </div>
+                            <div class="col-md-2 mb-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-search"></i> Tìm kiếm
+                                </button>
+                            </div>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="bi bi-info-circle"></i> Ưu tiên tìm theo mã bì thư. Nếu không nhập mã, sẽ tìm theo khoảng thời gian.
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if records %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title">Kết quả tìm kiếm ({{ records|length }} bản ghi)</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Mã bì thư</th>
+                                    <th>Ngày nhận</th>
+                                    <th>Người nhận</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td><strong>{{ record.envelope_code }}</strong></td>
+                                    <td>{{ record.receive_date|date:"d/m/Y" }}</td>
+                                    <td>{{ record.receiver }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="bi bi-info-circle"></i>
+        {% if ma_bithu_search or start_date or end_date %}
+        Không tìm thấy kết quả phù hợp.
+        {% else %}
+        Vui lòng nhập điều kiện tìm kiếm để xem kết quả.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-3">
+        <a href="{% url 'mail_envelope_tracking' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nhận bì thư mới
+        </a>
+        <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+{% endblock %}

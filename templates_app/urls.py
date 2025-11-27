@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import report_views
 
 urlpatterns = [
     # Authentication
@@ -92,4 +93,16 @@ urlpatterns = [
     path('atm/discrepancy/<int:discrepancy_id>/edit/', views.atm_discrepancy_edit, name='atm_discrepancy_edit'),
     path('atm/discrepancy/<int:discrepancy_id>/delete/', views.atm_discrepancy_delete, name='atm_discrepancy_delete'),
     path('atm/discrepancy/<int:discrepancy_id>/template/<int:template_id>/', views.atm_load_discrepancy_data, name='atm_load_discrepancy_data'),
+
+    # Reports Module
+    path('reports/', report_views.report_hub, name='report_hub'),
+    path('reports/lai-ton-dong/', report_views.lai_ton_dong_report_view, name='lai_ton_dong_report'),
+    path('reports/lai-ton-dong/process/', report_views.process_lai_ton_dong_report, name='process_lai_ton_dong'),
+    path('reports/phat-hanh-the/', report_views.phat_hanh_the_report_view, name='phat_hanh_the_report'),
+    path('reports/phat-hanh-the/process/', report_views.process_phat_hanh_the_report, name='process_phat_hanh_the'),
+    path('reports/mail-envelope/', report_views.mail_envelope_tracking_view, name='mail_envelope_tracking'),
+    path('reports/mail-envelope/save/', report_views.save_mail_envelope, name='save_mail_envelope'),
+    path('reports/mail-envelope/report/', report_views.mail_envelope_report_view, name='mail_envelope_report'),
+    path('reports/salary-conversion/', report_views.salary_conversion_view, name='salary_conversion'),
+    path('reports/salary-conversion/process/', report_views.process_salary_conversion, name='process_salary_conversion'),
 ]

@@ -1,0 +1,60 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Báo cáo Lãi tồn đọng{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-file-earmark-bar-graph"></i> BÁO CÁO LÃI TỒN ĐỌNG
+            </h2>
+            <p class="text-center text-muted">So sánh lãi tồn đọng giữa 2 kỳ</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="post" action="{% url 'process_lai_ton_dong' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="current_file" class="form-label">
+                                <i class="bi bi-file-earmark-excel"></i> File dữ liệu kỳ hiện tại
+                            </label>
+                            <input type="file" class="form-control" id="current_file" name="current_file"
+                                   accept=".xlsx,.xls" required>
+                            <div class="form-text">Chọn file Excel chứa dữ liệu kỳ hiện tại</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="comparison_file" class="form-label">
+                                <i class="bi bi-file-earmark-excel"></i> File dữ liệu kỳ so sánh
+                            </label>
+                            <input type="file" class="form-control" id="comparison_file" name="comparison_file"
+                                   accept=".xlsx,.xls" required>
+                            <div class="form-text">Chọn file Excel chứa dữ liệu kỳ so sánh</div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Lưu ý:</strong> File Excel cần có các cột: custseq, custnm, refno, acrbamt, bceqa, acctcd
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-gear"></i> Xử lý và tạo báo cáo
+                            </button>
+                            <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

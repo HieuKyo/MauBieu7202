@@ -1,0 +1,69 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Chuyển đổi file Lương{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-file-earmark-spreadsheet"></i> CHUYỂN ĐỔI FILE LƯƠNG
+            </h2>
+            <p class="text-center text-muted">Chuyển đổi file Excel lương sang định dạng CSV batch</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="post" action="{% url 'process_salary_conversion' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="payer_account" class="form-label">
+                                <i class="bi bi-bank"></i> Tài khoản đơn vị chi trả
+                            </label>
+                            <select class="form-select" id="payer_account" name="payer_account" required>
+                                <option value="">Chọn đơn vị chi trả</option>
+                                {% for account, name in don_vi_map.items %}
+                                <option value="{{ account }}">{{ name }} ({{ account }})</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Chọn tài khoản của đơn vị chi trả lương</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="salary_file" class="form-label">
+                                <i class="bi bi-file-earmark-excel"></i> File danh sách lương
+                            </label>
+                            <input type="file" class="form-control" id="salary_file" name="salary_file"
+                                   accept=".xlsx,.xls" required>
+                            <div class="form-text">Chọn file Excel chứa danh sách lương</div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Lưu ý:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>File Excel phải có cột C (Số tài khoản) và cột E (Số tiền)</li>
+                                <li>Dòng đầu tiên có STT = 1 sẽ được xác định là bắt đầu dữ liệu</li>
+                                <li>Kết quả xuất ra sẽ là file CSV định dạng batch upload</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-arrow-repeat"></i> Chuyển đổi
+                            </button>
+                            <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
