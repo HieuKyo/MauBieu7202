@@ -381,7 +381,9 @@
             if (!isLastDay) {
                 allPagesHtml += `
                     <div style="page-break-after: always;">
-                        <!-- Trang trắng để đảm bảo ngày tiếp theo bắt đầu từ mặt trước -->
+                        <p style="text-align: center; margin-top: 200px; color: #ccc; font-size: 10pt;">
+                            [Trang trắng - Ngày ${pageIndex + 1}/${sortedDates.length}]
+                        </p>
                     </div>
                 `;
             }
