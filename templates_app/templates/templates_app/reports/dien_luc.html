@@ -316,10 +316,6 @@
                 `;
             });
 
-            // Ước tính số trang cho ngày này
-            const totalLines = 24 + filteredData.length;
-            const estimatedPages = Math.ceil(totalLines / 40);
-
             const isLastDay = pageIndex === sortedDates.length - 1;
             const isFirstDay = pageIndex === 0;
 
@@ -381,25 +377,13 @@
                             <p class="signer-name">Trần Thị Hồng Kiển</p>
                         </div>
                     </div>
-
-                    <div style="text-align: center; margin-top: 20px; font-size: 10pt; color: #666;">
-                        Trang 1/${estimatedPages} - Ngày ${selectedDate.toLocaleDateString('vi-VN')}
-                    </div>
                 </div>
             `;
 
             // Luôn thêm 1 trang trắng sau mỗi ngày (trừ ngày cuối)
-            // Điều này đảm bảo mỗi ngày luôn bắt đầu từ mặt trước khi in 2 mặt
             if (!isLastDay) {
                 allPagesHtml += `
-                    <div style="page-break-before: always;">
-                        <p style="text-align: center; margin-top: 300px; color: #ccc; font-size: 10pt;">
-                            [Trang trắng]
-                        </p>
-                        <div style="text-align: center; margin-top: 20px; font-size: 10pt; color: #ccc;">
-                            Trang trắng - Ngày ${selectedDate.toLocaleDateString('vi-VN')}
-                        </div>
-                    </div>
+                    <div style="page-break-before: always;"></div>
                 `;
             }
         });
