@@ -316,10 +316,18 @@
                 `;
             });
 
+            // Ước tính số trang cho ngày này
+            const totalLines = 24 + filteredData.length;
+            const estimatedPages = Math.ceil(totalLines / 40);
+
             const isLastDay = pageIndex === sortedDates.length - 1;
+            const isFirstDay = pageIndex === 0;
+
+            // Thêm page-break-before cho các ngày (trừ ngày đầu)
+            const pageBreakBefore = isFirstDay ? '' : 'page-break-before: always;';
 
             allPagesHtml += `
-                <div style="page-break-after: always;">
+                <div style="${pageBreakBefore}">
                     <div class="header-container">
                         <div class="header-left">
                             <p>NGÂN HÀNG NÔNG NGHIỆP</p>
@@ -373,6 +381,10 @@
                             <p class="signer-name">Trần Thị Hồng Kiển</p>
                         </div>
                     </div>
+
+                    <div style="text-align: center; margin-top: 20px; font-size: 10pt; color: #666;">
+                        Trang 1/${estimatedPages} - Ngày ${selectedDate.toLocaleDateString('vi-VN')}
+                    </div>
                 </div>
             `;
 
@@ -380,10 +392,13 @@
             // Điều này đảm bảo mỗi ngày luôn bắt đầu từ mặt trước khi in 2 mặt
             if (!isLastDay) {
                 allPagesHtml += `
-                    <div style="page-break-after: always;">
-                        <p style="text-align: center; margin-top: 200px; color: #ccc; font-size: 10pt;">
-                            [Trang trắng - Ngày ${pageIndex + 1}/${sortedDates.length}]
+                    <div style="page-break-before: always;">
+                        <p style="text-align: center; margin-top: 300px; color: #ccc; font-size: 10pt;">
+                            [Trang trắng]
                         </p>
+                        <div style="text-align: center; margin-top: 20px; font-size: 10pt; color: #ccc;">
+                            Trang trắng - Ngày ${selectedDate.toLocaleDateString('vi-VN')}
+                        </div>
                     </div>
                 `;
             }
