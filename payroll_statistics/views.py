@@ -2,12 +2,13 @@
 Views cho app Payroll Statistics
 """
 import pandas as pd
-import csv
+from datetime import datetime
+from decimal import Decimal
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.views.generic import TemplateView, ListView
 from django.http import JsonResponse
-from .models import PayingUnit, BeneficiaryAccount
+from django.db.models import Sum, Count, Q
+from .models import PayingUnit, BeneficiaryAccount, Transaction
 from .forms import PayrollUploadForm
 
 
@@ -40,6 +41,37 @@ def is_collection_transaction(facno, tacno, remark, rsltremark):
     return False
 
 
+def parse_amount(rsltremark):
+    """Parse số tiền từ rsltremark"""
+    try:
+        rsltremark_str = str(rsltremark).strip()
+        # Remove commas and convert to Decimal
+        amount_str = rsltremark_str.replace(',', '').replace('-', '')
+        if amount_str and amount_str != 'nan':
+            return abs(Decimal(amount_str))
+    except:
+        pass
+    return Decimal('0')
+
+
+def parse_date(date_value):
+    """Parse ngày từ nhiều định dạng"""
+    if pd.isna(date_value):
+        return None
+
+    if isinstance(date_value, datetime):
+        return date_value.date()
+
+    if isinstance(date_value, str):
+        formats = ['%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%Y/%m/%d']
+        for fmt in formats:
+            try:
+                return datetime.strptime(date_value, fmt).date()
+            except:
+                continue
+    return None
+
+
 def process_import_file(file_obj):
     """
     Xử lý file import và lưu vào database
@@ -55,7 +87,6 @@ def process_import_file(file_obj):
         file_name = file_obj.name.lower()
 
         if file_name.endswith('.csv'):
-            # Đọc CSV
             df = pd.read_csv(file_obj)
         elif file_name.endswith('.xls'):
             df = pd.read_excel(file_obj, engine='xlrd')
@@ -85,6 +116,7 @@ def process_import_file(file_obj):
         thu_ho_count = 0
         units_created = 0
         beneficiaries_created = 0
+        transactions_created = 0
         errors = []
 
         # Duyệt qua từng dòng
@@ -94,6 +126,16 @@ def process_import_file(file_obj):
                 tacno = str(row.get('tacno', '')).strip()
                 remark = str(row.get('remark', '')).strip()
                 rsltremark = str(row.get('rsltremark', '')).strip() if 'rsltremark' in df.columns else ''
+
+                # Parse ngày giao dịch (nếu có)
+                transaction_date = None
+                if 'transaction_date' in df.columns:
+                    transaction_date = parse_date(row.get('transaction_date'))
+                elif 'trdt' in df.columns:
+                    transaction_date = parse_date(row.get('trdt'))
+
+                # Parse số tiền
+                amount = parse_amount(rsltremark)
 
                 # Bỏ qua dòng trống
                 if not facno or not tacno or facno == 'nan' or tacno == 'nan':
@@ -109,11 +151,13 @@ def process_import_file(file_obj):
                     # Thu hộ: tacno là PayingUnit, facno là BeneficiaryAccount
                     unit_account = tacno
                     beneficiary_account = facno
+                    transaction_type = 'collection'
                     thu_ho_count += 1
                 else:
                     # Chi lương: facno là PayingUnit, tacno là BeneficiaryAccount
                     unit_account = facno
                     beneficiary_account = tacno
+                    transaction_type = 'payroll'
                     chi_luong_count += 1
 
                 # Bước 3: Lưu vào database
@@ -137,6 +181,20 @@ def process_import_file(file_obj):
                     beneficiary.remark_ref = remark
                     beneficiary.save()
 
+                # Bước 4: Lưu Transaction
+                transaction = Transaction.objects.create(
+                    unit=unit,
+                    beneficiary=beneficiary,
+                    transaction_type=transaction_type,
+                    amount=amount,
+                    transaction_date=transaction_date,
+                    remark=remark,
+                    facno=facno,
+                    tacno=tacno,
+                    rsltremark=rsltremark
+                )
+                transactions_created += 1
+
             except Exception as e:
                 errors.append(f"Dòng {idx + 2}: {str(e)}")
                 continue
@@ -155,6 +213,7 @@ def process_import_file(file_obj):
             'thu_ho': thu_ho_count,
             'units_created': units_created,
             'beneficiaries_created': beneficiaries_created,
+            'transactions_created': transactions_created,
             'errors': errors
         }
 
@@ -162,7 +221,8 @@ def process_import_file(file_obj):
         - Chi lương: {chi_luong_count}
         - Thu hộ: {thu_ho_count}
         - Đơn vị mới: {units_created}
-        - Nhân viên mới: {beneficiaries_created}"""
+        - Nhân viên mới: {beneficiaries_created}
+        - Giao dịch đã lưu: {transactions_created}"""
 
         if errors:
             message += f"\n- Có {len(errors)} lỗi"
@@ -204,19 +264,72 @@ def upload_view(request):
 
 
 def statistics_view(request):
-    """View hiển thị thống kê"""
-    # Lấy tất cả dữ liệu
-    beneficiaries = BeneficiaryAccount.objects.select_related('unit').all()
+    """View hiển thị thống kê với filters"""
+    # Lấy filters từ request
+    unit_filter = request.GET.get('unit', '')
+    month_filter = request.GET.get('month', '')
+    year_filter = request.GET.get('year', '')
+    transaction_type_filter = request.GET.get('type', '')
+
+    # Base queryset
+    transactions = Transaction.objects.select_related('unit', 'beneficiary').all()
+
+    # Apply filters
+    if unit_filter:
+        transactions = transactions.filter(unit__account_number=unit_filter)
+
+    if month_filter and year_filter:
+        transactions = transactions.filter(
+            transaction_date__month=month_filter,
+            transaction_date__year=year_filter
+        )
+    elif year_filter:
+        transactions = transactions.filter(transaction_date__year=year_filter)
+
+    if transaction_type_filter:
+        transactions = transactions.filter(transaction_type=transaction_type_filter)
+
+    # Tính tổng tiền
+    total_payroll = transactions.filter(transaction_type='payroll').aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0')
+
+    total_collection = transactions.filter(transaction_type='collection').aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0')
+
+    # Thống kê theo đơn vị
+    units_stats = PayingUnit.objects.annotate(
+        beneficiary_count=Count('beneficiaries', distinct=True),
+        transaction_count=Count('transactions'),
+        total_amount=Sum('transactions__amount')
+    ).order_by('-beneficiary_count')
 
     # Thống kê tổng quan
     total_units = PayingUnit.objects.count()
-    total_beneficiaries = beneficiaries.count()
+    total_beneficiaries = BeneficiaryAccount.objects.count()
+    total_transactions = Transaction.objects.count()
+
+    # Lấy danh sách năm và tháng có dữ liệu
+    years = Transaction.objects.dates('transaction_date', 'year', order='DESC')
+    months = range(1, 13)
 
     context = {
         'title': 'Thống Kê Lương/Thu Hộ',
         'total_units': total_units,
         'total_beneficiaries': total_beneficiaries,
-        'beneficiaries': beneficiaries
+        'total_transactions': total_transactions,
+        'total_payroll': total_payroll,
+        'total_collection': total_collection,
+        'transactions': transactions,
+        'units_stats': units_stats,
+        'years': years,
+        'months': months,
+        # Filters
+        'unit_filter': unit_filter,
+        'month_filter': month_filter,
+        'year_filter': year_filter,
+        'transaction_type_filter': transaction_type_filter,
     }
 
     return render(request, 'payroll_statistics/statistics.html', context)
@@ -224,15 +337,40 @@ def statistics_view(request):
 
 def statistics_data_api(request):
     """API trả về dữ liệu cho DataTables (Ajax)"""
-    beneficiaries = BeneficiaryAccount.objects.select_related('unit').all()
+    # Lấy filters
+    unit_filter = request.GET.get('unit', '')
+    month_filter = request.GET.get('month', '')
+    year_filter = request.GET.get('year', '')
+    transaction_type_filter = request.GET.get('type', '')
+
+    # Base queryset
+    transactions = Transaction.objects.select_related('unit', 'beneficiary').all()
+
+    # Apply filters
+    if unit_filter:
+        transactions = transactions.filter(unit__account_number=unit_filter)
+
+    if month_filter and year_filter:
+        transactions = transactions.filter(
+            transaction_date__month=month_filter,
+            transaction_date__year=year_filter
+        )
+    elif year_filter:
+        transactions = transactions.filter(transaction_date__year=year_filter)
+
+    if transaction_type_filter:
+        transactions = transactions.filter(transaction_type=transaction_type_filter)
 
     data = []
-    for ben in beneficiaries:
+    for trans in transactions:
         data.append({
-            'unit_account': ben.unit.account_number,
-            'unit_name': ben.unit.name if ben.unit.name else '',
-            'beneficiary_account': ben.account_number,
-            'remark_ref': ben.remark_ref,
+            'transaction_date': trans.transaction_date.strftime('%d/%m/%Y') if trans.transaction_date else '',
+            'transaction_type': trans.get_transaction_type_display(),
+            'unit_account': trans.unit.account_number,
+            'unit_name': trans.unit.name if trans.unit.name else '',
+            'beneficiary_account': trans.beneficiary.account_number,
+            'amount': str(trans.amount),
+            'remark': trans.remark,
         })
 
     return JsonResponse({
