@@ -163,6 +163,11 @@ CSRF_COOKIE_SAMESITE = 'Lax'  # Prevent CSRF attacks while allowing normal navig
 CSRF_COOKIE_SECURE = False  # Set to True if using HTTPS in production
 CSRF_USE_SESSIONS = False  # Use cookie-based CSRF tokens (default)
 
+# Data upload settings - Increase limits for large file imports
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Default is 1000, increase for large imports
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB in bytes (default is 2.5MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB for file uploads
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
