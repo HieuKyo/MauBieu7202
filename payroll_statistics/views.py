@@ -23,13 +23,10 @@ def is_unit_account(account_number):
         bool: True nếu là tài khoản đơn vị
     """
     acc_str = str(account_number).strip()
-    # Tài khoản đơn vị thường bắt đầu với:
+    # CHI LƯƠNG CHỈ CÓ 2 LOẠI TK:
     # - 7202201xxx: Tài khoản đơn vị chính
     # - 7202000xxx: Tài khoản đơn vị phụ
-    # - 7202238xxx: Tài khoản quỹ/đơn vị đặc biệt
-    return (acc_str.startswith('7202201') or
-            acc_str.startswith('7202000') or
-            acc_str.startswith('7202238'))
+    return acc_str.startswith('7202201') or acc_str.startswith('7202000')
 
 
 def is_employee_account(account_number):
