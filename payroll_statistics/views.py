@@ -23,8 +23,13 @@ def is_unit_account(account_number):
         bool: True nếu là tài khoản đơn vị
     """
     acc_str = str(account_number).strip()
-    # Tài khoản đơn vị thường bắt đầu với 7202201 hoặc 7202000
-    return acc_str.startswith('7202201') or acc_str.startswith('7202000')
+    # Tài khoản đơn vị thường bắt đầu với:
+    # - 7202201xxx: Tài khoản đơn vị chính
+    # - 7202000xxx: Tài khoản đơn vị phụ
+    # - 7202238xxx: Tài khoản quỹ/đơn vị đặc biệt
+    return (acc_str.startswith('7202201') or
+            acc_str.startswith('7202000') or
+            acc_str.startswith('7202238'))
 
 
 def is_employee_account(account_number):
@@ -70,7 +75,13 @@ def determine_transaction_type(facno, tacno, remark, rsltremark):
         return True, tacno, facno
 
     # Bước 2: Check nội dung remark có từ khóa thu hộ
-    thu_ho_keywords = ['THU NO', 'THU HO', 'KHOAN THU', 'KHOAN TRU']
+    # Thêm các từ khóa: TRU (trừ), GIAM (giảm), v.v.
+    thu_ho_keywords = [
+        'THU NO', 'THU HO',
+        'KHOAN THU', 'KHOAN TRU',
+        'TRU LUONG', 'TRU 1 NGAY', 'TRU NGAY',  # Trừ lương
+        'GIAM TRU', 'GIAM LUONG',  # Giảm trừ
+    ]
     for keyword in thu_ho_keywords:
         if keyword in remark_str:
             # Thu hộ: tacno là đơn vị, facno là nhân viên

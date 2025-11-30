@@ -40,12 +40,14 @@ class PayrollStatisticsTestCase(TestCase):
         # Unit accounts
         self.assertTrue(is_unit_account('7202201001'))
         self.assertTrue(is_unit_account('7202000123'))
+        self.assertTrue(is_unit_account('7202238228229'))  # Tài khoản quỹ
         self.assertFalse(is_unit_account('7202215001'))
 
         # Employee accounts
         self.assertTrue(is_employee_account('7202215001'))
         self.assertTrue(is_employee_account('7202205001'))
         self.assertFalse(is_employee_account('7202201001'))
+        self.assertFalse(is_employee_account('7202238228229'))
 
     def test_collection_with_negative_rsltremark(self):
         """Test Thu hộ với rsltremark âm (ưu tiên cao nhất)"""
@@ -109,3 +111,27 @@ class PayrollStatisticsTestCase(TestCase):
                 account_number='7202215001',
                 remark_ref='CHI LUONG 2'
             )
+
+    def test_collection_with_tru_luong_keyword(self):
+        """Test Thu hộ với từ khóa TRU LUONG"""
+        is_collection, unit_acc, emp_acc = determine_transaction_type(
+            facno='7202215027887',  # Nhân viên
+            tacno='7202238228229',  # Đơn vị (quỹ)
+            remark='TRU 1 NGAY LUONG HT BAO SO 10',
+            rsltremark='0'
+        )
+        self.assertTrue(is_collection)
+        self.assertEqual(unit_acc, '7202238228229')  # tacno là đơn vị
+        self.assertEqual(emp_acc, '7202215027887')   # facno là nhân viên
+
+    def test_collection_with_7202238_pattern(self):
+        """Test Thu hộ với pattern tài khoản 7202238xxx"""
+        is_collection, unit_acc, emp_acc = determine_transaction_type(
+            facno='7202215003548',  # Nhân viên (pattern)
+            tacno='7202238228229',  # Đơn vị quỹ (pattern)
+            remark='Huyện Giá Rai',  # Không có từ khóa
+            rsltremark='50000'  # Dương
+        )
+        self.assertTrue(is_collection)  # Vì tacno có pattern đơn vị quỹ
+        self.assertEqual(unit_acc, '7202238228229')
+        self.assertEqual(emp_acc, '7202215003548')
