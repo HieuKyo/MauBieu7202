@@ -136,6 +136,9 @@
             `;
         });
 
+        // Ước tính số trang (khoảng 20 giao dịch/trang)
+        const estimatedPages = Math.max(1, Math.ceil(filteredData.length / 20));
+
         const printHtml = `
             <html>
             <head>
@@ -156,6 +159,7 @@
                     .signature-box { text-align: center; }
                     .signature-box p { margin: 5px 0; }
                     .signature-box .signer-name { margin-top: 60px; }
+                    .page-footer { position: fixed; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 10pt; color: #666; display: none; }
 
                     @page {
                         margin: 5mm;
@@ -168,8 +172,10 @@
                             margin: 0;
                             padding-left: 1.5cm;
                             padding-right: 1cm;
+                            padding-bottom: 20mm;
                         }
                         .no-print { display: none; }
+                        .page-footer { display: block; }
 
                         /* Lặp lại tiêu đề bảng ở mỗi trang mới */
                         thead {
@@ -219,6 +225,7 @@
                     <div>Số tài khoản: 7202201001510</div>
                     <div>Số lượng giao dịch: ${filteredData.length}</div>
                     <div>Tổng số tiền: ${new Intl.NumberFormat('vi-VN').format(totalAmount)}</div>
+                    <div>Ước tính: ${estimatedPages} trang</div>
                 </div>
 
                 <table>
@@ -250,6 +257,10 @@
                         <p>(Ký, Ghi rõ họ tên)</p>
                         <p class="signer-name">Trần Thị Hồng Kiển</p>
                     </div>
+                </div>
+
+                <div class="page-footer">
+                    Ngày: ${selectedDate.toLocaleDateString('vi-VN')} | Ước tính: ${estimatedPages} trang
                 </div>
 
             </body>
@@ -351,6 +362,9 @@
                 `;
             });
 
+            // Ước tính số trang cho ngày này (khoảng 20 giao dịch/trang)
+            const estimatedPages = Math.max(1, Math.ceil(filteredData.length / 20));
+
             const isLastDay = pageIndex === sortedDates.length - 1;
             const isFirstDay = pageIndex === 0;
 
@@ -380,6 +394,7 @@
                         <div>Số tài khoản: 7202201001510</div>
                         <div>Số lượng giao dịch: ${filteredData.length}</div>
                         <div>Tổng số tiền: ${new Intl.NumberFormat('vi-VN').format(totalAmount)}</div>
+                        <div>Ước tính: ${estimatedPages} trang</div>
                     </div>
 
                     <table>
@@ -412,6 +427,10 @@
                             <p class="signer-name">Trần Thị Hồng Kiển</p>
                         </div>
                     </div>
+
+                    <div class="page-footer">
+                        Ngày: ${selectedDate.toLocaleDateString('vi-VN')} | Ước tính: ${estimatedPages} trang
+                    </div>
                 </div>
             `;
 
@@ -443,6 +462,7 @@
                     .signature-box { text-align: center; }
                     .signature-box p { margin: 5px 0; }
                     .signature-box .signer-name { margin-top: 60px; }
+                    .page-footer { position: fixed; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 10pt; color: #666; display: none; }
 
                     @page {
                         margin: 5mm;
@@ -455,8 +475,10 @@
                             margin: 0;
                             padding-left: 1.5cm;
                             padding-right: 1cm;
+                            padding-bottom: 20mm;
                         }
                         .no-print { display: none; }
+                        .page-footer { display: block; }
 
                         /* Lặp lại tiêu đề bảng ở mỗi trang mới */
                         thead {
