@@ -158,16 +158,40 @@
                     .signature-box .signer-name { margin-top: 60px; }
 
                     @page {
-                        size: A4;
-                        margin: 0;
+                        margin: 5mm;
+                        size: auto;
                     }
 
                     @media print {
                         body {
                             -webkit-print-color-adjust: exact;
-                            margin: 1.5cm;
+                            margin: 0;
+                            padding-left: 1.5cm;
+                            padding-right: 1cm;
                         }
                         .no-print { display: none; }
+
+                        /* Lặp lại tiêu đề bảng ở mỗi trang mới */
+                        thead {
+                            display: table-header-group;
+                        }
+
+                        /* Tạo khoảng hở (lề trên) cho các trang sau */
+                        thead th {
+                            padding-top: 15mm;
+                            position: relative;
+                            background-clip: padding-box;
+                        }
+
+                        /* Chống cắt đôi dòng chữ khi sang trang */
+                        tr {
+                            page-break-inside: avoid;
+                            page-break-after: auto;
+                        }
+
+                        td, th {
+                            page-break-inside: avoid;
+                        }
                     }
                 </style>
             </head>
@@ -421,16 +445,40 @@
                     .signature-box .signer-name { margin-top: 60px; }
 
                     @page {
-                        size: A4;
-                        margin: 0;
+                        margin: 5mm;
+                        size: auto;
                     }
 
                     @media print {
                         body {
                             -webkit-print-color-adjust: exact;
-                            margin: 1.5cm;
+                            margin: 0;
+                            padding-left: 1.5cm;
+                            padding-right: 1cm;
                         }
                         .no-print { display: none; }
+
+                        /* Lặp lại tiêu đề bảng ở mỗi trang mới */
+                        thead {
+                            display: table-header-group;
+                        }
+
+                        /* Tạo khoảng hở (lề trên) cho các trang sau */
+                        thead th {
+                            padding-top: 15mm;
+                            position: relative;
+                            background-clip: padding-box;
+                        }
+
+                        /* Chống cắt đôi dòng chữ khi sang trang */
+                        tr {
+                            page-break-inside: avoid;
+                            page-break-after: auto;
+                        }
+
+                        td, th {
+                            page-break-inside: avoid;
+                        }
                     }
                 </style>
             </head>
