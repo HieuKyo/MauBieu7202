@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "templates_app",
+    "payroll_statistics",
 ]
 
 MIDDLEWARE = [
