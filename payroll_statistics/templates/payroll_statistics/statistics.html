@@ -1,5 +1,6 @@
 {% extends "templates_app/base.html" %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Thống Kê Lương/Thu Hộ - Agribank{% endblock %}
 
@@ -17,6 +18,18 @@
         font-weight: bold;
         color: #007934;
     }
+    .payroll-badge {
+        background-color: #28a745;
+        color: white;
+    }
+    .collection-badge {
+        background-color: #dc3545;
+        color: white;
+    }
+    .filter-card {
+        background-color: #f8f9fa;
+        border-left: 4px solid #D69D26;
+    }
 </style>
 {% endblock %}
 
@@ -29,7 +42,7 @@
                 <i class="bi bi-bar-chart-fill"></i>
                 Thống Kê Lương/Thu Hộ
             </h2>
-            <p class="text-muted">Danh sách đơn vị và nhân viên từ dữ liệu đã import</p>
+            <p class="text-muted">Quản lý và thống kê chi tiết giao dịch lương và thu hộ</p>
         </div>
         <div class="col-auto">
             <a href="{% url 'payroll_statistics:upload' %}" class="btn btn-agribank">
@@ -38,35 +51,131 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
+    <!-- Statistics Cards Row 1 -->
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="card stats-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted mb-1">Tổng số Đơn vị</h6>
+                            <h6 class="text-muted mb-1">Tổng Đơn vị</h6>
                             <div class="stats-number">{{ total_units|default:0 }}</div>
                         </div>
                         <div>
-                            <i class="bi bi-building" style="font-size: 3rem; color: #007934; opacity: 0.3;"></i>
+                            <i class="bi bi-building" style="font-size: 2.5rem; color: #007934; opacity: 0.3;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="card stats-card shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted mb-1">Tổng số Nhân viên/Người hưởng</h6>
+                            <h6 class="text-muted mb-1">Tổng Nhân viên</h6>
                             <div class="stats-number">{{ total_beneficiaries|default:0 }}</div>
                         </div>
                         <div>
-                            <i class="bi bi-people-fill" style="font-size: 3rem; color: #007934; opacity: 0.3;"></i>
+                            <i class="bi bi-people-fill" style="font-size: 2.5rem; color: #007934; opacity: 0.3;"></i>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Tổng Giao dịch</h6>
+                            <div class="stats-number">{{ total_transactions|default:0 }}</div>
+                        </div>
+                        <div>
+                            <i class="bi bi-arrow-left-right" style="font-size: 2.5rem; color: #007934; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Tổng Tiền</h6>
+                    <div style="font-size: 1rem;">
+                        <div class="mb-1">
+                            <span class="badge payroll-badge">Chi lương</span>
+                            <strong class="ms-2">{{ total_payroll|intcomma }} đ</strong>
+                        </div>
+                        <div>
+                            <span class="badge collection-badge">Thu hộ</span>
+                            <strong class="ms-2">{{ total_collection|intcomma }} đ</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card filter-card shadow-sm">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="bi bi-funnel"></i> Bộ lọc</h6>
+                    <form method="get" action="" id="filterForm">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Đơn vị</label>
+                                <select name="unit" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    {% for unit in units_stats %}
+                                    <option value="{{ unit.account_number }}" {% if unit_filter == unit.account_number %}selected{% endif %}>
+                                        {{ unit.account_number }}{% if unit.name %} - {{ unit.name }}{% endif %} ({{ unit.beneficiary_count }} NV)
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Năm</label>
+                                <select name="year" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    {% for year in years %}
+                                    <option value="{{ year.year }}" {% if year_filter == year.year|stringformat:"s" %}selected{% endif %}>
+                                        {{ year.year }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Tháng</label>
+                                <select name="month" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    {% for month in months %}
+                                    <option value="{{ month }}" {% if month_filter == month|stringformat:"s" %}selected{% endif %}>
+                                        Tháng {{ month }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Loại giao dịch</label>
+                                <select name="type" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    <option value="payroll" {% if transaction_type_filter == 'payroll' %}selected{% endif %}>Chi lương</option>
+                                    <option value="collection" {% if transaction_type_filter == 'collection' %}selected{% endif %}>Thu hộ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-search"></i> Lọc
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -78,7 +187,7 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">
-                        <i class="bi bi-table"></i> Danh Sách Chi Tiết
+                        <i class="bi bi-table"></i> Chi Tiết Giao Dịch
                     </h5>
                 </div>
                 <div class="card-body">
@@ -87,20 +196,32 @@
                             <thead>
                                 <tr>
                                     <th>STT</th>
+                                    <th>Ngày GD</th>
+                                    <th>Loại</th>
                                     <th>STK Đơn vị</th>
                                     <th>Tên Đơn vị</th>
                                     <th>STK Nhân viên</th>
-                                    <th>Nội dung tham chiếu</th>
+                                    <th>Số tiền</th>
+                                    <th>Nội dung</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for ben in beneficiaries %}
+                                {% for trans in transactions %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ ben.unit.account_number }}</td>
-                                    <td>{{ ben.unit.name|default:"-" }}</td>
-                                    <td>{{ ben.account_number }}</td>
-                                    <td>{{ ben.remark_ref|default:"-" }}</td>
+                                    <td>{{ trans.transaction_date|date:"d/m/Y"|default:"-" }}</td>
+                                    <td>
+                                        {% if trans.transaction_type == 'payroll' %}
+                                        <span class="badge payroll-badge">Chi lương</span>
+                                        {% else %}
+                                        <span class="badge collection-badge">Thu hộ</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ trans.unit.account_number }}</td>
+                                    <td>{{ trans.unit.name|default:"-" }}</td>
+                                    <td>{{ trans.beneficiary.account_number }}</td>
+                                    <td class="text-end">{{ trans.amount|intcomma }}</td>
+                                    <td>{{ trans.remark|truncatewords:10 }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -136,7 +257,7 @@ $(document).ready(function() {
         },
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
-        order: [[1, 'asc']],
+        order: [[1, 'desc']],  // Sort by date descending
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
              '<"row"<"col-sm-12"B>>' +
              '<"row"<"col-sm-12"tr>>' +
@@ -148,7 +269,8 @@ $(document).ready(function() {
                 className: 'btn btn-success btn-sm',
                 exportOptions: {
                     columns: ':visible'
-                }
+                },
+                title: 'Thong_Ke_Luong_Thu_Ho_' + new Date().toISOString().slice(0,10)
             },
             {
                 extend: 'print',
@@ -156,7 +278,8 @@ $(document).ready(function() {
                 className: 'btn btn-info btn-sm',
                 exportOptions: {
                     columns: ':visible'
-                }
+                },
+                title: 'Thống Kê Lương/Thu Hộ'
             }
         ],
         columnDefs: [
