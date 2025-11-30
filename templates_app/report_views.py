@@ -56,7 +56,8 @@ def process_lai_ton_dong_report(request):
             return redirect('lai_ton_dong_report')
 
         def process_raw_file(file):
-            df = pd.read_excel(file)
+            # Đọc custseq như text để tránh bị format thành số thập phân (7.20201)
+            df = pd.read_excel(file, dtype={'custseq': str})
 
             allowed_acctcd = ltd_config.get('allowed_acctcd', [])
             if 'acctcd' in df.columns:
