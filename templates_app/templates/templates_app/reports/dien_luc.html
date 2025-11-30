@@ -156,8 +156,19 @@
                     .signature-box { text-align: center; }
                     .signature-box p { margin: 5px 0; }
                     .signature-box .signer-name { margin-top: 60px; }
-                    @page { size: A4; margin: 1cm; @bottom-center { content: "Trang " counter(page); } }
-                    @media print { body { -webkit-print-color-adjust: exact; } .no-print { display: none; } }
+
+                    @page {
+                        size: A4;
+                        margin: 0;
+                    }
+
+                    @media print {
+                        body {
+                            -webkit-print-color-adjust: exact;
+                            margin: 1.5cm;
+                        }
+                        .no-print { display: none; }
+                    }
                 </style>
             </head>
             <body>
@@ -408,8 +419,19 @@
                     .signature-box { text-align: center; }
                     .signature-box p { margin: 5px 0; }
                     .signature-box .signer-name { margin-top: 60px; }
-                    @page { size: A4; margin: 1cm; }
-                    @media print { body { -webkit-print-color-adjust: exact; } .no-print { display: none; } }
+
+                    @page {
+                        size: A4;
+                        margin: 0;
+                    }
+
+                    @media print {
+                        body {
+                            -webkit-print-color-adjust: exact;
+                            margin: 1.5cm;
+                        }
+                        .no-print { display: none; }
+                    }
                 </style>
             </head>
             <body>
