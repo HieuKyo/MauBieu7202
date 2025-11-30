@@ -12,33 +12,94 @@ from .models import PayingUnit, BeneficiaryAccount, Transaction
 from .forms import PayrollUploadForm
 
 
-def is_collection_transaction(facno, tacno, remark, rsltremark):
+def is_unit_account(account_number):
     """
-    Xác định giao dịch có phải là "Thu hộ/Khoản trừ" không
+    Kiểm tra xem tài khoản có phải là tài khoản đơn vị không
 
-    Logic:
-    - Điều kiện 1: rsltremark bắt đầu bằng dấu "-"
-    - Điều kiện 2: remark chứa một trong các cụm: "THU NO", "THU HO", "KHOAN THU", "KHOAN TRU"
-    - Nếu thỏa 1 trong 2 điều kiện => Là Thu hộ
-    - Ngược lại => Là Chi lương
+    Args:
+        account_number: Số tài khoản
 
     Returns:
-        bool: True nếu là Thu hộ, False nếu là Chi lương
+        bool: True nếu là tài khoản đơn vị
+    """
+    acc_str = str(account_number).strip()
+    # Tài khoản đơn vị thường bắt đầu với 7202201 hoặc 7202000
+    return acc_str.startswith('7202201') or acc_str.startswith('7202000')
+
+
+def is_employee_account(account_number):
+    """
+    Kiểm tra xem tài khoản có phải là tài khoản nhân viên không
+
+    Args:
+        account_number: Số tài khoản
+
+    Returns:
+        bool: True nếu là tài khoản nhân viên
+    """
+    acc_str = str(account_number).strip()
+    # Tài khoản nhân viên thường bắt đầu với 7202215 hoặc 7202205
+    return acc_str.startswith('7202215') or acc_str.startswith('7202205')
+
+
+def determine_transaction_type(facno, tacno, remark, rsltremark):
+    """
+    Xác định loại giao dịch và mapping đúng đơn vị - nhân viên
+
+    Logic ưu tiên (theo thứ tự):
+    1. Check dấu âm ở rsltremark → Thu hộ
+    2. Check nội dung remark có từ khóa thu hộ → Thu hộ
+    3. Check pattern tài khoản để xác định đúng
+    4. Mặc định: facno là đơn vị (chi lương)
+
+    Args:
+        facno: Số tài khoản người chuyển
+        tacno: Số tài khoản người nhận
+        remark: Nội dung giao dịch
+        rsltremark: Số tiền kết quả
+
+    Returns:
+        tuple: (is_collection, unit_account, employee_account)
     """
     remark_str = str(remark).strip().upper()
     rsltremark_str = str(rsltremark).strip()
 
-    # Điều kiện 1: rsltremark bắt đầu bằng "-"
+    # Bước 1: Check dấu âm ở rsltremark (ưu tiên cao nhất)
     if rsltremark_str.startswith('-'):
-        return True
+        # Thu hộ: tacno là đơn vị, facno là nhân viên
+        return True, tacno, facno
 
-    # Điều kiện 2: remark chứa các cụm từ thu hộ
+    # Bước 2: Check nội dung remark có từ khóa thu hộ
     thu_ho_keywords = ['THU NO', 'THU HO', 'KHOAN THU', 'KHOAN TRU']
     for keyword in thu_ho_keywords:
         if keyword in remark_str:
-            return True
+            # Thu hộ: tacno là đơn vị, facno là nhân viên
+            return True, tacno, facno
 
-    return False
+    # Bước 3: Check pattern tài khoản
+    facno_is_unit = is_unit_account(facno)
+    tacno_is_unit = is_unit_account(tacno)
+    facno_is_employee = is_employee_account(facno)
+    tacno_is_employee = is_employee_account(tacno)
+
+    # Case 1: facno là đơn vị, tacno là nhân viên → Chi lương
+    if facno_is_unit and tacno_is_employee:
+        return False, facno, tacno
+
+    # Case 2: tacno là đơn vị, facno là nhân viên → Thu hộ
+    if tacno_is_unit and facno_is_employee:
+        return True, tacno, facno
+
+    # Case 3: Cả 2 đều là đơn vị hoặc cả 2 đều là nhân viên
+    # → Dựa vào facno có pattern đơn vị không
+    if facno_is_unit:
+        return False, facno, tacno  # Chi lương
+    elif tacno_is_unit:
+        return True, tacno, facno   # Thu hộ
+
+    # Bước 4: Mặc định (khi không xác định được qua pattern)
+    # → facno là đơn vị (chi lương)
+    return False, facno, tacno
 
 
 def parse_amount(rsltremark):
@@ -143,20 +204,17 @@ def process_import_file(file_obj):
 
                 total_rows += 1
 
-                # Bước 1: Xác định loại giao dịch
-                is_collection = is_collection_transaction(facno, tacno, remark, rsltremark)
+                # Bước 1: Xác định loại giao dịch và mapping đúng
+                # Sử dụng logic mới với ưu tiên: rsltremark âm → remark từ khóa → pattern tài khoản
+                is_collection, unit_account, beneficiary_account = determine_transaction_type(
+                    facno, tacno, remark, rsltremark
+                )
 
-                # Bước 2: Mapping dữ liệu
+                # Bước 2: Set transaction type và đếm
                 if is_collection:
-                    # Thu hộ: tacno là PayingUnit, facno là BeneficiaryAccount
-                    unit_account = tacno
-                    beneficiary_account = facno
                     transaction_type = 'collection'
                     thu_ho_count += 1
                 else:
-                    # Chi lương: facno là PayingUnit, tacno là BeneficiaryAccount
-                    unit_account = facno
-                    beneficiary_account = tacno
                     transaction_type = 'payroll'
                     chi_luong_count += 1
 
