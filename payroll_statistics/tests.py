@@ -37,11 +37,11 @@ class PayrollStatisticsTestCase(TestCase):
 
     def test_account_patterns(self):
         """Test account pattern detection"""
-        # Unit accounts
-        self.assertTrue(is_unit_account('7202201001'))
-        self.assertTrue(is_unit_account('7202000123'))
-        self.assertTrue(is_unit_account('7202238228229'))  # Tài khoản quỹ
-        self.assertFalse(is_unit_account('7202215001'))
+        # Unit accounts - CHỈ 2 loại
+        self.assertTrue(is_unit_account('7202201001'))   # Đơn vị chính
+        self.assertTrue(is_unit_account('7202000123'))   # Đơn vị phụ
+        self.assertFalse(is_unit_account('7202215001'))  # Nhân viên
+        self.assertFalse(is_unit_account('7202238228229'))  # Không phải đơn vị
 
         # Employee accounts
         self.assertTrue(is_employee_account('7202215001'))
@@ -113,25 +113,13 @@ class PayrollStatisticsTestCase(TestCase):
             )
 
     def test_collection_with_tru_luong_keyword(self):
-        """Test Thu hộ với từ khóa TRU LUONG"""
+        """Test Thu hộ với từ khóa TRU 1 NGAY (không cần pattern)"""
         is_collection, unit_acc, emp_acc = determine_transaction_type(
             facno='7202215027887',  # Nhân viên
-            tacno='7202238228229',  # Đơn vị (quỹ)
-            remark='TRU 1 NGAY LUONG HT BAO SO 10',
+            tacno='7202238228229',  # Không thuộc pattern nào
+            remark='TRU 1 NGAY LUONG HT BAO SO 10',  # Có keyword!
             rsltremark='0'
         )
-        self.assertTrue(is_collection)
+        self.assertTrue(is_collection)  # Nhờ keyword "TRU 1 NGAY"
         self.assertEqual(unit_acc, '7202238228229')  # tacno là đơn vị
         self.assertEqual(emp_acc, '7202215027887')   # facno là nhân viên
-
-    def test_collection_with_7202238_pattern(self):
-        """Test Thu hộ với pattern tài khoản 7202238xxx"""
-        is_collection, unit_acc, emp_acc = determine_transaction_type(
-            facno='7202215003548',  # Nhân viên (pattern)
-            tacno='7202238228229',  # Đơn vị quỹ (pattern)
-            remark='Huyện Giá Rai',  # Không có từ khóa
-            rsltremark='50000'  # Dương
-        )
-        self.assertTrue(is_collection)  # Vì tacno có pattern đơn vị quỹ
-        self.assertEqual(unit_acc, '7202238228229')
-        self.assertEqual(emp_acc, '7202215003548')
