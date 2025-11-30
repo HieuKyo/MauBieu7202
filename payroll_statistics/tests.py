@@ -2,8 +2,8 @@
 Tests for payroll_statistics app
 """
 from django.test import TestCase
-from .models import PayingUnit, BeneficiaryAccount
-from .views import is_collection_transaction
+from .models import PayingUnit, BeneficiaryAccount, Transaction
+from .views import determine_transaction_type, is_unit_account, is_employee_account
 
 
 class PayrollStatisticsTestCase(TestCase):
@@ -35,45 +35,65 @@ class PayrollStatisticsTestCase(TestCase):
         self.assertEqual(BeneficiaryAccount.objects.count(), 1)
         self.assertEqual(ben.unit, self.unit1)
 
-    def test_is_collection_transaction_with_negative_rsltremark(self):
-        """Test is_collection_transaction with negative rsltremark"""
-        result = is_collection_transaction(
-            facno='7202215001',
-            tacno='7202201001',
+    def test_account_patterns(self):
+        """Test account pattern detection"""
+        # Unit accounts
+        self.assertTrue(is_unit_account('7202201001'))
+        self.assertTrue(is_unit_account('7202000123'))
+        self.assertFalse(is_unit_account('7202215001'))
+
+        # Employee accounts
+        self.assertTrue(is_employee_account('7202215001'))
+        self.assertTrue(is_employee_account('7202205001'))
+        self.assertFalse(is_employee_account('7202201001'))
+
+    def test_collection_with_negative_rsltremark(self):
+        """Test Thu hộ với rsltremark âm (ưu tiên cao nhất)"""
+        is_collection, unit_acc, emp_acc = determine_transaction_type(
+            facno='7202215001',  # Nhân viên
+            tacno='7202201001',  # Đơn vị
             remark='Tien dien',
             rsltremark='-50000'
         )
-        self.assertTrue(result)
+        self.assertTrue(is_collection)
+        self.assertEqual(unit_acc, '7202201001')  # tacno là đơn vị
+        self.assertEqual(emp_acc, '7202215001')   # facno là nhân viên
 
-    def test_is_collection_transaction_with_thu_ho_keyword(self):
-        """Test is_collection_transaction with THU HO keyword"""
-        result = is_collection_transaction(
+    def test_collection_with_thu_ho_keyword(self):
+        """Test Thu hộ với từ khóa THU HO"""
+        is_collection, unit_acc, emp_acc = determine_transaction_type(
             facno='7202215001',
             tacno='7202201001',
             remark='THU HO tien nuoc',
-            rsltremark='50000'
+            rsltremark='50000'  # Dương nhưng có từ khóa
         )
-        self.assertTrue(result)
+        self.assertTrue(is_collection)
+        self.assertEqual(unit_acc, '7202201001')
+        self.assertEqual(emp_acc, '7202215001')
 
-    def test_is_collection_transaction_with_khoan_tru_keyword(self):
-        """Test is_collection_transaction with KHOAN TRU keyword"""
-        result = is_collection_transaction(
-            facno='7202215001',
-            tacno='7202201001',
-            remark='KHOAN TRU bhxh',
-            rsltremark='100000'
-        )
-        self.assertTrue(result)
-
-    def test_is_payroll_transaction(self):
-        """Test normal payroll transaction (should return False)"""
-        result = is_collection_transaction(
-            facno='7202201001',
-            tacno='7202215001',
+    def test_payroll_by_account_pattern(self):
+        """Test Chi lương dựa vào pattern tài khoản"""
+        is_collection, unit_acc, emp_acc = determine_transaction_type(
+            facno='7202201001',  # Đơn vị (pattern)
+            tacno='7202215001',  # Nhân viên (pattern)
             remark='CHI LUONG THANG 11',
             rsltremark='5000000'
         )
-        self.assertFalse(result)
+        self.assertFalse(is_collection)
+        self.assertEqual(unit_acc, '7202201001')  # facno là đơn vị
+        self.assertEqual(emp_acc, '7202215001')   # tacno là nhân viên
+
+    def test_collection_by_account_pattern(self):
+        """Test Thu hộ dựa vào pattern tài khoản"""
+        is_collection, unit_acc, emp_acc = determine_transaction_type(
+            facno='7202215001',  # Nhân viên (pattern)
+            tacno='7202201001',  # Đơn vị (pattern)
+            remark='Tien bao hiem',  # Không có từ khóa
+            rsltremark='100000'  # Dương
+        )
+        self.assertTrue(is_collection)  # Vì tacno là pattern đơn vị, facno là nhân viên
+        self.assertEqual(unit_acc, '7202201001')
+        self.assertEqual(emp_acc, '7202215001')
 
     def test_unique_together_constraint(self):
         """Test unique_together constraint on BeneficiaryAccount"""
