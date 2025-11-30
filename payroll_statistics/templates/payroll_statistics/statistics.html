@@ -4,7 +4,8 @@
 {% block title %}Thống Kê Lương/Thu Hộ - Agribank{% endblock %}
 
 {% block extra_css %}
-<!-- DataTables CSS -->
+<!-- DataTables CSS - Preconnect for faster loading -->
+<link rel="preconnect" href="https://cdn.datatables.net">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 <style>
@@ -114,18 +115,20 @@
 
 {% block extra_js %}
 <!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" defer></script>
 <!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js" defer></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js" defer></script>
 <!-- DataTables Buttons -->
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js" defer></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js" defer></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js" defer></script>
 
-<script>
+<script defer>
+// Wait for all scripts to load
+window.addEventListener('load', function() {
 $(document).ready(function() {
     $('#statisticsTable').DataTable({
         language: {
@@ -160,6 +163,7 @@ $(document).ready(function() {
             { orderable: false, targets: 0 }
         ]
     });
+});
 });
 </script>
 {% endblock %}
