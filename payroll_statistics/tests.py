@@ -113,13 +113,39 @@ class PayrollStatisticsTestCase(TestCase):
             )
 
     def test_collection_with_tru_luong_keyword(self):
-        """Test Thu hộ với từ khóa TRU 1 NGAY (không cần pattern)"""
-        is_collection, unit_acc, emp_acc = determine_transaction_type(
-            facno='7202215027887',  # Nhân viên
-            tacno='7202238228229',  # Không thuộc pattern nào
-            remark='TRU 1 NGAY LUONG HT BAO SO 10',  # Có keyword!
+        """Test Thu hộ với từ khóa TRU LUONG"""
+        result = determine_transaction_type(
+            facno='7202215026441',  # Nhân viên (employee pattern)
+            tacno='7202201002122',  # Đơn vị (unit pattern)
+            remark='CHI HT PHUC VU BAN TRU LUONG CAP DU',  # Có keyword "TRU LUONG"
             rsltremark='0'
         )
-        self.assertTrue(is_collection)  # Nhờ keyword "TRU 1 NGAY"
-        self.assertEqual(unit_acc, '7202238228229')  # tacno là đơn vị
-        self.assertEqual(emp_acc, '7202215027887')   # facno là nhân viên
+        self.assertIsNotNone(result)  # Phải có kết quả vì có unit pattern hợp lệ
+        is_collection, unit_acc, emp_acc = result
+        self.assertTrue(is_collection)  # Nhờ keyword "TRU LUONG"
+        self.assertEqual(unit_acc, '7202201002122')  # tacno là đơn vị
+        self.assertEqual(emp_acc, '7202215026441')   # facno là nhân viên
+
+    def test_skip_transaction_without_valid_unit(self):
+        """Test SKIP giao dịch không có unit account hợp lệ"""
+        result = determine_transaction_type(
+            facno='7202215027887',  # Nhân viên
+            tacno='7202238228229',  # KHÔNG PHẢI unit pattern (7202201 hoặc 7202000)
+            remark='Tien dien',
+            rsltremark='50000'
+        )
+        self.assertIsNone(result)  # Phải return None vì không có unit hợp lệ
+
+    def test_deduction_keyword_with_valid_unit(self):
+        """Test Thu hộ với từ khóa GIAM TRU và unit hợp lệ"""
+        result = determine_transaction_type(
+            facno='7202215001',  # Nhân viên
+            tacno='7202000123',  # Đơn vị phụ (hợp lệ)
+            remark='GIAM TRU BAO HIEM',
+            rsltremark='100000'
+        )
+        self.assertIsNotNone(result)
+        is_collection, unit_acc, emp_acc = result
+        self.assertTrue(is_collection)
+        self.assertEqual(unit_acc, '7202000123')
+        self.assertEqual(emp_acc, '7202215001')

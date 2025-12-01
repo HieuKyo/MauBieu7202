@@ -48,11 +48,10 @@ def determine_transaction_type(facno, tacno, remark, rsltremark):
     """
     Xác định loại giao dịch và mapping đúng đơn vị - nhân viên
 
-    Logic ưu tiên (theo thứ tự):
-    1. Check dấu âm ở rsltremark → Thu hộ
-    2. Check nội dung remark có từ khóa thu hộ → Thu hộ
-    3. Check pattern tài khoản để xác định đúng
-    4. Mặc định: facno là đơn vị (chi lương)
+    Logic mới (FIXED):
+    1. Kiểm tra pattern tài khoản TRƯỚC để xác định đâu là unit, đâu là employee
+    2. Chỉ chấp nhận giao dịch nếu có ít nhất 1 tài khoản là unit (7202201xxx hoặc 7202000xxx)
+    3. Sau đó dùng dấu âm, từ khóa, hoặc direction để xác định loại giao dịch
 
     Args:
         facno: Số tài khoản người chuyển
@@ -61,18 +60,48 @@ def determine_transaction_type(facno, tacno, remark, rsltremark):
         rsltremark: Số tiền kết quả
 
     Returns:
-        tuple: (is_collection, unit_account, employee_account)
+        tuple: (is_collection, unit_account, employee_account) hoặc None nếu không hợp lệ
     """
     remark_str = str(remark).strip().upper()
     rsltremark_str = str(rsltremark).strip()
 
-    # Bước 1: Check dấu âm ở rsltremark (ưu tiên cao nhất)
-    if rsltremark_str.startswith('-'):
-        # Thu hộ: tacno là đơn vị, facno là nhân viên
-        return True, tacno, facno
+    # BƯỚC 1: Kiểm tra pattern tài khoản TRƯỚC
+    facno_is_unit = is_unit_account(facno)
+    tacno_is_unit = is_unit_account(tacno)
+    facno_is_employee = is_employee_account(facno)
+    tacno_is_employee = is_employee_account(tacno)
 
-    # Bước 2: Check nội dung remark có từ khóa thu hộ
-    # Thêm các từ khóa: TRU (trừ), GIAM (giảm), v.v.
+    # Xác định unit_account và employee_account dựa trên pattern
+    unit_account = None
+    employee_account = None
+
+    # Case 1: facno là đơn vị, tacno là nhân viên
+    if facno_is_unit and tacno_is_employee:
+        unit_account = facno
+        employee_account = tacno
+    # Case 2: tacno là đơn vị, facno là nhân viên
+    elif tacno_is_unit and facno_is_employee:
+        unit_account = tacno
+        employee_account = facno
+    # Case 3: Chỉ facno là đơn vị (tacno không rõ pattern)
+    elif facno_is_unit and not tacno_is_unit:
+        unit_account = facno
+        employee_account = tacno
+    # Case 4: Chỉ tacno là đơn vị (facno không rõ pattern)
+    elif tacno_is_unit and not facno_is_unit:
+        unit_account = tacno
+        employee_account = facno
+    # Case 5: Không có tài khoản nào là đơn vị hợp lệ → SKIP
+    else:
+        return None
+
+    # BƯỚC 2: Xác định loại giao dịch (payroll hay collection)
+
+    # 2.1: Check dấu âm ở rsltremark (ưu tiên cao nhất)
+    if rsltremark_str.startswith('-'):
+        return True, unit_account, employee_account  # Thu hộ
+
+    # 2.2: Check từ khóa thu hộ
     thu_ho_keywords = [
         'THU NO', 'THU HO',
         'KHOAN THU', 'KHOAN TRU',
@@ -81,33 +110,15 @@ def determine_transaction_type(facno, tacno, remark, rsltremark):
     ]
     for keyword in thu_ho_keywords:
         if keyword in remark_str:
-            # Thu hộ: tacno là đơn vị, facno là nhân viên
-            return True, tacno, facno
+            return True, unit_account, employee_account  # Thu hộ
 
-    # Bước 3: Check pattern tài khoản
-    facno_is_unit = is_unit_account(facno)
-    tacno_is_unit = is_unit_account(tacno)
-    facno_is_employee = is_employee_account(facno)
-    tacno_is_employee = is_employee_account(tacno)
-
-    # Case 1: facno là đơn vị, tacno là nhân viên → Chi lương
-    if facno_is_unit and tacno_is_employee:
-        return False, facno, tacno
-
-    # Case 2: tacno là đơn vị, facno là nhân viên → Thu hộ
-    if tacno_is_unit and facno_is_employee:
-        return True, tacno, facno
-
-    # Case 3: Cả 2 đều là đơn vị hoặc cả 2 đều là nhân viên
-    # → Dựa vào facno có pattern đơn vị không
+    # 2.3: Check direction dựa trên pattern
+    # Nếu facno là đơn vị → Chi lương (đơn vị chuyển tiền cho nhân viên)
+    # Nếu tacno là đơn vị → Thu hộ (nhân viên chuyển tiền cho đơn vị)
     if facno_is_unit:
-        return False, facno, tacno  # Chi lương
-    elif tacno_is_unit:
-        return True, tacno, facno   # Thu hộ
-
-    # Bước 4: Mặc định (khi không xác định được qua pattern)
-    # → facno là đơn vị (chi lương)
-    return False, facno, tacno
+        return False, unit_account, employee_account  # Chi lương
+    else:
+        return True, unit_account, employee_account  # Thu hộ
 
 
 def parse_amount(rsltremark):
@@ -213,10 +224,14 @@ def process_import_file(file_obj):
                 total_rows += 1
 
                 # Bước 1: Xác định loại giao dịch và mapping đúng
-                # Sử dụng logic mới với ưu tiên: rsltremark âm → remark từ khóa → pattern tài khoản
-                is_collection, unit_account, beneficiary_account = determine_transaction_type(
-                    facno, tacno, remark, rsltremark
-                )
+                # Sử dụng logic mới với ưu tiên: pattern → rsltremark âm → remark từ khóa → direction
+                result = determine_transaction_type(facno, tacno, remark, rsltremark)
+
+                # Nếu không xác định được (không có unit account hợp lệ) → SKIP
+                if result is None:
+                    continue
+
+                is_collection, unit_account, beneficiary_account = result
 
                 # Bước 2: Set transaction type và đếm
                 if is_collection:
@@ -371,6 +386,32 @@ def statistics_view(request):
         total_amount=Sum('transactions__amount')
     ).order_by('-beneficiary_count')
 
+    # Thống kê chi tiết theo đơn vị với phân loại payroll/collection
+    units_with_stats = PayingUnit.objects.annotate(
+        beneficiary_count=Count('beneficiaries', distinct=True),
+        payroll_count=Count('transactions', filter=Q(transactions__transaction_type='payroll')),
+        payroll_amount=Sum('transactions__amount', filter=Q(transactions__transaction_type='payroll')),
+        collection_count=Count('transactions', filter=Q(transactions__transaction_type='collection')),
+        collection_amount=Sum('transactions__amount', filter=Q(transactions__transaction_type='collection'))
+    ).order_by('-beneficiary_count')
+
+    # Kiểm tra nhân viên trùng lặp (1 nhân viên thuộc nhiều đơn vị)
+    duplicate_employees = BeneficiaryAccount.objects.values('account_number').annotate(
+        unit_count=Count('unit', distinct=True)
+    ).filter(unit_count__gt=1).order_by('-unit_count')
+
+    # Lấy danh sách đơn vị cho mỗi nhân viên trùng lặp
+    duplicate_employees_list = []
+    for dup in duplicate_employees:
+        units_list = BeneficiaryAccount.objects.filter(
+            account_number=dup['account_number']
+        ).values_list('unit__account_number', flat=True)
+        duplicate_employees_list.append({
+            'account_number': dup['account_number'],
+            'unit_count': dup['unit_count'],
+            'units': list(units_list)
+        })
+
     # Thống kê tổng quan
     total_units = PayingUnit.objects.count()
     total_beneficiaries = BeneficiaryAccount.objects.count()
@@ -389,6 +430,8 @@ def statistics_view(request):
         'total_collection': total_collection,
         'transactions': transactions,
         'units_stats': units_stats,
+        'units_with_stats': units_with_stats,
+        'duplicate_employees': duplicate_employees_list,
         'years': years,
         'months': months,
         # Filters
