@@ -32,6 +32,7 @@
             <div class="report-container">
                 <label for="reportMonth">1. Chọn tháng báo cáo:</label>
                 <input type="month" id="reportMonth" required>
+                <small class="form-text text-muted">Định dạng: MM/YYYY (ví dụ: 01/2025 cho tháng 1 năm 2025)</small>
 
                 <label for="filesInput">2. Chọn TẤT CẢ các file Excel của tháng đó:</label>
                 <input type="file" id="filesInput" multiple required />
@@ -50,6 +51,28 @@
 </div>
 
 <script>
+    // Set default month value to current month
+    const reportMonthInput = document.getElementById('reportMonth');
+    const today = new Date();
+    const currentMonth = today.toISOString().slice(0, 7); // Format: YYYY-MM
+    reportMonthInput.value = currentMonth;
+
+    // Check if browser supports input type="month"
+    const testInput = document.createElement('input');
+    testInput.type = 'month';
+    const supportsMonthInput = testInput.type === 'month';
+
+    if (!supportsMonthInput) {
+        // Fallback for browsers that don't support type="month"
+        reportMonthInput.type = 'text';
+        reportMonthInput.placeholder = 'MM/YYYY (ví dụ: 01/2025)';
+        reportMonthInput.pattern = '(0[1-9]|1[0-2])/[0-9]{4}';
+        reportMonthInput.title = 'Nhập theo định dạng MM/YYYY (ví dụ: 01/2025)';
+
+        const currentMonthFormatted = `${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+        reportMonthInput.value = currentMonthFormatted;
+    }
+
     const filesInput = document.getElementById('filesInput');
     const calculateButton = document.getElementById('calculateButton');
     const fileCountSpan = document.getElementById('file-count');
@@ -60,10 +83,30 @@
 
     calculateButton.addEventListener('click', async () => {
         const files = filesInput.files;
-        const monthStr = document.getElementById('reportMonth').value;
+        let monthStr = document.getElementById('reportMonth').value;
 
         if (files.length === 0) { alert("Vui lòng chọn các file Excel."); return; }
         if (!monthStr) { alert("Vui lòng chọn tháng báo cáo."); return; }
+
+        // Parse month input (handle both YYYY-MM and MM/YYYY formats)
+        let year, month;
+        if (monthStr.includes('-')) {
+            // Format: YYYY-MM (from type="month" input)
+            [year, month] = monthStr.split('-').map(Number);
+        } else if (monthStr.includes('/')) {
+            // Format: MM/YYYY (from fallback text input)
+            const parts = monthStr.split('/');
+            month = parseInt(parts[0]);
+            year = parseInt(parts[1]);
+        } else {
+            alert("Định dạng tháng không hợp lệ. Vui lòng nhập theo định dạng MM/YYYY hoặc chọn từ month picker.");
+            return;
+        }
+
+        if (month < 1 || month > 12 || year < 2000 || year > 2100) {
+            alert("Tháng hoặc năm không hợp lệ. Vui lòng kiểm tra lại.");
+            return;
+        }
 
         calculateButton.textContent = 'Đang xử lý...';
         calculateButton.disabled = true;
@@ -104,7 +147,6 @@
                 }
             });
 
-            const [year, month] = monthStr.split('-').map(Number);
             const daysInMonth = new Date(year, month, 0).getDate();
 
             generatePrintPage(atmInfo, daysInMonth, month, year);
