@@ -52,7 +52,15 @@ def upload_file(request):
         if form.is_valid():
             file = request.FILES['file']
             transaction_type = form.cleaned_data['transaction_type']
-            company_account = form.cleaned_data.get('company_account')
+
+            # Get company account from hidden field
+            company_account_id = request.POST.get('company_account_id')
+            company_account = None
+            if company_account_id:
+                try:
+                    company_account = CompanyAccount.objects.get(id=int(company_account_id))
+                except (ValueError, CompanyAccount.DoesNotExist):
+                    pass
 
             # Lưu file tạm
             from django.core.files.storage import default_storage
@@ -229,6 +237,30 @@ def company_account_list(request):
         'is_active': is_active,
     }
     return render(request, 'salary/company_account_list.html', context)
+
+
+@login_required
+def company_account_search(request):
+    """API search company accounts for autocomplete"""
+    query = request.GET.get('q', '').strip()
+
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+
+    accounts = CompanyAccount.objects.filter(
+        Q(account_number__icontains=query) |
+        Q(account_name__icontains=query),
+        is_active=True
+    )[:10]
+
+    results = [{
+        'id': account.id,
+        'account_number': account.account_number,
+        'account_name': account.account_name,
+        'bank': str(account.bank)
+    } for account in accounts]
+
+    return JsonResponse({'results': results})
 
 
 @login_required

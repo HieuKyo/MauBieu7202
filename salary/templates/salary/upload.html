@@ -1,4 +1,4 @@
-{% extends "salary/base.html" %}
+{% extends "templates_app/base.html" %}
 
 {% block title %}Upload File - Quản lý Chi Lương{% endblock %}
 
@@ -34,7 +34,14 @@
 
                     <div class="mb-3">
                         <label for="{{ form.company_account.id_for_label }}" class="form-label">{{ form.company_account.label }}</label>
-                        {{ form.company_account }}
+                        <div class="input-group">
+                            {{ form.company_account }}
+                            <span class="input-group-text bg-primary text-white" style="cursor: pointer;" id="search-icon">
+                                <i class="bi bi-search"></i>
+                            </span>
+                        </div>
+                        {{ form.company_account_id }}
+                        <div id="search-results" class="list-group mt-1" style="position: absolute; z-index: 1000; width: calc(100% - 30px); display: none;"></div>
                         {% if form.company_account.help_text %}
                         <div class="form-text">{{ form.company_account.help_text }}</div>
                         {% endif %}
@@ -56,13 +63,104 @@
                     <h6><i class="bi bi-info-circle"></i> Yêu cầu định dạng file:</h6>
                     <ul>
                         <li>File Excel (.xlsx, .xls) hoặc CSV</li>
+                        <li>Thứ tự cột: <code>full_name, account_number, bank_name, amount, description</code></li>
                         <li>Các cột bắt buộc: <code>full_name</code>, <code>account_number</code>, <code>amount</code>, <code>description</code></li>
-                        <li>Cột tùy chọn: <code>bank_name</code> hoặc <code>bank_code</code></li>
+                        <li>Cột tùy chọn: <code>bank_name</code> (mặc định: Agribank)</li>
                         <li>Kích thước tối đa: 10MB</li>
                     </ul>
+                    <p class="mb-0"><strong>Ví dụ:</strong></p>
+                    <pre class="mb-0 mt-2" style="font-size: 0.85rem;">full_name,account_number,bank_name,amount,description
+Nguyen Van A,1234567890,Agribank,5000000,Chi luong thang 11/2024</pre>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('company_account_search');
+    const searchResults = document.getElementById('search-results');
+    const accountIdInput = document.getElementById('company_account_id');
+    const searchIcon = document.getElementById('search-icon');
+    let debounceTimer;
+
+    // Search function
+    function performSearch(query) {
+        if (query.length < 2) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        fetch(`{% url 'salary:company_account_search' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                searchResults.innerHTML = '';
+                if (data.results.length > 0) {
+                    data.results.forEach(account => {
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <div><strong>${account.account_number}</strong> - ${account.account_name}</div>
+                            <small class="text-muted">${account.bank}</small>
+                        `;
+                        item.onclick = function(e) {
+                            e.preventDefault();
+                            searchInput.value = `${account.account_number} - ${account.account_name}`;
+                            accountIdInput.value = account.id;
+                            searchResults.style.display = 'none';
+                        };
+                        searchResults.appendChild(item);
+                    });
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.innerHTML = '<div class="list-group-item">Không tìm thấy kết quả</div>';
+                    searchResults.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    // Input event with debounce
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            performSearch(this.value);
+        }, 300);
+    });
+
+    // Click search icon
+    searchIcon.addEventListener('click', function() {
+        if (searchInput.value) {
+            performSearch(searchInput.value);
+        }
+    });
+
+    // Focus event
+    searchInput.addEventListener('focus', function() {
+        if (this.value.length >= 2) {
+            performSearch(this.value);
+        }
+    });
+
+    // Click outside to close
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target) && !searchIcon.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+
+    // Clear account ID if input is cleared
+    searchInput.addEventListener('input', function() {
+        if (this.value === '') {
+            accountIdInput.value = '';
+        }
+    });
+});
+</script>
 {% endblock %}

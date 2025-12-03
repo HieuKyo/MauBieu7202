@@ -23,7 +23,8 @@ urlpatterns = [
     
     # Company Accounts
     path('accounts/', views.company_account_list, name='company_account_list'),
-    
+    path('api/accounts/search/', views.company_account_search, name='company_account_search'),
+
     # Access Denied
     path('access-denied/', views.access_denied, name='access_denied'),
 ]

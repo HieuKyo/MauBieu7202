@@ -99,11 +99,27 @@ class SalaryFileProcessor:
             output_filename = self._generate_output_filename(file_path, transaction_type)
             output_path = os.path.join(os.path.dirname(file_path), output_filename)
 
+            # Get bank names if available
+            bank_names = []
+            if 'bank_name' in df.columns:
+                bank_names = df['bank_name'].fillna('Agribank')
+            else:
+                # Map bank codes to names
+                bank_code_to_name = {
+                    'AGR': 'Agribank',
+                    'CTG': 'Vietinbank',
+                    'BIDV': 'BIDV',
+                    'VCB': 'Vietcombank',
+                    'TCB': 'Techcombank',
+                    'MB': 'MB Bank',
+                }
+                bank_names = df.get('bank_code', 'AGR').apply(lambda x: bank_code_to_name.get(x, 'Agribank'))
+
             output_df = pd.DataFrame({
                 'STT': range(1, len(df) + 1),
-                'TEN_NGUOI_HUONG': df['full_name_normalized'],
+                'HO_TEN': df['full_name_normalized'],
                 'SO_TAI_KHOAN': df['account_number'],
-                'MA_NGAN_HANG': df.get('bank_code', 'AGR'),
+                'NGAN_HANG': bank_names,
                 'SO_TIEN': df['amount'].astype(int),
                 'NOI_DUNG': df['description_normalized'],
             })
