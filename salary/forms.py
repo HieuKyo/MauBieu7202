@@ -86,9 +86,8 @@ class FileUploadForm(forms.Form):
         })
     )
 
-    company_account = forms.ModelChoiceField(
+    company_account_search = forms.CharField(
         label='Tài khoản công ty',
-        queryset=CompanyAccount.objects.filter(is_active=True),
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
