@@ -1,0 +1,51 @@
+{% extends "salary/base.html" %}
+
+{% block title %}Tài khoản công ty{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="bi bi-building"></i> Danh sách tài khoản công ty</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Số TK</th>
+                        <th>Tên TK</th>
+                        <th>Ngân hàng</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for account in accounts %}
+                    <tr>
+                        <td>{{ account.account_number }}</td>
+                        <td>{{ account.account_name }}</td>
+                        <td>{{ account.bank }}</td>
+                        <td>
+                            {% if account.is_active %}
+                            <span class="badge bg-success">Hoạt động</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Không hoạt động</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ account.created_at|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">Không có dữ liệu</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

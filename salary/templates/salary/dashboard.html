@@ -1,0 +1,100 @@
+{% extends "salary/base.html" %}
+{% load humanize %}
+
+{% block title %}Dashboard - Quản lý Chi Lương{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-cash"></i> Tổng tiền đã chi</h5>
+                <h3>{{ stats.total_amount|intcomma }} VNĐ</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Tổng file</h5>
+                <h3>{{ stats.total_files }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-arrow-up-circle"></i> Chi lương</h5>
+                <h3>{{ stats.payroll_amount|intcomma }} VNĐ</h3>
+                <small>{{ stats.payroll_count }} giao dịch</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-arrow-down-circle"></i> Thu hộ</h5>
+                <h3>{{ stats.collection_amount|intcomma }} VNĐ</h3>
+                <small>{{ stats.collection_count }} giao dịch</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent History -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> Lịch sử xử lý gần đây</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>File</th>
+                                <th>Loại</th>
+                                <th>Số bản ghi</th>
+                                <th>Tổng tiền</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for history in recent_histories %}
+                            <tr>
+                                <td>{{ history.processed_at|date:"d/m/Y H:i" }}</td>
+                                <td><a href="{% url 'salary:processing_detail' history.id %}">{{ history.filename }}</a></td>
+                                <td>{{ history.get_transaction_type_display }}</td>
+                                <td>{{ history.total_records }}</td>
+                                <td>{{ history.total_amount|intcomma }} VNĐ</td>
+                                <td>
+                                    {% if history.status == 'SUCCESS' %}
+                                    <span class="badge bg-success">Thành công</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Lỗi</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">Chưa có lịch sử xử lý</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
