@@ -118,8 +118,8 @@ def process_lai_ton_dong_report(request):
 
         output_cols = [
             'Mã khách hàng', 'Tên khách hàng', 'LDS',
-            'Dư nợ gốc kỳ này', 'Lãi kỳ này',
             'Dư nợ gốc kỳ SS', 'Lãi kỳ SS',
+            'Dư nợ gốc kỳ này', 'Lãi kỳ này',
             'Lãi Tăng', 'Lãi Giảm'
         ]
         final_df = final_df[output_cols]
