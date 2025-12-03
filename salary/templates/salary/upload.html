@@ -86,64 +86,131 @@ document.addEventListener('DOMContentLoaded', function() {
     const accountIdInput = document.getElementById('company_account_id');
     const searchIcon = document.getElementById('search-icon');
     let debounceTimer;
+    let selectedAccount = null;
+
+    // Show loading state
+    function showLoading() {
+        searchResults.innerHTML = '<div class="list-group-item"><i class="bi bi-hourglass-split"></i> Đang tìm kiếm...</div>';
+        searchResults.style.display = 'block';
+    }
+
+    // Show error
+    function showError(message) {
+        searchResults.innerHTML = `<div class="list-group-item text-danger"><i class="bi bi-exclamation-circle"></i> ${message}</div>`;
+        searchResults.style.display = 'block';
+        accountIdInput.value = '';
+        selectedAccount = null;
+    }
+
+    // Show success with selected account
+    function showSelected(account) {
+        searchInput.value = `${account.account_number} - ${account.account_name}`;
+        searchInput.classList.remove('is-invalid');
+        searchInput.classList.add('is-valid');
+        accountIdInput.value = account.id;
+        selectedAccount = account;
+        searchResults.style.display = 'none';
+
+        // Show success message below
+        const helpText = searchInput.parentElement.parentElement.querySelector('.form-text');
+        if (helpText) {
+            helpText.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Đã chọn: ${account.account_name} (${account.bank})</span>`;
+        }
+    }
 
     // Search function
     function performSearch(query) {
         if (query.length < 2) {
-            searchResults.style.display = 'none';
+            searchResults.innerHTML = '<div class="list-group-item text-muted"><i class="bi bi-info-circle"></i> Nhập ít nhất 2 ký tự để tìm kiếm</div>';
+            searchResults.style.display = 'block';
             return;
         }
 
+        showLoading();
+
         fetch(`{% url 'salary:company_account_search' %}?q=${encodeURIComponent(query)}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Lỗi kết nối server');
+                }
+                return response.json();
+            })
             .then(data => {
                 searchResults.innerHTML = '';
-                if (data.results.length > 0) {
+                if (data.results && data.results.length > 0) {
                     data.results.forEach(account => {
                         const item = document.createElement('a');
                         item.href = '#';
                         item.className = 'list-group-item list-group-item-action';
                         item.innerHTML = `
-                            <div><strong>${account.account_number}</strong> - ${account.account_name}</div>
-                            <small class="text-muted">${account.bank}</small>
+                            <div><strong><i class="bi bi-building"></i> ${account.account_number}</strong> - ${account.account_name}</div>
+                            <small class="text-muted"><i class="bi bi-bank"></i> ${account.bank}</small>
                         `;
                         item.onclick = function(e) {
                             e.preventDefault();
-                            searchInput.value = `${account.account_number} - ${account.account_name}`;
-                            accountIdInput.value = account.id;
-                            searchResults.style.display = 'none';
+                            showSelected(account);
                         };
                         searchResults.appendChild(item);
                     });
                     searchResults.style.display = 'block';
                 } else {
-                    searchResults.innerHTML = '<div class="list-group-item">Không tìm thấy kết quả</div>';
-                    searchResults.style.display = 'block';
+                    showError('Không tìm thấy đơn vị với thông tin này. Vui lòng kiểm tra lại số tài khoản hoặc tên đơn vị.');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                showError('Lỗi khi tìm kiếm: ' + error.message);
             });
     }
 
     // Input event with debounce
     searchInput.addEventListener('input', function() {
+        // Reset validation state when typing
+        this.classList.remove('is-valid', 'is-invalid');
+        const helpText = this.parentElement.parentElement.querySelector('.form-text');
+        if (helpText && !helpText.classList.contains('text-muted')) {
+            helpText.innerHTML = 'Nhập số tài khoản hoặc tên công ty để tìm kiếm (tùy chọn)';
+            helpText.className = 'form-text text-muted';
+        }
+
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            performSearch(this.value);
-        }, 300);
+        if (this.value.length >= 2) {
+            debounceTimer = setTimeout(() => {
+                performSearch(this.value);
+            }, 300);
+        } else if (this.value.length === 0) {
+            accountIdInput.value = '';
+            selectedAccount = null;
+            searchResults.style.display = 'none';
+        }
     });
 
     // Click search icon
     searchIcon.addEventListener('click', function() {
-        if (searchInput.value) {
-            performSearch(searchInput.value);
+        const query = searchInput.value.trim();
+        if (query.length >= 2) {
+            performSearch(query);
+        } else if (query.length === 0) {
+            showError('Vui lòng nhập số tài khoản hoặc tên đơn vị để tìm kiếm');
+        } else {
+            showError('Vui lòng nhập ít nhất 2 ký tự');
+        }
+    });
+
+    // Press Enter to search
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = this.value.trim();
+            if (query.length >= 2) {
+                performSearch(query);
+            }
         }
     });
 
     // Focus event
     searchInput.addEventListener('focus', function() {
-        if (this.value.length >= 2) {
+        if (this.value.length >= 2 && !selectedAccount) {
             performSearch(this.value);
         }
     });
@@ -155,10 +222,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Clear account ID if input is cleared
-    searchInput.addEventListener('input', function() {
-        if (this.value === '') {
-            accountIdInput.value = '';
+    // Form validation before submit
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const query = searchInput.value.trim();
+        if (query.length > 0 && !accountIdInput.value) {
+            e.preventDefault();
+            searchInput.classList.add('is-invalid');
+            showError('Bạn đã nhập thông tin nhưng chưa chọn đơn vị. Vui lòng tìm và chọn đơn vị từ danh sách hoặc để trống trường này.');
         }
     });
 });
