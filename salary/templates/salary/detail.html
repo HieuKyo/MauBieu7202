@@ -1,0 +1,95 @@
+{% extends "salary/base.html" %}
+{% load humanize %}
+
+{% block title %}Chi tiết xử lý - {{ history.filename }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="bi bi-file-earmark-text"></i> Chi tiết xử lý</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Thông tin file</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th width="30%">Tên file:</th>
+                        <td>{{ history.filename }}</td>
+                    </tr>
+                    <tr>
+                        <th>Loại giao dịch:</th>
+                        <td><span class="badge bg-primary">{{ history.get_transaction_type_display }}</span></td>
+                    </tr>
+                    <tr>
+                        <th>Tài khoản công ty:</th>
+                        <td>{{ history.company_account|default:"Không xác định" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Tổng số bản ghi:</th>
+                        <td><strong>{{ history.total_records }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Bản ghi thành công:</th>
+                        <td><span class="text-success">{{ history.successful_records }}</span></td>
+                    </tr>
+                    <tr>
+                        <th>Bản ghi lỗi:</th>
+                        <td><span class="text-danger">{{ history.failed_records }}</span></td>
+                    </tr>
+                    <tr>
+                        <th>Tổng số tiền:</th>
+                        <td><h4 class="text-primary">{{ history.total_amount|intcomma }} VNĐ</h4></td>
+                    </tr>
+                    <tr>
+                        <th>Trạng thái:</th>
+                        <td>
+                            {% if history.status == 'SUCCESS' %}
+                            <span class="badge bg-success">Thành công</span>
+                            {% else %}
+                            <span class="badge bg-danger">Lỗi</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Người xử lý:</th>
+                        <td>{{ history.processed_by.username }}</td>
+                    </tr>
+                    <tr>
+                        <th>Thời gian xử lý:</th>
+                        <td>{{ history.processed_at|date:"d/m/Y H:i:s" }}</td>
+                    </tr>
+                </table>
+
+                {% if history.duplicate_accounts %}
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle"></i> Tài khoản trùng lặp:</h6>
+                    <p>{{ history.duplicate_accounts }}</p>
+                </div>
+                {% endif %}
+
+                {% if history.error_message %}
+                <div class="alert alert-danger">
+                    <h6><i class="bi bi-x-circle"></i> Thông báo lỗi:</h6>
+                    <pre>{{ history.error_message }}</pre>
+                </div>
+                {% endif %}
+
+                {% if history.output_file %}
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{% url 'salary:download_output' history.id %}" class="btn btn-success btn-lg">
+                        <i class="bi bi-download"></i> Tải file CSV kết quả
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

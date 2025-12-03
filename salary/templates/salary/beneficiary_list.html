@@ -1,0 +1,67 @@
+{% extends "salary/base.html" %}
+
+{% block title %}Người thụ hưởng{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="bi bi-people"></i> Danh sách người thụ hưởng</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control" placeholder="Tìm kiếm tên/STK..." value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <select name="bank" class="form-select">
+                    <option value="">Tất cả ngân hàng</option>
+                    {% for bank in banks %}
+                    <option value="{{ bank.code }}" {% if bank_code == bank.code %}selected{% endif %}>{{ bank.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Tìm</button>
+                <a href="{% url 'salary:beneficiary_list' %}" class="btn btn-secondary">Xóa</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Họ tên</th>
+                        <th>Số TK</th>
+                        <th>Ngân hàng</th>
+                        <th>Công ty</th>
+                        <th>Ngày tạo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for beneficiary in page_obj %}
+                    <tr>
+                        <td>{{ beneficiary.full_name }}</td>
+                        <td>{{ beneficiary.account_number }}</td>
+                        <td>{{ beneficiary.bank|default:beneficiary.bank_code }}</td>
+                        <td>{{ beneficiary.company|default:"-" }}</td>
+                        <td>{{ beneficiary.created_at|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">Không có dữ liệu</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
