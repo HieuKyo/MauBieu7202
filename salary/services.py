@@ -73,11 +73,34 @@ class SalaryFileProcessor:
     def process_excel_file(self, file_path, transaction_type, company_account=None):
         """Xu ly file Excel/CSV"""
         try:
+            # Doc file
             if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path, encoding='utf-8-sig')
+                # Thu doc voi header truoc
+                try:
+                    df = pd.read_csv(file_path, encoding='utf-8-sig')
+                    # Kiem tra xem co phai header hop le khong
+                    expected_cols = ['full_name', 'account_number', 'amount', 'description', 'bank_name']
+                    if not any(col in df.columns for col in expected_cols):
+                        # Khong co header, doc lai
+                        df = pd.read_csv(file_path, encoding='utf-8-sig', header=None,
+                                       names=['full_name', 'account_number', 'bank_name', 'amount', 'description'])
+                except Exception:
+                    # Neu loi, thu doc khong co header
+                    df = pd.read_csv(file_path, encoding='utf-8-sig', header=None,
+                                   names=['full_name', 'account_number', 'bank_name', 'amount', 'description'])
             else:
-                df = pd.read_excel(file_path)
+                try:
+                    df = pd.read_excel(file_path)
+                    # Kiem tra header
+                    expected_cols = ['full_name', 'account_number', 'amount', 'description', 'bank_name']
+                    if not any(col in df.columns for col in expected_cols):
+                        df = pd.read_excel(file_path, header=None,
+                                         names=['full_name', 'account_number', 'bank_name', 'amount', 'description'])
+                except Exception:
+                    df = pd.read_excel(file_path, header=None,
+                                     names=['full_name', 'account_number', 'bank_name', 'amount', 'description'])
 
+            # Kiem tra cac cot bat buoc
             required_columns = ['full_name', 'account_number', 'amount', 'description']
             missing_columns = [col for col in required_columns if col not in df.columns]
 
@@ -85,47 +108,46 @@ class SalaryFileProcessor:
                 self.errors.append(f"Thieu cac cot: {', '.join(missing_columns)}")
                 return {'success': False, 'errors': self.errors, 'warnings': self.warnings}
 
-            if 'bank_name' in df.columns and 'bank_code' not in df.columns:
+            # Xu ly cot bank_name - neu khong co thi tao moi voi gia tri mac dinh
+            if 'bank_name' not in df.columns:
+                df['bank_name'] = 'Agribank'
+            else:
+                # Fill NA values
+                df['bank_name'] = df['bank_name'].fillna('Agribank')
+
+            # Tao bank_code tu bank_name
+            if 'bank_code' not in df.columns:
                 df['bank_code'] = df['bank_name'].apply(lambda x: self.detect_bank_code(x)[0])
 
+            # Kiem tra trung lap
             self.check_duplicates(df, 'account_number')
 
+            # Chuan hoa text
             df['full_name_normalized'] = df['full_name'].apply(self.normalize_text)
             df['description_normalized'] = df['description'].apply(self.normalize_text)
 
+            # Xu ly so tien
             df['amount'] = pd.to_numeric(df['amount'], errors='coerce').fillna(0)
             total_amount = Decimal(str(df['amount'].sum()))
 
+            # Tao file output
             output_filename = self._generate_output_filename(file_path, transaction_type)
             output_path = os.path.join(os.path.dirname(file_path), output_filename)
 
-            # Get bank names if available
-            bank_names = []
-            if 'bank_name' in df.columns:
-                bank_names = df['bank_name'].fillna('Agribank')
-            else:
-                # Map bank codes to names
-                bank_code_to_name = {
-                    'AGR': 'Agribank',
-                    'CTG': 'Vietinbank',
-                    'BIDV': 'BIDV',
-                    'VCB': 'Vietcombank',
-                    'TCB': 'Techcombank',
-                    'MB': 'MB Bank',
-                }
-                bank_names = df.get('bank_code', 'AGR').apply(lambda x: bank_code_to_name.get(x, 'Agribank'))
-
+            # Tao DataFrame output
             output_df = pd.DataFrame({
                 'STT': range(1, len(df) + 1),
                 'HO_TEN': df['full_name_normalized'],
                 'SO_TAI_KHOAN': df['account_number'],
-                'NGAN_HANG': bank_names,
+                'NGAN_HANG': df['bank_name'],
                 'SO_TIEN': df['amount'].astype(int),
                 'NOI_DUNG': df['description_normalized'],
             })
 
-            output_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+            # Luu file CSV khong co header
+            output_df.to_csv(output_path, index=False, header=False, encoding='utf-8-sig')
 
+            # Luu beneficiaries neu co company_account
             if company_account:
                 self._save_beneficiaries(df, company_account)
 
@@ -141,6 +163,8 @@ class SalaryFileProcessor:
 
         except Exception as e:
             self.errors.append(f"Loi xu ly file: {str(e)}")
+            import traceback
+            self.errors.append(traceback.format_exc())
             return {'success': False, 'errors': self.errors, 'warnings': self.warnings}
 
     def _generate_output_filename(self, input_path, transaction_type):
