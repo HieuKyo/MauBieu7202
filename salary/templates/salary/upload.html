@@ -33,20 +33,20 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="{{ form.company_account.id_for_label }}" class="form-label">{{ form.company_account.label }}</label>
+                        <label for="{{ form.company_account_search.id_for_label }}" class="form-label">{{ form.company_account_search.label }}</label>
                         <div class="input-group">
-                            {{ form.company_account }}
+                            {{ form.company_account_search }}
                             <span class="input-group-text bg-primary text-white" style="cursor: pointer;" id="search-icon">
                                 <i class="bi bi-search"></i>
                             </span>
                         </div>
                         {{ form.company_account_id }}
                         <div id="search-results" class="list-group mt-1" style="position: absolute; z-index: 1000; width: calc(100% - 30px); display: none;"></div>
-                        {% if form.company_account.help_text %}
-                        <div class="form-text">{{ form.company_account.help_text }}</div>
+                        {% if form.company_account_search.help_text %}
+                        <div class="form-text">{{ form.company_account_search.help_text }}</div>
                         {% endif %}
-                        {% if form.company_account.errors %}
-                        <div class="text-danger">{{ form.company_account.errors }}</div>
+                        {% if form.company_account_search.errors %}
+                        <div class="text-danger">{{ form.company_account_search.errors }}</div>
                         {% endif %}
                     </div>
 
