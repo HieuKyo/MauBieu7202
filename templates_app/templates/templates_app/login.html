@@ -90,9 +90,9 @@
 
 {% block extra_css %}
 <style>
-    /* Gradient Background - Màu đỏ Agribank mới */
+    /* White Background */
     body {
-        background: linear-gradient(135deg, var(--agri-red) 0%, var(--agri-red-dark) 100%);
+        background: #ffffff;
         background-attachment: fixed;
     }
 
@@ -246,26 +246,25 @@
         color: var(--agri-red);
     }
 
-    /* Login footer text - Contrast color for readability */
+    /* Login footer text - Dark color for white background */
     .login-footer-text {
-        color: #ffffff;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        color: #6c757d;
+        text-shadow: none;
         font-weight: 500;
-        background: rgba(0,0,0,0.15);
+        background: rgba(0,0,0,0.05);
         padding: 0.5rem 1rem;
         border-radius: 20px;
         display: inline-block;
-        backdrop-filter: blur(5px);
     }
 
     .login-footer-text i {
         margin-right: 0.25rem;
-        color: var(--agri-gold);
+        color: var(--agri-red);
     }
 
-    /* Text shadow for better readability */
+    /* Text shadow removed for white background */
     .text-white {
-        text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        text-shadow: none;
     }
 </style>
 {% endblock %}
