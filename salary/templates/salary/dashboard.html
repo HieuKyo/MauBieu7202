@@ -11,6 +11,32 @@
     </div>
 </div>
 
+<!-- Filter by Month -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="month" class="form-label">Chọn tháng:</label>
+                        <input type="month" class="form-control" id="month" name="month" value="{{ selected_month }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-filter"></i> Lọc
+                        </button>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <a href="{% url 'salary:dashboard' %}" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Xóa lọc
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Quick Action Cards -->
 {% load salary_tags %}
 <div class="row mb-4">
@@ -71,7 +97,7 @@
     <div class="col-md-3">
         <div class="card text-white bg-primary">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-cash"></i> Tổng tiền đã chi</h5>
+                <h5 class="card-title"><i class="bi bi-cash text-white"></i> Tổng tiền đã thu/chi</h5>
                 <h3>{{ stats.total_amount|intcomma }} VNĐ</h3>
             </div>
         </div>
@@ -79,7 +105,7 @@
     <div class="col-md-3">
         <div class="card text-white bg-success">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Tổng file</h5>
+                <h5 class="card-title"><i class="bi bi-file-earmark-text text-white"></i> Tổng file</h5>
                 <h3>{{ stats.total_files }}</h3>
             </div>
         </div>

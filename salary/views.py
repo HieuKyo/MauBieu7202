@@ -28,18 +28,37 @@ def dashboard(request):
     if is_giaodichvien and not is_admin:
         return redirect('salary:upload')
 
-    # Lấy thống kê
-    period = request.GET.get('period', 'month')
-    stats = SalaryStatisticsService.get_statistics(period=period)
+    # Lấy filter tháng từ request
+    selected_month = request.GET.get('month', '')
+    start_date = None
+    end_date = None
 
-    # Lịch sử xử lý gần đây
-    recent_histories = ProcessingHistory.objects.all()[:10]
+    if selected_month:
+        # Format: YYYY-MM
+        from datetime import datetime
+        import calendar
+        try:
+            year, month = map(int, selected_month.split('-'))
+            start_date = datetime(year, month, 1)
+            last_day = calendar.monthrange(year, month)[1]
+            end_date = datetime(year, month, last_day, 23, 59, 59)
+        except (ValueError, AttributeError):
+            selected_month = ''
+
+    # Lấy thống kê
+    stats = SalaryStatisticsService.get_statistics(start_date=start_date, end_date=end_date)
+
+    # Lịch sử xử lý gần đây (theo filter nếu có)
+    recent_histories = ProcessingHistory.objects.all()
+    if start_date and end_date:
+        recent_histories = recent_histories.filter(processed_at__gte=start_date, processed_at__lte=end_date)
+    recent_histories = recent_histories[:10]
 
     context = {
         'stats': stats,
-        'period': period,
         'recent_histories': recent_histories,
         'is_admin': is_admin,
+        'selected_month': selected_month,
     }
     return render(request, 'salary/dashboard.html', context)
 
