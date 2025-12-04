@@ -88,19 +88,20 @@ class FileUploadForm(forms.Form):
 
     company_account_search = forms.CharField(
         label='Tài khoản công ty',
-        required=False,
+        required=True,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'id': 'company_account_search',
             'placeholder': 'Nhập số TK hoặc tên công ty để tìm kiếm...',
             'autocomplete': 'off'
         }),
-        help_text='Nhập số tài khoản hoặc tên công ty để tìm kiếm (tùy chọn)'
+        help_text='Nhập số tài khoản hoặc tên công ty để tìm kiếm (BẮT BUỘC)'
     )
 
     company_account_id = forms.IntegerField(
-        required=False,
-        widget=forms.HiddenInput(attrs={'id': 'company_account_id'})
+        required=True,
+        widget=forms.HiddenInput(attrs={'id': 'company_account_id'}),
+        error_messages={'required': 'Vui lòng chọn tài khoản công ty'}
     )
 
     def clean_file(self):

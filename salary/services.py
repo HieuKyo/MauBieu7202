@@ -71,94 +71,186 @@ class SalaryFileProcessor:
         return []
 
     def process_excel_file(self, file_path, transaction_type, company_account=None):
-        """Xu ly file Excel/CSV"""
+        """Xu ly file Excel/CSV - Su dung logic code cu"""
         try:
-            # Doc file
+            from datetime import datetime
+
+            # Doc file KHONG CO header (nhu code cu)
             if file_path.endswith('.csv'):
-                # Thu doc voi header truoc
-                try:
-                    df = pd.read_csv(file_path, encoding='utf-8-sig')
-                    # Kiem tra xem co phai header hop le khong
-                    expected_cols = ['full_name', 'account_number', 'amount', 'description', 'bank_name']
-                    if not any(col in df.columns for col in expected_cols):
-                        # Khong co header, doc lai
-                        df = pd.read_csv(file_path, encoding='utf-8-sig', header=None,
-                                       names=['full_name', 'account_number', 'bank_name', 'amount', 'description'])
-                except Exception:
-                    # Neu loi, thu doc khong co header
-                    df = pd.read_csv(file_path, encoding='utf-8-sig', header=None,
-                                   names=['full_name', 'account_number', 'bank_name', 'amount', 'description'])
+                df = pd.read_csv(file_path, dtype=str, header=None, sep=',', encoding='utf-8-sig')
             else:
-                try:
-                    df = pd.read_excel(file_path)
-                    # Kiem tra header
-                    expected_cols = ['full_name', 'account_number', 'amount', 'description', 'bank_name']
-                    if not any(col in df.columns for col in expected_cols):
-                        df = pd.read_excel(file_path, header=None,
-                                         names=['full_name', 'account_number', 'bank_name', 'amount', 'description'])
-                except Exception:
-                    df = pd.read_excel(file_path, header=None,
-                                     names=['full_name', 'account_number', 'bank_name', 'amount', 'description'])
+                df = pd.read_excel(file_path, dtype=str, header=None)
 
-            # Kiem tra cac cot bat buoc
-            required_columns = ['full_name', 'account_number', 'amount', 'description']
-            missing_columns = [col for col in required_columns if col not in df.columns]
-
-            if missing_columns:
-                self.errors.append(f"Thieu cac cot: {', '.join(missing_columns)}")
+            # Kiem tra so cot (phai co it nhat 5 cot)
+            if len(df.columns) < 5:
+                self.errors.append('File phai co it nhat 5 cot: Ho ten, STK, Ten NH, So tien, Noi dung.')
                 return {'success': False, 'errors': self.errors, 'warnings': self.warnings}
 
-            # Xu ly cot bank_name - neu khong co thi tao moi voi gia tri mac dinh
-            if 'bank_name' not in df.columns:
-                df['bank_name'] = 'Agribank'
-            else:
-                # Fill NA values
-                df['bank_name'] = df['bank_name'].fillna('Agribank')
+            # Tao mapping bank codes
+            bank_codes_signed = {b.name.strip().lower(): b.code for b in Bank.objects.all()}
+            bank_codes_unsigned = {self.normalize_text(b.name).lower(): b.code for b in Bank.objects.all()}
 
-            # Tao bank_code tu bank_name
-            if 'bank_code' not in df.columns:
-                df['bank_code'] = df['bank_name'].apply(lambda x: self.detect_bank_code(x)[0])
+            # Kiem tra phai co company_account
+            if not company_account:
+                self.errors.append('Phai chon tai khoan cong ty de xu ly file')
+                return {'success': False, 'errors': self.errors, 'warnings': self.warnings}
 
-            # Kiem tra trung lap
-            self.check_duplicates(df, 'account_number')
+            company_name_unsigned = self.normalize_text(company_account.account_name)
+            current_date = datetime.now().strftime('%Y%m%d')
 
-            # Chuan hoa text
-            df['full_name_normalized'] = df['full_name'].apply(self.normalize_text)
-            df['description_normalized'] = df['description'].apply(self.normalize_text)
+            successful_rows = []
+            error_rows = []
+            seen_accounts = set()
 
-            # Xu ly so tien
-            df['amount'] = pd.to_numeric(df['amount'], errors='coerce').fillna(0)
-            total_amount = Decimal(str(df['amount'].sum()))
+            total_amount = Decimal('0')
 
-            # Tao file output
+            # Xu ly tung dong
+            for index, row in df.iterrows():
+                line_number = index + 1
+                try:
+                    # Lay du lieu tu 5 cot
+                    ho_ten_raw = row[0]
+                    stk_raw = row[1]
+                    ten_ngan_hang_raw = row[2]
+                    so_tien_raw = row[3]
+                    noi_dung_raw = row[4]
+
+                    # Validate du lieu
+                    if pd.isna(ho_ten_raw) or str(ho_ten_raw).strip() == '':
+                        raise ValueError("Ho ten khong duoc de trong")
+                    if pd.isna(stk_raw) or str(stk_raw).strip() == '':
+                        raise ValueError("So tai khoan khong duoc de trong")
+                    if pd.isna(so_tien_raw):
+                        raise ValueError("So tien khong duoc de trong")
+
+                    ho_ten = str(ho_ten_raw).strip()
+                    stk = str(stk_raw).strip()
+                    ten_ngan_hang = str(ten_ngan_hang_raw).strip() if not pd.isna(ten_ngan_hang_raw) else 'Agribank'
+
+                    # Xac dinh ngan hang
+                    ten_ngan_hang_unsigned = self.normalize_text(ten_ngan_hang).lower()
+                    is_agribank = 'agribank' in ten_ngan_hang_unsigned or 'nong nghiep' in ten_ngan_hang_unsigned
+
+                    # VALIDATE: STK Agribank phai co dung 13 ky tu
+                    if is_agribank and len(stk) != 13:
+                        raise ValueError(f"STK Agribank phai co dung 13 ky tu (hien tai: {len(stk)})")
+
+                    # Kiem tra trung lap
+                    if stk in seen_accounts:
+                        if stk not in self.duplicate_accounts:
+                            self.duplicate_accounts.append(stk)
+                            self.warnings.append(f"STK trung lap: {stk}")
+                    else:
+                        seen_accounts.add(stk)
+
+                    # Xu ly so tien
+                    so_tien = Decimal(str(so_tien_raw).replace(',', ''))
+                    total_amount += so_tien
+
+                    noi_dung = str(noi_dung_raw).strip()
+
+                    # Xac dinh ma_cot_1
+                    ma_cot_1 = 'HQIL'
+                    if is_agribank:
+                        ma_cot_1 = 'KO'
+                    elif 'vietinbank' in ten_ngan_hang_unsigned or 'cong thuong' in ten_ngan_hang_unsigned or \
+                         'bidv' in ten_ngan_hang_unsigned or 'dau tu va phat trien' in ten_ngan_hang_unsigned:
+                        ma_cot_1 = 'BP'
+
+                    # Xac dinh ma lien ngan hang
+                    if is_agribank:
+                        agribank_branch_name = "Agribank Gia Rai Bac Lieu"
+                        ma_lien_ngan_hang9 = agribank_branch_name
+                        ma_lien_ngan_hang10 = agribank_branch_name
+                    else:
+                        lookup_code = bank_codes_signed.get(ten_ngan_hang.lower()) or \
+                                    bank_codes_unsigned.get(ten_ngan_hang_unsigned, '')
+                        ma_lien_ngan_hang9 = lookup_code
+                        ma_lien_ngan_hang10 = '95204006'
+
+                    # Luu beneficiary
+                    try:
+                        beneficiary, created = Beneficiary.objects.get_or_create(
+                            full_name=ho_ten,
+                            account_number=stk,
+                            company=company_account
+                        )
+                    except Exception as e:
+                        self.warnings.append(f"Khong the luu beneficiary {stk}: {str(e)}")
+
+                    # Tao dong CSV theo transaction_type
+                    csv_row_raw = []
+                    if transaction_type == 'PAYROLL':
+                        csv_row_raw = [
+                            ma_cot_1,
+                            company_account.account_number,
+                            company_account.account_name,
+                            stk,
+                            ho_ten,
+                            'VND',
+                            str(int(so_tien)),
+                            current_date,
+                            ma_lien_ngan_hang9,
+                            ma_lien_ngan_hang10,
+                            noi_dung
+                        ]
+                    elif transaction_type == 'COLLECTION':
+                        csv_row_raw = [
+                            ma_cot_1,
+                            stk,
+                            ho_ten,
+                            company_account.account_name,
+                            company_account.account_number,
+                            'VND',
+                            str(int(so_tien)),
+                            current_date,
+                            ma_lien_ngan_hang9,
+                            ma_lien_ngan_hang10,
+                            noi_dung
+                        ]
+
+                    # Chuan hoa text (bo dau)
+                    final_csv_row = [self.normalize_text(str(item)) for item in csv_row_raw]
+                    successful_rows.append(final_csv_row)
+
+                except (ValueError, Exception) as e:
+                    error_message = str(e)
+                    error_rows.append({
+                        'Dong': line_number,
+                        'Ho ten': row[0] if len(row) > 0 else '',
+                        'STK': row[1] if len(row) > 1 else '',
+                        'So tien': row[3] if len(row) > 3 else '',
+                        'Loi': error_message
+                    })
+
+            # Neu co loi, return errors
+            if error_rows:
+                error_msg = f"Co {len(error_rows)} dong loi:\n"
+                for err in error_rows[:5]:  # Chi hien thi 5 loi dau
+                    error_msg += f"- Dong {err['Dong']}: {err['Loi']}\n"
+                if len(error_rows) > 5:
+                    error_msg += f"... va {len(error_rows) - 5} loi khac"
+                self.errors.append(error_msg)
+
+            # Luu file output
             output_filename = self._generate_output_filename(file_path, transaction_type)
             output_path = os.path.join(os.path.dirname(file_path), output_filename)
 
-            # Tao DataFrame output
-            output_df = pd.DataFrame({
-                'STT': range(1, len(df) + 1),
-                'HO_TEN': df['full_name_normalized'],
-                'SO_TAI_KHOAN': df['account_number'],
-                'NGAN_HANG': df['bank_name'],
-                'SO_TIEN': df['amount'].astype(int),
-                'NOI_DUNG': df['description_normalized'],
-            })
-
-            # Luu file CSV khong co header
-            output_df.to_csv(output_path, index=False, header=False, encoding='utf-8-sig')
-
-            # Luu beneficiaries neu co company_account
-            if company_account:
-                self._save_beneficiaries(df, company_account)
+            # Ghi file CSV khong co header
+            with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
+                import csv
+                writer = csv.writer(f)
+                writer.writerows(successful_rows)
 
             return {
-                'success': True,
+                'success': True if not error_rows else False,
                 'output_file': output_filename,
-                'total_records': len(df),
+                'total_records': len(successful_rows),
                 'total_amount': total_amount,
                 'errors': self.errors,
                 'warnings': self.warnings,
-                'duplicate_accounts': self.duplicate_accounts
+                'duplicate_accounts': self.duplicate_accounts,
+                'error_rows': error_rows
             }
 
         except Exception as e:

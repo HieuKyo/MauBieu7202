@@ -63,19 +63,25 @@
                     <h6><i class="bi bi-info-circle"></i> Yêu cầu định dạng file:</h6>
                     <ul>
                         <li>File Excel (.xlsx, .xls) hoặc CSV</li>
-                        <li><strong>Thứ tự cột:</strong> <code>full_name, account_number, bank_name, amount, description</code></li>
-                        <li><strong>Cột bắt buộc:</strong> <code>full_name</code>, <code>account_number</code>, <code>amount</code>, <code>description</code></li>
-                        <li><strong>Cột tùy chọn:</strong> <code>bank_name</code> (mặc định: Agribank nếu không có)</li>
-                        <li>File có thể có hoặc không có dòng header (tự động phát hiện)</li>
+                        <li><strong>KHÔNG CÓ DÒNG HEADER</strong></li>
+                        <li><strong>Thứ tự cột:</strong>
+                            <ol class="mb-0">
+                                <li>Họ tên</li>
+                                <li>Số tài khoản</li>
+                                <li>Tên ngân hàng</li>
+                                <li>Số tiền</li>
+                                <li>Nội dung</li>
+                            </ol>
+                        </li>
+                        <li><strong>Lưu ý:</strong> STK Agribank phải có đúng 13 ký tự</li>
                         <li>Kích thước tối đa: 10MB</li>
+                        <li><strong>BẮT BUỘC chọn tài khoản công ty</strong></li>
                     </ul>
-                    <p class="mb-0"><strong>Ví dụ file có header:</strong></p>
-                    <pre class="mb-0 mt-2" style="font-size: 0.85rem;">full_name,account_number,bank_name,amount,description
-Nguyen Van A,1234567890,Agribank,5000000,Chi luong thang 11/2024
-Tran Thi B,9876543210,Vietinbank,6000000,Chi luong thang 11/2024</pre>
-                    <p class="mb-0 mt-2"><strong>Ví dụ file không có header:</strong></p>
-                    <pre class="mb-0 mt-2" style="font-size: 0.85rem;">Nguyen Van A,1234567890,Agribank,5000000,Chi luong thang 11/2024
-Tran Thi B,9876543210,Vietinbank,6000000,Chi luong thang 11/2024</pre>
+                    <p class="mb-0"><strong>Ví dụ file CSV (KHÔNG CÓ HEADER):</strong></p>
+                    <pre class="mb-0 mt-2" style="font-size: 0.85rem;">Nguyen Van A,1234567890123,Agribank,5000000,Chi luong thang 11/2024
+Tran Thi B,9876543210,Vietinbank,6000000,Chi luong thang 11/2024
+Le Van C,1112223334,BIDV,5500000,Chi luong thang 11/2024</pre>
+                    <p class="mb-0 mt-2"><strong>File output sẽ có 11 cột theo định dạng Agribank</strong></p>
                 </div>
             </div>
         </div>
