@@ -65,8 +65,8 @@ class CompanyAccountForm(forms.ModelForm):
 class FileUploadForm(forms.Form):
     """Form upload file Excel/CSV"""
     TRANSACTION_TYPES = [
-        ('PAYROLL', 'Chi trả lương'),
-        ('COLLECTION', 'Thu hộ'),
+        ('PAYROLL', 'Chi trả lương/ Phụ cấp'),
+        ('COLLECTION', 'Thu hộ/ Thu nợ'),
     ]
 
     file = forms.FileField(

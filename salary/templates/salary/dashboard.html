@@ -17,9 +17,32 @@
         <div class="card">
             <div class="card-body">
                 <form method="GET" class="row g-3">
-                    <div class="col-md-3">
-                        <label for="month" class="form-label">Chọn tháng:</label>
-                        <input type="month" class="form-control" id="month" name="month" value="{{ selected_month }}">
+                    <div class="col-md-2">
+                        <label for="filter_month" class="form-label">Tháng:</label>
+                        <select class="form-select" id="filter_month" name="filter_month">
+                            <option value="">-- Chọn tháng --</option>
+                            <option value="01" {% if filter_month == '01' %}selected{% endif %}>Tháng 1</option>
+                            <option value="02" {% if filter_month == '02' %}selected{% endif %}>Tháng 2</option>
+                            <option value="03" {% if filter_month == '03' %}selected{% endif %}>Tháng 3</option>
+                            <option value="04" {% if filter_month == '04' %}selected{% endif %}>Tháng 4</option>
+                            <option value="05" {% if filter_month == '05' %}selected{% endif %}>Tháng 5</option>
+                            <option value="06" {% if filter_month == '06' %}selected{% endif %}>Tháng 6</option>
+                            <option value="07" {% if filter_month == '07' %}selected{% endif %}>Tháng 7</option>
+                            <option value="08" {% if filter_month == '08' %}selected{% endif %}>Tháng 8</option>
+                            <option value="09" {% if filter_month == '09' %}selected{% endif %}>Tháng 9</option>
+                            <option value="10" {% if filter_month == '10' %}selected{% endif %}>Tháng 10</option>
+                            <option value="11" {% if filter_month == '11' %}selected{% endif %}>Tháng 11</option>
+                            <option value="12" {% if filter_month == '12' %}selected{% endif %}>Tháng 12</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="filter_year" class="form-label">Năm:</label>
+                        <select class="form-select" id="filter_year" name="filter_year">
+                            <option value="">-- Chọn năm --</option>
+                            {% for year in years_range %}
+                            <option value="{{ year }}" {% if filter_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary w-100">

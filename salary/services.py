@@ -199,8 +199,8 @@ class SalaryFileProcessor:
                             ma_cot_1,
                             stk,
                             ho_ten,
-                            company_account.account_name,
-                            company_account.account_number,
+                            company_account.account_number,  # Cot D: STK cong ty
+                            company_account.account_name,    # Cot E: Ten cong ty
                             'VND',
                             str(int(so_tien)),
                             current_date,

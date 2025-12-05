@@ -28,22 +28,29 @@ def dashboard(request):
     if is_giaodichvien and not is_admin:
         return redirect('salary:upload')
 
-    # Lấy filter tháng từ request
-    selected_month = request.GET.get('month', '')
+    # Lấy filter tháng và năm từ request
+    filter_month = request.GET.get('filter_month', '')
+    filter_year = request.GET.get('filter_year', '')
     start_date = None
     end_date = None
 
-    if selected_month:
-        # Format: YYYY-MM
+    if filter_month and filter_year:
         from datetime import datetime
         import calendar
         try:
-            year, month = map(int, selected_month.split('-'))
+            year = int(filter_year)
+            month = int(filter_month)
             start_date = datetime(year, month, 1)
             last_day = calendar.monthrange(year, month)[1]
             end_date = datetime(year, month, last_day, 23, 59, 59)
         except (ValueError, AttributeError):
-            selected_month = ''
+            filter_month = ''
+            filter_year = ''
+
+    # Tạo danh sách năm (từ 2020 đến năm hiện tại + 1)
+    from datetime import datetime
+    current_year = datetime.now().year
+    years_range = range(2020, current_year + 2)
 
     # Lấy thống kê
     stats = SalaryStatisticsService.get_statistics(start_date=start_date, end_date=end_date)
@@ -58,7 +65,9 @@ def dashboard(request):
         'stats': stats,
         'recent_histories': recent_histories,
         'is_admin': is_admin,
-        'selected_month': selected_month,
+        'filter_month': filter_month,
+        'filter_year': filter_year,
+        'years_range': years_range,
     }
     return render(request, 'salary/dashboard.html', context)
 
