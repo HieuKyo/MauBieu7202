@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import Group, User
 from django.core.validators import FileExtensionValidator
 import unicodedata
+from .storage import HybridTemplateStorage
 
 
 def remove_vietnamese_diacritics(text):
@@ -141,6 +142,7 @@ class Template(models.Model):
     description = models.TextField(blank=True, verbose_name="Mô tả")
     file = models.FileField(
         upload_to='templates/docx/',
+        storage=HybridTemplateStorage(),
         validators=[FileExtensionValidator(allowed_extensions=['docx'])],
         verbose_name="File Word (.docx)"
     )
