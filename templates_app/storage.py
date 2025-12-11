@@ -38,16 +38,35 @@ class HybridTemplateStorage(FileSystemStorage):
     def _get_offline_full_path(self, name):
         """
         Lấy đường dẫn đầy đủ trong offline folder
+        HỖ TRỢ TÌM KIẾM TRONG SUBDIRECTORIES (ATM, DICHVU, DIENTOAN, ...)
 
         Args:
             name: Tên file (ví dụ: "template.docx" hoặc "templates/docx/template.docx")
 
         Returns:
-            Path object
+            Path object hoặc None nếu không tìm thấy
         """
         # Lấy base filename (bỏ qua "templates/docx/" prefix)
         base_name = os.path.basename(name)
-        return Path(self.offline_path) / base_name
+        offline_root = Path(self.offline_path)
+
+        # Trước tiên, thử tìm ở root folder
+        direct_path = offline_root / base_name
+        if direct_path.exists():
+            return direct_path
+
+        # Nếu không có, tìm trong tất cả subdirectories (ATM, DICHVU, ...)
+        # Dùng recursive glob để tìm trong tất cả folder con
+        try:
+            matches = list(offline_root.rglob(base_name))
+            if matches:
+                # Nếu tìm thấy, trả về file đầu tiên
+                return matches[0]
+        except Exception as e:
+            print(f"⚠ Warning: Error searching in subdirectories: {e}")
+
+        # Không tìm thấy → Trả về path mặc định (sẽ báo lỗi sau)
+        return offline_root / base_name
 
     def _get_media_full_path(self, name):
         """Lấy đường dẫn đầy đủ trong media folder"""
