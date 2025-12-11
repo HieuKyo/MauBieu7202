@@ -4632,3 +4632,183 @@ def atm_load_discrepancy_data(request, discrepancy_id, template_id):
     except Exception as e:
         messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
         return redirect('atm_discrepancy_list')
+
+
+# ===== DOCUMENT HISTORY VIEWS =====
+
+@login_required
+def document_history_list(request):
+    """
+    Hiển thị lịch sử tạo mẫu biểu
+    """
+    from .models import DocumentHistory
+    from django.core.paginator import Paginator
+
+    # Lấy danh sách lịch sử
+    if request.user.is_superuser:
+        histories = DocumentHistory.objects.all()
+    else:
+        # User thường chỉ thấy lịch sử của mình
+        histories = DocumentHistory.objects.filter(created_by=request.user)
+
+    # Filter theo template
+    template_id = request.GET.get('template')
+    if template_id:
+        histories = histories.filter(template_id=template_id)
+
+    # Filter theo customer
+    customer_id = request.GET.get('customer')
+    if customer_id:
+        histories = histories.filter(customer_id=customer_id)
+
+    # Filter theo ngày
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
+    if from_date:
+        histories = histories.filter(created_at__gte=from_date)
+    if to_date:
+        from datetime import datetime, timedelta
+        # Thêm 1 ngày để include cả ngày to_date
+        to_date_obj = datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1)
+        histories = histories.filter(created_at__lt=to_date_obj)
+
+    # Select related để optimize query
+    histories = histories.select_related('template', 'customer', 'created_by')
+
+    # Pagination
+    paginator = Paginator(histories, 50)  # 50 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Lấy danh sách template và customer cho filter
+    if request.user.is_superuser:
+        templates = Template.objects.filter(is_active=True).order_by('name')
+    else:
+        user_groups = request.user.groups.all()
+        templates = Template.objects.filter(
+            is_active=True
+        ).filter(
+            Q(allowed_groups__isnull=True) |
+            Q(allowed_groups__in=user_groups)
+        ).distinct().order_by('name')
+
+    customers = Customer.objects.all().order_by('ho_ten')[:100]  # Limit for performance
+
+    context = {
+        'page_obj': page_obj,
+        'templates': templates,
+        'customers': customers,
+        'total_count': histories.count(),
+        # Preserve filter parameters
+        'selected_template': template_id,
+        'selected_customer': customer_id,
+        'from_date': from_date,
+        'to_date': to_date,
+    }
+
+    return render(request, 'templates_app/document_history_list.html', context)
+
+
+@login_required
+def document_history_stats(request):
+    """
+    Dashboard thống kê lịch sử tạo mẫu biểu
+    """
+    from .models import DocumentHistory
+    from django.db.models import Count, Sum
+    from django.db.models.functions import TruncDate
+    from datetime import datetime, timedelta
+    import json
+
+    # Lấy 30 ngày gần nhất
+    today = datetime.now().date()
+    thirty_days_ago = today - timedelta(days=30)
+
+    # Thống kê theo ngày
+    daily_stats = DocumentHistory.objects.filter(
+        created_at__gte=thirty_days_ago
+    ).annotate(
+        date=TruncDate('created_at')
+    ).values('date').annotate(
+        count=Count('id')
+    ).order_by('date')
+
+    # Chuyển sang format cho Chart.js
+    dates = []
+    counts = []
+    for stat in daily_stats:
+        dates.append(stat['date'].strftime('%d/%m'))
+        counts.append(stat['count'])
+
+    # Thống kê theo template (Top 10)
+    template_stats = DocumentHistory.objects.filter(
+        created_at__gte=thirty_days_ago
+    ).values(
+        'template__name'
+    ).annotate(
+        count=Count('id')
+    ).order_by('-count')[:10]
+
+    template_names = [stat['template__name'] or 'N/A' for stat in template_stats]
+    template_counts = [stat['count'] for stat in template_stats]
+
+    # Thống kê theo user (Top 10) - chỉ admin mới thấy
+    user_stats = []
+    if request.user.is_superuser:
+        user_stats = DocumentHistory.objects.filter(
+            created_at__gte=thirty_days_ago
+        ).values(
+            'created_by__username'
+        ).annotate(
+            count=Count('id')
+        ).order_by('-count')[:10]
+
+    # Tổng số documents
+    total_docs = DocumentHistory.objects.count()
+    total_docs_month = DocumentHistory.objects.filter(
+        created_at__gte=thirty_days_ago
+    ).count()
+
+    # Tổng dung lượng
+    total_size = DocumentHistory.objects.aggregate(
+        total=Sum('file_size')
+    )['total'] or 0
+    total_size_mb = round(total_size / (1024 * 1024), 2)
+
+    context = {
+        'daily_data': json.dumps({
+            'labels': dates,
+            'datasets': [{
+                'label': 'Số mẫu biểu tạo',
+                'data': counts,
+                'backgroundColor': 'rgba(0, 146, 63, 0.2)',
+                'borderColor': 'rgba(0, 146, 63, 1)',
+                'borderWidth': 2
+            }]
+        }),
+        'template_data': json.dumps({
+            'labels': template_names,
+            'datasets': [{
+                'label': 'Số lần sử dụng',
+                'data': template_counts,
+                'backgroundColor': [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)',
+                    'rgba(0, 146, 63, 0.6)',
+                    'rgba(128, 0, 128, 0.6)',
+                    'rgba(0, 128, 128, 0.6)',
+                    'rgba(128, 128, 0, 0.6)',
+                ]
+            }]
+        }),
+        'user_stats': user_stats,
+        'total_docs': total_docs,
+        'total_docs_month': total_docs_month,
+        'total_size_mb': total_size_mb,
+    }
+
+    return render(request, 'templates_app/document_history_stats.html', context)
