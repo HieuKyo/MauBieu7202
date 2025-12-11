@@ -174,3 +174,8 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB for file uploads
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Template Storage Configuration - Hybrid Fallback Mechanism
+# Giải quyết vấn đề template hết hạn sau 1 tuần
+OFFLINE_TEMPLATE_PATH = '/home/user/maubieumoi'  # Folder chứa templates offline
+TEMPLATE_AUTO_CACHE = True  # Auto-copy từ offline sang media để cache và tăng performance
