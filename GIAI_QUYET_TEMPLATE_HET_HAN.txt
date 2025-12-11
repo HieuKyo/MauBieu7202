@@ -1,0 +1,218 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                                                                               ║
+║             GIẢI QUYẾT VẤN ĐỀ: TEMPLATE HẾT HẠN SAU 1 TUẦN                  ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+📋 VẤN ĐỀ:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✗ Template sau ~1 tuần không dùng → Mở file Word báo lỗi:
+  "We're sorry, we can't open... because we found a problem with its contents"
+
+✗ Nguyên nhân:
+  - Database chưa được migrate (trống hoàn toàn)
+  - Template upload vào folder tạm thời (/tmp hoặc session)
+  - Sau 1 tuần, file tạm bị xóa tự động bởi hệ thống
+  - Khi generate document → Không tìm thấy template → File corrupt
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 GIẢI PHÁP NHANH (CHẠY NGAY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Chạy script tự động setup:
+
+    cd /home/user/MauBieu7202
+    ./setup_templates.sh
+
+Hoặc setup thủ công:
+
+    # 1. Migrate database
+    python manage.py migrate
+
+    # 2. Tạo folder lưu templates
+    mkdir -p media/templates/docx
+
+    # 3. Upload templates qua Admin
+    python manage.py runserver 0.0.0.0:8000
+    # → Truy cập: http://your-ip:8000/admin
+    # → Templates > Add Template > Upload file .docx
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 3 GIẢI PHÁP CHI TIẾT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1️⃣  GIẢI PHÁP 1: Lưu vào Media Folder (KHUYÊN DÙNG)                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  ✅ Ưu điểm:
+     • Template KHÔNG BAO GIỜ hết hạn
+     • Ổn định nhất, không phụ thuộc folder bên ngoài
+     • Quản lý qua Django Admin
+     • Backup dễ dàng
+
+  ❌ Nhược điểm:
+     • Chiếm dung lượng server
+     • Phải upload lại templates
+
+  📝 Cách làm:
+     ./setup_templates.sh
+     → Chọn option 1
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 2️⃣  GIẢI PHÁP 2: Link tới Folder maubieumoi                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  ✅ Ưu điểm:
+     • Không chiếm dung lượng server
+     • Cập nhật template dễ (chỉ cần thay file)
+     • Dùng chung với hệ thống khác
+
+  ❌ Nhược điểm:
+     • ⚠️ CRITICAL: Nếu mất kết nối folder → Hệ thống ngừng hoạt động
+     • Performance chậm hơn (nếu folder qua mạng)
+
+  📝 Cách làm:
+     # Tạo folder maubieumoi
+     mkdir -p /home/user/maubieumoi
+     cp *.docx /home/user/maubieumoi/
+
+     # Link
+     ./setup_templates.sh
+     → Chọn option 2
+
+  ⚠️ Lưu ý:
+     Nếu folder maubieumoi trên máy khác (network share):
+     → Phải mount folder trước
+     → Nếu network disconnect → Toàn bộ hệ thống lỗi
+     → Nên dùng Giải pháp 3 thay vì
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 3️⃣  GIẢI PHÁP 3: Hybrid - Kết hợp cả 2 (TỐT NHẤT)                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  ✅ Ưu điểm:
+     • Kết hợp ưu điểm của cả 2 giải pháp trên
+     • Ưu tiên đọc từ folder maubieumoi
+     • Tự động fallback sang media/ nếu mất kết nối
+     • Auto-cache để tăng performance
+
+  ❌ Nhược điểm:
+     • Phức tạp hơn trong setup
+
+  📝 Cách làm:
+     ./setup_templates.sh
+     → Chọn option 3
+
+  🔄 Cách hoạt động:
+     User request template
+         ↓
+     1. Check folder /home/user/maubieumoi
+         ↓
+        [Có] → Load → Auto-cache vào media/ → Return
+         ↓
+        [Không] → Check media/ (cache)
+         ↓
+        [Có] → Load từ cache → Return
+         ↓
+        [Không] → Error
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 SO SÁNH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌──────────────────┬──────────────┬──────────────┬──────────────┐
+│ Tiêu chí         │ Giải pháp 1  │ Giải pháp 2  │ Giải pháp 3  │
+├──────────────────┼──────────────┼──────────────┼──────────────┤
+│ Độ tin cậy       │ ⭐⭐⭐⭐⭐      │ ⭐⭐           │ ⭐⭐⭐⭐⭐      │
+│ Performance      │ ⭐⭐⭐⭐⭐      │ ⭐⭐⭐          │ ⭐⭐⭐⭐⭐      │
+│ Dễ setup         │ ⭐⭐⭐⭐       │ ⭐⭐⭐⭐⭐      │ ⭐⭐⭐          │
+│ Flexibility      │ ⭐⭐⭐         │ ⭐⭐⭐⭐        │ ⭐⭐⭐⭐⭐      │
+│ Dung lượng       │ ❌ Chiếm     │ ✅ Không     │ ⚠️ Cache     │
+│ Phụ thuộc        │ ✅ Độc lập   │ ❌ Folder    │ ✅ Fallback  │
+└──────────────────┴──────────────┴──────────────┴──────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 CÔNG CỤ BỔ SUNG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 Kiểm tra templates bị corrupt:
+
+    python validate_templates.py /home/user/maubieumoi
+
+    # Hoặc dùng menu
+    ./setup_templates.sh
+    → Chọn option 4
+
+
+📂 Kiểm tra templates trong database:
+
+    python manage.py shell
+    >>> from templates_app.models import Template
+    >>> Template.objects.all()
+    >>> Template.objects.first().file.path
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 KHUYẾN NGHỊ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ Nếu hệ thống chỉ chạy trên 1 server:
+   → Dùng Giải pháp 1 (đơn giản, ổn định nhất)
+
+✨ Nếu cần dùng chung templates với nhiều hệ thống:
+   → Dùng Giải pháp 3 (Hybrid) - có fallback khi mất kết nối
+
+✨ Nếu folder maubieumoi trên cùng máy server:
+   → Có thể dùng Giải pháp 2 (Symbolic link)
+   → NHƯNG Giải pháp 3 vẫn an toàn hơn
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📖 TÀI LIỆU CHI TIẾT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Xem hướng dẫn chi tiết:
+
+    cat HUONG_DAN_SETUP_MAUBIEU.md
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ File vẫn bị corrupt sau khi setup?
+   → Template gốc đã bị corrupt
+   → Chạy: python validate_templates.py /path/to/templates
+   → Thay thế templates bị lỗi bằng file .docx mới
+
+❓ Permission denied?
+   → chmod -R 755 media/
+   → chmod -R 755 /home/user/maubieumoi/
+
+❓ Network share bị disconnect?
+   → Check: mountpoint /mnt/maubieumoi
+   → Remount: sudo mount -a
+   → Hoặc dùng Giải pháp 3 để có fallback
+
+❓ Template không hiển thị?
+   → Kiểm tra: ls -la media/templates/docx/
+   → Kiểm tra database: python manage.py shell
+   → Restart server: python manage.py runserver
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 BẮT ĐẦU NGAY:
+
+    cd /home/user/MauBieu7202
+    ./setup_templates.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
