@@ -1,0 +1,194 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                                                                               ║
+║           CHECKLIST SETUP NHANH - MAUBIEUMOI HYBRID STORAGE                  ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+📋 COPY VÀ CHẠY TỪNG LỆNH TRONG POWERSHELL:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 1: MỞ POWERSHELL TRONG VSCODE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Nhấn: Ctrl + ~ (phím dấu huyền)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 2: FIX LỖI PULL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Remove-Item "payroll_statistics\migrations\0003_rename_payroll_sta_transac_76d4e5_idx_payroll_sta_transac_691697_idx_and_more.py" -ErrorAction SilentlyContinue
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 3: PULL CODE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+git pull origin claude/django-word-template-generator-011CUfkKT1HZ7HQosuoKML8r
+
+    ✓ Mong đợi: "Fast-forward" hoặc "Already up to date"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 4: CÀI DEPENDENCIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pip install -r requirements.txt
+
+    ⏱ Chờ 1-2 phút
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 5: TẠO FOLDERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+New-Item -ItemType Directory -Path "C:\maubieumoi" -Force
+
+New-Item -ItemType Directory -Path "media\templates\docx" -Force
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 6: UPDATE SETTINGS.PY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    1. Mở file: wordgen\settings.py
+
+    2. Tìm dòng (Ctrl+F): OFFLINE_TEMPLATE_PATH
+
+    3. XÓA 2 dòng cũ:
+       OFFLINE_TEMPLATE_PATH = '/home/user/maubieumoi'
+       TEMPLATE_AUTO_CACHE = True
+
+    4. THAY BẰNG (copy từ dòng 5 đến 13):
+
+       # Template Storage Configuration - Hybrid Fallback Mechanism
+       # Giải quyết vấn đề template hết hạn sau 1 tuần
+       import platform
+
+       # Auto-detect OS (Windows hoặc Linux)
+       if platform.system() == 'Windows':
+           OFFLINE_TEMPLATE_PATH = r'C:\maubieumoi'
+       else:
+           OFFLINE_TEMPLATE_PATH = '/home/user/maubieumoi'
+
+       TEMPLATE_AUTO_CACHE = True
+
+    5. Lưu file (Ctrl+S)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 7: MIGRATE DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+python manage.py migrate
+
+    ✓ Mong đợi: Nhiều dòng "OK"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 8: COPY TEMPLATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    CÁCH 1 - DÙ FILE EXPLORER (DỄ NHẤT):
+
+        1. Nhấn Win + E (mở File Explorer)
+        2. Tìm folder chứa templates .docx hiện tại
+        3. Chọn tất cả file .docx (Ctrl+A)
+        4. Copy (Ctrl+C)
+        5. Vào C:\maubieumoi
+        6. Paste (Ctrl+V)
+
+    CÁCH 2 - DÙNG POWERSHELL:
+
+        Copy-Item "ĐƯỜNG_DẪN_CŨ\*.docx" -Destination "C:\maubieumoi\"
+
+        Ví dụ:
+        Copy-Item "D:\MauBieu\*.docx" -Destination "C:\maubieumoi\"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 9: KIỂM TRA TEMPLATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Get-ChildItem "C:\maubieumoi\*.docx"
+
+    ✓ Mong đợi: Danh sách file .docx
+
+python validate_templates.py C:\maubieumoi
+
+    ✓ Mong đợi: "All templates are valid!"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 10: TEST STORAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+python test_hybrid_storage.py
+
+    ✓ Mong đợi: "All tests passed!"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BƯỚC 11: CHẠY SERVER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+python manage.py runserver 8000
+
+    ✓ Mong đợi: "Starting development server at http://127.0.0.1:8000/"
+
+    → Mở trình duyệt, vào: http://localhost:8000
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TROUBLESHOOTING (LỖI THƯỜNG GẶP)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ Lỗi: "python: command not found"
+   → Thay "python" bằng "py" trong các lệnh
+
+❌ Lỗi: "No module named 'django'"
+   → Chạy: pip install -r requirements.txt
+
+❌ Lỗi: "Permission denied"
+   → Chạy PowerShell as Administrator
+
+❌ Lỗi: Templates không tìm thấy
+   → Kiểm tra: Test-Path "C:\maubieumoi"
+   → Kiểm tra: Get-ChildItem "C:\maubieumoi\*.docx"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ CHECKLIST HOÀN THÀNH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    [ ] 1. Pull code thành công
+    [ ] 2. Cài dependencies
+    [ ] 3. Tạo C:\maubieumoi
+    [ ] 4. Update settings.py
+    [ ] 5. Migrate database
+    [ ] 6. Copy templates vào C:\maubieumoi
+    [ ] 7. Validate templates OK
+    [ ] 8. Test storage OK
+    [ ] 9. Server chạy OK
+    [ ] 10. Truy cập http://localhost:8000 OK
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📖 TÀI LIỆU THAM KHẢO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Hướng dẫn chi tiết:     HUONG_DAN_CAI_DAT_CHI_TIET.md
+    Setup Windows:          SETUP_WINDOWS.md
+    Pull code VSCode:       HUONG_DAN_PULL_CODE_VSCODE.md
+    Tổng quan giải pháp:    GIAI_QUYET_TEMPLATE_HET_HAN.txt
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 SAU KHI HOÀN THÀNH:
+
+    ✅ Mẫu biểu KHÔNG BAO GIỜ hết hạn
+    ✅ Tự động cache để tăng performance
+    ✅ Fallback khi mất kết nối offline folder
+    ✅ Dễ dàng cập nhật templates (chỉ cần thay file)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
