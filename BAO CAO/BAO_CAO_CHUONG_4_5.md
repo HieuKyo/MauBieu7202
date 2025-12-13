@@ -385,8 +385,7 @@ def generate_document(request, template_id):
     3. Load template Word
     4. Render Jinja2
     5. Tạo file output
-    6. Log vào DocumentHistory (AUDIT TRAIL)
-    7. Return download link
+    6. Return download link
     """
     try:
         template = Template.objects.get(id=template_id)
@@ -405,14 +404,6 @@ def generate_document(request, template_id):
 
     # Get form data
     form_data = request.POST.dict()
-
-    # Get customer if provided
-    customer = None
-    if 'customer_id' in form_data:
-        try:
-            customer = Customer.objects.get(id=form_data['customer_id'])
-        except Customer.DoesNotExist:
-            pass
 
     # Get GlobalConfig
     global_config = GlobalConfig.get_instance()
@@ -460,19 +451,6 @@ def generate_document(request, template_id):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     doc.save(output_path)
 
-    # Get file size
-    file_size = os.path.getsize(output_path)
-
-    # ⭐ LOG VÀO DOCUMENT HISTORY (Audit Trail)
-    DocumentHistory.log_document_creation(
-        template=template,
-        customer=customer,
-        created_by=request.user,
-        file_name=output_filename,
-        file_size=file_size,
-        data_snapshot=context  # Lưu lại toàn bộ dữ liệu đã điền
-    )
-
     # Return download URL
     download_url = request.build_absolute_uri(
         settings.MEDIA_URL + 'generated/' + output_filename
@@ -510,233 +488,7 @@ def generate_auto_variables():
 - Context merging: form + config + auto vars
 - Permission check trước khi generate
 - Unique filename với timestamp
-- **Audit logging:** Mọi tài liệu được tạo đều được log vào DocumentHistory
 - Serve file qua MEDIA_URL
-
-### 4.2.5. Module Preview Template
-
-**File:** `templates_app/views.py`
-
-```python
-import mammoth
-
-@login_required
-def print_preview_view(request, template_id):
-    """
-    Xem trước tài liệu (giống Google Print Preview)
-    Convert DOCX → HTML để hiển thị trực tiếp trên trình duyệt
-    """
-    template = get_object_or_404(Template, id=template_id, is_active=True)
-    user = request.user
-
-    # Kiểm tra quyền truy cập
-    if not template.user_has_access(user):
-        raise Http404("Bạn không có quyền truy cập mẫu biểu này")
-
-    # Lấy dữ liệu từ session
-    session_key = f'template_{template_id}_data'
-    data = request.session.get(session_key, {})
-
-    # Nếu không có data, lấy từ customer
-    if not data:
-        customer_id = request.GET.get('customer')
-        if customer_id:
-            try:
-                customer = Customer.objects.get(id=customer_id)
-                data = customer.get_data_dict()
-                request.session[session_key] = data
-            except Customer.DoesNotExist:
-                data = {}
-
-    try:
-        # Tạo bản sao data
-        preview_data = data.copy()
-
-        # Thêm biến chung (chi nhánh + custom variables)
-        global_config = GlobalConfig.get_instance()
-        preview_data.update(global_config.get_all_variables())
-
-        # Render template Word với dữ liệu
-        template_path = template.file.path
-        output_stream = render_word_template(template_path, preview_data)
-
-        # Tạo file tạm để convert sang HTML
-        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_docx:
-            temp_docx.write(output_stream.getvalue())
-            temp_docx_path = temp_docx.name
-
-        try:
-            # ⭐ Convert Word sang HTML bằng Mammoth.js
-            with open(temp_docx_path, 'rb') as docx_file:
-                result = mammoth.convert_to_html(docx_file)
-                html_content = result.value
-
-        finally:
-            # Xóa file tạm
-            os.unlink(temp_docx_path)
-
-        context = {
-            'template': template,
-            'html_content': html_content,
-            'template_id': template_id,
-        }
-
-        return render(request, 'templates_app/print_preview.html', context)
-
-    except Exception as e:
-        messages.error(request, f"Lỗi khi tạo preview: {str(e)}")
-        return redirect('template_form', template_id=template_id)
-```
-
-**Tính năng:**
-- **Convert DOCX → HTML:** Sử dụng thư viện `mammoth` để chuyển đổi
-- **Real-time preview:** Hiển thị ngay trên trình duyệt
-- **Edit support:** Người dùng có thể quay lại sửa nếu thấy sai
-- **Validation:** Phát hiện biến chưa điền trước khi download
-
-### 4.2.6. Module Document History (Lịch sử tạo mẫu biểu)
-
-**File:** `templates_app/views.py`
-
-```python
-@login_required
-def document_history_list(request):
-    """
-    Hiển thị lịch sử tạo mẫu biểu
-    Filter: template, customer, date range
-    """
-    from .models import DocumentHistory
-    from django.core.paginator import Paginator
-
-    # Lấy danh sách lịch sử
-    if request.user.is_superuser:
-        histories = DocumentHistory.objects.all()
-    else:
-        # User thường chỉ thấy lịch sử của mình
-        histories = DocumentHistory.objects.filter(created_by=request.user)
-
-    # Filter theo template
-    template_id = request.GET.get('template')
-    if template_id:
-        histories = histories.filter(template_id=template_id)
-
-    # Filter theo customer
-    customer_id = request.GET.get('customer')
-    if customer_id:
-        histories = histories.filter(customer_id=customer_id)
-
-    # Filter theo ngày
-    from_date = request.GET.get('from_date')
-    to_date = request.GET.get('to_date')
-    if from_date:
-        histories = histories.filter(created_at__gte=from_date)
-    if to_date:
-        histories = histories.filter(created_at__lt=to_date)
-
-    # Select related để optimize query
-    histories = histories.select_related('template', 'customer', 'created_by')
-
-    # Pagination
-    paginator = Paginator(histories, 50)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        'page_obj': page_obj,
-        'total_count': histories.count(),
-    }
-
-    return render(request, 'templates_app/document_history_list.html', context)
-```
-
-**Tính năng:**
-- Lưu lại **toàn bộ lịch sử** tạo mẫu biểu
-- Filter theo: Template, Customer, Date range
-- Phân quyền: User chỉ thấy lịch sử của mình, Admin thấy tất cả
-- Pagination: 50 records/page
-- Lưu **data snapshot**: Có thể xem lại dữ liệu đã điền
-
-### 4.2.7. Module Dashboard Thống kê
-
-**File:** `templates_app/views.py`
-
-```python
-@login_required
-def document_history_stats(request):
-    """
-    Dashboard thống kê lịch sử tạo mẫu biểu với Chart.js
-    """
-    from .models import DocumentHistory
-    from django.db.models import Count, Sum
-    from django.db.models.functions import TruncDate
-    import json
-
-    # Lấy 30 ngày gần nhất
-    thirty_days_ago = datetime.now().date() - timedelta(days=30)
-
-    # Thống kê theo ngày
-    daily_stats = DocumentHistory.objects.filter(
-        created_at__gte=thirty_days_ago
-    ).annotate(
-        date=TruncDate('created_at')
-    ).values('date').annotate(
-        count=Count('id')
-    ).order_by('date')
-
-    # Format cho Chart.js
-    dates = [stat['date'].strftime('%d/%m') for stat in daily_stats]
-    counts = [stat['count'] for stat in daily_stats]
-
-    # Thống kê theo template (Top 10)
-    template_stats = DocumentHistory.objects.filter(
-        created_at__gte=thirty_days_ago
-    ).values('template__name').annotate(
-        count=Count('id')
-    ).order_by('-count')[:10]
-
-    template_names = [stat['template__name'] or 'N/A' for stat in template_stats]
-    template_counts = [stat['count'] for stat in template_stats]
-
-    # Tổng số documents & dung lượng
-    total_docs = DocumentHistory.objects.count()
-    total_size = DocumentHistory.objects.aggregate(
-        total=Sum('file_size')
-    )['total'] or 0
-    total_size_mb = round(total_size / (1024 * 1024), 2)
-
-    context = {
-        'daily_data': json.dumps({
-            'labels': dates,
-            'datasets': [{
-                'label': 'Số mẫu biểu tạo',
-                'data': counts,
-                'backgroundColor': 'rgba(0, 146, 63, 0.2)',
-                'borderColor': 'rgba(0, 146, 63, 1)',
-                'borderWidth': 2
-            }]
-        }),
-        'template_data': json.dumps({
-            'labels': template_names,
-            'datasets': [{
-                'label': 'Số lần sử dụng',
-                'data': template_counts,
-            }]
-        }),
-        'total_docs': total_docs,
-        'total_size_mb': total_size_mb,
-    }
-
-    return render(request, 'templates_app/document_history_stats.html', context)
-```
-
-**Tính năng:**
-- **Biểu đồ Line Chart:** Số lượng mẫu biểu tạo theo ngày (30 ngày gần nhất)
-- **Biểu đồ Bar Chart:** Top 10 mẫu biểu được sử dụng nhiều nhất
-- **Thống kê tổng quan:**
-  - Tổng số tài liệu đã tạo
-  - Tổng dung lượng (MB)
-  - Số tài liệu trong tháng
-- Sử dụng **Chart.js** để vẽ biểu đồ
 
 ---
 
@@ -1052,25 +804,22 @@ Tôi cam kết sử dụng thẻ đúng mục đích và chấp hành các quy �
 
 ### 5.3.1. Ngắn hạn (3-6 tháng)
 
-**Priority 1: Các tính năng đã hoàn thành ✅**
+**Priority 1: Cải thiện tính năng hiện có**
 
-1. **Preview Template** ✅ **ĐÃ TRIỂN KHAI**
+1. **Preview Template** (đã lên kế hoạch trong TINH_NANG_UU_TIEN.md)
    - Convert DOCX → HTML để preview trực tiếp
-   - Sử dụng thư viện Mammoth.js
-   - Cho phép kiểm tra trước khi download
+   - Highlight các biến đã điền
+   - Nút "Edit" để sửa ngay
 
-2. **Báo cáo và thống kê** ✅ **ĐÃ TRIỂN KHAI**
-   - Dashboard với biểu đồ Line Chart (số mẫu biểu tạo theo ngày)
-   - Biểu đồ Bar Chart (Top 10 mẫu biểu phổ biến)
-   - Thống kê tổng quan (tổng số tài liệu, dung lượng)
-   - Sử dụng Chart.js để vẽ biểu đồ
+2. **Báo cáo và thống kê**
+   - Dashboard với chart (số mẫu biểu tạo theo ngày/tháng)
+   - Top 10 mẫu biểu phổ biến
+   - Báo cáo hiệu suất nhân viên
 
-3. **Lịch sử giao dịch khách hàng** ✅ **ĐÃ TRIỂN KHAI**
-   - Model DocumentHistory lưu lại tất cả lịch sử tạo mẫu biểu
-   - Filter theo: Template, Customer, Date range
-   - Lưu data snapshot để xem lại dữ liệu đã điền
-   - Phân quyền: User thấy lịch sử của mình, Admin thấy tất cả
-   - Pagination: 50 records/page
+3. **Lịch sử giao dịch khách hàng**
+   - Lưu lại tất cả mẫu biểu đã tạo cho KH
+   - Xem lại file đã tạo trước đó
+   - Tìm kiếm theo thời gian
 
 **Priority 2: Optimization**
 

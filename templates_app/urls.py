@@ -105,8 +105,4 @@ urlpatterns = [
     path('reports/mail-envelope/report/', report_views.mail_envelope_report_view, name='mail_envelope_report'),
     path('reports/dien-luc/', report_views.dien_luc_report_view, name='dien_luc_report'),
     path('reports/atm-fund-balance/', report_views.atm_fund_balance_view, name='atm_fund_balance'),
-
-    # Document History (Lịch sử tạo mẫu biểu)
-    path('history/', views.document_history_list, name='document_history_list'),
-    path('history/stats/', views.document_history_stats, name='document_history_stats'),
 ]
