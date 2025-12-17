@@ -4934,33 +4934,26 @@ def business_load_data(request, business_id, template_id):
 @require_http_methods(["POST"])
 def business_import_tsv(request):
     """
-    Import doanh nghiệp từ file TSV (clipboard AGRIBANK)
-    Hỗ trợ paste trực tiếp dữ liệu từ AGRIBANK
+    Import doanh nghiệp từ TSV data (paste trực tiếp từ AGRIBANK)
+    Hỗ trợ paste trực tiếp dữ liệu từ AGRIBANK vào textarea
     """
-    if 'tsv_file' not in request.FILES:
+    # Get pasted TSV data from textarea
+    tsv_data = request.POST.get('tsv_data', '').strip()
+
+    if not tsv_data:
         return JsonResponse({
             'success': False,
-            'error': 'Vui lòng chọn file TSV'
-        }, status=400)
-
-    tsv_file = request.FILES['tsv_file']
-
-    # Kiểm tra file extension
-    if not (tsv_file.name.endswith('.tsv') or tsv_file.name.endswith('.txt')):
-        return JsonResponse({
-            'success': False,
-            'error': 'File phải có định dạng .tsv hoặc .txt'
+            'error': 'Vui lòng paste dữ liệu TSV từ AGRIBANK'
         }, status=400)
 
     try:
-        # Read file content
-        content = tsv_file.read().decode('utf-8')
-        lines = content.strip().split('\n')
+        # Parse content
+        lines = tsv_data.strip().split('\n')
 
         if len(lines) < 2:
             return JsonResponse({
                 'success': False,
-                'error': 'File không có dữ liệu'
+                'error': 'Dữ liệu không hợp lệ hoặc không có dữ liệu'
             }, status=400)
 
         # Parse header
@@ -4988,7 +4981,7 @@ def business_import_tsv(request):
                 # Extract required fields
                 custno = clean(data.get('custno', ''))
                 nmloc = clean(data.get('nmloc', ''))  # Tên doanh nghiệp tiếng Việt
-                regno = clean(data.get('regno', ''))  # Số GCN
+                busno = clean(data.get('busno', ''))  # Số GCN/ĐKKD từ busno
                 taxno = clean(data.get('taxno', ''))  # Mã số thuế
 
                 # Validate required fields
@@ -5019,9 +5012,9 @@ def business_import_tsv(request):
                 if so_tai_khoan:
                     business.so_tai_khoan = so_tai_khoan
 
-                # Số GCN/ĐKKD
-                if regno:
-                    business.so_gcn = regno
+                # Số GCN/ĐKKD từ busno
+                if busno:
+                    business.so_gcn = busno
                     # Xác định loại giấy tờ dựa trên custdtltpcd
                     custdtltpcd = clean(data.get('custdtltpcd', ''))
                     if 'TNHH' in custdtltpcd:
@@ -5029,15 +5022,15 @@ def business_import_tsv(request):
                     else:
                         business.loai_giay_to = 'GCN'
 
-                # Ngày cấp GCN (issuedt1)
-                ngay_cap_gcn_str = clean(data.get('issuedt1', ''))
+                # Ngày cấp GCN (issuedt4)
+                ngay_cap_gcn_str = clean(data.get('issuedt4', ''))
                 if ngay_cap_gcn_str:
                     ngay_cap_gcn = parse_tsv_date(ngay_cap_gcn_str)
                     if ngay_cap_gcn:
                         business.ngay_cap_gcn = ngay_cap_gcn
 
-                # Nơi cấp GCN (issueby1)
-                noi_cap_gcn_code = clean(data.get('issueby1', ''))
+                # Nơi cấp GCN (issueby4)
+                noi_cap_gcn_code = clean(data.get('issueby4', ''))
                 if noi_cap_gcn_code:
                     noi_cap_gcn_name = get_issueby_name(noi_cap_gcn_code)
                     business.noi_cap_gcn = noi_cap_gcn_name
@@ -5076,20 +5069,6 @@ def business_import_tsv(request):
                 if linh_vuc:
                     business.linh_vuc_kinh_doanh = linh_vuc
 
-                # Administrative codes
-                ma_tinh = clean(data.get('province', ''))
-                if ma_tinh:
-                    # Lưu vào custom field nếu có
-                    pass
-
-                ma_quan_huyen = clean(data.get('district', ''))
-                if ma_quan_huyen:
-                    pass
-
-                ma_phuong_xa = clean(data.get('commune_ward', ''))
-                if ma_phuong_xa:
-                    pass
-
                 # Save business
                 business.save()
 
@@ -5115,5 +5094,5 @@ def business_import_tsv(request):
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'error': f'Lỗi khi xử lý file: {str(e)}'
+            'error': f'Lỗi khi xử lý dữ liệu: {str(e)}'
         }, status=500)
