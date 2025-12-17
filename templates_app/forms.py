@@ -2,7 +2,7 @@
 Dynamic form generation based on Template variables
 """
 from django import forms
-from .models import Template, TemplateVariable, Customer, GlobalConfig, Category
+from .models import Template, TemplateVariable, Customer, Business, GlobalConfig, Category
 
 
 class DynamicTemplateForm(forms.Form):
@@ -214,6 +214,63 @@ class CustomerForm(forms.ModelForm):
             'ma_so_nhan_tien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã số nhận tiền'}),
             'so_tien_ngoai_te': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tiền'}),
             'loai_tien_ngoai_te': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Loại tiền (USD, EUR, ...)'}),
+        }
+
+
+class BusinessForm(forms.ModelForm):
+    """Form cho quản lý doanh nghiệp"""
+
+    class Meta:
+        model = Business
+        exclude = ['created_at', 'updated_at']
+        widgets = {
+            # Thông tin doanh nghiệp
+            'cif': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã CIF'}),
+            'so_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản'}),
+            'ten_doanh_nghiep': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên doanh nghiệp'}),
+
+            # Giấy tờ định danh
+            'loai_giay_to': forms.Select(attrs={'class': 'form-select'}),
+            'so_gcn': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số giấy chứng nhận'}),
+            'ngay_cap_gcn': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'noi_cap_gcn': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi cấp'}),
+
+            # Mã số thuế
+            'ma_so_thue': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã số thuế'}),
+            'ngay_cap_mst': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'noi_cap_mst': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi cấp MST'}),
+
+            # Liên hệ
+            'dia_chi': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Địa chỉ doanh nghiệp'}),
+            'dien_thoai': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số điện thoại'}),
+
+            # Thông tin kinh doanh
+            'linh_vuc_kinh_doanh': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Lĩnh vực kinh doanh'}),
+            'von_dieu_le': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Vốn điều lệ (VND)'}),
+
+            # Người đại diện pháp luật
+            'nguoi_dai_dien_ho_ten': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ và tên'}),
+            'nguoi_dai_dien_ngay_sinh': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'nguoi_dai_dien_gioi_tinh': forms.Select(attrs={'class': 'form-select'}),
+            'nguoi_dai_dien_nghe_nghiep': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nghề nghiệp'}),
+            'nguoi_dai_dien_loai_giay_to': forms.Select(attrs={'class': 'form-select'}),
+            'nguoi_dai_dien_so_cccd': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số CCCD/CMND'}),
+            'nguoi_dai_dien_ngay_cap': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'nguoi_dai_dien_noi_cap': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi cấp'}),
+            'nguoi_dai_dien_ngay_het_han': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'nguoi_dai_dien_noi_o_hien_tai': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Nơi ở hiện tại'}),
+
+            # Kế toán trưởng
+            'ke_toan_truong_ho_ten': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ và tên'}),
+            'ke_toan_truong_ngay_sinh': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'ke_toan_truong_gioi_tinh': forms.Select(attrs={'class': 'form-select'}),
+            'ke_toan_truong_nghe_nghiep': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nghề nghiệp'}),
+            'ke_toan_truong_loai_giay_to': forms.Select(attrs={'class': 'form-select'}),
+            'ke_toan_truong_so_cccd': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số CCCD/CMND'}),
+            'ke_toan_truong_ngay_cap': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'ke_toan_truong_noi_cap': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nơi cấp'}),
+            'ke_toan_truong_ngay_het_han': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'ke_toan_truong_noi_o_hien_tai': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Nơi ở hiện tại'}),
         }
 
 
