@@ -479,26 +479,39 @@ def business_list_view(request):
 @login_required
 def business_search_api(request):
     """API endpoint để tìm kiếm doanh nghiệp (cho AJAX)"""
-    search_query = request.GET.get('q', '')
+    search_query = request.GET.get('q', '').strip()
 
-    if len(search_query) < 2:
-        return JsonResponse({'businesses': []})
+    # If query is empty or too short, return all businesses (for debugging)
+    if len(search_query) < 1:
+        total_count = Business.objects.count()
+        return JsonResponse({
+            'businesses': [],
+            'total_count': total_count,
+            'message': f'Nhập ít nhất 1 ký tự để tìm kiếm. Tổng: {total_count} doanh nghiệp'
+        })
 
+    # Search with flexible matching
     businesses = Business.objects.filter(
         Q(ten_doanh_nghiep__icontains=search_query) |
         Q(cif__icontains=search_query) |
-        Q(ma_so_thue__icontains=search_query)
+        Q(ma_so_thue__icontains=search_query) |
+        Q(so_gcn__icontains=search_query)
     ).order_by('ten_doanh_nghiep')[:20]  # Giới hạn 20 kết quả
 
     business_list = [{
         'id': b.id,
-        'ten_doanh_nghiep': b.ten_doanh_nghiep,
-        'cif': b.cif,
-        'ma_so_thue': b.ma_so_thue,
-        'display': f"{b.ten_doanh_nghiep} - {b.cif}"
+        'ten_doanh_nghiep': b.ten_doanh_nghiep or '',
+        'cif': b.cif or '',
+        'ma_so_thue': b.ma_so_thue or '',
+        'so_gcn': b.so_gcn or '',
+        'display': f"{b.ten_doanh_nghiep} - CIF: {b.cif}"
     } for b in businesses]
 
-    return JsonResponse({'businesses': business_list})
+    return JsonResponse({
+        'businesses': business_list,
+        'count': len(business_list),
+        'query': search_query
+    })
 
 
 @login_required
