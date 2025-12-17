@@ -49,6 +49,7 @@ urlpatterns = [
     path('business/<int:business_id>/edit/', views.business_edit, name='business_edit'),
     path('business/<int:business_id>/delete/', views.business_delete, name='business_delete'),
     path('business/<int:business_id>/template/<int:template_id>/', views.business_load_data, name='business_load_data'),
+    path('api/businesses/import/tsv/', views.business_import_tsv, name='business_import_tsv'),
 
     # Global Configuration (Branch + Custom Variables)
     path('branch-config/', views.branch_config_view, name='branch_config'),

@@ -4928,3 +4928,192 @@ def business_load_data(request, business_id, template_id):
     except Exception as e:
         messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
         return redirect('business_dashboard')
+
+
+@login_required
+@require_http_methods(["POST"])
+def business_import_tsv(request):
+    """
+    Import doanh nghiệp từ file TSV (clipboard AGRIBANK)
+    Hỗ trợ paste trực tiếp dữ liệu từ AGRIBANK
+    """
+    if 'tsv_file' not in request.FILES:
+        return JsonResponse({
+            'success': False,
+            'error': 'Vui lòng chọn file TSV'
+        }, status=400)
+
+    tsv_file = request.FILES['tsv_file']
+
+    # Kiểm tra file extension
+    if not (tsv_file.name.endswith('.tsv') or tsv_file.name.endswith('.txt')):
+        return JsonResponse({
+            'success': False,
+            'error': 'File phải có định dạng .tsv hoặc .txt'
+        }, status=400)
+
+    try:
+        # Read file content
+        content = tsv_file.read().decode('utf-8')
+        lines = content.strip().split('\n')
+
+        if len(lines) < 2:
+            return JsonResponse({
+                'success': False,
+                'error': 'File không có dữ liệu'
+            }, status=400)
+
+        # Parse header
+        header = lines[0].strip().split('\t')
+
+        success_count = 0
+        error_count = 0
+        errors = []
+        updated_count = 0
+
+        # Process each data line
+        for line_num, line in enumerate(lines[1:], start=2):
+            try:
+                values = line.strip().split('\t')
+
+                # Create dict from header and values
+                data = {}
+                for i, field in enumerate(header):
+                    data[field] = values[i] if i < len(values) else ''
+
+                # Clean values
+                def clean(val):
+                    return str(val).strip() if val else ''
+
+                # Extract required fields
+                custno = clean(data.get('custno', ''))
+                nmloc = clean(data.get('nmloc', ''))  # Tên doanh nghiệp tiếng Việt
+                regno = clean(data.get('regno', ''))  # Số GCN
+                taxno = clean(data.get('taxno', ''))  # Mã số thuế
+
+                # Validate required fields
+                if not custno:
+                    errors.append(f'Dòng {line_num}: Thiếu mã CIF')
+                    error_count += 1
+                    continue
+
+                if not nmloc:
+                    errors.append(f'Dòng {line_num}: Thiếu tên doanh nghiệp')
+                    error_count += 1
+                    continue
+
+                # Check if business already exists by CIF
+                if Business.objects.filter(cif=custno).exists():
+                    business = Business.objects.get(cif=custno)
+                    update_mode = True
+                else:
+                    business = Business()
+                    update_mode = False
+
+                # Map basic fields
+                business.cif = custno
+                business.ten_doanh_nghiep = nmloc
+
+                # Số tài khoản (nếu có)
+                so_tai_khoan = clean(data.get('bkcd', ''))
+                if so_tai_khoan:
+                    business.so_tai_khoan = so_tai_khoan
+
+                # Số GCN/ĐKKD
+                if regno:
+                    business.so_gcn = regno
+                    # Xác định loại giấy tờ dựa trên custdtltpcd
+                    custdtltpcd = clean(data.get('custdtltpcd', ''))
+                    if 'TNHH' in custdtltpcd:
+                        business.loai_giay_to = 'GCN'
+                    else:
+                        business.loai_giay_to = 'GCN'
+
+                # Ngày cấp GCN (issuedt1)
+                ngay_cap_gcn_str = clean(data.get('issuedt1', ''))
+                if ngay_cap_gcn_str:
+                    ngay_cap_gcn = parse_tsv_date(ngay_cap_gcn_str)
+                    if ngay_cap_gcn:
+                        business.ngay_cap_gcn = ngay_cap_gcn
+
+                # Nơi cấp GCN (issueby1)
+                noi_cap_gcn_code = clean(data.get('issueby1', ''))
+                if noi_cap_gcn_code:
+                    noi_cap_gcn_name = get_issueby_name(noi_cap_gcn_code)
+                    business.noi_cap_gcn = noi_cap_gcn_name
+
+                # Mã số thuế
+                if taxno:
+                    business.ma_so_thue = taxno
+
+                # Ngày cấp MST (issuedt6)
+                ngay_cap_mst_str = clean(data.get('issuedt6', ''))
+                if ngay_cap_mst_str:
+                    ngay_cap_mst = parse_tsv_date(ngay_cap_mst_str)
+                    if ngay_cap_mst:
+                        business.ngay_cap_mst = ngay_cap_mst
+
+                # Nơi cấp MST (issueby6)
+                noi_cap_mst_code = clean(data.get('issueby6', ''))
+                if noi_cap_mst_code:
+                    noi_cap_mst_name = get_issueby_name(noi_cap_mst_code)
+                    business.noi_cap_mst = noi_cap_mst_name
+
+                # Địa chỉ
+                dia_chi = clean(data.get('addr1loc', ''))
+                if dia_chi:
+                    business.dia_chi = dia_chi
+
+                # Điện thoại
+                telno = clean(data.get('telno', ''))
+                if telno:
+                    business.dien_thoai = telno
+
+                # Lĩnh vực kinh doanh (từ profnm hoặc custdtltpcd)
+                linh_vuc = clean(data.get('profnm', ''))
+                if not linh_vuc:
+                    linh_vuc = clean(data.get('custdtltpcd', ''))
+                if linh_vuc:
+                    business.linh_vuc_kinh_doanh = linh_vuc
+
+                # Administrative codes
+                ma_tinh = clean(data.get('province', ''))
+                if ma_tinh:
+                    # Lưu vào custom field nếu có
+                    pass
+
+                ma_quan_huyen = clean(data.get('district', ''))
+                if ma_quan_huyen:
+                    pass
+
+                ma_phuong_xa = clean(data.get('commune_ward', ''))
+                if ma_phuong_xa:
+                    pass
+
+                # Save business
+                business.save()
+
+                if update_mode:
+                    updated_count += 1
+                else:
+                    success_count += 1
+
+            except Exception as e:
+                error_count += 1
+                errors.append(f'Dòng {line_num}: {str(e)}')
+                continue
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Import thành công: {success_count} doanh nghiệp mới, {updated_count} cập nhật',
+            'imported': success_count,
+            'updated': updated_count,
+            'errors': error_count,
+            'error_details': errors[:10]  # Limit to 10 errors
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Lỗi khi xử lý file: {str(e)}'
+        }, status=500)
