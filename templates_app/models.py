@@ -930,6 +930,240 @@ class Customer(models.Model):
         return data
 
 
+class Business(models.Model):
+    """Thông tin doanh nghiệp"""
+
+    LOAI_GIAY_TO_CHOICES = [
+        ('GCN', 'Giấy chứng nhận đăng ký doanh nghiệp'),
+        ('DKKD', 'Giấy đăng ký kinh doanh'),
+        ('QD', 'Quyết định thành lập'),
+    ]
+
+    LOAI_GIAY_TO_DANH_DANH_CHOICES = [
+        ('CCCD', 'Căn cước công dân'),
+        ('CCCD_CHIP', 'CCCD gắn chip điện tử'),
+        ('CMND', 'Chứng minh nhân dân'),
+        ('HC', 'Hộ chiếu'),
+    ]
+
+    GIOI_TINH_CHOICES = [
+        ('Nam', 'Nam'),
+        ('Nữ', 'Nữ'),
+        ('Khác', 'Khác'),
+    ]
+
+    # ===== THÔNG TIN DOANH NGHIỆP =====
+    # Mã CIF và Tài khoản
+    cif = models.CharField(
+        max_length=20,
+        unique=True,
+        verbose_name="Mã CIF",
+        db_index=True
+    )
+    so_tai_khoan = models.CharField(
+        max_length=30,
+        blank=True,
+        verbose_name="Số tài khoản"
+    )
+
+    # Thông tin cơ bản
+    ten_doanh_nghiep = models.CharField(
+        max_length=255,
+        verbose_name="Tên doanh nghiệp",
+        db_index=True
+    )
+
+    # Giấy tờ định danh
+    loai_giay_to = models.CharField(
+        max_length=10,
+        choices=LOAI_GIAY_TO_CHOICES,
+        default='GCN',
+        verbose_name="Loại giấy tờ định danh"
+    )
+    so_gcn = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Số GCN đăng ký DN/Giấy ĐKKD/QĐ thành lập"
+    )
+    ngay_cap_gcn = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày cấp GCN"
+    )
+    noi_cap_gcn = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Nơi cấp GCN"
+    )
+
+    # Mã số thuế
+    ma_so_thue = models.CharField(
+        max_length=20,
+        unique=True,
+        verbose_name="Mã số thuế"
+    )
+    ngay_cap_mst = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày cấp MST"
+    )
+    noi_cap_mst = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Nơi cấp MST"
+    )
+
+    # Liên hệ
+    dia_chi = models.TextField(
+        blank=True,
+        verbose_name="Địa chỉ"
+    )
+    dien_thoai = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Điện thoại"
+    )
+
+    # Thông tin kinh doanh
+    linh_vuc_kinh_doanh = models.TextField(
+        blank=True,
+        verbose_name="Lĩnh vực hoạt động kinh doanh"
+    )
+    von_dieu_le = models.DecimalField(
+        max_digits=20,
+        decimal_places=0,
+        null=True,
+        blank=True,
+        verbose_name="Vốn điều lệ (VND)"
+    )
+
+    # ===== THÔNG TIN NGƯỜI ĐẠI DIỆN PHÁP LUẬT =====
+    nguoi_dai_dien_ho_ten = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Người đại diện - Họ và tên"
+    )
+    nguoi_dai_dien_ngay_sinh = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Người đại diện - Ngày sinh"
+    )
+    nguoi_dai_dien_gioi_tinh = models.CharField(
+        max_length=10,
+        choices=GIOI_TINH_CHOICES,
+        default='Nam',
+        blank=True,
+        verbose_name="Người đại diện - Giới tính"
+    )
+    nguoi_dai_dien_nghe_nghiep = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Người đại diện - Nghề nghiệp"
+    )
+
+    # Giấy tờ tùy thân người đại diện
+    nguoi_dai_dien_loai_giay_to = models.CharField(
+        max_length=20,
+        choices=LOAI_GIAY_TO_DANH_DANH_CHOICES,
+        default='CCCD',
+        blank=True,
+        verbose_name="Người đại diện - Loại giấy tờ"
+    )
+    nguoi_dai_dien_so_cccd = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Người đại diện - Số CCCD/CMND"
+    )
+    nguoi_dai_dien_ngay_cap = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Người đại diện - Ngày cấp"
+    )
+    nguoi_dai_dien_noi_cap = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Người đại diện - Nơi cấp"
+    )
+    nguoi_dai_dien_ngay_het_han = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Người đại diện - Ngày hết hạn"
+    )
+    nguoi_dai_dien_noi_o_hien_tai = models.TextField(
+        blank=True,
+        verbose_name="Người đại diện - Nơi ở hiện tại"
+    )
+
+    # ===== THÔNG TIN KẾ TOÁN TRƯỞNG =====
+    ke_toan_truong_ho_ten = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Kế toán trưởng - Họ và tên"
+    )
+    ke_toan_truong_ngay_sinh = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Kế toán trưởng - Ngày sinh"
+    )
+    ke_toan_truong_gioi_tinh = models.CharField(
+        max_length=10,
+        choices=GIOI_TINH_CHOICES,
+        default='Nam',
+        blank=True,
+        verbose_name="Kế toán trưởng - Giới tính"
+    )
+    ke_toan_truong_nghe_nghiep = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Kế toán trưởng - Nghề nghiệp"
+    )
+
+    # Giấy tờ tùy thân kế toán trưởng
+    ke_toan_truong_loai_giay_to = models.CharField(
+        max_length=20,
+        choices=LOAI_GIAY_TO_DANH_DANH_CHOICES,
+        default='CCCD',
+        blank=True,
+        verbose_name="Kế toán trưởng - Loại giấy tờ"
+    )
+    ke_toan_truong_so_cccd = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Kế toán trưởng - Số CCCD/CMND"
+    )
+    ke_toan_truong_ngay_cap = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Kế toán trưởng - Ngày cấp"
+    )
+    ke_toan_truong_noi_cap = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Kế toán trưởng - Nơi cấp"
+    )
+    ke_toan_truong_ngay_het_han = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Kế toán trưởng - Ngày hết hạn"
+    )
+    ke_toan_truong_noi_o_hien_tai = models.TextField(
+        blank=True,
+        verbose_name="Kế toán trưởng - Nơi ở hiện tại"
+    )
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Doanh nghiệp"
+        verbose_name_plural = "Doanh nghiệp"
+        ordering = ['ten_doanh_nghiep']
+
+    def __str__(self):
+        return f"{self.cif} - {self.ten_doanh_nghiep}"
+
+
 class GlobalConfig(models.Model):
     """
     Cấu hình toàn cục cho chương trình (Singleton - chỉ có 1 record duy nhất)

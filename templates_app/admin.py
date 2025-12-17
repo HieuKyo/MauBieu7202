@@ -4,7 +4,7 @@ from django.urls import path
 from django.contrib import messages
 from django.http import HttpResponse
 from .models import (
-    Category, Template, Variable, TemplateVariable, Customer, GlobalConfig,
+    Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig,
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction,
     UserProfile, Course, CourseEnrollment,
@@ -72,6 +72,65 @@ class CustomerAdmin(admin.ModelAdmin):
         if not change:  # Chỉ khi tạo mới
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Business)
+class BusinessAdmin(admin.ModelAdmin):
+    """Admin cho Doanh nghiệp"""
+    list_display = ['cif', 'ten_doanh_nghiep', 'ma_so_thue', 'dien_thoai', 'nguoi_dai_dien_ho_ten', 'created_at']
+    list_filter = ['loai_giay_to', 'created_at']
+    search_fields = ['cif', 'ten_doanh_nghiep', 'ma_so_thue', 'so_gcn', 'dien_thoai']
+    readonly_fields = ['created_at', 'updated_at']
+    ordering = ['-created_at']
+
+    fieldsets = (
+        ('Thông tin doanh nghiệp', {
+            'fields': ('cif', 'so_tai_khoan', 'ten_doanh_nghiep')
+        }),
+        ('Giấy tờ định danh', {
+            'fields': ('loai_giay_to', 'so_gcn', 'ngay_cap_gcn', 'noi_cap_gcn')
+        }),
+        ('Mã số thuế', {
+            'fields': ('ma_so_thue', 'ngay_cap_mst', 'noi_cap_mst')
+        }),
+        ('Thông tin liên hệ', {
+            'fields': ('dia_chi', 'dien_thoai')
+        }),
+        ('Thông tin kinh doanh', {
+            'fields': ('linh_vuc_kinh_doanh', 'von_dieu_le')
+        }),
+        ('Người đại diện pháp luật', {
+            'fields': (
+                'nguoi_dai_dien_ho_ten',
+                'nguoi_dai_dien_ngay_sinh',
+                'nguoi_dai_dien_gioi_tinh',
+                'nguoi_dai_dien_nghe_nghiep',
+                'nguoi_dai_dien_loai_giay_to',
+                'nguoi_dai_dien_so_cccd',
+                'nguoi_dai_dien_ngay_cap',
+                'nguoi_dai_dien_noi_cap',
+                'nguoi_dai_dien_ngay_het_han',
+                'nguoi_dai_dien_noi_o_hien_tai'
+            )
+        }),
+        ('Kế toán trưởng', {
+            'fields': (
+                'ke_toan_truong_ho_ten',
+                'ke_toan_truong_ngay_sinh',
+                'ke_toan_truong_gioi_tinh',
+                'ke_toan_truong_nghe_nghiep',
+                'ke_toan_truong_loai_giay_to',
+                'ke_toan_truong_so_cccd',
+                'ke_toan_truong_ngay_cap',
+                'ke_toan_truong_noi_cap',
+                'ke_toan_truong_ngay_het_han',
+                'ke_toan_truong_noi_o_hien_tai'
+            )
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
 
 
 @admin.register(Category)
