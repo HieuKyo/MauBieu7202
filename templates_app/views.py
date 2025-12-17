@@ -22,7 +22,7 @@ from django.views.decorators.http import require_http_methods
 import mammoth
 
 # Local application imports
-from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
+from .forms import DynamicTemplateForm, CustomerForm, BusinessForm, GlobalConfigForm
 from .issueby_mapping import get_issueby_name
 from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, remove_vietnamese_diacritics
 from .utils import render_word_template
