@@ -1160,6 +1160,118 @@ class Business(models.Model):
         verbose_name_plural = "Doanh nghiệp"
         ordering = ['ten_doanh_nghiep']
 
+    def get_data_dict(self):
+        """
+        Trả về dictionary chứa thông tin doanh nghiệp
+        Dùng để auto-fill form và render template
+        """
+        def checkbox(value):
+            return '☑' if value else '☐'
+
+        # Helper function để format số tiền
+        def format_money(amount):
+            if amount is None:
+                return ''
+            try:
+                return f"{int(amount):,}".replace(',', '.')
+            except (ValueError, TypeError):
+                return str(amount)
+
+        data = {
+            # Thông tin doanh nghiệp cơ bản
+            'dn_cif': self.cif or '',
+            'dn_so_tai_khoan': self.so_tai_khoan or '',
+            'dn_ten': self.ten_doanh_nghiep or '',
+            'dn_ten_doanh_nghiep': self.ten_doanh_nghiep or '',
+
+            # Giấy tờ định danh
+            'dn_loai_giay_to': self.get_loai_giay_to_display() if self.loai_giay_to else '',
+            'dn_so_gcn': self.so_gcn or '',
+            'dn_ngay_cap_gcn': self.ngay_cap_gcn.strftime('%d/%m/%Y') if self.ngay_cap_gcn else '',
+            'dn_ngay_cap_gcn_obj': self.ngay_cap_gcn,
+            'dn_noi_cap_gcn': self.noi_cap_gcn or '',
+
+            # Mã số thuế
+            'dn_ma_so_thue': self.ma_so_thue or '',
+            'dn_mst': self.ma_so_thue or '',  # Alias
+            'dn_ngay_cap_mst': self.ngay_cap_mst.strftime('%d/%m/%Y') if self.ngay_cap_mst else '',
+            'dn_ngay_cap_mst_obj': self.ngay_cap_mst,
+            'dn_noi_cap_mst': self.noi_cap_mst or '',
+
+            # Liên hệ
+            'dn_dia_chi': self.dia_chi or '',
+            'dn_dien_thoai': self.dien_thoai or '',
+
+            # Thông tin kinh doanh
+            'dn_linh_vuc_kinh_doanh': self.linh_vuc_kinh_doanh or '',
+            'dn_von_dieu_le': format_money(self.von_dieu_le),
+            'dn_von_dieu_le_raw': self.von_dieu_le or 0,
+
+            # Người đại diện pháp luật
+            'dn_nguoi_dai_dien_ho_ten': self.nguoi_dai_dien_ho_ten or '',
+            'dn_ndd_ho_ten': self.nguoi_dai_dien_ho_ten or '',  # Alias ngắn
+            'dn_nguoi_dai_dien_ngay_sinh': self.nguoi_dai_dien_ngay_sinh.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_sinh else '',
+            'dn_nguoi_dai_dien_ngay_sinh_obj': self.nguoi_dai_dien_ngay_sinh,
+            'dn_ndd_ngay_sinh': self.nguoi_dai_dien_ngay_sinh.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_sinh else '',
+            'dn_nguoi_dai_dien_gioi_tinh': self.nguoi_dai_dien_gioi_tinh or '',
+            'dn_ndd_gioi_tinh': self.nguoi_dai_dien_gioi_tinh or '',
+            'dn_nguoi_dai_dien_nghe_nghiep': self.nguoi_dai_dien_nghe_nghiep or '',
+            'dn_ndd_nghe_nghiep': self.nguoi_dai_dien_nghe_nghiep or '',
+
+            # Giấy tờ người đại diện
+            'dn_nguoi_dai_dien_loai_giay_to': self.get_nguoi_dai_dien_loai_giay_to_display() if self.nguoi_dai_dien_loai_giay_to else '',
+            'dn_ndd_loai_giay_to': self.get_nguoi_dai_dien_loai_giay_to_display() if self.nguoi_dai_dien_loai_giay_to else '',
+            'dn_nguoi_dai_dien_so_cccd': self.nguoi_dai_dien_so_cccd or '',
+            'dn_ndd_so_cccd': self.nguoi_dai_dien_so_cccd or '',
+            'dn_nguoi_dai_dien_ngay_cap': self.nguoi_dai_dien_ngay_cap.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_cap else '',
+            'dn_nguoi_dai_dien_ngay_cap_obj': self.nguoi_dai_dien_ngay_cap,
+            'dn_ndd_ngay_cap': self.nguoi_dai_dien_ngay_cap.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_cap else '',
+            'dn_nguoi_dai_dien_noi_cap': self.nguoi_dai_dien_noi_cap or '',
+            'dn_ndd_noi_cap': self.nguoi_dai_dien_noi_cap or '',
+            'dn_nguoi_dai_dien_ngay_het_han': self.nguoi_dai_dien_ngay_het_han.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_het_han else '',
+            'dn_nguoi_dai_dien_ngay_het_han_obj': self.nguoi_dai_dien_ngay_het_han,
+            'dn_ndd_ngay_het_han': self.nguoi_dai_dien_ngay_het_han.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_het_han else '',
+            'dn_nguoi_dai_dien_noi_o_hien_tai': self.nguoi_dai_dien_noi_o_hien_tai or '',
+            'dn_ndd_noi_o_hien_tai': self.nguoi_dai_dien_noi_o_hien_tai or '',
+
+            # Kế toán trưởng
+            'dn_ke_toan_truong_ho_ten': self.ke_toan_truong_ho_ten or '',
+            'dn_ktt_ho_ten': self.ke_toan_truong_ho_ten or '',  # Alias ngắn
+            'dn_ke_toan_truong_ngay_sinh': self.ke_toan_truong_ngay_sinh.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_sinh else '',
+            'dn_ke_toan_truong_ngay_sinh_obj': self.ke_toan_truong_ngay_sinh,
+            'dn_ktt_ngay_sinh': self.ke_toan_truong_ngay_sinh.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_sinh else '',
+            'dn_ke_toan_truong_gioi_tinh': self.ke_toan_truong_gioi_tinh or '',
+            'dn_ktt_gioi_tinh': self.ke_toan_truong_gioi_tinh or '',
+            'dn_ke_toan_truong_nghe_nghiep': self.ke_toan_truong_nghe_nghiep or '',
+            'dn_ktt_nghe_nghiep': self.ke_toan_truong_nghe_nghiep or '',
+
+            # Giấy tờ kế toán trưởng
+            'dn_ke_toan_truong_loai_giay_to': self.get_ke_toan_truong_loai_giay_to_display() if self.ke_toan_truong_loai_giay_to else '',
+            'dn_ktt_loai_giay_to': self.get_ke_toan_truong_loai_giay_to_display() if self.ke_toan_truong_loai_giay_to else '',
+            'dn_ke_toan_truong_so_cccd': self.ke_toan_truong_so_cccd or '',
+            'dn_ktt_so_cccd': self.ke_toan_truong_so_cccd or '',
+            'dn_ke_toan_truong_ngay_cap': self.ke_toan_truong_ngay_cap.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_cap else '',
+            'dn_ke_toan_truong_ngay_cap_obj': self.ke_toan_truong_ngay_cap,
+            'dn_ktt_ngay_cap': self.ke_toan_truong_ngay_cap.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_cap else '',
+            'dn_ke_toan_truong_noi_cap': self.ke_toan_truong_noi_cap or '',
+            'dn_ktt_noi_cap': self.ke_toan_truong_noi_cap or '',
+            'dn_ke_toan_truong_ngay_het_han': self.ke_toan_truong_ngay_het_han.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_het_han else '',
+            'dn_ke_toan_truong_ngay_het_han_obj': self.ke_toan_truong_ngay_het_han,
+            'dn_ktt_ngay_het_han': self.ke_toan_truong_ngay_het_han.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_het_han else '',
+            'dn_ke_toan_truong_noi_o_hien_tai': self.ke_toan_truong_noi_o_hien_tai or '',
+            'dn_ktt_noi_o_hien_tai': self.ke_toan_truong_noi_o_hien_tai or '',
+
+            # Checkbox cho giới tính người đại diện
+            'dn_ndd_gioi_tinh_nam': checkbox(self.nguoi_dai_dien_gioi_tinh == 'Nam'),
+            'dn_ndd_gioi_tinh_nu': checkbox(self.nguoi_dai_dien_gioi_tinh == 'Nữ'),
+
+            # Checkbox cho giới tính kế toán trưởng
+            'dn_ktt_gioi_tinh_nam': checkbox(self.ke_toan_truong_gioi_tinh == 'Nam'),
+            'dn_ktt_gioi_tinh_nu': checkbox(self.ke_toan_truong_gioi_tinh == 'Nữ'),
+        }
+
+        return data
+
     def __str__(self):
         return f"{self.cif} - {self.ten_doanh_nghiep}"
 

@@ -38,6 +38,11 @@ urlpatterns = [
     path('api/customers/import-excel/', views.customer_import_excel, name='customer_import_excel'),
     path('api/customers/import/tsv/', views.customer_import_tsv, name='customer_import_tsv'),
 
+    # Business (Doanh nghiệp)
+    path('businesses/', views.business_list_view, name='business_list'),
+    path('api/businesses/search/', views.business_search_api, name='business_search_api'),
+    path('api/businesses/<int:business_id>/data/', views.business_data_api, name='business_data_api'),
+
     # Global Configuration (Branch + Custom Variables)
     path('branch-config/', views.branch_config_view, name='branch_config'),
     path('api/custom-variables/add/', views.add_custom_variable, name='add_custom_variable'),

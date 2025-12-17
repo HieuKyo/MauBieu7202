@@ -24,7 +24,7 @@ import mammoth
 # Local application imports
 from .forms import DynamicTemplateForm, CustomerForm, GlobalConfigForm
 from .issueby_mapping import get_issueby_name
-from .models import Category, Template, Variable, TemplateVariable, Customer, GlobalConfig, remove_vietnamese_diacritics
+from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, remove_vietnamese_diacritics
 from .utils import render_word_template
 
 
@@ -67,6 +67,9 @@ def dashboard_view(request):
     # Lấy danh sách khách hàng
     customers = Customer.objects.all().order_by('-created_at')
 
+    # Lấy danh sách doanh nghiệp
+    businesses = Business.objects.all().order_by('-created_at')
+
     # Lấy danh mục và templates mà user có quyền truy cập
     if user.is_superuser:
         categories = Category.objects.filter(
@@ -95,6 +98,7 @@ def dashboard_view(request):
 
     context = {
         'customers': customers,
+        'businesses': businesses,
         'categories': categories,
         'user': user,
     }
@@ -435,6 +439,81 @@ def customer_detail_api(request, customer_id):
         return JsonResponse({
             'success': False,
             'error': 'Không tìm thấy khách hàng'
+        }, status=404)
+
+
+# ============================================
+# Business (Doanh nghiệp) Views & APIs
+# ============================================
+
+@login_required
+def business_list_view(request):
+    """Danh sách doanh nghiệp với tìm kiếm"""
+    search_query = request.GET.get('q', '')
+
+    businesses = Business.objects.all()
+
+    if search_query:
+        businesses = businesses.filter(
+            Q(ten_doanh_nghiep__icontains=search_query) |
+            Q(cif__icontains=search_query) |
+            Q(ma_so_thue__icontains=search_query) |
+            Q(dien_thoai__icontains=search_query)
+        )
+
+    businesses = businesses.order_by('-created_at')
+
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(businesses, 20)  # 20 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+    }
+    return render(request, 'templates_app/business_list.html', context)
+
+
+@login_required
+def business_search_api(request):
+    """API endpoint để tìm kiếm doanh nghiệp (cho AJAX)"""
+    search_query = request.GET.get('q', '')
+
+    if len(search_query) < 2:
+        return JsonResponse({'businesses': []})
+
+    businesses = Business.objects.filter(
+        Q(ten_doanh_nghiep__icontains=search_query) |
+        Q(cif__icontains=search_query) |
+        Q(ma_so_thue__icontains=search_query)
+    ).order_by('ten_doanh_nghiep')[:20]  # Giới hạn 20 kết quả
+
+    business_list = [{
+        'id': b.id,
+        'ten_doanh_nghiep': b.ten_doanh_nghiep,
+        'cif': b.cif,
+        'ma_so_thue': b.ma_so_thue,
+        'display': f"{b.ten_doanh_nghiep} - {b.cif}"
+    } for b in businesses]
+
+    return JsonResponse({'businesses': business_list})
+
+
+@login_required
+def business_data_api(request, business_id):
+    """API endpoint để lấy dữ liệu doanh nghiệp theo ID (cho auto-fill)"""
+    try:
+        business = Business.objects.get(id=business_id)
+        return JsonResponse({
+            'success': True,
+            'data': business.get_data_dict()
+        })
+    except Business.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Không tìm thấy doanh nghiệp'
         }, status=404)
 
 
