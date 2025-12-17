@@ -96,6 +96,11 @@
                                 <i class="bi bi-house"></i> Trang chủ
                             </a>
                         </div>
+                        <div class="col-md-2 mb-2">
+                            <button type="button" class="btn btn-outline-warning w-100" data-bs-toggle="modal" data-bs-target="#importModal">
+                                <i class="bi bi-cloud-upload"></i> Import AGRIBANK
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -185,4 +190,136 @@
         </div>
     </div>
 </div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="importModalLabel">
+                    <i class="bi bi-cloud-upload"></i> Import Doanh nghiệp từ AGRIBANK
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> Hướng dẫn:</h6>
+                    <ol class="mb-0">
+                        <li>Copy dữ liệu doanh nghiệp từ phần mềm AGRIBANK (bao gồm cả header)</li>
+                        <li>Paste vào Notepad hoặc Text Editor</li>
+                        <li>Lưu file với định dạng <code>.txt</code> hoặc <code>.tsv</code></li>
+                        <li>Chọn file và click "Import"</li>
+                    </ol>
+                    <hr>
+                    <small class="text-muted">
+                        <strong>Lưu ý:</strong> Dữ liệu phải có các cột: custno, nmloc, regno, taxno, addr1loc, telno, issuedt1, issueby1, issuedt6, issueby6
+                    </small>
+                </div>
+
+                <form id="importForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="tsvFile" class="form-label">
+                            <i class="bi bi-file-earmark-text"></i> Chọn file TSV/TXT
+                        </label>
+                        <input type="file" class="form-control" id="tsvFile" name="tsv_file" accept=".tsv,.txt" required>
+                        <div class="form-text">Chỉ chấp nhận file .tsv hoặc .txt</div>
+                    </div>
+
+                    <div id="importProgress" class="progress mb-3" style="display: none;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
+                            Đang import...
+                        </div>
+                    </div>
+
+                    <div id="importResult" class="alert" style="display: none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Đóng
+                </button>
+                <button type="button" class="btn btn-warning" id="importBtn">
+                    <i class="bi bi-cloud-upload"></i> Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const importBtn = document.getElementById('importBtn');
+    const importForm = document.getElementById('importForm');
+    const importProgress = document.getElementById('importProgress');
+    const importResult = document.getElementById('importResult');
+    const tsvFile = document.getElementById('tsvFile');
+
+    importBtn.addEventListener('click', function() {
+        if (!tsvFile.files.length) {
+            alert('Vui lòng chọn file TSV/TXT');
+            return;
+        }
+
+        const formData = new FormData(importForm);
+
+        // Show progress
+        importProgress.style.display = 'block';
+        importResult.style.display = 'none';
+        importBtn.disabled = true;
+
+        fetch('{% url "business_import_tsv" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            importProgress.style.display = 'none';
+            importResult.style.display = 'block';
+            importBtn.disabled = false;
+
+            if (data.success) {
+                importResult.className = 'alert alert-success';
+                importResult.innerHTML = `
+                    <h6><i class="bi bi-check-circle"></i> Import thành công!</h6>
+                    <p class="mb-0">${data.message}</p>
+                    ${data.errors > 0 ? `<hr><small class="text-warning">Có ${data.errors} dòng bị lỗi</small>` : ''}
+                `;
+
+                // Reload page after 2 seconds
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                importResult.className = 'alert alert-danger';
+                importResult.innerHTML = `
+                    <h6><i class="bi bi-x-circle"></i> Lỗi!</h6>
+                    <p class="mb-0">${data.error}</p>
+                `;
+            }
+        })
+        .catch(error => {
+            importProgress.style.display = 'none';
+            importResult.style.display = 'block';
+            importResult.className = 'alert alert-danger';
+            importResult.innerHTML = `
+                <h6><i class="bi bi-x-circle"></i> Lỗi!</h6>
+                <p class="mb-0">Không thể kết nối đến server: ${error.message}</p>
+            `;
+            importBtn.disabled = false;
+        });
+    });
+
+    // Reset form when modal is closed
+    document.getElementById('importModal').addEventListener('hidden.bs.modal', function() {
+        importForm.reset();
+        importProgress.style.display = 'none';
+        importResult.style.display = 'none';
+        importBtn.disabled = false;
+    });
+});
+</script>
 {% endblock %}
