@@ -1385,7 +1385,83 @@ def variable_library_view(request):
         {'name': 'disc_created_at', 'description': 'Thời gian tạo giao dịch (dd/mm/yyyy HH:MM)', 'example': '20/12/2024 14:30'},
     ]
 
-    # 5. Biến Tùy chỉnh - From GlobalConfig.custom_variables
+    # 5. Biến Doanh nghiệp - From Business model
+    business_variables = [
+        # Thông tin doanh nghiệp cơ bản
+        {'name': 'dn_cif', 'description': 'Mã CIF doanh nghiệp', 'example': 'DN001'},
+        {'name': 'dn_so_tai_khoan', 'description': 'Số tài khoản doanh nghiệp', 'example': '1234567890'},
+        {'name': 'dn_ten', 'description': 'Tên doanh nghiệp (alias)', 'example': 'Công ty TNHH ABC'},
+        {'name': 'dn_ten_doanh_nghiep', 'description': 'Tên doanh nghiệp', 'example': 'Công ty TNHH ABC'},
+
+        # Giấy tờ định danh
+        {'name': 'dn_loai_giay_to', 'description': 'Loại giấy tờ (GCN/DKKD/QĐ thành lập)', 'example': 'Giấy chứng nhận đăng ký doanh nghiệp'},
+        {'name': 'dn_so_gcn', 'description': 'Số giấy chứng nhận', 'example': '0123456789'},
+        {'name': 'dn_ngay_cap_gcn', 'description': 'Ngày cấp GCN (dd/mm/yyyy)', 'example': '15/01/2020'},
+        {'name': 'dn_noi_cap_gcn', 'description': 'Nơi cấp GCN', 'example': 'Sở Kế hoạch và Đầu tư TP. HCM'},
+
+        # Mã số thuế
+        {'name': 'dn_ma_so_thue', 'description': 'Mã số thuế', 'example': '0123456789'},
+        {'name': 'dn_mst', 'description': 'Mã số thuế (alias)', 'example': '0123456789'},
+        {'name': 'dn_ngay_cap_mst', 'description': 'Ngày cấp MST (dd/mm/yyyy)', 'example': '15/01/2020'},
+        {'name': 'dn_noi_cap_mst', 'description': 'Nơi cấp MST', 'example': 'Chi cục thuế quận 1'},
+
+        # Liên hệ và kinh doanh
+        {'name': 'dn_dia_chi', 'description': 'Địa chỉ doanh nghiệp', 'example': '123 Nguyễn Huệ, Q1, TP.HCM'},
+        {'name': 'dn_dien_thoai', 'description': 'Số điện thoại', 'example': '0281234567'},
+        {'name': 'dn_linh_vuc_kinh_doanh', 'description': 'Lĩnh vực hoạt động kinh doanh', 'example': 'Sản xuất và kinh doanh'},
+        {'name': 'dn_von_dieu_le', 'description': 'Vốn điều lệ (đã format)', 'example': '10.000.000.000'},
+        {'name': 'dn_von_dieu_le_raw', 'description': 'Vốn điều lệ (số)', 'example': '10000000000'},
+
+        # Người đại diện pháp luật
+        {'name': 'dn_nguoi_dai_dien_ho_ten', 'description': 'NĐD - Họ và tên', 'example': 'Nguyễn Văn A'},
+        {'name': 'dn_ndd_ho_ten', 'description': 'NĐD - Họ và tên (alias ngắn)', 'example': 'Nguyễn Văn A'},
+        {'name': 'dn_nguoi_dai_dien_ngay_sinh', 'description': 'NĐD - Ngày sinh (dd/mm/yyyy)', 'example': '01/01/1980'},
+        {'name': 'dn_ndd_ngay_sinh', 'description': 'NĐD - Ngày sinh (alias)', 'example': '01/01/1980'},
+        {'name': 'dn_nguoi_dai_dien_gioi_tinh', 'description': 'NĐD - Giới tính', 'example': 'Nam'},
+        {'name': 'dn_ndd_gioi_tinh', 'description': 'NĐD - Giới tính (alias)', 'example': 'Nam'},
+        {'name': 'dn_ndd_gioi_tinh_nam', 'description': 'NĐD - Checkbox ☑/☐ khi giới tính Nam', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ndd_gioi_tinh_nu', 'description': 'NĐD - Checkbox ☑/☐ khi giới tính Nữ', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_nguoi_dai_dien_nghe_nghiep', 'description': 'NĐD - Nghề nghiệp', 'example': 'Doanh nhân'},
+        {'name': 'dn_ndd_nghe_nghiep', 'description': 'NĐD - Nghề nghiệp (alias)', 'example': 'Doanh nhân'},
+        {'name': 'dn_nguoi_dai_dien_loai_giay_to', 'description': 'NĐD - Loại giấy tờ', 'example': 'Căn cước công dân'},
+        {'name': 'dn_ndd_loai_giay_to', 'description': 'NĐD - Loại giấy tờ (alias)', 'example': 'Căn cước công dân'},
+        {'name': 'dn_nguoi_dai_dien_so_cccd', 'description': 'NĐD - Số CCCD/CMND', 'example': '001234567890'},
+        {'name': 'dn_ndd_so_cccd', 'description': 'NĐD - Số CCCD/CMND (alias)', 'example': '001234567890'},
+        {'name': 'dn_nguoi_dai_dien_ngay_cap', 'description': 'NĐD - Ngày cấp (dd/mm/yyyy)', 'example': '01/01/2020'},
+        {'name': 'dn_ndd_ngay_cap', 'description': 'NĐD - Ngày cấp (alias)', 'example': '01/01/2020'},
+        {'name': 'dn_nguoi_dai_dien_noi_cap', 'description': 'NĐD - Nơi cấp', 'example': 'CA TP.HCM'},
+        {'name': 'dn_ndd_noi_cap', 'description': 'NĐD - Nơi cấp (alias)', 'example': 'CA TP.HCM'},
+        {'name': 'dn_nguoi_dai_dien_ngay_het_han', 'description': 'NĐD - Ngày hết hạn (dd/mm/yyyy)', 'example': '01/01/2035'},
+        {'name': 'dn_ndd_ngay_het_han', 'description': 'NĐD - Ngày hết hạn (alias)', 'example': '01/01/2035'},
+        {'name': 'dn_nguoi_dai_dien_noi_o_hien_tai', 'description': 'NĐD - Nơi ở hiện tại', 'example': '123 Lê Lợi, Q1, TP.HCM'},
+        {'name': 'dn_ndd_noi_o_hien_tai', 'description': 'NĐD - Nơi ở hiện tại (alias)', 'example': '123 Lê Lợi, Q1, TP.HCM'},
+
+        # Kế toán trưởng
+        {'name': 'dn_ke_toan_truong_ho_ten', 'description': 'KTT - Họ và tên', 'example': 'Trần Thị B'},
+        {'name': 'dn_ktt_ho_ten', 'description': 'KTT - Họ và tên (alias ngắn)', 'example': 'Trần Thị B'},
+        {'name': 'dn_ke_toan_truong_ngay_sinh', 'description': 'KTT - Ngày sinh (dd/mm/yyyy)', 'example': '15/05/1985'},
+        {'name': 'dn_ktt_ngay_sinh', 'description': 'KTT - Ngày sinh (alias)', 'example': '15/05/1985'},
+        {'name': 'dn_ke_toan_truong_gioi_tinh', 'description': 'KTT - Giới tính', 'example': 'Nữ'},
+        {'name': 'dn_ktt_gioi_tinh', 'description': 'KTT - Giới tính (alias)', 'example': 'Nữ'},
+        {'name': 'dn_ktt_gioi_tinh_nam', 'description': 'KTT - Checkbox ☑/☐ khi giới tính Nam', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ktt_gioi_tinh_nu', 'description': 'KTT - Checkbox ☑/☐ khi giới tính Nữ', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ke_toan_truong_nghe_nghiep', 'description': 'KTT - Nghề nghiệp', 'example': 'Kế toán'},
+        {'name': 'dn_ktt_nghe_nghiep', 'description': 'KTT - Nghề nghiệp (alias)', 'example': 'Kế toán'},
+        {'name': 'dn_ke_toan_truong_loai_giay_to', 'description': 'KTT - Loại giấy tờ', 'example': 'Căn cước công dân'},
+        {'name': 'dn_ktt_loai_giay_to', 'description': 'KTT - Loại giấy tờ (alias)', 'example': 'Căn cước công dân'},
+        {'name': 'dn_ke_toan_truong_so_cccd', 'description': 'KTT - Số CCCD/CMND', 'example': '001234567891'},
+        {'name': 'dn_ktt_so_cccd', 'description': 'KTT - Số CCCD/CMND (alias)', 'example': '001234567891'},
+        {'name': 'dn_ke_toan_truong_ngay_cap', 'description': 'KTT - Ngày cấp (dd/mm/yyyy)', 'example': '01/01/2020'},
+        {'name': 'dn_ktt_ngay_cap', 'description': 'KTT - Ngày cấp (alias)', 'example': '01/01/2020'},
+        {'name': 'dn_ke_toan_truong_noi_cap', 'description': 'KTT - Nơi cấp', 'example': 'CA TP.HCM'},
+        {'name': 'dn_ktt_noi_cap', 'description': 'KTT - Nơi cấp (alias)', 'example': 'CA TP.HCM'},
+        {'name': 'dn_ke_toan_truong_ngay_het_han', 'description': 'KTT - Ngày hết hạn (dd/mm/yyyy)', 'example': '01/01/2035'},
+        {'name': 'dn_ktt_ngay_het_han', 'description': 'KTT - Ngày hết hạn (alias)', 'example': '01/01/2035'},
+        {'name': 'dn_ke_toan_truong_noi_o_hien_tai', 'description': 'KTT - Nơi ở hiện tại', 'example': '456 Hai Bà Trưng, Q3, TP.HCM'},
+        {'name': 'dn_ktt_noi_o_hien_tai', 'description': 'KTT - Nơi ở hiện tại (alias)', 'example': '456 Hai Bà Trưng, Q3, TP.HCM'},
+    ]
+
+    # 6. Biến Tùy chỉnh - From GlobalConfig.custom_variables
     config = GlobalConfig.get_instance()
     custom_variables = []
     if config.custom_variables:
@@ -1398,6 +1474,7 @@ def variable_library_view(request):
 
     context = {
         'customer_variables': customer_variables,
+        'business_variables': business_variables,
         'date_variables': date_variables,
         'service_variables': service_variables,
         'calc_variables': calc_variables,
@@ -4711,3 +4788,143 @@ def atm_load_discrepancy_data(request, discrepancy_id, template_id):
     except Exception as e:
         messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
         return redirect('atm_discrepancy_list')
+
+
+# ============================================
+# Business (Doanh nghiệp) Dashboard & CRUD
+# ============================================
+
+@login_required
+def business_dashboard(request):
+    """Dashboard quản lý doanh nghiệp"""
+    # Lấy danh sách doanh nghiệp
+    businesses = Business.objects.all().order_by('-created_at')
+
+    # Thống kê
+    total_businesses = businesses.count()
+
+    # Lấy danh sách templates liên quan đến doanh nghiệp
+    user = request.user
+    if user.is_superuser:
+        templates = Template.objects.filter(
+            is_active=True,
+            name__icontains='doanh nghiệp'
+        ).select_related('category').order_by('category__order', 'order', 'name')
+    else:
+        user_groups = user.groups.all()
+        templates = Template.objects.filter(
+            is_active=True,
+            name__icontains='doanh nghiệp'
+        ).filter(
+            Q(allowed_groups__isnull=True) | Q(allowed_groups__in=user_groups)
+        ).distinct().select_related('category').order_by('category__order', 'order', 'name')
+
+    context = {
+        'businesses': businesses,
+        'total_businesses': total_businesses,
+        'templates': templates,
+    }
+    return render(request, 'templates_app/business/dashboard.html', context)
+
+
+@login_required
+def business_create(request):
+    """Tạo doanh nghiệp mới"""
+    if request.method == 'POST':
+        form = BusinessForm(request.POST)
+        if form.is_valid():
+            business = form.save()
+            messages.success(request, f'Đã tạo doanh nghiệp "{business.ten_doanh_nghiep}" thành công')
+            return redirect('business_dashboard')
+        else:
+            messages.error(request, 'Có lỗi khi tạo doanh nghiệp. Vui lòng kiểm tra lại.')
+    else:
+        form = BusinessForm()
+
+    context = {
+        'form': form,
+        'action': 'create',
+        'title': 'Tạo doanh nghiệp mới',
+    }
+    return render(request, 'templates_app/business/form.html', context)
+
+
+@login_required
+def business_edit(request, business_id):
+    """Sửa thông tin doanh nghiệp"""
+    business = get_object_or_404(Business, pk=business_id)
+
+    if request.method == 'POST':
+        form = BusinessForm(request.POST, instance=business)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Đã cập nhật doanh nghiệp "{business.ten_doanh_nghiep}"')
+            return redirect('business_dashboard')
+        else:
+            messages.error(request, 'Có lỗi khi cập nhật. Vui lòng kiểm tra lại.')
+    else:
+        form = BusinessForm(instance=business)
+
+    context = {
+        'form': form,
+        'business': business,
+        'action': 'edit',
+        'title': f'Sửa doanh nghiệp: {business.ten_doanh_nghiep}',
+    }
+    return render(request, 'templates_app/business/form.html', context)
+
+
+@login_required
+def business_delete(request, business_id):
+    """Xóa doanh nghiệp"""
+    business = get_object_or_404(Business, pk=business_id)
+    ten_dn = business.ten_doanh_nghiep
+
+    if request.method == 'POST':
+        business.delete()
+        messages.success(request, f'Đã xóa doanh nghiệp "{ten_dn}"')
+        return redirect('business_dashboard')
+
+    # Nếu GET, hiển thị confirm page
+    context = {
+        'business': business,
+    }
+    return render(request, 'templates_app/business/delete_confirm.html', context)
+
+
+@login_required
+def business_load_data(request, business_id, template_id):
+    """Load dữ liệu doanh nghiệp vào template và tạo file Word"""
+    # Lấy business
+    business = get_object_or_404(Business, pk=business_id)
+
+    # Lấy template và kiểm tra quyền
+    template = get_object_or_404(Template, id=template_id, is_active=True)
+    if not template.user_has_access(request.user):
+        raise Http404("Bạn không có quyền truy cập mẫu biểu này")
+
+    try:
+        # Lấy dữ liệu từ business
+        data = business.get_data_dict()
+
+        # Thêm biến chung (chi nhánh + custom variables)
+        global_config = GlobalConfig.get_instance()
+        data.update(global_config.get_all_variables())
+
+        # Render template Word với dữ liệu
+        template_path = template.file.path
+        output_stream = render_word_template(template_path, data)
+
+        # Trả về file Word
+        response = HttpResponse(
+            output_stream.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        filename = f"{template.name}_{business.ten_doanh_nghiep}_{business.cif}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('business_dashboard')

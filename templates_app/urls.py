@@ -43,6 +43,13 @@ urlpatterns = [
     path('api/businesses/search/', views.business_search_api, name='business_search_api'),
     path('api/businesses/<int:business_id>/data/', views.business_data_api, name='business_data_api'),
 
+    # Business Dashboard and CRUD
+    path('business/', views.business_dashboard, name='business_dashboard'),
+    path('business/create/', views.business_create, name='business_create'),
+    path('business/<int:business_id>/edit/', views.business_edit, name='business_edit'),
+    path('business/<int:business_id>/delete/', views.business_delete, name='business_delete'),
+    path('business/<int:business_id>/template/<int:template_id>/', views.business_load_data, name='business_load_data'),
+
     # Global Configuration (Branch + Custom Variables)
     path('branch-config/', views.branch_config_view, name='branch_config'),
     path('api/custom-variables/add/', views.add_custom_variable, name='add_custom_variable'),
