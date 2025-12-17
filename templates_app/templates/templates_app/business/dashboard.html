@@ -269,16 +269,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Search businesses
     function searchBusinesses() {
         const query = businessSearchInput.value.trim();
-        if (query.length < 2) {
+        console.log('Search query:', query);  // Debug log
+
+        if (query.length < 1) {
             businessSearchResults.style.display = 'none';
             return;
         }
 
+        console.log('Fetching:', `/api/businesses/search/?q=${encodeURIComponent(query)}`);  // Debug log
+
         fetch(`/api/businesses/search/?q=${encodeURIComponent(query)}`)
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);  // Debug log
+                return response.json();
+            })
             .then(data => {
+                console.log('Search results:', data);  // Debug log
                 businessSearchResults.innerHTML = '';
+
+                // Show message if available
+                if (data.message) {
+                    console.log('Message:', data.message);
+                }
+
                 if (data.businesses && data.businesses.length > 0) {
+                    console.log(`Found ${data.businesses.length} businesses`);
                     data.businesses.forEach(business => {
                         const item = document.createElement('a');
                         item.href = '#';
@@ -300,12 +315,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     businessSearchResults.style.display = 'block';
                 } else {
-                    businessSearchResults.innerHTML = '<div class="list-group-item text-muted">Không tìm thấy doanh nghiệp</div>';
+                    const msg = data.message || 'Không tìm thấy doanh nghiệp';
+                    businessSearchResults.innerHTML = `<div class="list-group-item text-muted">${msg}</div>`;
                     businessSearchResults.style.display = 'block';
+                    console.log('No businesses found');
                 }
             })
             .catch(error => {
                 console.error('Error searching businesses:', error);
+                businessSearchResults.innerHTML = `<div class="list-group-item text-danger">Lỗi: ${error.message}</div>`;
+                businessSearchResults.style.display = 'block';
             });
     }
 
@@ -358,10 +377,13 @@ document.addEventListener('DOMContentLoaded', function() {
     businessSearchInput.addEventListener('keyup', function(e) {
         if (e.key === 'Enter') {
             searchBusinesses();
-        } else if (this.value.length >= 2) {
-            // Auto-search as user types
+        } else if (this.value.length >= 1) {
+            // Auto-search as user types (minimum 1 character)
             clearTimeout(this.searchTimeout);
             this.searchTimeout = setTimeout(searchBusinesses, 300);
+        } else {
+            // Clear results if input is empty
+            businessSearchResults.style.display = 'none';
         }
     });
 
