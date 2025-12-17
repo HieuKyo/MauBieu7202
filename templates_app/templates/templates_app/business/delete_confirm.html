@@ -1,0 +1,125 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Xác nhận xóa doanh nghiệp{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'business_dashboard' %}">Quản lý Doanh nghiệp</a></li>
+                    <li class="breadcrumb-item active">Xác nhận xóa</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-trash"></i> Xác nhận xóa doanh nghiệp</h2>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Xác nhận xóa doanh nghiệp</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Cảnh báo:</strong> Bạn có chắc chắn muốn xóa doanh nghiệp này? Hành động này không thể hoàn tác!
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title border-bottom pb-2">Thông tin doanh nghiệp sẽ bị xóa:</h6>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Mã CIF:</strong></div>
+                                <div class="col-md-8"><strong class="text-primary">{{ business.cif }}</strong></div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Tên doanh nghiệp:</strong></div>
+                                <div class="col-md-8"><strong>{{ business.ten_doanh_nghiep }}</strong></div>
+                            </div>
+
+                            {% if business.so_tai_khoan %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Số tài khoản:</strong></div>
+                                <div class="col-md-8">{{ business.so_tai_khoan }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if business.ma_so_thue %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Mã số thuế:</strong></div>
+                                <div class="col-md-8">{{ business.ma_so_thue }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if business.so_gcn %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Số GCN/ĐKKD:</strong></div>
+                                <div class="col-md-8">{{ business.so_gcn }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if business.dia_chi %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Địa chỉ:</strong></div>
+                                <div class="col-md-8">{{ business.dia_chi }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if business.dien_thoai %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Điện thoại:</strong></div>
+                                <div class="col-md-8">{{ business.dien_thoai }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if business.nguoi_dai_dien_ho_ten %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Người đại diện:</strong></div>
+                                <div class="col-md-8">{{ business.nguoi_dai_dien_ho_ten }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if business.ke_toan_truong_ho_ten %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Kế toán trưởng:</strong></div>
+                                <div class="col-md-8">{{ business.ke_toan_truong_ho_ten }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if business.von_dieu_le %}
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Vốn điều lệ:</strong></div>
+                                <div class="col-md-8"><strong class="text-success">{{ business.von_dieu_le|floatformat:0 }} VNĐ</strong></div>
+                            </div>
+                            {% endif %}
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Ngày tạo:</strong></div>
+                                <div class="col-md-8">{{ business.created_at|date:"d/m/Y H:i" }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'business_dashboard' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Hủy
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Xác nhận xóa
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

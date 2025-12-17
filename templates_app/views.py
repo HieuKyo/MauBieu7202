@@ -4788,3 +4788,143 @@ def atm_load_discrepancy_data(request, discrepancy_id, template_id):
     except Exception as e:
         messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
         return redirect('atm_discrepancy_list')
+
+
+# ============================================
+# Business (Doanh nghiệp) Dashboard & CRUD
+# ============================================
+
+@login_required
+def business_dashboard(request):
+    """Dashboard quản lý doanh nghiệp"""
+    # Lấy danh sách doanh nghiệp
+    businesses = Business.objects.all().order_by('-created_at')
+
+    # Thống kê
+    total_businesses = businesses.count()
+
+    # Lấy danh sách templates liên quan đến doanh nghiệp
+    user = request.user
+    if user.is_superuser:
+        templates = Template.objects.filter(
+            is_active=True,
+            name__icontains='doanh nghiệp'
+        ).select_related('category').order_by('category__order', 'order', 'name')
+    else:
+        user_groups = user.groups.all()
+        templates = Template.objects.filter(
+            is_active=True,
+            name__icontains='doanh nghiệp'
+        ).filter(
+            Q(allowed_groups__isnull=True) | Q(allowed_groups__in=user_groups)
+        ).distinct().select_related('category').order_by('category__order', 'order', 'name')
+
+    context = {
+        'businesses': businesses,
+        'total_businesses': total_businesses,
+        'templates': templates,
+    }
+    return render(request, 'templates_app/business/dashboard.html', context)
+
+
+@login_required
+def business_create(request):
+    """Tạo doanh nghiệp mới"""
+    if request.method == 'POST':
+        form = BusinessForm(request.POST)
+        if form.is_valid():
+            business = form.save()
+            messages.success(request, f'Đã tạo doanh nghiệp "{business.ten_doanh_nghiep}" thành công')
+            return redirect('business_dashboard')
+        else:
+            messages.error(request, 'Có lỗi khi tạo doanh nghiệp. Vui lòng kiểm tra lại.')
+    else:
+        form = BusinessForm()
+
+    context = {
+        'form': form,
+        'action': 'create',
+        'title': 'Tạo doanh nghiệp mới',
+    }
+    return render(request, 'templates_app/business/form.html', context)
+
+
+@login_required
+def business_edit(request, business_id):
+    """Sửa thông tin doanh nghiệp"""
+    business = get_object_or_404(Business, pk=business_id)
+
+    if request.method == 'POST':
+        form = BusinessForm(request.POST, instance=business)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Đã cập nhật doanh nghiệp "{business.ten_doanh_nghiep}"')
+            return redirect('business_dashboard')
+        else:
+            messages.error(request, 'Có lỗi khi cập nhật. Vui lòng kiểm tra lại.')
+    else:
+        form = BusinessForm(instance=business)
+
+    context = {
+        'form': form,
+        'business': business,
+        'action': 'edit',
+        'title': f'Sửa doanh nghiệp: {business.ten_doanh_nghiep}',
+    }
+    return render(request, 'templates_app/business/form.html', context)
+
+
+@login_required
+def business_delete(request, business_id):
+    """Xóa doanh nghiệp"""
+    business = get_object_or_404(Business, pk=business_id)
+    ten_dn = business.ten_doanh_nghiep
+
+    if request.method == 'POST':
+        business.delete()
+        messages.success(request, f'Đã xóa doanh nghiệp "{ten_dn}"')
+        return redirect('business_dashboard')
+
+    # Nếu GET, hiển thị confirm page
+    context = {
+        'business': business,
+    }
+    return render(request, 'templates_app/business/delete_confirm.html', context)
+
+
+@login_required
+def business_load_data(request, business_id, template_id):
+    """Load dữ liệu doanh nghiệp vào template và tạo file Word"""
+    # Lấy business
+    business = get_object_or_404(Business, pk=business_id)
+
+    # Lấy template và kiểm tra quyền
+    template = get_object_or_404(Template, id=template_id, is_active=True)
+    if not template.user_has_access(request.user):
+        raise Http404("Bạn không có quyền truy cập mẫu biểu này")
+
+    try:
+        # Lấy dữ liệu từ business
+        data = business.get_data_dict()
+
+        # Thêm biến chung (chi nhánh + custom variables)
+        global_config = GlobalConfig.get_instance()
+        data.update(global_config.get_all_variables())
+
+        # Render template Word với dữ liệu
+        template_path = template.file.path
+        output_stream = render_word_template(template_path, data)
+
+        # Trả về file Word
+        response = HttpResponse(
+            output_stream.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        filename = f"{template.name}_{business.ten_doanh_nghiep}_{business.cif}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('business_dashboard')
