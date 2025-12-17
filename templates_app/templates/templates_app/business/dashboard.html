@@ -12,6 +12,55 @@
         </div>
     </div>
 
+    <!-- Quick Print Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-printer"></i> In mẫu biểu nhanh</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label"><i class="bi bi-building"></i> Chọn doanh nghiệp</label>
+                            <div class="input-group">
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="businessSearchInput"
+                                    placeholder="Nhập tên doanh nghiệp, CIF, hoặc MST..."
+                                    autocomplete="off"
+                                >
+                                <button class="btn btn-outline-secondary" type="button" id="searchBusinessBtn">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                            <!-- Search results -->
+                            <div id="businessSearchResults" class="list-group mt-2" style="display:none; max-height:300px; overflow-y:auto;"></div>
+                            <!-- Selected business display -->
+                            <div id="selectedBusinessDisplay" class="alert alert-success mt-2" style="display:none;">
+                                <strong><i class="bi bi-check-circle"></i> Đã chọn:</strong>
+                                <span id="selectedBusinessName"></span>
+                                <button type="button" class="btn-close float-end" id="clearBusinessBtn"></button>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label"><i class="bi bi-file-earmark-text"></i> Chọn mẫu biểu</label>
+                            <select class="form-select" id="templateSelect" disabled>
+                                <option value="">-- Vui lòng chọn doanh nghiệp trước --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-success w-100" id="printBtn" disabled>
+                                <i class="bi bi-file-earmark-arrow-down"></i> Tạo file
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
@@ -190,6 +239,142 @@
         </div>
     </div>
 </div>
+
+<script>
+// Quick Print Section - Business Selection and Template Generation
+document.addEventListener('DOMContentLoaded', function() {
+    const businessSearchInput = document.getElementById('businessSearchInput');
+    const searchBusinessBtn = document.getElementById('searchBusinessBtn');
+    const businessSearchResults = document.getElementById('businessSearchResults');
+    const selectedBusinessDisplay = document.getElementById('selectedBusinessDisplay');
+    const selectedBusinessName = document.getElementById('selectedBusinessName');
+    const clearBusinessBtn = document.getElementById('clearBusinessBtn');
+    const templateSelect = document.getElementById('templateSelect');
+    const printBtn = document.getElementById('printBtn');
+
+    let selectedBusinessId = null;
+    const templates = {{ templates|safe }};  // Templates from context
+
+    // Convert templates to JSON-safe format
+    const templateList = [
+        {% for template in templates %}
+        {
+            id: {{ template.id }},
+            name: '{{ template.name|escapejs }}',
+            category: '{{ template.category.name|escapejs }}'
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Search businesses
+    function searchBusinesses() {
+        const query = businessSearchInput.value.trim();
+        if (query.length < 2) {
+            businessSearchResults.style.display = 'none';
+            return;
+        }
+
+        fetch(`/api/businesses/search/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                businessSearchResults.innerHTML = '';
+                if (data.businesses && data.businesses.length > 0) {
+                    data.businesses.forEach(business => {
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>${business.ten_doanh_nghiep}</strong><br>
+                                    <small class="text-muted">CIF: ${business.cif}</small>
+                                    ${business.ma_so_thue ? `<small class="text-muted"> | MST: ${business.ma_so_thue}</small>` : ''}
+                                </div>
+                            </div>
+                        `;
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            selectBusiness(business.id, business.ten_doanh_nghiep, business.cif);
+                        });
+                        businessSearchResults.appendChild(item);
+                    });
+                    businessSearchResults.style.display = 'block';
+                } else {
+                    businessSearchResults.innerHTML = '<div class="list-group-item text-muted">Không tìm thấy doanh nghiệp</div>';
+                    businessSearchResults.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching businesses:', error);
+            });
+    }
+
+    // Select a business
+    function selectBusiness(id, name, cif) {
+        selectedBusinessId = id;
+        selectedBusinessName.textContent = `${name} (CIF: ${cif})`;
+        selectedBusinessDisplay.style.display = 'block';
+        businessSearchResults.style.display = 'none';
+        businessSearchInput.value = '';
+
+        // Enable template dropdown and populate with templates
+        templateSelect.disabled = false;
+        templateSelect.innerHTML = '<option value="">-- Chọn mẫu biểu --</option>';
+        templateList.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = `${template.category} - ${template.name}`;
+            templateSelect.appendChild(option);
+        });
+    }
+
+    // Clear selected business
+    clearBusinessBtn.addEventListener('click', function() {
+        selectedBusinessId = null;
+        selectedBusinessDisplay.style.display = 'none';
+        templateSelect.disabled = true;
+        templateSelect.innerHTML = '<option value="">-- Vui lòng chọn doanh nghiệp trước --</option>';
+        printBtn.disabled = true;
+    });
+
+    // Enable print button when template is selected
+    templateSelect.addEventListener('change', function() {
+        printBtn.disabled = !this.value;
+    });
+
+    // Generate document
+    printBtn.addEventListener('click', function() {
+        const templateId = templateSelect.value;
+        if (selectedBusinessId && templateId) {
+            // Redirect to the URL that generates the document
+            window.location.href = `/business/${selectedBusinessId}/template/${templateId}/`;
+        }
+    });
+
+    // Search on button click
+    searchBusinessBtn.addEventListener('click', searchBusinesses);
+
+    // Search on Enter key
+    businessSearchInput.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
+            searchBusinesses();
+        } else if (this.value.length >= 2) {
+            // Auto-search as user types
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(searchBusinesses, 300);
+        }
+    });
+
+    // Hide search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!businessSearchInput.contains(e.target) &&
+            !businessSearchResults.contains(e.target) &&
+            !searchBusinessBtn.contains(e.target)) {
+            businessSearchResults.style.display = 'none';
+        }
+    });
+});
+</script>
 
 <!-- Import Modal -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
