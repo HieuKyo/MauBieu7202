@@ -205,25 +205,34 @@
                 <div class="alert alert-info">
                     <h6><i class="bi bi-info-circle"></i> Hướng dẫn:</h6>
                     <ol class="mb-0">
-                        <li>Copy dữ liệu doanh nghiệp từ phần mềm AGRIBANK (bao gồm cả header)</li>
-                        <li>Paste vào Notepad hoặc Text Editor</li>
-                        <li>Lưu file với định dạng <code>.txt</code> hoặc <code>.tsv</code></li>
-                        <li>Chọn file và click "Import"</li>
+                        <li>Từ phần mềm AGRIBANK, chọn và copy dữ liệu doanh nghiệp (bao gồm cả dòng header)</li>
+                        <li><strong>Paste trực tiếp</strong> vào khung text bên dưới</li>
+                        <li>Click "Import" để import dữ liệu</li>
                     </ol>
                     <hr>
                     <small class="text-muted">
-                        <strong>Lưu ý:</strong> Dữ liệu phải có các cột: custno, nmloc, regno, taxno, addr1loc, telno, issuedt1, issueby1, issuedt6, issueby6
+                        <strong>Lưu ý:</strong> Dữ liệu phải có các cột: custno, nmloc, busno, issuedt4, taxno, issuedt6, addr1loc, telno
                     </small>
                 </div>
 
-                <form id="importForm" enctype="multipart/form-data">
+                <form id="importForm">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="tsvFile" class="form-label">
-                            <i class="bi bi-file-earmark-text"></i> Chọn file TSV/TXT
+                        <label for="tsvData" class="form-label">
+                            <i class="bi bi-clipboard-data"></i> Paste dữ liệu từ AGRIBANK
                         </label>
-                        <input type="file" class="form-control" id="tsvFile" name="tsv_file" accept=".tsv,.txt" required>
-                        <div class="form-text">Chỉ chấp nhận file .tsv hoặc .txt</div>
+                        <textarea
+                            class="form-control font-monospace"
+                            id="tsvData"
+                            name="tsv_data"
+                            rows="12"
+                            placeholder="Paste dữ liệu từ AGRIBANK vào đây (bao gồm cả dòng header)..."
+                            required
+                            style="font-size: 0.85rem; overflow-x: auto; white-space: pre;"
+                        ></textarea>
+                        <div class="form-text">
+                            <i class="bi bi-lightbulb"></i> Mẹo: Ctrl+V để paste, dữ liệu sẽ tự động giữ nguyên định dạng tab
+                        </div>
                     </div>
 
                     <div id="importProgress" class="progress mb-3" style="display: none;">
@@ -253,15 +262,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const importForm = document.getElementById('importForm');
     const importProgress = document.getElementById('importProgress');
     const importResult = document.getElementById('importResult');
-    const tsvFile = document.getElementById('tsvFile');
+    const tsvData = document.getElementById('tsvData');
 
     importBtn.addEventListener('click', function() {
-        if (!tsvFile.files.length) {
-            alert('Vui lòng chọn file TSV/TXT');
+        const data = tsvData.value.trim();
+
+        if (!data) {
+            alert('Vui lòng paste dữ liệu TSV từ AGRIBANK');
             return;
         }
 
+        // Create FormData and add the pasted text
         const formData = new FormData(importForm);
+        formData.set('tsv_data', data);
 
         // Show progress
         importProgress.style.display = 'block';
@@ -287,12 +300,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h6><i class="bi bi-check-circle"></i> Import thành công!</h6>
                     <p class="mb-0">${data.message}</p>
                     ${data.errors > 0 ? `<hr><small class="text-warning">Có ${data.errors} dòng bị lỗi</small>` : ''}
+                    ${data.error_details && data.error_details.length > 0 ? `
+                        <hr>
+                        <small class="text-muted">
+                            <strong>Chi tiết lỗi:</strong><br>
+                            ${data.error_details.join('<br>')}
+                        </small>
+                    ` : ''}
                 `;
 
-                // Reload page after 2 seconds
+                // Reload page after 3 seconds
                 setTimeout(() => {
                     window.location.reload();
-                }, 2000);
+                }, 3000);
             } else {
                 importResult.className = 'alert alert-danger';
                 importResult.innerHTML = `
