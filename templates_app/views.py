@@ -1712,16 +1712,16 @@ def generate_document_direct(request, template_id):
         data['ngay_hien_tai_obj'] = datetime.now().date()  # Date object for calculations
 
         # Service-specific account and phone logic
-        # If Agribank Plus is selected but NOT SMS Banking
-        if data['dv_bankplus'] == '☑' and data['dv_sms_banking'] == '☐':
+        # If Agribank Plus is selected, show account and phone for AP
+        if data['dv_bankplus'] == '☑':
             data['so_tai_khoan_AP'] = data['so_tai_khoan']
             data['so_dien_thoai_AP'] = data['so_dien_thoai']
         else:
             data['so_tai_khoan_AP'] = ''
             data['so_dien_thoai_AP'] = ''
 
-        # If SMS Banking is selected but NOT Agribank Plus
-        if data['dv_sms_banking'] == '☑' and data['dv_bankplus'] == '☐':
+        # If SMS Banking is selected, show account and phone for SMS
+        if data['dv_sms_banking'] == '☑':
             data['so_tai_khoan_SMS'] = data['so_tai_khoan']
             data['so_dien_thoai_SMS'] = data['so_dien_thoai']
         else:

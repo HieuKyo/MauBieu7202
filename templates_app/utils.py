@@ -132,14 +132,21 @@ class JinjaWordTemplateProcessor:
             template = self.jinja_env.from_string(full_text)
             rendered_text = template.render(context)
 
-            # Replace text trong paragraph (giữ formatting của run đầu tiên)
-            # Xóa tất cả runs
+            # Replace text trong paragraph, giữ formatting của run có text
+            # Tìm run đầu tiên có text không rỗng để giữ formatting
+            target_run_index = 0
+            for i, run in enumerate(paragraph.runs):
+                if run.text.strip():
+                    target_run_index = i
+                    break
+
+            # Xóa text của tất cả runs
             for run in paragraph.runs:
                 run.text = ''
 
-            # Thêm text mới vào run đầu tiên
+            # Set text mới vào run có text gốc (giữ formatting)
             if paragraph.runs:
-                paragraph.runs[0].text = rendered_text
+                paragraph.runs[target_run_index].text = rendered_text
             else:
                 paragraph.add_run(rendered_text)
 
@@ -529,13 +536,20 @@ class WordTemplateProcessor:
             var_value = context.get(var_name, f'[{var_name}]')  # Nếu không tìm thấy, giữ nguyên trong []
             new_text = new_text.replace(match.group(0), str(var_value))
 
-        # Xóa tất cả runs hiện tại
+        # Tìm run đầu tiên có text không rỗng để giữ formatting
+        target_run_index = 0
+        for i, run in enumerate(paragraph.runs):
+            if run.text.strip():
+                target_run_index = i
+                break
+
+        # Xóa text của tất cả runs
         for run in paragraph.runs:
             run.text = ''
 
-        # Thêm text mới vào run đầu tiên (hoặc tạo mới nếu không có)
+        # Set text mới vào run có text gốc (giữ formatting)
         if paragraph.runs:
-            paragraph.runs[0].text = new_text
+            paragraph.runs[target_run_index].text = new_text
         else:
             paragraph.add_run(new_text)
 

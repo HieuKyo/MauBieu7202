@@ -875,16 +875,16 @@ class Customer(models.Model):
         # No need to generate individual character variables
 
         # Service-specific account and phone logic
-        # If Agribank Plus is selected but NOT SMS Banking
-        if self.dv_bankplus and not self.dv_sms_banking:
+        # If Agribank Plus is selected, show account and phone for AP
+        if self.dv_bankplus:
             data['so_tai_khoan_AP'] = self.so_tai_khoan or ''
             data['so_dien_thoai_AP'] = self.so_dien_thoai or ''
         else:
             data['so_tai_khoan_AP'] = ''
             data['so_dien_thoai_AP'] = ''
 
-        # If SMS Banking is selected but NOT Agribank Plus
-        if self.dv_sms_banking and not self.dv_bankplus:
+        # If SMS Banking is selected, show account and phone for SMS
+        if self.dv_sms_banking:
             data['so_tai_khoan_SMS'] = self.so_tai_khoan or ''
             data['so_dien_thoai_SMS'] = self.so_dien_thoai or ''
         else:
