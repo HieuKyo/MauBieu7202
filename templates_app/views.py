@@ -1436,8 +1436,14 @@ def variable_library_view(request):
         {'name': 'dn_ndd_gioi_tinh_nu', 'description': 'NĐD - Checkbox ☑/☐ khi giới tính Nữ', 'example': '☑ hoặc ☐'},
         {'name': 'dn_nguoi_dai_dien_nghe_nghiep', 'description': 'NĐD - Nghề nghiệp', 'example': 'Doanh nhân'},
         {'name': 'dn_ndd_nghe_nghiep', 'description': 'NĐD - Nghề nghiệp (alias)', 'example': 'Doanh nhân'},
+        {'name': 'dn_nguoi_dai_dien_dien_thoai', 'description': 'NĐD - Số điện thoại', 'example': '0987654321'},
+        {'name': 'dn_ndd_dien_thoai', 'description': 'NĐD - Số điện thoại (alias)', 'example': '0987654321'},
         {'name': 'dn_nguoi_dai_dien_loai_giay_to', 'description': 'NĐD - Loại giấy tờ', 'example': 'Căn cước công dân'},
         {'name': 'dn_ndd_loai_giay_to', 'description': 'NĐD - Loại giấy tờ (alias)', 'example': 'Căn cước công dân'},
+        {'name': 'dn_ndd_loai_giay_to_cccd', 'description': 'NĐD - Checkbox ☑/☐ khi loại giấy tờ là CCCD', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ndd_loai_giay_to_cccd_chip', 'description': 'NĐD - Checkbox ☑/☐ khi loại giấy tờ là CCCD có chip', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ndd_loai_giay_to_cmnd', 'description': 'NĐD - Checkbox ☑/☐ khi loại giấy tờ là CMND', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ndd_loai_giay_to_passport', 'description': 'NĐD - Checkbox ☑/☐ khi loại giấy tờ là Passport', 'example': '☑ hoặc ☐'},
         {'name': 'dn_nguoi_dai_dien_so_cccd', 'description': 'NĐD - Số CCCD/CMND', 'example': '001234567890'},
         {'name': 'dn_ndd_so_cccd', 'description': 'NĐD - Số CCCD/CMND (alias)', 'example': '001234567890'},
         {'name': 'dn_nguoi_dai_dien_ngay_cap', 'description': 'NĐD - Ngày cấp (dd/mm/yyyy)', 'example': '01/01/2020'},
@@ -1460,8 +1466,14 @@ def variable_library_view(request):
         {'name': 'dn_ktt_gioi_tinh_nu', 'description': 'KTT - Checkbox ☑/☐ khi giới tính Nữ', 'example': '☑ hoặc ☐'},
         {'name': 'dn_ke_toan_truong_nghe_nghiep', 'description': 'KTT - Nghề nghiệp', 'example': 'Kế toán'},
         {'name': 'dn_ktt_nghe_nghiep', 'description': 'KTT - Nghề nghiệp (alias)', 'example': 'Kế toán'},
+        {'name': 'dn_ke_toan_truong_dien_thoai', 'description': 'KTT - Số điện thoại', 'example': '0912345678'},
+        {'name': 'dn_ktt_dien_thoai', 'description': 'KTT - Số điện thoại (alias)', 'example': '0912345678'},
         {'name': 'dn_ke_toan_truong_loai_giay_to', 'description': 'KTT - Loại giấy tờ', 'example': 'Căn cước công dân'},
         {'name': 'dn_ktt_loai_giay_to', 'description': 'KTT - Loại giấy tờ (alias)', 'example': 'Căn cước công dân'},
+        {'name': 'dn_ktt_loai_giay_to_cccd', 'description': 'KTT - Checkbox ☑/☐ khi loại giấy tờ là CCCD', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ktt_loai_giay_to_cccd_chip', 'description': 'KTT - Checkbox ☑/☐ khi loại giấy tờ là CCCD có chip', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ktt_loai_giay_to_cmnd', 'description': 'KTT - Checkbox ☑/☐ khi loại giấy tờ là CMND', 'example': '☑ hoặc ☐'},
+        {'name': 'dn_ktt_loai_giay_to_passport', 'description': 'KTT - Checkbox ☑/☐ khi loại giấy tờ là Passport', 'example': '☑ hoặc ☐'},
         {'name': 'dn_ke_toan_truong_so_cccd', 'description': 'KTT - Số CCCD/CMND', 'example': '001234567891'},
         {'name': 'dn_ktt_so_cccd', 'description': 'KTT - Số CCCD/CMND (alias)', 'example': '001234567891'},
         {'name': 'dn_ke_toan_truong_ngay_cap', 'description': 'KTT - Ngày cấp (dd/mm/yyyy)', 'example': '01/01/2020'},
@@ -4935,9 +4947,11 @@ def business_load_data(request, business_id, template_id):
         )
         # Tạo filename với ngày tháng
         from datetime import datetime
+        from urllib.parse import quote
         date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{template.name}_{business.ten_doanh_nghiep}_{business.cif}_{date_str}.docx"
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        filename_encoded = quote(filename)
+        response['Content-Disposition'] = f"attachment; filename*=UTF-8''{filename_encoded}"
 
         return response
 

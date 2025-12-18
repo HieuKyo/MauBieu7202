@@ -441,6 +441,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     });
 
+    // Helper function to convert DD/MM/YYYY to YYYY-MM-DD
+    function convertDateToInputFormat(dateStr) {
+        if (!dateStr || dateStr.trim() === '') return '';
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return '';
+        // parts[0] = DD, parts[1] = MM, parts[2] = YYYY
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+
     // Handle customer selection
     document.addEventListener('click', function(e) {
         if (e.target.closest('.customer-select-item')) {
@@ -455,14 +464,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         // Fill form fields
                         document.getElementById(`id_${prefix}_ho_ten`).value = customer.ho_ten || '';
-                        document.getElementById(`id_${prefix}_ngay_sinh`).value = customer.ngay_sinh || '';
+                        document.getElementById(`id_${prefix}_ngay_sinh`).value = convertDateToInputFormat(customer.ngay_sinh);
                         document.getElementById(`id_${prefix}_gioi_tinh`).value = customer.gioi_tinh || '';
                         document.getElementById(`id_${prefix}_nghe_nghiep`).value = customer.nghe_nghiep || '';
                         document.getElementById(`id_${prefix}_dien_thoai`).value = customer.so_dien_thoai || '';
                         document.getElementById(`id_${prefix}_so_cccd`).value = customer.so_cmnd || '';
-                        document.getElementById(`id_${prefix}_ngay_cap`).value = customer.ngay_cap_cmnd || '';
+                        document.getElementById(`id_${prefix}_ngay_cap`).value = convertDateToInputFormat(customer.ngay_cap_cmnd);
                         document.getElementById(`id_${prefix}_noi_cap`).value = customer.noi_cap_cmnd_display || '';
-                        document.getElementById(`id_${prefix}_ngay_het_han`).value = customer.ngay_het_han_cmnd || '';
+                        document.getElementById(`id_${prefix}_ngay_het_han`).value = convertDateToInputFormat(customer.ngay_het_han_cmnd);
                         document.getElementById(`id_${prefix}_noi_o_hien_tai`).value = customer.dia_chi || '';
 
                         // Close modal
