@@ -1400,6 +1400,7 @@ class GlobalConfig(models.Model):
     nguoi_dai_dien = models.CharField(max_length=200, verbose_name="Người đại diện", blank=True)
     chuc_vu = models.CharField(max_length=200, verbose_name="Chức vụ", blank=True)
     so_uy_quyen = models.CharField(max_length=100, verbose_name="Số uỷ quyền", blank=True)
+    ngay_uy_quyen = models.DateField(verbose_name="Ngày uỷ quyền", null=True, blank=True)
     giao_dich_vien = models.CharField(max_length=200, verbose_name="Giao dịch viên", blank=True)
     kiem_soat_vien = models.CharField(max_length=200, verbose_name="Kiểm soát viên", blank=True)
     giam_doc = models.CharField(max_length=200, verbose_name="Giám đốc", blank=True)

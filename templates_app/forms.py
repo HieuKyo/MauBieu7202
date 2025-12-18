@@ -296,6 +296,7 @@ class GlobalConfigForm(forms.ModelForm):
             'nguoi_dai_dien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên người đại diện'}),
             'chuc_vu': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Chức vụ người đại diện'}),
             'so_uy_quyen': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ví dụ: 123/UQ-HĐQT'}),
+            'ngay_uy_quyen': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'dd/mm/yyyy'}),
             'giao_dich_vien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên giao dịch viên'}),
             'kiem_soat_vien': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên kiểm soát viên'}),
             'giam_doc': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ tên giám đốc'}),

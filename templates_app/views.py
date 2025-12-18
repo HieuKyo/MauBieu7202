@@ -1211,6 +1211,7 @@ def variable_library_view(request):
         {'name': 'nguoi_dai_dien', 'description': 'Người đại diện', 'example': 'Nguyễn Văn A'},
         {'name': 'chuc_vu', 'description': 'Chức vụ', 'example': 'Giám đốc'},
         {'name': 'so_uy_quyen', 'description': 'Số uỷ quyền', 'example': '123/UQ-HĐQT'},
+        {'name': 'ngay_uy_quyen', 'description': 'Ngày uỷ quyền', 'example': '15/12/2024'},
         {'name': 'dien_thoai_chi_nhanh', 'description': 'Điện thoại chi nhánh', 'example': '0291.3822468'},
         {'name': 'giao_dich_vien', 'description': 'Họ tên giao dịch viên', 'example': 'Nguyễn Văn A'},
         {'name': 'kiem_soat_vien', 'description': 'Họ tên kiểm soát viên', 'example': 'Trần Thị B'},
