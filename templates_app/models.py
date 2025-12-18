@@ -1175,6 +1175,10 @@ class Business(models.Model):
         Trả về dictionary chứa thông tin doanh nghiệp
         Dùng để auto-fill form và render template
         """
+        from datetime import datetime
+        import re
+        import unicodedata
+
         EMPTY_VALUE = '...........................'
 
         def checkbox(value):
@@ -1189,12 +1193,71 @@ class Business(models.Model):
             except (ValueError, TypeError):
                 return str(amount)
 
+        # Helper: Tạo tên viết tắt (HKD Nguyễn Văn A -> HKDNVA)
+        def create_acronym(name):
+            if not name:
+                return EMPTY_VALUE
+            # Remove diacritics and convert to uppercase
+            normalized = unicodedata.normalize('NFD', name)
+            without_diacritics = ''.join(c for c in normalized if unicodedata.category(c) != 'Mn')
+            # Get first letter of each word
+            words = without_diacritics.upper().split()
+            return ''.join(word[0] for word in words if word)
+
+        # Helper: Bỏ tiền tố HKD (HKD Nguyễn Văn A -> Nguyễn Văn A)
+        def remove_prefix(name):
+            if not name:
+                return EMPTY_VALUE
+            # Remove common prefixes
+            prefixes = ['HKD', 'DNTN', 'CTCP', 'TNHH', 'CT']
+            name_stripped = name.strip()
+            for prefix in prefixes:
+                if name_stripped.upper().startswith(prefix + ' '):
+                    return name_stripped[len(prefix):].strip()
+            return name_stripped
+
+        # Helper: Tách từng chữ số
+        def split_digits(number_str, length=13):
+            if not number_str:
+                return [EMPTY_VALUE] * length
+            digits = str(number_str).zfill(length)
+            return list(digits[:length])
+
+        # Logic nơi cấp CCCD dựa vào ngày cấp (> 08/2024)
+        cutoff_date = datetime(2024, 8, 1)
+
+        # Người đại diện
+        ndd_noi_cap = self.nguoi_dai_dien_noi_cap or EMPTY_VALUE
+        ndd_is_new_cccd = False
+        if self.nguoi_dai_dien_ngay_cap:
+            ndd_is_new_cccd = self.nguoi_dai_dien_ngay_cap > cutoff_date.date()
+            if ndd_is_new_cccd:
+                ndd_noi_cap = "Bộ Công An"
+            else:
+                ndd_noi_cap = "Cục CSQLHC về TTXH"
+
+        # Kế toán trưởng
+        ktt_noi_cap = self.ke_toan_truong_noi_cap or EMPTY_VALUE
+        ktt_is_new_cccd = False
+        if self.ke_toan_truong_ngay_cap:
+            ktt_is_new_cccd = self.ke_toan_truong_ngay_cap > cutoff_date.date()
+            if ktt_is_new_cccd:
+                ktt_noi_cap = "Bộ Công An"
+            else:
+                ktt_noi_cap = "Cục CSQLHC về TTXH"
+
+        # Tách số GCN và MST thành từng chữ số
+        so_gcn_digits = split_digits(self.so_gcn)
+        ma_so_thue_digits = split_digits(self.ma_so_thue, 10)
+
         data = {
             # Thông tin doanh nghiệp cơ bản
             'dn_cif': self.cif or EMPTY_VALUE,
             'dn_so_tai_khoan': self.so_tai_khoan or EMPTY_VALUE,
             'dn_ten': self.ten_doanh_nghiep or EMPTY_VALUE,
             'dn_ten_doanh_nghiep': self.ten_doanh_nghiep or EMPTY_VALUE,
+            'dn_ten_viet_tat': create_acronym(self.ten_doanh_nghiep),  # HKD Nguyễn Văn A -> HKDNVA
+            'dn_ten_khong_tien_to': remove_prefix(self.ten_doanh_nghiep),  # HKD Nguyễn Văn A -> Nguyễn Văn A
 
             # Giấy tờ định danh
             'dn_loai_giay_to': self.get_loai_giay_to_display() if self.loai_giay_to else EMPTY_VALUE,
@@ -1202,6 +1265,12 @@ class Business(models.Model):
             'dn_ngay_cap_gcn': self.ngay_cap_gcn.strftime('%d/%m/%Y') if self.ngay_cap_gcn else EMPTY_VALUE,
             'dn_ngay_cap_gcn_obj': self.ngay_cap_gcn,
             'dn_noi_cap_gcn': self.noi_cap_gcn or EMPTY_VALUE,
+            # Từng chữ số của GCN (13 chữ số)
+            'dn_so_gcn_1': so_gcn_digits[0], 'dn_so_gcn_2': so_gcn_digits[1], 'dn_so_gcn_3': so_gcn_digits[2],
+            'dn_so_gcn_4': so_gcn_digits[3], 'dn_so_gcn_5': so_gcn_digits[4], 'dn_so_gcn_6': so_gcn_digits[5],
+            'dn_so_gcn_7': so_gcn_digits[6], 'dn_so_gcn_8': so_gcn_digits[7], 'dn_so_gcn_9': so_gcn_digits[8],
+            'dn_so_gcn_10': so_gcn_digits[9], 'dn_so_gcn_11': so_gcn_digits[10], 'dn_so_gcn_12': so_gcn_digits[11],
+            'dn_so_gcn_13': so_gcn_digits[12],
 
             # Mã số thuế
             'dn_ma_so_thue': self.ma_so_thue or EMPTY_VALUE,
@@ -1209,6 +1278,11 @@ class Business(models.Model):
             'dn_ngay_cap_mst': self.ngay_cap_mst.strftime('%d/%m/%Y') if self.ngay_cap_mst else EMPTY_VALUE,
             'dn_ngay_cap_mst_obj': self.ngay_cap_mst,
             'dn_noi_cap_mst': self.noi_cap_mst or EMPTY_VALUE,
+            # Từng chữ số của MST (10 chữ số)
+            'dn_mst_1': ma_so_thue_digits[0], 'dn_mst_2': ma_so_thue_digits[1], 'dn_mst_3': ma_so_thue_digits[2],
+            'dn_mst_4': ma_so_thue_digits[3], 'dn_mst_5': ma_so_thue_digits[4], 'dn_mst_6': ma_so_thue_digits[5],
+            'dn_mst_7': ma_so_thue_digits[6], 'dn_mst_8': ma_so_thue_digits[7], 'dn_mst_9': ma_so_thue_digits[8],
+            'dn_mst_10': ma_so_thue_digits[9],
 
             # Liên hệ
             'dn_dia_chi': self.dia_chi or EMPTY_VALUE,
@@ -1232,7 +1306,7 @@ class Business(models.Model):
             'dn_nguoi_dai_dien_dien_thoai': self.nguoi_dai_dien_dien_thoai or EMPTY_VALUE,
             'dn_ndd_dien_thoai': self.nguoi_dai_dien_dien_thoai or EMPTY_VALUE,
 
-            # Giấy tờ người đại diện
+            # Giấy tờ người đại diện (với logic tự động nơi cấp)
             'dn_nguoi_dai_dien_loai_giay_to': self.get_nguoi_dai_dien_loai_giay_to_display() if self.nguoi_dai_dien_loai_giay_to else EMPTY_VALUE,
             'dn_ndd_loai_giay_to': self.get_nguoi_dai_dien_loai_giay_to_display() if self.nguoi_dai_dien_loai_giay_to else EMPTY_VALUE,
             'dn_nguoi_dai_dien_so_cccd': self.nguoi_dai_dien_so_cccd or EMPTY_VALUE,
@@ -1240,8 +1314,8 @@ class Business(models.Model):
             'dn_nguoi_dai_dien_ngay_cap': self.nguoi_dai_dien_ngay_cap.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_cap else EMPTY_VALUE,
             'dn_nguoi_dai_dien_ngay_cap_obj': self.nguoi_dai_dien_ngay_cap,
             'dn_ndd_ngay_cap': self.nguoi_dai_dien_ngay_cap.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_cap else EMPTY_VALUE,
-            'dn_nguoi_dai_dien_noi_cap': self.nguoi_dai_dien_noi_cap or EMPTY_VALUE,
-            'dn_ndd_noi_cap': self.nguoi_dai_dien_noi_cap or EMPTY_VALUE,
+            'dn_nguoi_dai_dien_noi_cap': ndd_noi_cap,  # Auto: "Bộ Công An" nếu > 08/2024
+            'dn_ndd_noi_cap': ndd_noi_cap,
             'dn_nguoi_dai_dien_ngay_het_han': self.nguoi_dai_dien_ngay_het_han.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_het_han else EMPTY_VALUE,
             'dn_nguoi_dai_dien_ngay_het_han_obj': self.nguoi_dai_dien_ngay_het_han,
             'dn_ndd_ngay_het_han': self.nguoi_dai_dien_ngay_het_han.strftime('%d/%m/%Y') if self.nguoi_dai_dien_ngay_het_han else EMPTY_VALUE,
@@ -1261,7 +1335,7 @@ class Business(models.Model):
             'dn_ke_toan_truong_dien_thoai': self.ke_toan_truong_dien_thoai or EMPTY_VALUE,
             'dn_ktt_dien_thoai': self.ke_toan_truong_dien_thoai or EMPTY_VALUE,
 
-            # Giấy tờ kế toán trưởng
+            # Giấy tờ kế toán trưởng (với logic tự động nơi cấp)
             'dn_ke_toan_truong_loai_giay_to': self.get_ke_toan_truong_loai_giay_to_display() if self.ke_toan_truong_loai_giay_to else EMPTY_VALUE,
             'dn_ktt_loai_giay_to': self.get_ke_toan_truong_loai_giay_to_display() if self.ke_toan_truong_loai_giay_to else EMPTY_VALUE,
             'dn_ke_toan_truong_so_cccd': self.ke_toan_truong_so_cccd or EMPTY_VALUE,
@@ -1269,8 +1343,8 @@ class Business(models.Model):
             'dn_ke_toan_truong_ngay_cap': self.ke_toan_truong_ngay_cap.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_cap else EMPTY_VALUE,
             'dn_ke_toan_truong_ngay_cap_obj': self.ke_toan_truong_ngay_cap,
             'dn_ktt_ngay_cap': self.ke_toan_truong_ngay_cap.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_cap else EMPTY_VALUE,
-            'dn_ke_toan_truong_noi_cap': self.ke_toan_truong_noi_cap or EMPTY_VALUE,
-            'dn_ktt_noi_cap': self.ke_toan_truong_noi_cap or EMPTY_VALUE,
+            'dn_ke_toan_truong_noi_cap': ktt_noi_cap,  # Auto: "Bộ Công An" nếu > 08/2024
+            'dn_ktt_noi_cap': ktt_noi_cap,
             'dn_ke_toan_truong_ngay_het_han': self.ke_toan_truong_ngay_het_han.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_het_han else EMPTY_VALUE,
             'dn_ke_toan_truong_ngay_het_han_obj': self.ke_toan_truong_ngay_het_han,
             'dn_ktt_ngay_het_han': self.ke_toan_truong_ngay_het_han.strftime('%d/%m/%Y') if self.ke_toan_truong_ngay_het_han else EMPTY_VALUE,
@@ -1285,15 +1359,15 @@ class Business(models.Model):
             'dn_ktt_gioi_tinh_nam': checkbox(self.ke_toan_truong_gioi_tinh == 'Nam'),
             'dn_ktt_gioi_tinh_nu': checkbox(self.ke_toan_truong_gioi_tinh == 'Nữ'),
 
-            # Checkbox cho loại giấy tờ người đại diện
-            'dn_ndd_loai_giay_to_cccd': checkbox(self.nguoi_dai_dien_loai_giay_to == 'CCCD'),
-            'dn_ndd_loai_giay_to_cccd_chip': checkbox(self.nguoi_dai_dien_loai_giay_to == 'CCCD_CHIP'),
+            # Checkbox cho loại giấy tờ người đại diện (tự động dựa vào ngày cấp)
+            'dn_ndd_loai_giay_to_cccd': checkbox(not ndd_is_new_cccd and self.nguoi_dai_dien_loai_giay_to in ['CCCD', 'CCCD_CHIP']),
+            'dn_ndd_loai_giay_to_cccd_chip': checkbox(ndd_is_new_cccd and self.nguoi_dai_dien_loai_giay_to in ['CCCD', 'CCCD_CHIP']),
             'dn_ndd_loai_giay_to_cmnd': checkbox(self.nguoi_dai_dien_loai_giay_to == 'CMND'),
             'dn_ndd_loai_giay_to_passport': checkbox(self.nguoi_dai_dien_loai_giay_to == 'Passport'),
 
-            # Checkbox cho loại giấy tờ kế toán trưởng
-            'dn_ktt_loai_giay_to_cccd': checkbox(self.ke_toan_truong_loai_giay_to == 'CCCD'),
-            'dn_ktt_loai_giay_to_cccd_chip': checkbox(self.ke_toan_truong_loai_giay_to == 'CCCD_CHIP'),
+            # Checkbox cho loại giấy tờ kế toán trưởng (tự động dựa vào ngày cấp)
+            'dn_ktt_loai_giay_to_cccd': checkbox(not ktt_is_new_cccd and self.ke_toan_truong_loai_giay_to in ['CCCD', 'CCCD_CHIP']),
+            'dn_ktt_loai_giay_to_cccd_chip': checkbox(ktt_is_new_cccd and self.ke_toan_truong_loai_giay_to in ['CCCD', 'CCCD_CHIP']),
             'dn_ktt_loai_giay_to_cmnd': checkbox(self.ke_toan_truong_loai_giay_to == 'CMND'),
             'dn_ktt_loai_giay_to_passport': checkbox(self.ke_toan_truong_loai_giay_to == 'Passport'),
         }

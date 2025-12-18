@@ -367,19 +367,22 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Format number inputs
+    // Format number inputs (fix for Vietnamese number format with dots)
     const numberInputs = ['id_von_dieu_le'];
     numberInputs.forEach(inputId => {
         const input = document.getElementById(inputId);
         if (input) {
             input.addEventListener('blur', function() {
-                const value = parseFloat(this.value.replace(/,/g, ''));
-                if (!isNaN(value)) {
+                // Remove all dots and commas, then parse
+                const value = parseFloat(this.value.replace(/[.,]/g, ''));
+                if (!isNaN(value) && value > 0) {
+                    // Format with dot as thousands separator
                     this.value = value.toLocaleString('vi-VN');
                 }
             });
             input.addEventListener('focus', function() {
-                this.value = this.value.replace(/,/g, '');
+                // Remove formatting (dots) when focusing
+                this.value = this.value.replace(/\./g, '');
             });
         }
     });
