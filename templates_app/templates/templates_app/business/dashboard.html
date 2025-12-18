@@ -253,9 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const printBtn = document.getElementById('printBtn');
 
     let selectedBusinessId = null;
-    const templates = {{ templates|safe }};  // Templates from context
 
-    // Convert templates to JSON-safe format
+    // Build templates array from Django context
     const templateList = [
         {% for template in templates %}
         {
@@ -265,6 +264,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
+
+    console.log('Available templates:', templateList.length);  // Debug log
 
     // Search businesses
     function searchBusinesses() {
