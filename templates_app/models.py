@@ -1389,12 +1389,17 @@ class GlobalConfig(models.Model):
     ten_chi_nhanh_hoa = models.CharField(max_length=200, verbose_name="Tên chi nhánh (IN HOA)", default="CHI NHÁNH GIÁ RAI BẠC LIÊU")
     ma_chi_nhanh = models.CharField(max_length=20, verbose_name="Mã chi nhánh", blank=True)
     mst = models.CharField(max_length=50, verbose_name="Mã số thuế", blank=True)
+    gcndkdn = models.CharField(max_length=50, verbose_name="Giấy chứng nhận đăng ký kinh doanh", blank=True)
+    mst_chi_nhanh = models.CharField(max_length=50, verbose_name="Mã số thuế chi nhánh", blank=True)
     dia_chi_chi_nhanh = models.TextField(verbose_name="Địa chỉ chi nhánh", blank=True)
     dien_thoai_chi_nhanh = models.CharField(max_length=50, verbose_name="Điện thoại chi nhánh", blank=True)
     so_fax = models.CharField(max_length=50, verbose_name="Số Fax", blank=True)
     dia_danh = models.CharField(max_length=200, verbose_name="Địa danh", blank=True, help_text="Ví dụ: Bạc Liêu, Đồng Tháp")
 
     # Nhân sự
+    nguoi_dai_dien = models.CharField(max_length=200, verbose_name="Người đại diện", blank=True)
+    chuc_vu = models.CharField(max_length=200, verbose_name="Chức vụ", blank=True)
+    so_uy_quyen = models.CharField(max_length=100, verbose_name="Số uỷ quyền", blank=True)
     giao_dich_vien = models.CharField(max_length=200, verbose_name="Giao dịch viên", blank=True)
     kiem_soat_vien = models.CharField(max_length=200, verbose_name="Kiểm soát viên", blank=True)
     giam_doc = models.CharField(max_length=200, verbose_name="Giám đốc", blank=True)
