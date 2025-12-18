@@ -1405,18 +1405,48 @@ def variable_library_view(request):
         {'name': 'dn_so_tai_khoan', 'description': 'Số tài khoản doanh nghiệp', 'example': '1234567890'},
         {'name': 'dn_ten', 'description': 'Tên doanh nghiệp (alias)', 'example': 'Công ty TNHH ABC'},
         {'name': 'dn_ten_doanh_nghiep', 'description': 'Tên doanh nghiệp', 'example': 'Công ty TNHH ABC'},
+        {'name': 'dn_ten_viet_tat', 'description': 'Tên viết tắt doanh nghiệp (chữ cái đầu)', 'example': 'HKDNVA từ HKD Nguyễn Văn A'},
+        {'name': 'dn_ten_khong_tien_to', 'description': 'Tên DN không có tiền tố (bỏ HKD/DNTN/CTCP...)', 'example': 'Nguyễn Văn A từ HKD Nguyễn Văn A'},
 
         # Giấy tờ định danh
         {'name': 'dn_loai_giay_to', 'description': 'Loại giấy tờ (GCN/DKKD/QĐ thành lập)', 'example': 'Giấy chứng nhận đăng ký doanh nghiệp'},
         {'name': 'dn_so_gcn', 'description': 'Số giấy chứng nhận', 'example': '0123456789'},
         {'name': 'dn_ngay_cap_gcn', 'description': 'Ngày cấp GCN (dd/mm/yyyy)', 'example': '15/01/2020'},
         {'name': 'dn_noi_cap_gcn', 'description': 'Nơi cấp GCN', 'example': 'Sở Kế hoạch và Đầu tư TP. HCM'},
+        # Từng chữ số GCN (13 chữ số)
+        {'name': 'dn_so_gcn_1', 'description': 'GCN - Chữ số thứ 1', 'example': '0'},
+        {'name': 'dn_so_gcn_2', 'description': 'GCN - Chữ số thứ 2', 'example': '1'},
+        {'name': 'dn_so_gcn_3', 'description': 'GCN - Chữ số thứ 3', 'example': '2'},
+        {'name': 'dn_so_gcn_4', 'description': 'GCN - Chữ số thứ 4', 'example': '3'},
+        {'name': 'dn_so_gcn_5', 'description': 'GCN - Chữ số thứ 5', 'example': '4'},
+        {'name': 'dn_so_gcn_6', 'description': 'GCN - Chữ số thứ 6', 'example': '5'},
+        {'name': 'dn_so_gcn_7', 'description': 'GCN - Chữ số thứ 7', 'example': '6'},
+        {'name': 'dn_so_gcn_8', 'description': 'GCN - Chữ số thứ 8', 'example': '7'},
+        {'name': 'dn_so_gcn_9', 'description': 'GCN - Chữ số thứ 9', 'example': '8'},
+        {'name': 'dn_so_gcn_10', 'description': 'GCN - Chữ số thứ 10', 'example': '9'},
+        {'name': 'dn_so_gcn_11', 'description': 'GCN - Chữ số thứ 11', 'example': '0'},
+        {'name': 'dn_so_gcn_12', 'description': 'GCN - Chữ số thứ 12', 'example': '1'},
+        {'name': 'dn_so_gcn_13', 'description': 'GCN - Chữ số thứ 13', 'example': '2'},
 
         # Mã số thuế
         {'name': 'dn_ma_so_thue', 'description': 'Mã số thuế', 'example': '0123456789'},
         {'name': 'dn_mst', 'description': 'Mã số thuế (alias)', 'example': '0123456789'},
         {'name': 'dn_ngay_cap_mst', 'description': 'Ngày cấp MST (dd/mm/yyyy)', 'example': '15/01/2020'},
         {'name': 'dn_noi_cap_mst', 'description': 'Nơi cấp MST', 'example': 'Chi cục thuế quận 1'},
+        # Từng chữ số MST (13 chữ số - HKD có 13 số)
+        {'name': 'dn_mst_1', 'description': 'MST - Chữ số thứ 1', 'example': '0'},
+        {'name': 'dn_mst_2', 'description': 'MST - Chữ số thứ 2', 'example': '1'},
+        {'name': 'dn_mst_3', 'description': 'MST - Chữ số thứ 3', 'example': '2'},
+        {'name': 'dn_mst_4', 'description': 'MST - Chữ số thứ 4', 'example': '3'},
+        {'name': 'dn_mst_5', 'description': 'MST - Chữ số thứ 5', 'example': '4'},
+        {'name': 'dn_mst_6', 'description': 'MST - Chữ số thứ 6', 'example': '5'},
+        {'name': 'dn_mst_7', 'description': 'MST - Chữ số thứ 7', 'example': '6'},
+        {'name': 'dn_mst_8', 'description': 'MST - Chữ số thứ 8', 'example': '7'},
+        {'name': 'dn_mst_9', 'description': 'MST - Chữ số thứ 9', 'example': '8'},
+        {'name': 'dn_mst_10', 'description': 'MST - Chữ số thứ 10', 'example': '9'},
+        {'name': 'dn_mst_11', 'description': 'MST - Chữ số thứ 11', 'example': '0'},
+        {'name': 'dn_mst_12', 'description': 'MST - Chữ số thứ 12', 'example': '1'},
+        {'name': 'dn_mst_13', 'description': 'MST - Chữ số thứ 13', 'example': '2'},
 
         # Liên hệ và kinh doanh
         {'name': 'dn_dia_chi', 'description': 'Địa chỉ doanh nghiệp', 'example': '123 Nguyễn Huệ, Q1, TP.HCM'},
