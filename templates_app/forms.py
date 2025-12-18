@@ -246,7 +246,7 @@ class BusinessForm(forms.ModelForm):
 
             # Thông tin kinh doanh
             'linh_vuc_kinh_doanh': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Lĩnh vực kinh doanh'}),
-            'von_dieu_le': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Vốn điều lệ (VND)'}),
+            'von_dieu_le': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Vốn điều lệ (VND)'}),
 
             # Người đại diện pháp luật
             'nguoi_dai_dien_ho_ten': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ và tên'}),
