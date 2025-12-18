@@ -1400,6 +1400,7 @@ class GlobalConfig(models.Model):
     nguoi_dai_dien = models.CharField(max_length=200, verbose_name="Người đại diện", blank=True)
     chuc_vu = models.CharField(max_length=200, verbose_name="Chức vụ", blank=True)
     so_uy_quyen = models.CharField(max_length=100, verbose_name="Số uỷ quyền", blank=True)
+    ngay_uy_quyen = models.DateField(verbose_name="Ngày uỷ quyền", null=True, blank=True)
     giao_dich_vien = models.CharField(max_length=200, verbose_name="Giao dịch viên", blank=True)
     kiem_soat_vien = models.CharField(max_length=200, verbose_name="Kiểm soát viên", blank=True)
     giam_doc = models.CharField(max_length=200, verbose_name="Giám đốc", blank=True)
@@ -1485,6 +1486,160 @@ class GlobalConfig(models.Model):
             variables.update(self.custom_variables)
 
         return variables
+
+
+# ====================
+# BranchConfig - Config per User/Branch
+# ====================
+
+class BranchConfig(models.Model):
+    """
+    Cấu hình chi nhánh/phòng giao dịch riêng cho từng đơn vị
+    Mỗi đơn vị có thể có cấu hình riêng
+    """
+
+    BRANCH_TYPE_CHOICES = [
+        ('CHI_NHANH', 'Chi nhánh'),
+        ('PGD', 'Phòng giao dịch'),
+        ('HOI_SO', 'Hội sở'),
+    ]
+
+    # Thông tin đơn vị
+    branch_code = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Mã đơn vị",
+        help_text="Ví dụ: HOI_SO, PGD_LANG_TRON, PGD_P1"
+    )
+    branch_type = models.CharField(
+        max_length=20,
+        choices=BRANCH_TYPE_CHOICES,
+        default='CHI_NHANH',
+        verbose_name="Loại đơn vị"
+    )
+    is_active = models.BooleanField(default=True, verbose_name="Kích hoạt")
+
+    # Thông tin chi nhánh (copy từ GlobalConfig)
+    ten_chi_nhanh = models.CharField(max_length=200, verbose_name="Tên chi nhánh")
+    ten_chi_nhanh_hoa = models.CharField(max_length=200, verbose_name="Tên chi nhánh (IN HOA)")
+    ma_chi_nhanh = models.CharField(max_length=20, verbose_name="Mã chi nhánh", blank=True)
+    mst = models.CharField(max_length=50, verbose_name="Mã số thuế", blank=True)
+    gcndkdn = models.CharField(max_length=50, verbose_name="Giấy chứng nhận đăng ký kinh doanh", blank=True)
+    mst_chi_nhanh = models.CharField(max_length=50, verbose_name="Mã số thuế chi nhánh", blank=True)
+    dia_chi_chi_nhanh = models.TextField(verbose_name="Địa chỉ chi nhánh", blank=True)
+    dien_thoai_chi_nhanh = models.CharField(max_length=50, verbose_name="Điện thoại chi nhánh", blank=True)
+    so_fax = models.CharField(max_length=50, verbose_name="Số Fax", blank=True)
+    dia_danh = models.CharField(max_length=200, verbose_name="Địa danh", blank=True, help_text="Ví dụ: Bạc Liêu, Đồng Tháp")
+
+    # Nhân sự
+    nguoi_dai_dien = models.CharField(max_length=200, verbose_name="Người đại diện", blank=True)
+    chuc_vu = models.CharField(max_length=200, verbose_name="Chức vụ", blank=True)
+    so_uy_quyen = models.CharField(max_length=100, verbose_name="Số uỷ quyền", blank=True)
+    ngay_uy_quyen = models.DateField(verbose_name="Ngày uỷ quyền", null=True, blank=True)
+    giao_dich_vien = models.CharField(max_length=200, verbose_name="Giao dịch viên", blank=True)
+    kiem_soat_vien = models.CharField(max_length=200, verbose_name="Kiểm soát viên", blank=True)
+    giam_doc = models.CharField(max_length=200, verbose_name="Giám đốc", blank=True)
+
+    # Các biến tùy chỉnh riêng của từng chi nhánh (lưu dạng JSON)
+    custom_variables = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Biến tùy chỉnh riêng",
+        help_text="Các biến tùy chỉnh riêng cho chi nhánh này"
+    )
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Người cập nhật"
+    )
+
+    class Meta:
+        verbose_name = "Cấu hình Chi nhánh"
+        verbose_name_plural = "Cấu hình Chi nhánh"
+        ordering = ['branch_code']
+
+    def __str__(self):
+        return f"{self.get_branch_type_display()}: {self.ten_chi_nhanh}"
+
+    def get_all_variables(self):
+        """
+        Trả về dictionary chứa TẤT CẢ biến (chi nhánh + biến tùy chỉnh + biến tự động)
+        để chèn vào template
+        """
+        from datetime import date
+
+        # Ngày hiện tại
+        today = date.today()
+        day = today.day
+        month = today.month
+        year = today.year
+
+        variables = {
+            # Biến chi nhánh
+            'ten_chi_nhanh': self.ten_chi_nhanh or '',
+            'ten_chi_nhanh_hoa': self.ten_chi_nhanh_hoa or '',
+            'ma_chi_nhanh': self.ma_chi_nhanh or '',
+            'mst': self.mst or '',
+            'gcndkdn': self.gcndkdn or '',
+            'mst_chi_nhanh': self.mst_chi_nhanh or '',
+            'dia_chi_chi_nhanh': self.dia_chi_chi_nhanh or '',
+            'dien_thoai_chi_nhanh': self.dien_thoai_chi_nhanh or '',
+            'so_fax': self.so_fax or '',
+            'dia_danh': self.dia_danh or '',
+            'nguoi_dai_dien': self.nguoi_dai_dien or '',
+            'chuc_vu': self.chuc_vu or '',
+            'so_uy_quyen': self.so_uy_quyen or '',
+            'ngay_uy_quyen': self.ngay_uy_quyen.strftime('%d/%m/%Y') if self.ngay_uy_quyen else '',
+            'giao_dich_vien': self.giao_dich_vien or '',
+            'kiem_soat_vien': self.kiem_soat_vien or '',
+            'giam_doc': self.giam_doc or '',
+
+            # Biến tự động - Ngày giờ
+            'ngay_hien_tai': today.strftime('%d/%m/%Y'),
+            'ngay_thang_nam_text': f"ngày {day:02d} tháng {month:02d} năm {year}",
+            'date_month_year': f"Date {day:02d} Month {month:02d} Year {year}",
+            'nam_hien_tai': year,
+            'thang_hien_tai': month,
+            'ngay_hien_tai_day': day,
+        }
+
+        # Thêm các biến tùy chỉnh riêng của chi nhánh này
+        if self.custom_variables:
+            variables.update(self.custom_variables)
+
+        return variables
+
+    @classmethod
+    def get_for_user(cls, user):
+        """
+        Lấy BranchConfig cho user dựa vào UserProfile.branch
+        Nếu không tìm thấy, fallback về GlobalConfig
+        """
+        try:
+            # Lấy branch code từ UserProfile
+            if hasattr(user, 'profile') and user.profile.branch:
+                user_branch = user.profile.branch
+
+                # Tìm BranchConfig tương ứng
+                branch_config = cls.objects.filter(
+                    branch_code=user_branch,
+                    is_active=True
+                ).first()
+
+                if branch_config:
+                    return branch_config
+        except Exception as e:
+            # Log error nếu cần
+            pass
+
+        # Fallback: trả về GlobalConfig
+        return GlobalConfig.get_instance()
 
 
 # ====================

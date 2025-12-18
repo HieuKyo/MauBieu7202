@@ -4,7 +4,7 @@ from django.urls import path
 from django.contrib import messages
 from django.http import HttpResponse
 from .models import (
-    Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig,
+    Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig,
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction,
     UserProfile, Course, CourseEnrollment,
@@ -295,6 +295,7 @@ class TemplateAdmin(admin.ModelAdmin):
             {'name': 'nguoi_dai_dien', 'description': 'Người đại diện'},
             {'name': 'chuc_vu', 'description': 'Chức vụ'},
             {'name': 'so_uy_quyen', 'description': 'Số uỷ quyền'},
+            {'name': 'ngay_uy_quyen', 'description': 'Ngày uỷ quyền'},
             {'name': 'dien_thoai_chi_nhanh', 'description': 'Điện thoại chi nhánh'},
             {'name': 'giao_dich_vien', 'description': 'Họ tên giao dịch viên'},
             {'name': 'kiem_soat_vien', 'description': 'Họ tên kiểm soát viên'},
@@ -990,3 +991,47 @@ class ATMDiscrepancyAdmin(admin.ModelAdmin):
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
 
+
+@admin.register(BranchConfig)
+class BranchConfigAdmin(admin.ModelAdmin):
+    """Admin cho Cấu hình Chi nhánh"""
+    list_display = ['branch_code', 'ten_chi_nhanh', 'branch_type', 'is_active', 'updated_at', 'updated_by']
+    list_filter = ['branch_type', 'is_active']
+    list_editable = ['is_active']
+    search_fields = ['branch_code', 'ten_chi_nhanh', 'dia_chi_chi_nhanh', 'mst']
+    readonly_fields = ['created_at', 'updated_at', 'updated_by']
+    ordering = ['branch_code']
+
+    fieldsets = (
+        ('Thông tin đơn vị', {
+            'fields': ('branch_code', 'branch_type', 'is_active'),
+            'description': 'Mã đơn vị phải khớp với UserProfile.branch (ví dụ: HOI_SO, PGD_LANG_TRON, PGD_P1)'
+        }),
+        ('Thông tin chi nhánh', {
+            'fields': (
+                'ten_chi_nhanh', 'ten_chi_nhanh_hoa', 'ma_chi_nhanh',
+                'mst', 'gcndkdn', 'mst_chi_nhanh',
+                'dia_chi_chi_nhanh', 'dien_thoai_chi_nhanh', 'so_fax', 'dia_danh'
+            )
+        }),
+        ('Nhân sự', {
+            'fields': (
+                'nguoi_dai_dien', 'chuc_vu', 'so_uy_quyen', 'ngay_uy_quyen',
+                'giao_dich_vien', 'kiem_soat_vien', 'giam_doc'
+            )
+        }),
+        ('Biến tùy chỉnh riêng', {
+            'fields': ('custom_variables',),
+            'classes': ('collapse',),
+            'description': 'Biến tùy chỉnh riêng cho chi nhánh này (JSON format)'
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at', 'updated_by'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        """Tự động gán người cập nhật"""
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
