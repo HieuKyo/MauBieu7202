@@ -160,7 +160,12 @@
 
                         <!-- Người đại diện pháp luật -->
                         <div class="mb-4">
-                            <h6 class="border-bottom pb-2"><i class="bi bi-person-badge"></i> Người đại diện pháp luật</h6>
+                            <h6 class="border-bottom pb-2">
+                                <i class="bi bi-person-badge"></i> Người đại diện pháp luật
+                                <button type="button" class="btn btn-sm btn-outline-primary float-end" id="quickSelectRepBtn">
+                                    <i class="bi bi-search"></i> Chọn nhanh
+                                </button>
+                            </h6>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="{{ form.nguoi_dai_dien_ho_ten.id_for_label }}" class="form-label">
@@ -180,23 +185,29 @@
                                     </label>
                                     {{ form.nguoi_dai_dien_gioi_tinh }}
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label for="{{ form.nguoi_dai_dien_nghe_nghiep.id_for_label }}" class="form-label">
                                         Nghề nghiệp
                                     </label>
                                     {{ form.nguoi_dai_dien_nghe_nghiep }}
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.nguoi_dai_dien_dien_thoai.id_for_label }}" class="form-label">
+                                        Số điện thoại
+                                    </label>
+                                    {{ form.nguoi_dai_dien_dien_thoai }}
+                                </div>
+                                <div class="col-md-4 mb-3">
                                     <label for="{{ form.nguoi_dai_dien_loai_giay_to.id_for_label }}" class="form-label">
                                         Loại giấy tờ
                                     </label>
                                     {{ form.nguoi_dai_dien_loai_giay_to }}
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label for="{{ form.nguoi_dai_dien_so_giay_to.id_for_label }}" class="form-label">
+                                    <label for="{{ form.nguoi_dai_dien_so_cccd.id_for_label }}" class="form-label">
                                         Số giấy tờ
                                     </label>
-                                    {{ form.nguoi_dai_dien_so_giay_to }}
+                                    {{ form.nguoi_dai_dien_so_cccd }}
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="{{ form.nguoi_dai_dien_ngay_cap.id_for_label }}" class="form-label">
@@ -217,17 +228,22 @@
                                     {{ form.nguoi_dai_dien_ngay_het_han }}
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="{{ form.nguoi_dai_dien_dia_chi_thuong_tru.id_for_label }}" class="form-label">
+                                    <label for="{{ form.nguoi_dai_dien_noi_o_hien_tai.id_for_label }}" class="form-label">
                                         Địa chỉ thường trú
                                     </label>
-                                    {{ form.nguoi_dai_dien_dia_chi_thuong_tru }}
+                                    {{ form.nguoi_dai_dien_noi_o_hien_tai }}
                                 </div>
                             </div>
                         </div>
 
                         <!-- Kế toán trưởng -->
                         <div class="mb-4">
-                            <h6 class="border-bottom pb-2"><i class="bi bi-calculator"></i> Kế toán trưởng</h6>
+                            <h6 class="border-bottom pb-2">
+                                <i class="bi bi-calculator"></i> Kế toán trưởng
+                                <button type="button" class="btn btn-sm btn-outline-success float-end" id="quickSelectAccBtn">
+                                    <i class="bi bi-search"></i> Chọn nhanh
+                                </button>
+                            </h6>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="{{ form.ke_toan_truong_ho_ten.id_for_label }}" class="form-label">
@@ -247,23 +263,29 @@
                                     </label>
                                     {{ form.ke_toan_truong_gioi_tinh }}
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label for="{{ form.ke_toan_truong_nghe_nghiep.id_for_label }}" class="form-label">
                                         Nghề nghiệp
                                     </label>
                                     {{ form.ke_toan_truong_nghe_nghiep }}
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.ke_toan_truong_dien_thoai.id_for_label }}" class="form-label">
+                                        Số điện thoại
+                                    </label>
+                                    {{ form.ke_toan_truong_dien_thoai }}
+                                </div>
+                                <div class="col-md-4 mb-3">
                                     <label for="{{ form.ke_toan_truong_loai_giay_to.id_for_label }}" class="form-label">
                                         Loại giấy tờ
                                     </label>
                                     {{ form.ke_toan_truong_loai_giay_to }}
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label for="{{ form.ke_toan_truong_so_giay_to.id_for_label }}" class="form-label">
+                                    <label for="{{ form.ke_toan_truong_so_cccd.id_for_label }}" class="form-label">
                                         Số giấy tờ
                                     </label>
-                                    {{ form.ke_toan_truong_so_giay_to }}
+                                    {{ form.ke_toan_truong_so_cccd }}
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="{{ form.ke_toan_truong_ngay_cap.id_for_label }}" class="form-label">
@@ -284,10 +306,10 @@
                                     {{ form.ke_toan_truong_ngay_het_han }}
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="{{ form.ke_toan_truong_dia_chi_thuong_tru.id_for_label }}" class="form-label">
+                                    <label for="{{ form.ke_toan_truong_noi_o_hien_tai.id_for_label }}" class="form-label">
                                         Địa chỉ thường trú
                                     </label>
-                                    {{ form.ke_toan_truong_dia_chi_thuong_tru }}
+                                    {{ form.ke_toan_truong_noi_o_hien_tai }}
                                 </div>
                             </div>
                         </div>
@@ -361,6 +383,118 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+
+    // Customer Quick Select functionality
+    const quickSelectRepBtn = document.getElementById('quickSelectRepBtn');
+    const quickSelectAccBtn = document.getElementById('quickSelectAccBtn');
+    let currentSelectTarget = '';  // 'rep' or 'acc'
+
+    // Show modal when clicking quick select buttons
+    quickSelectRepBtn?.addEventListener('click', function() {
+        currentSelectTarget = 'rep';
+        document.getElementById('customerSearchInput').value = '';
+        document.getElementById('customerSearchResults').innerHTML = '';
+        const modal = new bootstrap.Modal(document.getElementById('customerSelectModal'));
+        modal.show();
+    });
+
+    quickSelectAccBtn?.addEventListener('click', function() {
+        currentSelectTarget = 'acc';
+        document.getElementById('customerSearchInput').value = '';
+        document.getElementById('customerSearchResults').innerHTML = '';
+        const modal = new bootstrap.Modal(document.getElementById('customerSelectModal'));
+        modal.show();
+    });
+
+    // Search customers with debounce
+    let searchTimeout;
+    const customerSearchInput = document.getElementById('customerSearchInput');
+    customerSearchInput?.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            document.getElementById('customerSearchResults').innerHTML = '';
+            return;
+        }
+
+        searchTimeout = setTimeout(function() {
+            fetch(`/api/customers/search/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById('customerSearchResults');
+                    if (data.customers && data.customers.length > 0) {
+                        resultsDiv.innerHTML = data.customers.map(c => `
+                            <div class="list-group-item list-group-item-action customer-select-item"
+                                 data-customer-id="${c.id}" style="cursor: pointer;">
+                                <div><strong>${c.ho_ten}</strong></div>
+                                <div class="text-muted small">CCCD/CMND: ${c.so_cmnd || 'N/A'} | SĐT: ${c.so_dien_thoai || 'N/A'}</div>
+                            </div>
+                        `).join('');
+                    } else {
+                        resultsDiv.innerHTML = '<div class="alert alert-info">Không tìm thấy khách hàng</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching customers:', error);
+                });
+        }, 300);
+    });
+
+    // Handle customer selection
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.customer-select-item')) {
+            const customerId = e.target.closest('.customer-select-item').dataset.customerId;
+
+            fetch(`/api/customers/${customerId}/detail/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const customer = data.customer;
+                        const prefix = currentSelectTarget === 'rep' ? 'nguoi_dai_dien' : 'ke_toan_truong';
+
+                        // Fill form fields
+                        document.getElementById(`id_${prefix}_ho_ten`).value = customer.ho_ten || '';
+                        document.getElementById(`id_${prefix}_ngay_sinh`).value = customer.ngay_sinh || '';
+                        document.getElementById(`id_${prefix}_gioi_tinh`).value = customer.gioi_tinh || '';
+                        document.getElementById(`id_${prefix}_nghe_nghiep`).value = customer.nghe_nghiep || '';
+                        document.getElementById(`id_${prefix}_dien_thoai`).value = customer.so_dien_thoai || '';
+                        document.getElementById(`id_${prefix}_so_cccd`).value = customer.so_cmnd || '';
+                        document.getElementById(`id_${prefix}_ngay_cap`).value = customer.ngay_cap_cmnd || '';
+                        document.getElementById(`id_${prefix}_noi_cap`).value = customer.noi_cap_cmnd_display || '';
+                        document.getElementById(`id_${prefix}_ngay_het_han`).value = customer.ngay_het_han_cmnd || '';
+                        document.getElementById(`id_${prefix}_noi_o_hien_tai`).value = customer.dia_chi || '';
+
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('customerSelectModal'));
+                        modal.hide();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching customer details:', error);
+                });
+        }
+    });
 });
 </script>
+
+<!-- Customer Select Modal -->
+<div class="modal fade" id="customerSelectModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-search"></i> Tìm kiếm khách hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="customerSearchInput"
+                           placeholder="Nhập tên, số CCCD/CMND, hoặc số điện thoại...">
+                </div>
+                <div id="customerSearchResults" class="list-group"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

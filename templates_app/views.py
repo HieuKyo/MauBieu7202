@@ -4933,7 +4933,10 @@ def business_load_data(request, business_id, template_id):
             output_stream.read(),
             content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        filename = f"{template.name}_{business.ten_doanh_nghiep}_{business.cif}.docx"
+        # Tạo filename với ngày tháng
+        from datetime import datetime
+        date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{template.name}_{business.ten_doanh_nghiep}_{business.cif}_{date_str}.docx"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
         return response
