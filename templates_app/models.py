@@ -1247,8 +1247,8 @@ class Business(models.Model):
                 ktt_noi_cap = "Cục CSQLHC về TTXH"
 
         # Tách số GCN và MST thành từng chữ số
-        so_gcn_digits = split_digits(self.so_gcn)
-        ma_so_thue_digits = split_digits(self.ma_so_thue, 10)
+        so_gcn_digits = split_digits(self.so_gcn, 13)
+        ma_so_thue_digits = split_digits(self.ma_so_thue, 13)  # HKD có 13 số
 
         data = {
             # Thông tin doanh nghiệp cơ bản
@@ -1278,11 +1278,12 @@ class Business(models.Model):
             'dn_ngay_cap_mst': self.ngay_cap_mst.strftime('%d/%m/%Y') if self.ngay_cap_mst else EMPTY_VALUE,
             'dn_ngay_cap_mst_obj': self.ngay_cap_mst,
             'dn_noi_cap_mst': self.noi_cap_mst or EMPTY_VALUE,
-            # Từng chữ số của MST (10 chữ số)
+            # Từng chữ số của MST (13 chữ số - HKD thường dùng 13 số)
             'dn_mst_1': ma_so_thue_digits[0], 'dn_mst_2': ma_so_thue_digits[1], 'dn_mst_3': ma_so_thue_digits[2],
             'dn_mst_4': ma_so_thue_digits[3], 'dn_mst_5': ma_so_thue_digits[4], 'dn_mst_6': ma_so_thue_digits[5],
             'dn_mst_7': ma_so_thue_digits[6], 'dn_mst_8': ma_so_thue_digits[7], 'dn_mst_9': ma_so_thue_digits[8],
-            'dn_mst_10': ma_so_thue_digits[9],
+            'dn_mst_10': ma_so_thue_digits[9], 'dn_mst_11': ma_so_thue_digits[10], 'dn_mst_12': ma_so_thue_digits[11],
+            'dn_mst_13': ma_so_thue_digits[12],
 
             # Liên hệ
             'dn_dia_chi': self.dia_chi or EMPTY_VALUE,

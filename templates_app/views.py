@@ -1433,7 +1433,7 @@ def variable_library_view(request):
         {'name': 'dn_mst', 'description': 'Mã số thuế (alias)', 'example': '0123456789'},
         {'name': 'dn_ngay_cap_mst', 'description': 'Ngày cấp MST (dd/mm/yyyy)', 'example': '15/01/2020'},
         {'name': 'dn_noi_cap_mst', 'description': 'Nơi cấp MST', 'example': 'Chi cục thuế quận 1'},
-        # Từng chữ số MST (10 chữ số)
+        # Từng chữ số MST (13 chữ số - HKD có 13 số)
         {'name': 'dn_mst_1', 'description': 'MST - Chữ số thứ 1', 'example': '0'},
         {'name': 'dn_mst_2', 'description': 'MST - Chữ số thứ 2', 'example': '1'},
         {'name': 'dn_mst_3', 'description': 'MST - Chữ số thứ 3', 'example': '2'},
@@ -1444,6 +1444,9 @@ def variable_library_view(request):
         {'name': 'dn_mst_8', 'description': 'MST - Chữ số thứ 8', 'example': '7'},
         {'name': 'dn_mst_9', 'description': 'MST - Chữ số thứ 9', 'example': '8'},
         {'name': 'dn_mst_10', 'description': 'MST - Chữ số thứ 10', 'example': '9'},
+        {'name': 'dn_mst_11', 'description': 'MST - Chữ số thứ 11', 'example': '0'},
+        {'name': 'dn_mst_12', 'description': 'MST - Chữ số thứ 12', 'example': '1'},
+        {'name': 'dn_mst_13', 'description': 'MST - Chữ số thứ 13', 'example': '2'},
 
         # Liên hệ và kinh doanh
         {'name': 'dn_dia_chi', 'description': 'Địa chỉ doanh nghiệp', 'example': '123 Nguyễn Huệ, Q1, TP.HCM'},
