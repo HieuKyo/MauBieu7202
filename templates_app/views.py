@@ -24,7 +24,7 @@ import mammoth
 # Local application imports
 from .forms import DynamicTemplateForm, CustomerForm, BusinessForm, GlobalConfigForm
 from .issueby_mapping import get_issueby_name
-from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, remove_vietnamese_diacritics
+from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, remove_vietnamese_diacritics
 from .utils import render_word_template
 
 
@@ -251,8 +251,8 @@ def generate_document_view(request, template_id):
         customer_id = data.pop('_customer_id', None)
 
         # Thêm TẤT CẢ biến chung (chi nhánh + custom variables) vào data
-        global_config = GlobalConfig.get_instance()
-        data.update(global_config.get_all_variables())
+        branch_config = BranchConfig.get_for_user(request.user)
+        data.update(branch_config.get_all_variables())
 
         # Thêm date variables nếu có customer
         if customer_id:
@@ -1603,8 +1603,8 @@ def generate_document_direct(request, template_id):
         if not template.user_has_access(request.user):
             return HttpResponse("Không có quyền truy cập", status=403)
 
-        # Lấy GlobalConfig
-        config = GlobalConfig.get_instance()
+        # Lấy BranchConfig cho user
+        config = BranchConfig.get_for_user(request.user)
 
         # Build data dict from form
         data = {}
@@ -2595,8 +2595,8 @@ def print_preview_view(request, template_id):
         preview_data = data.copy()
 
         # Thêm TẤT CẢ biến chung (chi nhánh + custom variables) vào data
-        global_config = GlobalConfig.get_instance()
-        preview_data.update(global_config.get_all_variables())
+        branch_config = BranchConfig.get_for_user(request.user)
+        preview_data.update(branch_config.get_all_variables())
 
         # Thêm date variables nếu có customer
         if customer_id:
@@ -4638,8 +4638,8 @@ def atm_load_replenishment_data(request, replenishment_id, template_id):
         data = replenishment.get_data_dict()
 
         # Thêm biến chung (chi nhánh + custom variables)
-        global_config = GlobalConfig.get_instance()
-        data.update(global_config.get_all_variables())
+        branch_config = BranchConfig.get_for_user(request.user)
+        data.update(branch_config.get_all_variables())
 
         # Render template Word với dữ liệu
         template_path = template.file.path
@@ -4829,8 +4829,8 @@ def atm_load_discrepancy_data(request, discrepancy_id, template_id):
         data = discrepancy.get_data_dict()
 
         # Thêm biến chung (chi nhánh + custom variables)
-        global_config = GlobalConfig.get_instance()
-        data.update(global_config.get_all_variables())
+        branch_config = BranchConfig.get_for_user(request.user)
+        data.update(branch_config.get_all_variables())
 
         # Render template Word với dữ liệu
         template_path = template.file.path
@@ -4970,8 +4970,8 @@ def business_load_data(request, business_id, template_id):
         data = business.get_data_dict()
 
         # Thêm biến chung (chi nhánh + custom variables)
-        global_config = GlobalConfig.get_instance()
-        data.update(global_config.get_all_variables())
+        branch_config = BranchConfig.get_for_user(request.user)
+        data.update(branch_config.get_all_variables())
 
         # Render template Word với dữ liệu
         template_path = template.file.path
