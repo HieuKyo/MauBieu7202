@@ -956,7 +956,7 @@ class Business(models.Model):
     # Mã CIF và Tài khoản
     cif = models.CharField(
         max_length=20,
-        unique=True,
+        blank=True,
         verbose_name="Mã CIF",
         db_index=True
     )
@@ -972,6 +972,11 @@ class Business(models.Model):
         verbose_name="Tên doanh nghiệp",
         db_index=True
     )
+    ten_bang_hieu = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Tên bảng hiệu"
+    )
 
     # Giấy tờ định danh
     loai_giay_to = models.CharField(
@@ -982,7 +987,7 @@ class Business(models.Model):
     )
     so_gcn = models.CharField(
         max_length=50,
-        unique=True,
+        primary_key=True,
         verbose_name="Số GCN đăng ký DN/Giấy ĐKKD/QĐ thành lập"
     )
     ngay_cap_gcn = models.DateField(
@@ -1256,6 +1261,7 @@ class Business(models.Model):
             'dn_so_tai_khoan': self.so_tai_khoan or EMPTY_VALUE,
             'dn_ten': self.ten_doanh_nghiep or EMPTY_VALUE,
             'dn_ten_doanh_nghiep': self.ten_doanh_nghiep or EMPTY_VALUE,
+            'dn_ten_bang_hieu': self.ten_bang_hieu or EMPTY_VALUE,
             'dn_ten_viet_tat': create_acronym(self.ten_doanh_nghiep),  # HKD Nguyễn Văn A -> HKDNVA
             'dn_ten_khong_tien_to': remove_prefix(self.ten_doanh_nghiep),  # HKD Nguyễn Văn A -> Nguyễn Văn A
 

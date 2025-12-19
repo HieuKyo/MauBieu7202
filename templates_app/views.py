@@ -1405,6 +1405,7 @@ def variable_library_view(request):
         {'name': 'dn_so_tai_khoan', 'description': 'Số tài khoản doanh nghiệp', 'example': '1234567890'},
         {'name': 'dn_ten', 'description': 'Tên doanh nghiệp (alias)', 'example': 'Công ty TNHH ABC'},
         {'name': 'dn_ten_doanh_nghiep', 'description': 'Tên doanh nghiệp', 'example': 'Công ty TNHH ABC'},
+        {'name': 'dn_ten_bang_hieu', 'description': 'Tên bảng hiệu', 'example': 'Siêu thị ABC'},
         {'name': 'dn_ten_viet_tat', 'description': 'Tên viết tắt doanh nghiệp (chữ cái đầu)', 'example': 'HKDNVA từ HKD Nguyễn Văn A'},
         {'name': 'dn_ten_khong_tien_to', 'description': 'Tên DN không có tiền tố (bỏ HKD/DNTN/CTCP...)', 'example': 'Nguyễn Văn A từ HKD Nguyễn Văn A'},
 

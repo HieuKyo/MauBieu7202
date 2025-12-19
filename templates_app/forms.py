@@ -228,6 +228,7 @@ class BusinessForm(forms.ModelForm):
             'cif': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mã CIF'}),
             'so_tai_khoan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Số tài khoản'}),
             'ten_doanh_nghiep': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên doanh nghiệp'}),
+            'ten_bang_hieu': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên bảng hiệu'}),
 
             # Giấy tờ định danh
             'loai_giay_to': forms.Select(attrs={'class': 'form-select'}),
