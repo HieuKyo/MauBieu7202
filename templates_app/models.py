@@ -987,7 +987,7 @@ class Business(models.Model):
     )
     so_gcn = models.CharField(
         max_length=50,
-        primary_key=True,
+        unique=True,
         verbose_name="Số GCN đăng ký DN/Giấy ĐKKD/QĐ thành lập"
     )
     ngay_cap_gcn = models.DateField(
