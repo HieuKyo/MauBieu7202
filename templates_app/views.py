@@ -5171,6 +5171,20 @@ def business_import_tsv(request):
 # ========================================
 
 @login_required
+def webcam_dashboard_view(request):
+    """Trang dashboard chính cho tính năng WebCam"""
+    # Lấy danh sách khách hàng đã có ảnh (gần đây nhất)
+    recent_customers = Customer.objects.filter(
+        Q(img_id_front__isnull=False) | Q(img_id_back__isnull=False)
+    ).order_by('-updated_at')[:5]
+
+    context = {
+        'recent_customers': recent_customers,
+    }
+    return render(request, 'templates_app/webcam_dashboard.html', context)
+
+
+@login_required
 def customer_capture_docs_view(request, customer_id):
     """Trang chụp ảnh CCCD và chân dung từ webcam"""
     customer = get_object_or_404(Customer, id=customer_id)
