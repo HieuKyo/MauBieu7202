@@ -1827,7 +1827,7 @@ class BeautifulNumber(models.Model):
 
 
 # Alias để backward compatibility
-BranchConfig = GlobalConfig
+#BranchConfig = GlobalConfig
 
 
 # ====================
