@@ -992,7 +992,7 @@ class ATMDiscrepancyAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-@admin.register(BranchConfig)
+#@admin.register(BranchConfig)
 class BranchConfigAdmin(admin.ModelAdmin):
     """Admin cho Cấu hình Chi nhánh"""
     list_display = ['branch_code', 'ten_chi_nhanh', 'branch_type', 'is_active', 'updated_at', 'updated_by']
@@ -1035,3 +1035,4 @@ class BranchConfigAdmin(admin.ModelAdmin):
         """Tự động gán người cập nhật"""
         obj.updated_by = request.user
         super().save_model(request, obj, form, change)
+admin.site.register(BranchConfig, BranchConfigAdmin)

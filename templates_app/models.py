@@ -1852,6 +1852,13 @@ class BeautifulNumber(models.Model):
         return f"{status} {self.account_number} - {self.get_category_display()} - {self.fee:,} VNĐ"
 
 
+<<<<<<< HEAD
+# Alias để backward compatibility
+#BranchConfig = GlobalConfig
+
+
+=======
+>>>>>>> 3456b931c171791f8711fd3eb1cef13a9b465e97
 # ====================
 # Employee Management Models
 # ====================
