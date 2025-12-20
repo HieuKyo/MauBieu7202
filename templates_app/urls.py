@@ -38,6 +38,11 @@ urlpatterns = [
     path('api/customers/import-excel/', views.customer_import_excel, name='customer_import_excel'),
     path('api/customers/import/tsv/', views.customer_import_tsv, name='customer_import_tsv'),
 
+    # Webcam Capture & Printing
+    path('customers/<int:customer_id>/capture/', views.customer_capture_docs_view, name='customer_capture_docs'),
+    path('api/customers/<int:customer_id>/save-images/', views.customer_save_images_view, name='customer_save_images'),
+    path('customers/<int:customer_id>/print/', views.print_customer_docs_view, name='print_customer_docs'),
+
     # Business (Doanh nghiệp)
     path('businesses/', views.business_list_view, name='business_list'),
     path('api/businesses/search/', views.business_search_api, name='business_search_api'),

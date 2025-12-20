@@ -5164,3 +5164,78 @@ def business_import_tsv(request):
             'success': False,
             'error': f'Lỗi khi xử lý dữ liệu: {str(e)}'
         }, status=500)
+
+
+# ========================================
+# Webcam Capture & Document Printing
+# ========================================
+
+@login_required
+def customer_capture_docs_view(request, customer_id):
+    """Trang chụp ảnh CCCD và chân dung từ webcam"""
+    customer = get_object_or_404(Customer, id=customer_id)
+
+    context = {
+        'customer': customer,
+    }
+    return render(request, 'templates_app/customer_capture_docs.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def customer_save_images_view(request, customer_id):
+    """Lưu ảnh từ webcam (AJAX endpoint)"""
+    import base64
+    from django.core.files.base import ContentFile
+
+    customer = get_object_or_404(Customer, id=customer_id)
+
+    try:
+        # Lấy dữ liệu từ request
+        data = json.loads(request.body)
+
+        # Lưu ảnh mặt trước
+        if 'img_id_front' in data and data['img_id_front']:
+            img_data = data['img_id_front'].split(',')[1]  # Loại bỏ "data:image/jpeg;base64,"
+            img_file = ContentFile(base64.b64decode(img_data))
+            customer.img_id_front.save(f'cccd_front_{customer.so_cmnd}.jpg', img_file, save=False)
+
+        # Lưu ảnh mặt sau
+        if 'img_id_back' in data and data['img_id_back']:
+            img_data = data['img_id_back'].split(',')[1]
+            img_file = ContentFile(base64.b64decode(img_data))
+            customer.img_id_back.save(f'cccd_back_{customer.so_cmnd}.jpg', img_file, save=False)
+
+        # Lưu ảnh chân dung
+        if 'img_portrait' in data and data['img_portrait']:
+            img_data = data['img_portrait'].split(',')[1]
+            img_file = ContentFile(base64.b64decode(img_data))
+            customer.img_portrait.save(f'portrait_{customer.so_cmnd}.jpg', img_file, save=False)
+
+        customer.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Lưu ảnh thành công!'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Lỗi khi lưu ảnh: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def print_customer_docs_view(request, customer_id):
+    """Trang in ấn hồ sơ CCCD"""
+    customer = get_object_or_404(Customer, id=customer_id)
+
+    # Lấy ngày hiện tại để in
+    today = date.today()
+
+    context = {
+        'customer': customer,
+        'print_date': today,
+    }
+    return render(request, 'templates_app/print_customer_docs.html', context)
