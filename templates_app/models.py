@@ -426,6 +426,26 @@ class Customer(models.Model):
     so_tien_ngoai_te = models.CharField(max_length=50, blank=True, verbose_name="Số tiền ngoại tệ")
     loai_tien_ngoai_te = models.CharField(max_length=20, blank=True, verbose_name="Loại tiền ngoại tệ")
 
+    # Hình ảnh chứng minh thư & chân dung
+    img_id_front = models.ImageField(
+        upload_to='customer_docs/%Y/%m/',
+        blank=True,
+        null=True,
+        verbose_name="Ảnh mặt trước CCCD"
+    )
+    img_id_back = models.ImageField(
+        upload_to='customer_docs/%Y/%m/',
+        blank=True,
+        null=True,
+        verbose_name="Ảnh mặt sau CCCD"
+    )
+    img_portrait = models.ImageField(
+        upload_to='customer_docs/%Y/%m/',
+        blank=True,
+        null=True,
+        verbose_name="Ảnh chân dung"
+    )
+
     # Thông tin in mẫu biểu
     ngay_in = models.DateField(null=True, blank=True, verbose_name="Ngày in mẫu biểu")
 

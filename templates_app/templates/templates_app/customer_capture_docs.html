@@ -1,0 +1,373 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Chụp ảnh CCCD - {{ customer.ho_ten }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .video-container {
+        position: relative;
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: #000;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    #webcam {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    .preview-container {
+        position: relative;
+        width: 100%;
+        max-width: 350px;
+        background-color: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        min-height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .preview-container img {
+        width: 100%;
+        height: auto;
+        border-radius: 6px;
+    }
+    .preview-placeholder {
+        color: #adb5bd;
+        text-align: center;
+        padding: 20px;
+    }
+    .capture-btn {
+        margin: 5px;
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+    .camera-select {
+        margin-bottom: 15px;
+    }
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    .status-indicator.active {
+        background-color: #28a745;
+        box-shadow: 0 0 8px #28a745;
+    }
+    .status-indicator.inactive {
+        background-color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Trang chủ</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'customer_list' %}">Khách hàng</a></li>
+                    <li class="breadcrumb-item active">Chụp ảnh CCCD</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-camera-fill me-2"></i>
+                        Chụp ảnh CCCD - {{ customer.ho_ten }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Số CCCD:</strong> {{ customer.so_cmnd }}
+                    </div>
+
+                    <!-- Camera Status -->
+                    <div class="mb-3">
+                        <span class="status-indicator inactive" id="cameraStatus"></span>
+                        <span id="cameraStatusText">Đang khởi động camera...</span>
+                    </div>
+
+                    <!-- Camera Selection -->
+                    <div class="camera-select">
+                        <label for="cameraSelect" class="form-label">Chọn Camera:</label>
+                        <select class="form-select" id="cameraSelect" style="max-width: 400px;">
+                            <option value="">Đang tải...</option>
+                        </select>
+                    </div>
+
+                    <!-- Webcam Video -->
+                    <div class="video-container mb-4">
+                        <video id="webcam" autoplay playsinline></video>
+                    </div>
+
+                    <!-- Capture Buttons -->
+                    <div class="text-center mb-4">
+                        <button class="btn btn-success capture-btn" id="captureFrontBtn">
+                            <i class="bi bi-camera"></i> Chụp Mặt Trước
+                        </button>
+                        <button class="btn btn-warning capture-btn" id="captureBackBtn">
+                            <i class="bi bi-camera"></i> Chụp Mặt Sau
+                        </button>
+                        <button class="btn btn-info capture-btn" id="capturePortraitBtn">
+                            <i class="bi bi-camera"></i> Chụp Chân Dung
+                        </button>
+                    </div>
+
+                    <!-- Preview Images -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <h6 class="text-center">Mặt Trước CCCD</h6>
+                            <div class="preview-container" id="previewFront">
+                                <div class="preview-placeholder">
+                                    <i class="bi bi-card-image" style="font-size: 48px;"></i>
+                                    <p class="mt-2">Chưa có ảnh</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-center">Mặt Sau CCCD</h6>
+                            <div class="preview-container" id="previewBack">
+                                <div class="preview-placeholder">
+                                    <i class="bi bi-card-image" style="font-size: 48px;"></i>
+                                    <p class="mt-2">Chưa có ảnh</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-center">Chân Dung</h6>
+                            <div class="preview-container" id="previewPortrait">
+                                <div class="preview-placeholder">
+                                    <i class="bi bi-card-image" style="font-size: 48px;"></i>
+                                    <p class="mt-2">Chưa có ảnh</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="text-center">
+                        <button class="btn btn-primary btn-lg" id="saveBtn" disabled>
+                            <i class="bi bi-save"></i> Lưu Dữ Liệu
+                        </button>
+                        <a href="{% url 'customer_list' %}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-arrow-left"></i> Quay lại
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Canvas for image processing (hidden) -->
+<canvas id="canvas" style="display:none;"></canvas>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global variables
+    let videoStream = null;
+    let capturedImages = {
+        front: null,
+        back: null,
+        portrait: null
+    };
+
+    // Get webcam access
+    async function initCamera(deviceId = null) {
+        try {
+            // Stop existing stream if any
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints = {
+                video: deviceId ? { deviceId: { exact: deviceId } } : {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                }
+            };
+
+            videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+            const video = document.getElementById('webcam');
+            video.srcObject = videoStream;
+
+            // Update status
+            document.getElementById('cameraStatus').className = 'status-indicator active';
+            document.getElementById('cameraStatusText').textContent = 'Camera đang hoạt động';
+
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            document.getElementById('cameraStatus').className = 'status-indicator inactive';
+            document.getElementById('cameraStatusText').textContent = 'Không thể truy cập camera';
+            alert('Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập camera trong trình duyệt.');
+        }
+    }
+
+    // Get available cameras
+    async function getCameras() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const cameras = devices.filter(device => device.kind === 'videoinput');
+
+            const select = document.getElementById('cameraSelect');
+            select.innerHTML = '';
+
+            if (cameras.length === 0) {
+                select.innerHTML = '<option value="">Không tìm thấy camera</option>';
+                return;
+            }
+
+            cameras.forEach((camera, index) => {
+                const option = document.createElement('option');
+                option.value = camera.deviceId;
+                option.text = camera.label || `Camera ${index + 1}`;
+                select.appendChild(option);
+            });
+
+            // Add change event
+            select.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    initCamera(e.target.value);
+                }
+            });
+
+        } catch (error) {
+            console.error('Error getting cameras:', error);
+        }
+    }
+
+    // Capture image from video
+    function captureImage(maxWidth = 1000, quality = 0.75) {
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+
+        // Set canvas size based on video dimensions
+        let width = video.videoWidth;
+        let height = video.videoHeight;
+
+        // Resize if width exceeds maxWidth
+        if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw video frame to canvas
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, width, height);
+
+        // Convert to JPEG with compression
+        return canvas.toDataURL('image/jpeg', quality);
+    }
+
+    // Display preview image
+    function displayPreview(imageData, previewId) {
+        const previewContainer = document.getElementById(previewId);
+        previewContainer.innerHTML = `<img src="${imageData}" alt="Preview">`;
+    }
+
+    // Check if we can enable save button
+    function updateSaveButton() {
+        const hasAnyImage = capturedImages.front || capturedImages.back || capturedImages.portrait;
+        document.getElementById('saveBtn').disabled = !hasAnyImage;
+    }
+
+    // Save images to server
+    async function saveImages() {
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang lưu...';
+
+        try {
+            const response = await fetch('{% url "customer_save_images" customer.id %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    img_id_front: capturedImages.front,
+                    img_id_back: capturedImages.back,
+                    img_portrait: capturedImages.portrait
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('✓ Lưu ảnh thành công!');
+                // Redirect to customer list or print page
+                if (confirm('Bạn có muốn chuyển đến trang in ấn không?')) {
+                    window.location.href = '{% url "print_customer_docs" customer.id %}';
+                } else {
+                    window.location.href = '{% url "customer_list" %}';
+                }
+            } else {
+                alert('✗ Lỗi: ' + data.error);
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-save"></i> Lưu Dữ Liệu';
+            }
+
+        } catch (error) {
+            console.error('Error saving images:', error);
+            alert('✗ Lỗi khi lưu ảnh: ' + error.message);
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-save"></i> Lưu Dữ Liệu';
+        }
+    }
+
+    // Event listeners
+    document.getElementById('captureFrontBtn').addEventListener('click', () => {
+        const imageData = captureImage(1000, 0.75);
+        capturedImages.front = imageData;
+        displayPreview(imageData, 'previewFront');
+        updateSaveButton();
+    });
+
+    document.getElementById('captureBackBtn').addEventListener('click', () => {
+        const imageData = captureImage(1000, 0.75);
+        capturedImages.back = imageData;
+        displayPreview(imageData, 'previewBack');
+        updateSaveButton();
+    });
+
+    document.getElementById('capturePortraitBtn').addEventListener('click', () => {
+        const imageData = captureImage(1000, 0.75);
+        capturedImages.portrait = imageData;
+        displayPreview(imageData, 'previewPortrait');
+        updateSaveButton();
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', saveImages);
+
+    // Initialize on page load
+    window.addEventListener('load', async () => {
+        await getCameras();
+        await initCamera();
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+        }
+    });
+</script>
+{% endblock %}

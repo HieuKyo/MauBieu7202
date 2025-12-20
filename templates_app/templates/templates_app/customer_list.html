@@ -77,7 +77,7 @@
                         <th>Nơi cấp</th>
                         <th>Số điện thoại</th>
                         <th>Ngày sinh</th>
-                        <th width="150">Thao tác</th>
+                        <th width="200">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -111,6 +111,12 @@
                             {% endif %}
                         </td>
                         <td>
+                            <a href="{% url 'customer_capture_docs' customer.id %}" class="btn btn-sm btn-info me-1" title="Chụp ảnh CCCD">
+                                <i class="bi bi-camera-fill"></i>
+                            </a>
+                            <a href="{% url 'print_customer_docs' customer.id %}" class="btn btn-sm btn-success me-1" title="In hồ sơ">
+                                <i class="bi bi-printer-fill"></i>
+                            </a>
                             <button class="btn btn-sm btn-warning me-1" onclick="editCustomer({{ customer.id }})" title="Sửa">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
