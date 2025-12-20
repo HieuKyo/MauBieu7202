@@ -1,0 +1,252 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}WebCam - Chụp CCCD{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    .search-input {
+        border-radius: 25px;
+        padding: 15px 25px;
+        font-size: 16px;
+        border: 2px solid #AE1C3F;
+    }
+    .search-input:focus {
+        box-shadow: 0 0 10px rgba(174, 28, 63, 0.3);
+        border-color: #AE1C3F;
+    }
+    .feature-card {
+        border-radius: 12px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        cursor: pointer;
+        height: 100%;
+        border: 2px solid #e0e0e0;
+    }
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        border-color: #AE1C3F;
+    }
+    .feature-icon {
+        font-size: 48px;
+        color: #AE1C3F;
+        margin-bottom: 15px;
+    }
+    .recent-item {
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        background-color: #f8f9fa;
+        border-left: 4px solid #AE1C3F;
+        transition: background-color 0.2s;
+    }
+    .recent-item:hover {
+        background-color: #e9ecef;
+    }
+    .badge-new {
+        background-color: #28a745;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin-left: 8px;
+    }
+    .instruction-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-2">
+                <i class="bi bi-camera-video text-danger"></i>
+                WebCam - Chụp & In CCCD
+            </h2>
+            <p class="text-center text-muted">Thay thế Photocopy bằng chụp ảnh trực tiếp từ Webcam</p>
+        </div>
+    </div>
+
+    <!-- Quick Search -->
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card search-card">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-3">
+                        <i class="bi bi-search"></i> Tìm kiếm nhanh Khách hàng
+                    </h5>
+                    <form action="{% url 'customer_list' %}" method="get">
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                name="q"
+                                class="form-control search-input"
+                                placeholder="Nhập tên hoặc số CCCD khách hàng..."
+                                autofocus
+                            >
+                            <button class="btn btn-danger px-4" type="submit" style="border-radius: 0 25px 25px 0;">
+                                <i class="bi bi-search"></i> Tìm kiếm
+                            </button>
+                        </div>
+                    </form>
+                    <small class="text-muted d-block mt-2">
+                        <i class="bi bi-info-circle"></i> Sau khi tìm thấy khách hàng, click nút
+                        <span class="badge bg-info"><i class="bi bi-camera-fill"></i></span> để chụp ảnh
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="row mb-4">
+        <div class="col-lg-10 offset-lg-1">
+            <div class="instruction-box">
+                <h5 class="mb-3"><i class="bi bi-lightbulb"></i> Hướng dẫn sử dụng</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="bi bi-1-circle-fill" style="font-size: 32px;"></i>
+                            <p class="mt-2 mb-0"><strong>Bước 1:</strong> Tìm khách hàng</p>
+                            <small>Sử dụng ô tìm kiếm phía trên</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="bi bi-2-circle-fill" style="font-size: 32px;"></i>
+                            <p class="mt-2 mb-0"><strong>Bước 2:</strong> Chụp ảnh CCCD</p>
+                            <small>Click nút Camera và chụp 2 mặt</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="bi bi-3-circle-fill" style="font-size: 32px;"></i>
+                            <p class="mt-2 mb-0"><strong>Bước 3:</strong> In hồ sơ</p>
+                            <small>Click nút Printer để in</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <a href="{% url 'customer_list' %}" class="text-decoration-none">
+                <div class="card feature-card">
+                    <div class="card-body text-center p-4">
+                        <i class="bi bi-list-ul feature-icon"></i>
+                        <h5 class="card-title">Danh sách Khách hàng</h5>
+                        <p class="text-muted">Xem tất cả khách hàng và chọn để chụp ảnh</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="javascript:void(0)" onclick="showCameraInfo()" class="text-decoration-none">
+                <div class="card feature-card">
+                    <div class="card-body text-center p-4">
+                        <i class="bi bi-camera-fill feature-icon"></i>
+                        <h5 class="card-title">Chụp ảnh CCCD</h5>
+                        <p class="text-muted">Chụp trực tiếp từ webcam, tự động tối ưu</p>
+                        <span class="badge-new">MỚI</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="javascript:void(0)" onclick="showPrintInfo()" class="text-decoration-none">
+                <div class="card feature-card">
+                    <div class="card-body text-center p-4">
+                        <i class="bi bi-printer-fill feature-icon"></i>
+                        <h5 class="card-title">In hồ sơ</h5>
+                        <p class="text-muted">In ấn hồ sơ đã chụp thay thế photocopy</p>
+                        <span class="badge-new">MỚI</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    {% if recent_customers %}
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Khách hàng đã chụp gần đây</h5>
+                </div>
+                <div class="card-body">
+                    {% for customer in recent_customers %}
+                    <div class="recent-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ customer.ho_ten }}</strong>
+                                <small class="text-muted d-block">CCCD: {{ customer.so_cmnd }}</small>
+                            </div>
+                            <div>
+                                <a href="{% url 'customer_capture_docs' customer.id %}" class="btn btn-sm btn-info me-1" title="Chụp lại">
+                                    <i class="bi bi-camera-fill"></i>
+                                </a>
+                                <a href="{% url 'print_customer_docs' customer.id %}" class="btn btn-sm btn-success" title="In hồ sơ">
+                                    <i class="bi bi-printer-fill"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tips -->
+    <div class="row mt-4">
+        <div class="col-lg-10 offset-lg-1">
+            <div class="alert alert-info">
+                <h6><i class="bi bi-stars"></i> Mẹo sử dụng:</h6>
+                <ul class="mb-0">
+                    <li>Đảm bảo webcam đã được kết nối và cấp quyền truy cập</li>
+                    <li>Chụp ảnh trong môi trường đủ ánh sáng để CCCD rõ nét</li>
+                    <li>Ảnh sẽ tự động resize và nén để tối ưu dung lượng (100-150KB)</li>
+                    <li>Có thể chụp lại nhiều lần cho đến khi hài lòng</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showCameraInfo() {
+        alert('📷 Tính năng Chụp ảnh CCCD:\n\n' +
+              '• Tìm kiếm khách hàng ở ô tìm kiếm phía trên\n' +
+              '• Trong danh sách, click nút Camera (màu xanh)\n' +
+              '• Chụp lần lượt: Mặt trước → Mặt sau → Chân dung\n' +
+              '• Xem preview và click "Lưu dữ liệu"');
+    }
+
+    function showPrintInfo() {
+        alert('🖨️ Tính năng In hồ sơ:\n\n' +
+              '• Sau khi chụp ảnh, click nút Printer (màu xanh lá)\n' +
+              '• Hoặc tìm khách hàng đã chụp và click nút Printer\n' +
+              '• Trang in sẽ hiển thị ảnh CCCD 2 mặt\n' +
+              '• Click "In trang này" để in ra giấy');
+    }
+</script>
+{% endblock %}
