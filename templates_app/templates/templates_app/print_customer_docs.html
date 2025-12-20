@@ -1,0 +1,260 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}In hồ sơ CCCD - {{ customer.ho_ten }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Print styles */
+    @media print {
+        /* Hide non-printable elements */
+        nav, .breadcrumb, .no-print, .btn, .card-header, footer {
+            display: none !important;
+        }
+
+        /* Reset body and card styles for print */
+        body {
+            background-color: white !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .card-body {
+            padding: 20px !important;
+        }
+
+        /* Page break settings */
+        .print-section {
+            page-break-inside: avoid;
+        }
+
+        /* Ensure images fit on page */
+        .id-image {
+            max-width: 100% !important;
+            height: auto !important;
+        }
+    }
+
+    /* Screen styles */
+    @media screen {
+        .print-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .id-image-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .id-image {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .certification-text {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .no-image-placeholder {
+            padding: 60px 20px;
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .print-actions {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #dee2e6;
+        }
+    }
+
+    .customer-info {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+    }
+
+    .customer-info h5 {
+        color: #AE1C3F;
+        margin-bottom: 10px;
+    }
+
+    .info-row {
+        display: flex;
+        margin-bottom: 8px;
+    }
+
+    .info-label {
+        font-weight: 600;
+        min-width: 150px;
+        color: #495057;
+    }
+
+    .info-value {
+        color: #212529;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb (hidden when printing) -->
+    <div class="row mb-4 no-print">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Trang chủ</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'customer_list' %}">Khách hàng</a></li>
+                    <li class="breadcrumb-item active">In hồ sơ CCCD</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Card wrapper (hidden header when printing) -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white no-print">
+                    <h5 class="mb-0">
+                        <i class="bi bi-printer-fill me-2"></i>
+                        In hồ sơ CCCD
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Customer Info (hidden when printing) -->
+                    <div class="customer-info no-print">
+                        <h5><i class="bi bi-person-badge me-2"></i>Thông tin khách hàng</h5>
+                        <div class="info-row">
+                            <span class="info-label">Họ và tên:</span>
+                            <span class="info-value">{{ customer.ho_ten }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Số CCCD:</span>
+                            <span class="info-value">{{ customer.so_cmnd }}</span>
+                        </div>
+                        {% if customer.ngay_sinh %}
+                        <div class="info-row">
+                            <span class="info-label">Ngày sinh:</span>
+                            <span class="info-value">{{ customer.ngay_sinh|date:"d/m/Y" }}</span>
+                        </div>
+                        {% endif %}
+                        {% if customer.dia_chi %}
+                        <div class="info-row">
+                            <span class="info-label">Địa chỉ:</span>
+                            <span class="info-value">{{ customer.dia_chi }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Printable Content -->
+                    <div class="print-container">
+                        <!-- Front ID Image -->
+                        <div class="print-section id-image-container">
+                            <h6 class="text-center mb-3"><strong>Ảnh mặt trước CCCD</strong></h6>
+                            {% if customer.img_id_front %}
+                                <img src="{{ customer.img_id_front.url }}" alt="Mặt trước CCCD" class="id-image">
+                            {% else %}
+                                <div class="no-image-placeholder">
+                                    <i class="bi bi-card-image" style="font-size: 48px;"></i>
+                                    <p class="mt-2">Chưa có ảnh mặt trước CCCD</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Back ID Image -->
+                        <div class="print-section id-image-container">
+                            <h6 class="text-center mb-3"><strong>Ảnh mặt sau CCCD</strong></h6>
+                            {% if customer.img_id_back %}
+                                <img src="{{ customer.img_id_back.url }}" alt="Mặt sau CCCD" class="id-image">
+                            {% else %}
+                                <div class="no-image-placeholder">
+                                    <i class="bi bi-card-image" style="font-size: 48px;"></i>
+                                    <p class="mt-2">Chưa có ảnh mặt sau CCCD</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Portrait (Optional - can be hidden if not needed for print) -->
+                        {% if customer.img_portrait %}
+                        <div class="print-section id-image-container no-print">
+                            <h6 class="text-center mb-3"><strong>Ảnh chân dung</strong></h6>
+                            <img src="{{ customer.img_portrait.url }}" alt="Chân dung" class="id-image" style="max-width: 400px;">
+                        </div>
+                        {% endif %}
+
+                        <!-- Certification Text -->
+                        <div class="certification-text print-section">
+                            <p style="font-size: 15px; margin-bottom: 10px;">
+                                <strong><em>"Đã đối chiếu khớp đúng với bản chính"</em></strong>
+                            </p>
+                            <p style="font-size: 14px; margin-top: 20px;">
+                                <em>Giá Rai, ngày {{ print_date.day }} tháng {{ print_date.month }} năm {{ print_date.year }}</em>
+                            </p>
+                            <p style="margin-top: 40px; font-size: 14px;">
+                                <strong>Người xác nhận</strong>
+                            </p>
+                            <p style="margin-top: 60px; font-size: 13px; font-style: italic;">
+                                (Ký và ghi rõ họ tên)
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons (hidden when printing) -->
+                    <div class="print-actions no-print">
+                        <button class="btn btn-success btn-lg me-2" onclick="window.print()">
+                            <i class="bi bi-printer-fill"></i> In trang này
+                        </button>
+                        <a href="{% url 'customer_capture_docs' customer.id %}" class="btn btn-warning btn-lg me-2">
+                            <i class="bi bi-camera"></i> Chụp lại
+                        </a>
+                        <a href="{% url 'customer_list' %}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-arrow-left"></i> Quay lại danh sách
+                        </a>
+                    </div>
+
+                    <!-- Alert if no images -->
+                    {% if not customer.img_id_front and not customer.img_id_back %}
+                    <div class="alert alert-warning no-print mt-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Chưa có ảnh CCCD!</strong>
+                        Vui lòng <a href="{% url 'customer_capture_docs' customer.id %}" class="alert-link">chụp ảnh CCCD</a> trước khi in.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-print option (commented out by default)
+    // window.addEventListener('load', function() {
+    //     setTimeout(function() {
+    //         window.print();
+    //     }, 500);
+    // });
+</script>
+{% endblock %}
