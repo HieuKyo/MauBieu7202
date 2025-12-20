@@ -120,8 +120,9 @@
                                 </a></li>
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#" onclick="showComingSoon('WebCam')">
-                                    <i class="bi bi-camera-video"></i> WebCam
+                                <li><a class="dropdown-item" href="{% url 'customer_list' %}">
+                                    <i class="bi bi-camera-video"></i> WebCam - Chụp CCCD
+                                    <small class="d-block text-muted ms-4">Chụp và in hồ sơ khách hàng</small>
                                 </a></li>
                                 {% if user.is_superuser %}
                                 <li><hr class="dropdown-divider"></li>
