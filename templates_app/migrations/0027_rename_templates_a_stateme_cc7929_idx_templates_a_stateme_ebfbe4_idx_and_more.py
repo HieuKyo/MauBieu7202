@@ -10,14 +10,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name='transaction',
-            new_name='templates_a_stateme_ebfbe4_idx',
-            old_name='templates_a_stateme_cc7929_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='transaction',
-            new_name='templates_a_transac_13f2f1_idx',
-            old_name='templates_a_transac_d8c5c0_idx',
-        ),
+        #migrations.RenameIndex(
+        #    model_name='transaction',
+        #    new_name='templates_a_stateme_ebfbe4_idx',
+        #    old_name='templates_a_stateme_cc7929_idx',
+        #),
+        #migrations.RenameIndex(
+        #    model_name='transaction',
+        #    new_name='templates_a_transac_13f2f1_idx',
+        #    old_name='templates_a_transac_d8c5c0_idx',
+        #),
     ]
