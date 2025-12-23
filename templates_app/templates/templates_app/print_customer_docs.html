@@ -238,13 +238,7 @@
                                 <strong><em>"Đã đối chiếu khớp đúng với bản chính"</em></strong>
                             </p>
                             <p style="font-size: 14px; margin-top: 20px;">
-                                <em>Giá Rai, ngày {{ print_date.day }} tháng {{ print_date.month }} năm {{ print_date.year }}</em>
-                            </p>
-                            <p style="margin-top: 40px; font-size: 14px;">
-                                <strong>Người xác nhận</strong>
-                            </p>
-                            <p style="margin-top: 60px; font-size: 13px; font-style: italic;">
-                                (Ký và ghi rõ họ tên)
+                                <em>Giá Rai, ngày {{ print_date.day }} tháng {{ print_date.month }} năm {{ print_date|date:"Y" }}</em>
                             </p>
                         </div>
                     </div>
