@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <style>
-    /* Print styles */
+    /* Print styles - A5 Landscape (210mm x 148mm) */
     @media print {
         /* Hide non-printable elements */
         nav, .breadcrumb, .no-print, .btn, .card-header, footer {
@@ -19,13 +19,19 @@
             padding: 0;
         }
 
+        /* A5 Landscape page setup */
+        @page {
+            size: A5 landscape;
+            margin: 10mm;
+        }
+
         .card {
             border: none !important;
             box-shadow: none !important;
         }
 
         .card-body {
-            padding: 20px !important;
+            padding: 0 !important;
         }
 
         /* Page break settings */
@@ -33,10 +39,30 @@
             page-break-inside: avoid;
         }
 
-        /* Ensure images fit on page */
+        /* Images in horizontal layout */
+        .id-image-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+            margin-bottom: 15px !important;
+        }
+
+        .id-image-container {
+            flex: 1 !important;
+            margin-bottom: 0 !important;
+        }
+
         .id-image {
-            max-width: 100% !important;
+            width: 100% !important;
             height: auto !important;
+            max-height: 85mm !important;
+            object-fit: contain !important;
+        }
+
+        /* Center certification text */
+        .certification-text {
+            text-align: center !important;
+            margin-top: 10px !important;
         }
     }
 
@@ -169,30 +195,33 @@
 
                     <!-- Printable Content -->
                     <div class="print-container">
-                        <!-- Front ID Image -->
-                        <div class="print-section id-image-container">
-                            <h6 class="text-center mb-3"><strong>Ảnh mặt trước CCCD</strong></h6>
-                            {% if customer.img_id_front %}
-                                <img src="{{ customer.img_id_front.url }}" alt="Mặt trước CCCD" class="id-image">
-                            {% else %}
-                                <div class="no-image-placeholder">
-                                    <i class="bi bi-card-image" style="font-size: 48px;"></i>
-                                    <p class="mt-2">Chưa có ảnh mặt trước CCCD</p>
-                                </div>
-                            {% endif %}
-                        </div>
+                        <!-- ID Images Row - Horizontal Layout for A5 -->
+                        <div class="id-image-row row">
+                            <!-- Front ID Image (Left) -->
+                            <div class="col-md-6 print-section id-image-container">
+                                <h6 class="text-center mb-3 no-print"><strong>Ảnh mặt trước CCCD</strong></h6>
+                                {% if customer.img_id_front %}
+                                    <img src="{{ customer.img_id_front.url }}" alt="Mặt trước CCCD" class="id-image">
+                                {% else %}
+                                    <div class="no-image-placeholder">
+                                        <i class="bi bi-card-image" style="font-size: 48px;"></i>
+                                        <p class="mt-2">Chưa có ảnh mặt trước CCCD</p>
+                                    </div>
+                                {% endif %}
+                            </div>
 
-                        <!-- Back ID Image -->
-                        <div class="print-section id-image-container">
-                            <h6 class="text-center mb-3"><strong>Ảnh mặt sau CCCD</strong></h6>
-                            {% if customer.img_id_back %}
-                                <img src="{{ customer.img_id_back.url }}" alt="Mặt sau CCCD" class="id-image">
-                            {% else %}
-                                <div class="no-image-placeholder">
-                                    <i class="bi bi-card-image" style="font-size: 48px;"></i>
-                                    <p class="mt-2">Chưa có ảnh mặt sau CCCD</p>
-                                </div>
-                            {% endif %}
+                            <!-- Back ID Image (Right) -->
+                            <div class="col-md-6 print-section id-image-container">
+                                <h6 class="text-center mb-3 no-print"><strong>Ảnh mặt sau CCCD</strong></h6>
+                                {% if customer.img_id_back %}
+                                    <img src="{{ customer.img_id_back.url }}" alt="Mặt sau CCCD" class="id-image">
+                                {% else %}
+                                    <div class="no-image-placeholder">
+                                        <i class="bi bi-card-image" style="font-size: 48px;"></i>
+                                        <p class="mt-2">Chưa có ảnh mặt sau CCCD</p>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
 
                         <!-- Portrait (Optional - can be hidden if not needed for print) -->
