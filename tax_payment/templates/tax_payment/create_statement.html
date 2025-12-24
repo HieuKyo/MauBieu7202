@@ -138,7 +138,7 @@
                                     </div>
                                     <div class="col-md-3 mb-2">
                                         <label class="form-label">Mã tiểu mục</label>
-                                        <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" onblur="searchSubEntry(this)" value="{{ item.ma_tieu_muc }}">
+                                        <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" list="list-tieu-muc" onchange="searchSubEntry(this)" value="{{ item.ma_tieu_muc }}">
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <label class="form-label">Nội dung</label>
@@ -163,7 +163,7 @@
                                     </div>
                                     <div class="col-md-3 mb-2">
                                         <label class="form-label">Mã tiểu mục</label>
-                                        <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" onblur="searchSubEntry(this)">
+                                        <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" list="list-tieu-muc" onchange="searchSubEntry(this)" value="{{ item.ma_tieu_muc }}">
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <label class="form-label">Nội dung</label>
@@ -193,55 +193,43 @@
         </div>
     </div>
 </div>
-
+<datalist id="list-tieu-muc">
+    {% for item in tax_sub_entries %}
+        <option value="{{ item.ma_tieu_muc }}">{{ item.ma_tieu_muc }} - {{ item.ten_tieu_muc }}</option>
+    {% endfor %}
+</datalist>
 <script>
-    // Paste lại toàn bộ JS của anh ở đây (loadLocationDetails, formatCurrency, searchSubEntry, addItemRow...)
-    // Chỉ cần lưu ý: Khi edit, formatCurrency cần chạy 1 lần lúc load trang (nếu muốn hiển thị đẹp ngay)
-    document.querySelectorAll('.so-tien').forEach(input => formatCurrency(input));
+    // 1. Format lại số tiền khi load trang (cho trường hợp Edit)
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.so-tien').forEach(input => formatCurrency(input));
+    });
 
+    // 2. Hàm Auto-fill thông tin địa bàn (Giữ nguyên logic của anh)
     async function loadLocationDetails() {
-        // 1. Lấy giá trị từ các ô dropdown
         const tinh = document.getElementById('tinh').value;
         const coQuanThue = document.getElementById('co_quan_thue').value;
         const xaPhuong = document.getElementById('xa_phuong').value;
 
-        // Nếu chưa chọn đủ 3 thông tin thì không làm gì cả
-        if (!tinh || !coQuanThue || !xaPhuong) {
-            console.log("Chưa chọn đủ thông tin Tỉnh/CQT/Xã");
-            return;
-        }
+        if (!tinh || !coQuanThue || !xaPhuong) return;
 
         console.log(`Đang lấy dữ liệu cho: ${tinh} - ${coQuanThue} - ${xaPhuong}`);
-
-        // 2. Gọi về Server
+        
         const url = `{% url 'tax_payment:ajax_get_location_details' %}?tinh=${encodeURIComponent(tinh)}&co_quan_thue=${encodeURIComponent(coQuanThue)}&xa_phuong=${encodeURIComponent(xaPhuong)}`;
         
         try {
             const response = await fetch(url);
-            
-            // Nếu server trả về lỗi (ví dụ 404 hoặc 500)
-            if (!response.ok) {
-                console.error("Lỗi Server:", response.status);
-                alert("Không tìm thấy thông tin cơ quan thu trong CSDL!");
-                clearLocationDetails();
-                return;
+            if (response.ok) {
+                const data = await response.json();
+                if (data.error) {
+                    alert(data.error);
+                    clearLocationDetails();
+                } else {
+                    document.getElementById('ma_co_quan_thu').value = data.ma_co_quan_thu || '';
+                    document.getElementById('ten_co_quan_thu').value = data.ten_co_quan_thu || '';
+                    document.getElementById('ma_dia_ban').value = data.ma_dia_ban || '';
+                    document.getElementById('kho_bac').value = data.kho_bac || '';
+                }
             }
-
-            // 3. Điền dữ liệu vào ô input
-            const data = await response.json();
-            console.log("Dữ liệu nhận được:", data);
-
-            if (data.error) {
-                alert(data.error);
-                clearLocationDetails();
-            } else {
-                // Điền dữ liệu
-                document.getElementById('ma_co_quan_thu').value = data.ma_co_quan_thu || '';
-                document.getElementById('ten_co_quan_thu').value = data.ten_co_quan_thu || '';
-                document.getElementById('ma_dia_ban').value = data.ma_dia_ban || '';
-                document.getElementById('kho_bac').value = data.kho_bac || '';
-            }
-
         } catch (e) {
             console.error("Lỗi kết nối:", e);
         }
@@ -253,26 +241,68 @@
         document.getElementById('ma_dia_ban').value = '';
         document.getElementById('kho_bac').value = '';
     }
+
+    // 3. Format tiền tệ
     function formatCurrency(input) {
         let value = input.value.replace(/[^\d]/g, '');
         if (value === '') { input.value = ''; return; }
         input.value = parseInt(value).toLocaleString('en-US');
     }
-    async function searchSubEntry(input) { /* ... */ }
+
+    // 4. [QUAN TRỌNG] Hàm tìm kiếm tiểu mục và điền nội dung
+    async function searchSubEntry(input) {
+        // Lấy mã tiểu mục người dùng vừa nhập/chọn
+        const maTieuMuc = input.value.trim();
+        
+        // Tìm dòng (row) chứa ô input này để điền vào ô nội dung bên cạnh
+        const row = input.closest('.item-row');
+        const noiDungInput = row.querySelector('.noi-dung');
+
+        if (!maTieuMuc) return;
+
+        // Gọi về server để tìm tên tiểu mục
+        const url = `{% url 'tax_payment:ajax_search_sub_entry' %}?ma_tieu_muc=${encodeURIComponent(maTieuMuc)}`;
+
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                // Nếu tìm thấy, điền vào ô Nội dung
+                if (data.ten_tieu_muc) {
+                    noiDungInput.value = data.ten_tieu_muc;
+                }
+            } else {
+                console.log("Không tìm thấy tiểu mục này");
+                // Tùy chọn: Xóa ô nội dung nếu mã sai
+                // noiDungInput.value = ""; 
+            }
+        } catch (e) {
+            console.error("Lỗi tìm tiểu mục:", e);
+        }
+    }
     
-    let itemCounter = document.querySelectorAll('.item-row').length; // Cập nhật lại counter theo số dòng thực tế
+    // 5. Thêm dòng mới
+    let itemCounter = document.querySelectorAll('.item-row').length;
     
     function addItemRow() {
         itemCounter++;
         const container = document.getElementById('items-container');
+        // Copy dòng đầu tiên làm mẫu
         const firstRow = container.querySelector('.item-row');
         const newRow = firstRow.cloneNode(true);
+        
+        // Reset các giá trị cho dòng mới
         newRow.setAttribute('data-item-index', itemCounter);
-        newRow.querySelector('input[type="number"]').value = itemCounter;
+        newRow.querySelector('input[type="number"]').value = itemCounter; // STT
+        
+        // Xóa giá trị cũ trong các ô input
         newRow.querySelectorAll('input:not([readonly])').forEach(i => i.value = '');
+        
+        // Thêm vào danh sách
         container.appendChild(newRow);
     }
     
+    // 6. Xóa dòng
     function removeItemRow(btn) {
         if(document.querySelectorAll('.item-row').length > 1) {
             btn.closest('.item-row').remove();

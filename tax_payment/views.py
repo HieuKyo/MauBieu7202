@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from django.db.models import Q
 from docxtpl import DocxTemplate
-
+from .utils import doc_so_thanh_chu
 from .models import TaxLocation, TaxSubEntry, TaxPaymentStatement, TaxPaymentItem
 from .utils import number_to_vietnamese_words, format_currency_vnd
 
@@ -163,6 +163,7 @@ def tax_payment_edit(request, pk):
         'items': statement.items.all().order_by('stt'),
         'is_edit': True, # Cờ đánh dấu đang edit
         'today': date.today(),
+        'tax_sub_entries': TaxSubEntry.objects.all().order_by('ma_tieu_muc'),
     }
     return render(request, 'tax_payment/create_statement.html', context)
 
@@ -254,8 +255,12 @@ def get_location_details(request):
 def search_sub_entry(request):
     """Tìm tiểu mục"""
     ma_tieu_muc = request.GET.get('ma_tieu_muc', '').strip()
+    if not ma_tieu_muc:
+        return JsonResponse({'error': 'Rỗng'}, status=400)
     sub_entry = TaxSubEntry.objects.filter(ma_tieu_muc=ma_tieu_muc).first()
     
+    if not sub_entry:
+        sub_entry = TaxSubEntry.objects.filter(ma_tieu_muc__icontains=ma_tieu_muc).first()
     if sub_entry:
         return JsonResponse({
             'ma_tieu_muc': sub_entry.ma_tieu_muc,
@@ -299,6 +304,8 @@ def export_tax_statement(request, statement_id):
     ma_dia_ban = ''
     if statement.tax_location and statement.tax_location.ma_dia_ban:
         ma_dia_ban = str(statement.tax_location.ma_dia_ban).replace('.0', '')
+    so_tien_bang_chu = doc_so_thanh_chu(statement.tong_so_tien)
+    
     context = {
         # Thông tin người nộp
         'ten_nguoi_nop': statement.ten_nguoi_nop,
