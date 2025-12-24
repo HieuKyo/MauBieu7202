@@ -57,6 +57,7 @@ class TaxPaymentStatement(models.Model):
     ten_nguoi_nop = models.CharField(max_length=200, verbose_name="Tên người nộp thuế")
     ma_so_thue = models.CharField(max_length=50, verbose_name="Mã số thuế", blank=True)
     dia_chi = models.TextField(verbose_name="Địa chỉ", blank=True)
+    nguoi_nop_thay = models.CharField(max_length=200, verbose_name="Người nộp thay", blank=True)
 
     # Thông tin cơ quan thu
     tax_location = models.ForeignKey(

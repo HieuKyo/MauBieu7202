@@ -9,6 +9,7 @@ from django.db.models import Q
 from docxtpl import DocxTemplate
 from .utils import doc_so_thanh_chu
 from .models import TaxLocation, TaxSubEntry, TaxPaymentStatement, TaxPaymentItem
+from .utils import number_to_vietnamese_words, format_currency_vnd
 
 
 def tax_payment_create(request):
@@ -36,6 +37,7 @@ def save_tax_payment(request, statement_id=None):
         ten_nguoi_nop = request.POST.get('ten_nguoi_nop', '').strip()
         ma_so_thue = request.POST.get('ma_so_thue', '').strip()
         dia_chi = request.POST.get('dia_chi', '').strip()
+        nguoi_nop_thay = request.POST.get('nguoi_nop_thay', '').strip()
         ngay_lap = request.POST.get('ngay_lap', date.today())
         ma_co_quan_thu = request.POST.get('ma_co_quan_thu', '').strip()
 
@@ -50,6 +52,18 @@ def save_tax_payment(request, statement_id=None):
             messages.error(request, 'Không tìm thấy cơ quan thu!')
             return redirect('tax_payment:create')
 
+        # Tạo Statement
+        statement = TaxPaymentStatement.objects.create(
+            ten_nguoi_nop=ten_nguoi_nop,
+            ma_so_thue=ma_so_thue,
+            dia_chi=dia_chi,
+            nguoi_nop_thay=nguoi_nop_thay,
+            tax_location=tax_location,
+            ngay_lap=ngay_lap,
+            tong_so_tien=0
+        )
+
+        # Lấy các dòng tiểu mục
         # === XỬ LÝ TẠO MỚI HOẶC UPDATE ===
         if statement_id:
             # Update
@@ -282,6 +296,10 @@ def export_tax_statement(request, statement_id):
             'noi_dung': item.noi_dung,
             'so_tien': f"{item.so_tien:,}".replace(',', '.'),  # Format số tiền
         })
+
+    # Chuyển số tiền sang chữ
+    so_tien_bang_chu = number_to_vietnamese_words(statement.tong_so_tien)
+
     # Xử lý Mã địa bàn: Xóa đuôi .0 nếu có
     ma_dia_ban = ''
     if statement.tax_location and statement.tax_location.ma_dia_ban:
@@ -293,6 +311,7 @@ def export_tax_statement(request, statement_id):
         'ten_nguoi_nop': statement.ten_nguoi_nop,
         'ma_so_thue': statement.ma_so_thue,
         'dia_chi': statement.dia_chi,
+        'nguoi_nop_thay': statement.nguoi_nop_thay,
         'ngay_lap': statement.ngay_lap.strftime('%d/%m/%Y'),
 
         # Thông tin cơ quan thu
@@ -309,7 +328,7 @@ def export_tax_statement(request, statement_id):
 
         # Thông tin bảng kê
         'tong_so_tien': f"{statement.tong_so_tien:,}".replace(',', '.'),
-        'so_tien_bang_chu': so_tien_bang_chu,  # <--- BIẾN MỚI
+        'so_tien_bang_chu': so_tien_bang_chu,
         'items': items_data,
     }
 
