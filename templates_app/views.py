@@ -1523,7 +1523,14 @@ def variable_library_view(request):
         {'name': 'dn_ke_toan_truong_noi_o_hien_tai', 'description': 'KTT - Nơi ở hiện tại', 'example': '456 Hai Bà Trưng, Q3, TP.HCM'},
         {'name': 'dn_ktt_noi_o_hien_tai', 'description': 'KTT - Nơi ở hiện tại (alias)', 'example': '456 Hai Bà Trưng, Q3, TP.HCM'},
     ]
-
+    tax_var_names = [
+        'ten_nguoi_nop', 'ma_so_thue', 'dia_chi', 'ngay_lap',
+        'tinh', 'co_quan_thue', 'xa_phuong', 'ma_co_quan_thu',
+        'ten_co_quan_thu', 'ma_dia_ban', 'kho_bac',
+        'tong_so_tien', 'so_tien_bang_chu',
+        'items', 'item.stt', 'item.ma_tieu_muc', 'item.noi_dung', 'item.so_tien'
+    ]
+    tax_variables = Variable.objects.filter(name__in=tax_var_names)
     # 6. Biến Tùy chỉnh - From GlobalConfig.custom_variables
     config = GlobalConfig.get_instance()
     custom_variables = []
@@ -1547,6 +1554,7 @@ def variable_library_view(request):
         'atm_variables': atm_variables,
         'atm_discrepancy_variables': atm_discrepancy_variables,
         'custom_variables': custom_variables,
+        'tax_variables': tax_variables,
     }
 
     return render(request, 'templates_app/variable_library.html', context)
