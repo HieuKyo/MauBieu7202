@@ -1,0 +1,64 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Import Danh mục Tiểu mục{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Trang chủ</a>
+    &rsaquo; <a href="{% url 'admin:tax_payment_taxsubentry_changelist' %}">Danh mục Tiểu mục</a>
+    &rsaquo; Import
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h1>Import Danh mục Tiểu mục từ Excel</h1>
+
+    <div class="help">
+        <p><strong>Hướng dẫn:</strong></p>
+        <ol>
+            <li>Chuẩn bị file Excel (.xlsx) hoặc CSV (.csv)</li>
+            <li>File phải có các cột sau:
+                <ul>
+                    <li><strong>Mã số Tiểu mục</strong>: Mã tiểu mục (bắt buộc)</li>
+                    <li><strong>TÊN GỌI</strong>: Tên/nội dung kinh tế (bắt buộc)</li>
+                </ul>
+            </li>
+            <li>Hệ thống sẽ tự động mapping các tên cột tương tự</li>
+            <li>Chọn file và nhấn "Import"</li>
+        </ol>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" style="margin-top: 20px;">
+        {% csrf_token %}
+
+        <div class="form-row">
+            <div>
+                <label for="excel_file">Chọn file Excel/CSV:</label>
+                <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls,.csv" required>
+            </div>
+        </div>
+
+        <div class="submit-row" style="margin-top: 20px;">
+            <input type="submit" value="Import" class="default">
+            <a href="{% url 'admin:tax_payment_taxsubentry_changelist' %}" class="button cancel-link">Hủy</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .help {
+        background-color: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 15px;
+        margin: 20px 0;
+    }
+    .help ul {
+        margin-left: 20px;
+    }
+    .cancel-link {
+        margin-left: 10px;
+    }
+</style>
+{% endblock %}
