@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "templates_app",
     "payroll_statistics",
     "salary",
+    "tax_payment",
 ]
 
 MIDDLEWARE = [
