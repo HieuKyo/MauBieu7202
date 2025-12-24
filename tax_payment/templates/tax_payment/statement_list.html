@@ -41,37 +41,33 @@
                                         <th width="12%">Ngày lập</th>
                                         <th width="15%" class="text-end">Tổng tiền</th>
                                         <th width="10%" class="text-center">Số dòng</th>
-                                        <th width="11%" class="text-center">Thao tác</th>
+                                        <th class="text-center">Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for statement in statements %}
-                                        <tr>
-                                            <td>{{ forloop.counter }}</td>
-                                            <td>{{ statement.ten_nguoi_nop }}</td>
-                                            <td>{{ statement.ma_so_thue|default:"-" }}</td>
-                                            <td>
-                                                {% if statement.tax_location %}
-                                                    {{ statement.tax_location.xa_phuong }}
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ statement.ngay_lap|date:"d/m/Y" }}</td>
-                                            <td class="text-end">
-                                                <strong>{{ statement.tong_so_tien|intcomma }}</strong> ₫
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-info">{{ statement.items.count }}</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <a href="{% url 'tax_payment:export' statement.id %}"
-                                                   class="btn btn-sm btn-primary"
-                                                   title="Xuất file Word">
-                                                    <i class="bi bi-file-word"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
+                                    {% for item in statements %}
+                                    <tr>
+                                        <td>{{ item.ngay_lap|date:"d/m/Y" }}</td>
+                                        <td>{{ item.ten_nguoi_nop }}</td>
+                                        <td>{{ item.ma_so_thue }}</td>
+                                        <td>{{ item.tong_so_tien|floatformat:0 }}</td>
+                                        <td class="text-center">
+                                            <a href="{% url 'tax_payment:export' item.id %}" class="btn btn-sm btn-primary" title="Tải xuống Word">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            
+                                            <a href="{% url 'tax_payment:edit' item.id %}" class="btn btn-sm btn-warning text-white" title="Sửa">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+
+                                            <form action="{% url 'tax_payment:delete' item.id %}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa bản ghi này?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
