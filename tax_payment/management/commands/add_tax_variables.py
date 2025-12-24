@@ -45,6 +45,14 @@ class Command(BaseCommand):
                 'default_value': ''
             },
             {
+                'name': 'ngay_thang_nam_text',
+                'label': 'Ngày tháng năm (dạng chữ)',
+                'field_type': 'text',
+                'help_text': 'Ngày lập bảng kê dạng chữ (VD: Ngày 24 tháng 12 năm 2025)',
+                'required': False,
+                'default_value': ''
+            },
+            {
                 'name': 'nguoi_nop_thay',
                 'label': 'Người nộp thay',
                 'field_type': 'text',

@@ -9,7 +9,7 @@ from django.db.models import Q
 from docxtpl import DocxTemplate
 
 from .models import TaxLocation, TaxSubEntry, TaxPaymentStatement, TaxPaymentItem
-from .utils import number_to_vietnamese_words, format_currency_vnd
+from .utils import number_to_vietnamese_words, format_currency_vnd, date_to_vietnamese_text
 
 
 def tax_payment_create(request):
@@ -306,6 +306,7 @@ def export_tax_statement(request, statement_id):
         'dia_chi': statement.dia_chi,
         'nguoi_nop_thay': statement.nguoi_nop_thay,
         'ngay_lap': statement.ngay_lap.strftime('%d/%m/%Y'),
+        'ngay_thang_nam_text': date_to_vietnamese_text(statement.ngay_lap),
 
         # Thông tin cơ quan thu
         'tinh': statement.tax_location.tinh if statement.tax_location else '',
