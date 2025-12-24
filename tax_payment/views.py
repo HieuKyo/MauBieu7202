@@ -193,14 +193,13 @@ def get_xa_phuong(request):
     co_quan_thue = request.GET.get('co_quan_thue', '').strip()
     
     if not tinh or not co_quan_thue:
-        options = []
-    else:
-        options = TaxLocation.objects.filter(tinh=tinh, co_quan_thue_group=co_quan_thue)\
-            .exclude(xa_phuong__isnull=True)\
-            .exclude(xa_phuong__exact='')\
-            .order_by('xa_phuong')\
-            .values_list('xa_phuong', flat=True)\
-            .distinct()
+        return JsonResponse({'xa_phuong': []})
+
+    # Use order_by before distinct to ensure proper deduplication
+    xa_phuong_list = TaxLocation.objects.filter(
+        tinh=tinh,
+        co_quan_thue_group=co_quan_thue
+    ).order_by('xa_phuong').values_list('xa_phuong', flat=True).distinct()
 
     return render(request, 'tax_payment/dropdown_options.html', {'options': options})
 
