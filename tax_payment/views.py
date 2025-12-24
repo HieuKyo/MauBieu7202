@@ -214,7 +214,7 @@ def get_xa_phuong(request):
         co_quan_thue_group=co_quan_thue
     ).order_by('xa_phuong').values_list('xa_phuong', flat=True).distinct()
 
-    return render(request, 'tax_payment/dropdown_options.html', {'options': options})
+    return render(request, 'tax_payment/dropdown_options.html', {'options': xa_phuong_list})
 
 
 @require_http_methods(["GET"])
