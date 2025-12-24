@@ -1,0 +1,93 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Danh sách Bảng Kê Nộp Thuế{% endblock %}
+
+{% block content %}
+<div class="container main-container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="bi bi-list-ul"></i>
+                    Danh sách Bảng Kê Nộp Thuế
+                </h2>
+                <a href="{% url 'tax_payment:create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Tạo mới
+                </a>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="card">
+                <div class="card-body">
+                    {% if statements %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="5%">STT</th>
+                                        <th width="20%">Người nộp</th>
+                                        <th width="12%">Mã số thuế</th>
+                                        <th width="15%">Cơ quan thu</th>
+                                        <th width="12%">Ngày lập</th>
+                                        <th width="15%" class="text-end">Tổng tiền</th>
+                                        <th width="10%" class="text-center">Số dòng</th>
+                                        <th width="11%" class="text-center">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for statement in statements %}
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ statement.ten_nguoi_nop }}</td>
+                                            <td>{{ statement.ma_so_thue|default:"-" }}</td>
+                                            <td>
+                                                {% if statement.tax_location %}
+                                                    {{ statement.tax_location.xa_phuong }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ statement.ngay_lap|date:"d/m/Y" }}</td>
+                                            <td class="text-end">
+                                                <strong>{{ statement.tong_so_tien|intcomma }}</strong> ₫
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-info">{{ statement.items.count }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="{% url 'tax_payment:export' statement.id %}"
+                                                   class="btn btn-sm btn-primary"
+                                                   title="Xuất file Word">
+                                                    <i class="bi bi-file-word"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                            <p class="text-muted mt-3">Chưa có bảng kê nào được tạo</p>
+                            <a href="{% url 'tax_payment:create' %}" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> Tạo bảng kê đầu tiên
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
