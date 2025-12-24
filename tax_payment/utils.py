@@ -119,3 +119,7 @@ def format_currency_vnd(amount):
         return f"{amount:,}".replace(',', '.')
     except (ValueError, TypeError):
         return "0"
+
+
+# Alias cho tên hàm tiếng Việt
+doc_so_thanh_chu = number_to_vietnamese_words
