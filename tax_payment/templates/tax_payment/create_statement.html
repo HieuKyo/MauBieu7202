@@ -114,10 +114,7 @@
 
                         <div class="col-md-4 mb-3">
                             <label for="xa_phuong" class="form-label">Xã/Phường <span class="text-danger">*</span></label>
-                            <select class="form-select" id="xa_phuong" name="xa_phuong" required disabled
-                                    hx-get="{% url 'tax_payment:ajax_get_location_details' %}"
-                                    hx-include="[name='tinh'], [name='co_quan_thue']"
-                                    hx-trigger="change">
+                            <select class="form-select" id="xa_phuong" name="xa_phuong" required disabled>
                                 <option value="">-- Chọn Xã/Phường --</option>
                             </select>
                         </div>
@@ -167,7 +164,8 @@
                                 </div>
                                 <div class="col-md-3 mb-2">
                                     <label class="form-label">Số tiền (VNĐ)</label>
-                                    <input type="number" class="form-control so-tien" name="so_tien[]" min="0">
+                                    <input type="text" class="form-control so-tien" name="so_tien[]"
+                                           oninput="formatCurrency(this)" placeholder="0">
                                 </div>
                             </div>
                         </div>
@@ -210,22 +208,38 @@ document.body.addEventListener('htmx:afterSwap', function(event) {
         document.getElementById('xa_phuong').disabled = true;
         clearLocationDetails();
     }
+});
 
-    if (event.detail.target.id === 'xa_phuong') {
-        const data = JSON.parse(event.detail.xhr.response);
+// Load Xã/Phường khi chọn Cơ quan thuế
+document.getElementById('co_quan_thue').addEventListener('change', async function() {
+    const tinh = document.getElementById('tinh').value;
+    const coQuanThue = this.value;
+
+    if (!coQuanThue) {
+        document.getElementById('xa_phuong').innerHTML = '<option value="">-- Chọn Xã/Phường --</option>';
+        document.getElementById('xa_phuong').disabled = true;
+        return;
+    }
+
+    const response = await fetch(`{% url 'tax_payment:ajax_get_xa_phuong' %}?tinh=${encodeURIComponent(tinh)}&co_quan_thue=${encodeURIComponent(coQuanThue)}`);
+
+    if (response.ok) {
+        const data = await response.json();
         const select = document.getElementById('xa_phuong');
         select.innerHTML = '<option value="">-- Chọn Xã/Phường --</option>';
         data.xa_phuong.forEach(item => {
             select.innerHTML += `<option value="${item}">${item}</option>`;
         });
         select.disabled = false;
-        clearLocationDetails();
     }
 });
 
-// HTMX: Auto-fill thông tin cơ quan thu khi chọn xã/phường
+// Auto-fill thông tin cơ quan thu khi chọn xã/phường
 document.getElementById('xa_phuong').addEventListener('change', async function() {
-    if (!this.value) return;
+    if (!this.value) {
+        clearLocationDetails();
+        return;
+    }
 
     const tinh = document.getElementById('tinh').value;
     const coQuanThue = document.getElementById('co_quan_thue').value;
@@ -247,6 +261,22 @@ function clearLocationDetails() {
     document.getElementById('ten_co_quan_thu').value = '';
     document.getElementById('ma_dia_ban').value = '';
     document.getElementById('kho_bac').value = '';
+}
+
+// Format số tiền với dấu phẩy ngăn cách hàng nghìn
+function formatCurrency(input) {
+    // Lấy giá trị và loại bỏ tất cả ký tự không phải số
+    let value = input.value.replace(/[^\d]/g, '');
+
+    // Nếu rỗng, return
+    if (value === '') {
+        input.value = '';
+        return;
+    }
+
+    // Convert sang number rồi format với dấu phẩy
+    let number = parseInt(value);
+    input.value = number.toLocaleString('en-US');
 }
 
 // Thêm dòng tiểu mục mới
@@ -273,7 +303,8 @@ function addItemRow() {
             </div>
             <div class="col-md-2 mb-2">
                 <label class="form-label">Số tiền (VNĐ)</label>
-                <input type="number" class="form-control so-tien" name="so_tien[]" min="0">
+                <input type="text" class="form-control so-tien" name="so_tien[]"
+                       oninput="formatCurrency(this)" placeholder="0">
             </div>
             <div class="col-md-1 mb-2">
                 <button type="button" class="btn btn-remove-item btn-sm w-100" onclick="removeItemRow(this)">

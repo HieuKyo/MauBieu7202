@@ -168,10 +168,10 @@ def get_location_details(request):
         )
 
         return JsonResponse({
-            'ma_co_quan_thu': location.ma_co_quan_thu,
-            'ten_co_quan_thu': location.ten_co_quan_thu,
-            'ma_dia_ban': location.ma_dia_ban,
-            'kho_bac': location.kho_bac
+            'ma_co_quan_thu': str(location.ma_co_quan_thu),
+            'ten_co_quan_thu': str(location.ten_co_quan_thu),
+            'ma_dia_ban': str(location.ma_dia_ban).replace('.0', ''),  # Remove .0 if exists
+            'kho_bac': str(location.kho_bac)
         })
     except TaxLocation.DoesNotExist:
         return JsonResponse({'error': 'Không tìm thấy thông tin'}, status=404)
@@ -184,10 +184,10 @@ def get_location_details(request):
         ).first()
 
         return JsonResponse({
-            'ma_co_quan_thu': location.ma_co_quan_thu,
-            'ten_co_quan_thu': location.ten_co_quan_thu,
-            'ma_dia_ban': location.ma_dia_ban,
-            'kho_bac': location.kho_bac
+            'ma_co_quan_thu': str(location.ma_co_quan_thu),
+            'ten_co_quan_thu': str(location.ten_co_quan_thu),
+            'ma_dia_ban': str(location.ma_dia_ban).replace('.0', ''),  # Remove .0 if exists
+            'kho_bac': str(location.kho_bac)
         })
 
 
