@@ -44,6 +44,14 @@ class Command(BaseCommand):
                 'required': True,
                 'default_value': ''
             },
+            {
+                'name': 'nguoi_nop_thay',
+                'label': 'Người nộp thay',
+                'field_type': 'text',
+                'help_text': 'Tên người đại diện nộp thuế thay',
+                'required': False,
+                'default_value': ''
+            },
 
             # Thông tin cơ quan thu
             {
@@ -111,6 +119,14 @@ class Command(BaseCommand):
                 'help_text': 'Tổng số tiền nộp thuế (VNĐ)',
                 'required': False,
                 'default_value': '0'
+            },
+            {
+                'name': 'so_tien_bang_chu',
+                'label': 'Số tiền bằng chữ',
+                'field_type': 'text',
+                'help_text': 'Tổng số tiền viết bằng chữ (tiếng Việt)',
+                'required': False,
+                'default_value': ''
             },
 
             # Thông tin tiểu mục (có thể dùng cho loop)
