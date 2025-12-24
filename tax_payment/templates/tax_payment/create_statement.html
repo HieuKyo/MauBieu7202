@@ -46,13 +46,12 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="nguoi_nop_thay" class="form-label">Người nộp thay</label>
-                            <input type="text" class="form-control" id="nguoi_nop_thay" name="nguoi_nop_thay">
+                            <input type="text" class="form-control" id="nguoi_nop_thay" name="nguoi_nop_thay"
+                                   value="{{ statement.nguoi_nop_thay|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="ngay_lap" class="form-label">Ngày lập bảng kê</label>
-                            <input type="date" class="form-control" id="ngay_lap" name="ngay_lap" value="{{ today|date:'Y-m-d' }}">
-                            <label class="form-label">Ngày lập bảng kê</label>
-                            <input type="date" class="form-control" name="ngay_lap" 
+                            <input type="date" class="form-control" id="ngay_lap" name="ngay_lap"
                                    value="{{ statement.ngay_lap|date:'Y-m-d'|default:today|date:'Y-m-d' }}">
                         </div>
                     </div>
