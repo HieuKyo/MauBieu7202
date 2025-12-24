@@ -123,3 +123,31 @@ def format_currency_vnd(amount):
 
 # Alias cho tên hàm tiếng Việt
 doc_so_thanh_chu = number_to_vietnamese_words
+
+
+def date_to_vietnamese_text(date_obj):
+    """
+    Chuyển đổi ngày sang định dạng text tiếng Việt
+
+    Args:
+        date_obj: Đối tượng datetime.date hoặc datetime.datetime
+
+    Returns:
+        str: Ngày dạng text (VD: "Ngày 24 tháng 12 năm 2025")
+
+    Example:
+        >>> from datetime import date
+        >>> date_to_vietnamese_text(date(2025, 12, 24))
+        'Ngày 24 tháng 12 năm 2025'
+    """
+    if not date_obj:
+        return ""
+
+    try:
+        day = date_obj.day
+        month = date_obj.month
+        year = date_obj.year
+
+        return f"Ngày {day} tháng {month} năm {year}"
+    except (AttributeError, ValueError):
+        return ""
