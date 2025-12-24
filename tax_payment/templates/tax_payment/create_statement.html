@@ -1,42 +1,17 @@
 {% extends "templates_app/base.html" %}
 {% load static %}
 
-{% block title %}Tạo Bảng Kê Nộp Thuế{% endblock %}
+{% block title %}{% if is_edit %}Cập nhật{% else %}Tạo mới{% endif %} Bảng Kê Nộp Thuế{% endblock %}
 
 {% block extra_head %}
 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 <style>
-    .form-section {
-        background: #fff;
-        padding: 2rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .form-section h5 {
-        color: #AE1C3F;
-        border-bottom: 2px solid #D69D26;
-        padding-bottom: 0.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .readonly-field {
-        background-color: #f8f9fa;
-    }
-    .item-row {
-        background: #f8f9fa;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border-radius: 6px;
-        border-left: 3px solid #D69D26;
-    }
-    .btn-remove-item {
-        background-color: #dc3545;
-        color: white;
-    }
-    .btn-add-item {
-        background-color: #D69D26;
-        color: white;
-    }
+    .form-section { background: #fff; padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .form-section h5 { color: #AE1C3F; border-bottom: 2px solid #D69D26; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+    .readonly-field { background-color: #f8f9fa; }
+    .item-row { background: #f8f9fa; padding: 1rem; margin-bottom: 1rem; border-radius: 6px; border-left: 3px solid #D69D26; }
+    .btn-remove-item { background-color: #dc3545; color: white; }
+    .btn-add-item { background-color: #D69D26; color: white; }
 </style>
 {% endblock %}
 
@@ -45,37 +20,29 @@
     <div class="row">
         <div class="col-12">
             <h2 class="mb-4">
-                <i class="bi bi-file-earmark-text"></i>
-                Tạo Bảng Kê Nộp Thuế
+                <i class="bi bi-file-earmark-text"></i> 
+                {% if is_edit %}Cập nhật Bảng Kê Nộp Thuế{% else %}Tạo Bảng Kê Nộp Thuế{% endif %}
             </h2>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-            <form method="post" action="{% url 'tax_payment:create' %}" id="taxPaymentForm">
+            <form method="post" action="{% if is_edit %}{% url 'tax_payment:edit' statement.id %}{% else %}{% url 'tax_payment:create' %}{% endif %}" id="taxPaymentForm">
                 {% csrf_token %}
 
-                <!-- Thông tin người nộp thuế -->
                 <div class="form-section">
                     <h5><i class="bi bi-person"></i> Thông tin người nộp thuế</h5>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="ten_nguoi_nop" class="form-label">Tên người nộp thuế <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="ten_nguoi_nop" name="ten_nguoi_nop" required>
+                            <label class="form-label">Tên người nộp thuế <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="ten_nguoi_nop" required 
+                                   value="{{ statement.ten_nguoi_nop|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="ma_so_thue" class="form-label">Mã số thuế</label>
-                            <input type="text" class="form-control" id="ma_so_thue" name="ma_so_thue">
+                            <label class="form-label">Mã số thuế</label>
+                            <input type="text" class="form-control" name="ma_so_thue" 
+                                   value="{{ statement.ma_so_thue|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="dia_chi" class="form-label">Địa chỉ</label>
-                            <textarea class="form-control" id="dia_chi" name="dia_chi" rows="2"></textarea>
+                            <label class="form-label">Địa chỉ</label>
+                            <textarea class="form-control" name="dia_chi" rows="2">{{ statement.dia_chi|default:'' }}</textarea>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="nguoi_nop_thay" class="form-label">Người nộp thay</label>
@@ -84,110 +51,143 @@
                         <div class="col-md-6 mb-3">
                             <label for="ngay_lap" class="form-label">Ngày lập bảng kê</label>
                             <input type="date" class="form-control" id="ngay_lap" name="ngay_lap" value="{{ today|date:'Y-m-d' }}">
+                            <label class="form-label">Ngày lập bảng kê</label>
+                            <input type="date" class="form-control" name="ngay_lap" 
+                                   value="{{ statement.ngay_lap|date:'Y-m-d'|default:today|date:'Y-m-d' }}">
                         </div>
                     </div>
                 </div>
 
-                <!-- Thông tin cơ quan thu (Cascading Dropdown) -->
                 <div class="form-section">
                     <h5><i class="bi bi-building"></i> Thông tin cơ quan thu</h5>
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label for="tinh" class="form-label">Tỉnh/Thành phố <span class="text-danger">*</span></label>
+                            <label class="form-label">Tỉnh/Thành phố <span class="text-danger">*</span></label>
                             <select class="form-select" id="tinh" name="tinh" required
                                     hx-get="{% url 'tax_payment:ajax_get_co_quan_thue' %}"
                                     hx-target="#co_quan_thue"
                                     hx-trigger="change">
                                 <option value="">-- Chọn Tỉnh --</option>
-                                {% for tinh in tinh_list %}
-                                    <option value="{{ tinh }}">{{ tinh }}</option>
+                                {% for t in tinh_list %}
+                                    <option value="{{ t }}" 
+                                        {% if statement.tax_location.tinh == t %}selected{% endif %}>
+                                        {{ t }}
+                                    </option>
                                 {% endfor %}
                             </select>
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label for="co_quan_thue" class="form-label">Cơ quan thuế <span class="text-danger">*</span></label>
-                            <select class="form-select" id="co_quan_thue" name="co_quan_thue" required disabled
+                            <label class="form-label">Cơ quan thuế <span class="text-danger">*</span></label>
+                            <select class="form-select" id="co_quan_thue" name="co_quan_thue" required
                                     hx-get="{% url 'tax_payment:ajax_get_xa_phuong' %}"
                                     hx-target="#xa_phuong"
                                     hx-include="[name='tinh']"
                                     hx-trigger="change">
-                                <option value="">-- Chọn Cơ quan thuế --</option>
+                                <option value="">-- Chọn Tỉnh trước --</option>
+                                {% if is_edit %}
+                                    {% for cqt in co_quan_thue_list %}
+                                        <option value="{{ cqt }}" {% if statement.tax_location.co_quan_thue_group == cqt %}selected{% endif %}>{{ cqt }}</option>
+                                    {% endfor %}
+                                {% endif %}
                             </select>
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label for="xa_phuong" class="form-label">Xã/Phường <span class="text-danger">*</span></label>
-                            <select class="form-select" id="xa_phuong" name="xa_phuong" required disabled>
-                                <option value="">-- Chọn Xã/Phường --</option>
+                            <label class="form-label">Xã/Phường <span class="text-danger">*</span></label>
+                            <select class="form-select" id="xa_phuong" name="xa_phuong" required
+                                    onchange="loadLocationDetails()">
+                                <option value="">-- Chọn Cơ quan thuế trước --</option>
+                                {% if is_edit %}
+                                    {% for xp in xa_phuong_list %}
+                                        <option value="{{ xp }}" {% if statement.tax_location.xa_phuong == xp %}selected{% endif %}>{{ xp }}</option>
+                                    {% endfor %}
+                                {% endif %}
                             </select>
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="ma_co_quan_thu" class="form-label">Mã cơ quan thu</label>
-                            <input type="text" class="form-control readonly-field" id="ma_co_quan_thu" name="ma_co_quan_thu" readonly>
+                            <label class="form-label">Mã cơ quan thu</label>
+                            <input type="text" class="form-control readonly-field" id="ma_co_quan_thu" name="ma_co_quan_thu" readonly value="{{ statement.tax_location.ma_co_quan_thu|default:'' }}">
                         </div>
-
                         <div class="col-md-6 mb-3">
-                            <label for="ma_dia_ban" class="form-label">Mã địa bàn</label>
-                            <input type="text" class="form-control readonly-field" id="ma_dia_ban" name="ma_dia_ban" readonly>
+                            <label class="form-label">Mã địa bàn</label>
+                            <input type="text" class="form-control readonly-field" id="ma_dia_ban" name="ma_dia_ban" readonly value="{{ statement.tax_location.ma_dia_ban|stringformat:'s'|cut:'.0'|default:'' }}">
                         </div>
-
                         <div class="col-md-12 mb-3">
-                            <label for="ten_co_quan_thu" class="form-label">Tên cơ quan thu</label>
-                            <textarea class="form-control readonly-field" id="ten_co_quan_thu" name="ten_co_quan_thu" rows="2" readonly></textarea>
+                            <label class="form-label">Tên cơ quan thu</label>
+                            <input type="text" class="form-control readonly-field" id="ten_co_quan_thu" name="ten_co_quan_thu" readonly value="{{ statement.tax_location.ten_co_quan_thu|default:'' }}">
                         </div>
-
                         <div class="col-md-12 mb-3">
-                            <label for="kho_bac" class="form-label">Kho bạc nhà nước (KBNN)</label>
-                            <input type="text" class="form-control readonly-field" id="kho_bac" name="kho_bac" readonly>
+                            <label class="form-label">Kho bạc nhà nước (KBNN)</label>
+                            <input type="text" class="form-control readonly-field" id="kho_bac" name="kho_bac" readonly value="{{ statement.tax_location.kho_bac|default:'' }}">
                         </div>
                     </div>
                 </div>
 
-                <!-- Danh sách các khoản nộp -->
                 <div class="form-section">
                     <h5><i class="bi bi-list-check"></i> Danh sách các khoản nộp</h5>
-
                     <div id="items-container">
-                        <!-- Item 1 (mặc định) -->
-                        <div class="item-row" data-item-index="1">
-                            <div class="row align-items-end">
-                                <div class="col-md-2 mb-2">
-                                    <label class="form-label">STT</label>
-                                    <input type="number" class="form-control" value="1" readonly>
-                                </div>
-                                <div class="col-md-3 mb-2">
-                                    <label class="form-label">Mã tiểu mục</label>
-                                    <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]"
-                                           onblur="searchSubEntry(this)">
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label">Nội dung</label>
-                                    <input type="text" class="form-control noi-dung" name="noi_dung[]">
-                                </div>
-                                <div class="col-md-3 mb-2">
-                                    <label class="form-label">Số tiền (VNĐ)</label>
-                                    <input type="text" class="form-control so-tien" name="so_tien[]"
-                                           oninput="formatCurrency(this)" placeholder="0">
+                        {% if is_edit and items %}
+                            {% for item in items %}
+                            <div class="item-row" data-item-index="{{ forloop.counter }}">
+                                <div class="row align-items-end">
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">STT</label>
+                                        <input type="number" class="form-control text-center" value="{{ forloop.counter }}" readonly>
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <label class="form-label">Mã tiểu mục</label>
+                                        <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" onblur="searchSubEntry(this)" value="{{ item.ma_tieu_muc }}">
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label">Nội dung</label>
+                                        <input type="text" class="form-control noi-dung" name="noi_dung[]" value="{{ item.noi_dung }}">
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Số tiền (VNĐ)</label>
+                                        <input type="text" class="form-control so-tien" name="so_tien[]" oninput="formatCurrency(this)" value="{{ item.so_tien|floatformat:0 }}">
+                                    </div>
+                                    <div class="col-md-1 mb-2">
+                                        <button type="button" class="btn btn-remove-item btn-sm w-100" onclick="removeItemRow(this)"><i class="bi bi-trash"></i></button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="item-row" data-item-index="1">
+                                <div class="row align-items-end">
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">STT</label>
+                                        <input type="number" class="form-control text-center" value="1" readonly>
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <label class="form-label">Mã tiểu mục</label>
+                                        <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" onblur="searchSubEntry(this)">
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label">Nội dung</label>
+                                        <input type="text" class="form-control noi-dung" name="noi_dung[]">
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Số tiền (VNĐ)</label>
+                                        <input type="text" class="form-control so-tien" name="so_tien[]" oninput="formatCurrency(this)" placeholder="0">
+                                    </div>
+                                    <div class="col-md-1 mb-2">
+                                        <button type="button" class="btn btn-remove-item btn-sm w-100" onclick="removeItemRow(this)"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
                     </div>
-
-                    <button type="button" class="btn btn-add-item mt-3" onclick="addItemRow()">
-                        <i class="bi bi-plus-circle"></i> Thêm dòng
-                    </button>
+                    <button type="button" class="btn btn-add-item mt-3" onclick="addItemRow()"><i class="bi bi-plus-circle"></i> Thêm dòng</button>
                 </div>
 
-                <!-- Buttons -->
                 <div class="text-center mt-4">
                     <button type="submit" class="btn btn-success btn-lg">
-                        <i class="bi bi-save"></i> Lưu và Xuất File Word
+                        <i class="bi bi-save"></i> {% if is_edit %}Cập nhật{% else %}Lưu{% endif %} và Xuất File
                     </button>
-                    <a href="{% url 'tax_payment:list' %}" class="btn btn-secondary btn-lg">
-                        <i class="bi bi-list"></i> Danh sách bảng kê
-                    </a>
+                    <a href="{% url 'tax_payment:list' %}" class="btn btn-secondary btn-lg"><i class="bi bi-list"></i> Quay lại</a>
                 </div>
             </form>
         </div>
@@ -195,148 +195,88 @@
 </div>
 
 <script>
-let itemCounter = 1;
+    // Paste lại toàn bộ JS của anh ở đây (loadLocationDetails, formatCurrency, searchSubEntry, addItemRow...)
+    // Chỉ cần lưu ý: Khi edit, formatCurrency cần chạy 1 lần lúc load trang (nếu muốn hiển thị đẹp ngay)
+    document.querySelectorAll('.so-tien').forEach(input => formatCurrency(input));
 
-// HTMX: Xử lý response cho cascading dropdown
-document.body.addEventListener('htmx:afterSwap', function(event) {
-    if (event.detail.target.id === 'co_quan_thue') {
-        const data = JSON.parse(event.detail.xhr.response);
-        const select = document.getElementById('co_quan_thue');
-        select.innerHTML = '<option value="">-- Chọn Cơ quan thuế --</option>';
-        data.co_quan_thue.forEach(item => {
-            select.innerHTML += `<option value="${item}">${item}</option>`;
-        });
-        select.disabled = false;
-        // Reset các field phụ thuộc
-        document.getElementById('xa_phuong').innerHTML = '<option value="">-- Chọn Xã/Phường --</option>';
-        document.getElementById('xa_phuong').disabled = true;
-        clearLocationDetails();
-    }
-});
+    async function loadLocationDetails() {
+        // 1. Lấy giá trị từ các ô dropdown
+        const tinh = document.getElementById('tinh').value;
+        const coQuanThue = document.getElementById('co_quan_thue').value;
+        const xaPhuong = document.getElementById('xa_phuong').value;
 
-// Load Xã/Phường khi chọn Cơ quan thuế
-document.getElementById('co_quan_thue').addEventListener('change', async function() {
-    const tinh = document.getElementById('tinh').value;
-    const coQuanThue = this.value;
+        // Nếu chưa chọn đủ 3 thông tin thì không làm gì cả
+        if (!tinh || !coQuanThue || !xaPhuong) {
+            console.log("Chưa chọn đủ thông tin Tỉnh/CQT/Xã");
+            return;
+        }
 
-    if (!coQuanThue) {
-        document.getElementById('xa_phuong').innerHTML = '<option value="">-- Chọn Xã/Phường --</option>';
-        document.getElementById('xa_phuong').disabled = true;
-        return;
-    }
+        console.log(`Đang lấy dữ liệu cho: ${tinh} - ${coQuanThue} - ${xaPhuong}`);
 
-    const response = await fetch(`{% url 'tax_payment:ajax_get_xa_phuong' %}?tinh=${encodeURIComponent(tinh)}&co_quan_thue=${encodeURIComponent(coQuanThue)}`);
+        // 2. Gọi về Server
+        const url = `{% url 'tax_payment:ajax_get_location_details' %}?tinh=${encodeURIComponent(tinh)}&co_quan_thue=${encodeURIComponent(coQuanThue)}&xa_phuong=${encodeURIComponent(xaPhuong)}`;
+        
+        try {
+            const response = await fetch(url);
+            
+            // Nếu server trả về lỗi (ví dụ 404 hoặc 500)
+            if (!response.ok) {
+                console.error("Lỗi Server:", response.status);
+                alert("Không tìm thấy thông tin cơ quan thu trong CSDL!");
+                clearLocationDetails();
+                return;
+            }
 
-    if (response.ok) {
-        const data = await response.json();
-        const select = document.getElementById('xa_phuong');
-        select.innerHTML = '<option value="">-- Chọn Xã/Phường --</option>';
-        data.xa_phuong.forEach(item => {
-            select.innerHTML += `<option value="${item}">${item}</option>`;
-        });
-        select.disabled = false;
-    }
-});
+            // 3. Điền dữ liệu vào ô input
+            const data = await response.json();
+            console.log("Dữ liệu nhận được:", data);
 
-// Auto-fill thông tin cơ quan thu khi chọn xã/phường
-document.getElementById('xa_phuong').addEventListener('change', async function() {
-    if (!this.value) {
-        clearLocationDetails();
-        return;
-    }
+            if (data.error) {
+                alert(data.error);
+                clearLocationDetails();
+            } else {
+                // Điền dữ liệu
+                document.getElementById('ma_co_quan_thu').value = data.ma_co_quan_thu || '';
+                document.getElementById('ten_co_quan_thu').value = data.ten_co_quan_thu || '';
+                document.getElementById('ma_dia_ban').value = data.ma_dia_ban || '';
+                document.getElementById('kho_bac').value = data.kho_bac || '';
+            }
 
-    const tinh = document.getElementById('tinh').value;
-    const coQuanThue = document.getElementById('co_quan_thue').value;
-    const xaPhuong = this.value;
-
-    const response = await fetch(`{% url 'tax_payment:ajax_get_location_details' %}?tinh=${encodeURIComponent(tinh)}&co_quan_thue=${encodeURIComponent(coQuanThue)}&xa_phuong=${encodeURIComponent(xaPhuong)}`);
-
-    if (response.ok) {
-        const data = await response.json();
-        document.getElementById('ma_co_quan_thu').value = data.ma_co_quan_thu;
-        document.getElementById('ten_co_quan_thu').value = data.ten_co_quan_thu;
-        document.getElementById('ma_dia_ban').value = data.ma_dia_ban;
-        document.getElementById('kho_bac').value = data.kho_bac;
-    }
-});
-
-function clearLocationDetails() {
-    document.getElementById('ma_co_quan_thu').value = '';
-    document.getElementById('ten_co_quan_thu').value = '';
-    document.getElementById('ma_dia_ban').value = '';
-    document.getElementById('kho_bac').value = '';
-}
-
-// Format số tiền với dấu phẩy ngăn cách hàng nghìn
-function formatCurrency(input) {
-    // Lấy giá trị và loại bỏ tất cả ký tự không phải số
-    let value = input.value.replace(/[^\d]/g, '');
-
-    // Nếu rỗng, return
-    if (value === '') {
-        input.value = '';
-        return;
+        } catch (e) {
+            console.error("Lỗi kết nối:", e);
+        }
     }
 
-    // Convert sang number rồi format với dấu phẩy
-    let number = parseInt(value);
-    input.value = number.toLocaleString('en-US');
-}
-
-// Thêm dòng tiểu mục mới
-function addItemRow() {
-    itemCounter++;
-    const container = document.getElementById('items-container');
-    const newRow = document.createElement('div');
-    newRow.className = 'item-row';
-    newRow.setAttribute('data-item-index', itemCounter);
-    newRow.innerHTML = `
-        <div class="row align-items-end">
-            <div class="col-md-2 mb-2">
-                <label class="form-label">STT</label>
-                <input type="number" class="form-control" value="${itemCounter}" readonly>
-            </div>
-            <div class="col-md-3 mb-2">
-                <label class="form-label">Mã tiểu mục</label>
-                <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]"
-                       onblur="searchSubEntry(this)">
-            </div>
-            <div class="col-md-4 mb-2">
-                <label class="form-label">Nội dung</label>
-                <input type="text" class="form-control noi-dung" name="noi_dung[]">
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Số tiền (VNĐ)</label>
-                <input type="text" class="form-control so-tien" name="so_tien[]"
-                       oninput="formatCurrency(this)" placeholder="0">
-            </div>
-            <div class="col-md-1 mb-2">
-                <button type="button" class="btn btn-remove-item btn-sm w-100" onclick="removeItemRow(this)">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-    container.appendChild(newRow);
-}
-
-// Xóa dòng tiểu mục
-function removeItemRow(btn) {
-    btn.closest('.item-row').remove();
-}
-
-// Tìm kiếm tiểu mục theo mã và tự động điền nội dung
-async function searchSubEntry(input) {
-    const maTieuMuc = input.value.trim();
-    if (!maTieuMuc) return;
-
-    const response = await fetch(`{% url 'tax_payment:ajax_search_sub_entry' %}?ma_tieu_muc=${encodeURIComponent(maTieuMuc)}`);
-
-    if (response.ok) {
-        const data = await response.json();
-        const row = input.closest('.item-row');
-        row.querySelector('.noi-dung').value = data.ten_tieu_muc;
+    function clearLocationDetails() {
+        document.getElementById('ma_co_quan_thu').value = '';
+        document.getElementById('ten_co_quan_thu').value = '';
+        document.getElementById('ma_dia_ban').value = '';
+        document.getElementById('kho_bac').value = '';
     }
-}
+    function formatCurrency(input) {
+        let value = input.value.replace(/[^\d]/g, '');
+        if (value === '') { input.value = ''; return; }
+        input.value = parseInt(value).toLocaleString('en-US');
+    }
+    async function searchSubEntry(input) { /* ... */ }
+    
+    let itemCounter = document.querySelectorAll('.item-row').length; // Cập nhật lại counter theo số dòng thực tế
+    
+    function addItemRow() {
+        itemCounter++;
+        const container = document.getElementById('items-container');
+        const firstRow = container.querySelector('.item-row');
+        const newRow = firstRow.cloneNode(true);
+        newRow.setAttribute('data-item-index', itemCounter);
+        newRow.querySelector('input[type="number"]').value = itemCounter;
+        newRow.querySelectorAll('input:not([readonly])').forEach(i => i.value = '');
+        container.appendChild(newRow);
+    }
+    
+    function removeItemRow(btn) {
+        if(document.querySelectorAll('.item-row').length > 1) {
+            btn.closest('.item-row').remove();
+        }
+    }
 </script>
 {% endblock %}
