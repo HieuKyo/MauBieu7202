@@ -22,64 +22,75 @@ def tax_payment_create(request):
     context = {
         'tinh_list': TaxLocation.objects.values_list('tinh', flat=True).distinct().order_by('tinh'),
         'tax_sub_entries': TaxSubEntry.objects.all().order_by('ma_tieu_muc'),
+        'today': date.today(),
     }
     return render(request, 'tax_payment/create_statement.html', context)
 
 
-def save_tax_payment(request):
+def save_tax_payment(request, statement_id=None):
     """
-    Xử lý lưu dữ liệu bảng kê nộp thuế
+    Hàm dùng chung cho cả Tạo mới và Cập nhật
     """
     try:
-        # Lấy thông tin cơ bản
+        # Lấy dữ liệu từ POST
         ten_nguoi_nop = request.POST.get('ten_nguoi_nop', '').strip()
         ma_so_thue = request.POST.get('ma_so_thue', '').strip()
         dia_chi = request.POST.get('dia_chi', '').strip()
         ngay_lap = request.POST.get('ngay_lap', date.today())
-
-        # Lấy thông tin cơ quan thu
         ma_co_quan_thu = request.POST.get('ma_co_quan_thu', '').strip()
 
         if not ten_nguoi_nop or not ma_co_quan_thu:
-            messages.error(request, 'Vui lòng điền đầy đủ thông tin bắt buộc!')
+            messages.error(request, 'Thiếu thông tin bắt buộc!')
             return redirect('tax_payment:create')
 
         # Lấy TaxLocation
         try:
             tax_location = TaxLocation.objects.get(ma_co_quan_thu=ma_co_quan_thu)
         except TaxLocation.DoesNotExist:
-            messages.error(request, 'Không tìm thấy thông tin cơ quan thu!')
+            messages.error(request, 'Không tìm thấy cơ quan thu!')
             return redirect('tax_payment:create')
 
-        # Tạo Statement
-        statement = TaxPaymentStatement.objects.create(
-            ten_nguoi_nop=ten_nguoi_nop,
-            ma_so_thue=ma_so_thue,
-            dia_chi=dia_chi,
-            tax_location=tax_location,
-            ngay_lap=ngay_lap,
-            tong_so_tien=0
-        )
+        # === XỬ LÝ TẠO MỚI HOẶC UPDATE ===
+        if statement_id:
+            # Update
+            statement = get_object_or_404(TaxPaymentStatement, pk=statement_id)
+            statement.ten_nguoi_nop = ten_nguoi_nop
+            statement.ma_so_thue = ma_so_thue
+            statement.dia_chi = dia_chi
+            statement.ngay_lap = ngay_lap
+            statement.tax_location = tax_location
+            statement.save()
+            
+            # Xóa hết item cũ để lưu lại từ đầu (đơn giản hóa logic update list)
+            statement.items.all().delete()
+            msg = 'Cập nhật bảng kê thành công!'
+        else:
+            # Create
+            statement = TaxPaymentStatement.objects.create(
+                ten_nguoi_nop=ten_nguoi_nop,
+                ma_so_thue=ma_so_thue,
+                dia_chi=dia_chi,
+                tax_location=tax_location,
+                ngay_lap=ngay_lap,
+                tong_so_tien=0
+            )
+            msg = 'Tạo bảng kê thành công!'
 
-        # Lấy các dòng tiểu mục
+        # === LƯU DANH SÁCH TIỂU MỤC (GIỮ NGUYÊN LOGIC CŨ) ===
         ma_tieu_muc_list = request.POST.getlist('ma_tieu_muc[]')
         noi_dung_list = request.POST.getlist('noi_dung[]')
         so_tien_list = request.POST.getlist('so_tien[]')
 
         tong_tien = Decimal('0')
 
-        # Tạo các TaxPaymentItem
         for i, (ma_tm, noi_dung, so_tien) in enumerate(zip(ma_tieu_muc_list, noi_dung_list, so_tien_list), start=1):
             if ma_tm and so_tien:
                 try:
-                    so_tien_decimal = Decimal(str(so_tien).replace(',', ''))
-
-                    # Tìm TaxSubEntry nếu có
-                    tax_sub_entry = None
-                    try:
-                        tax_sub_entry = TaxSubEntry.objects.get(ma_tieu_muc=ma_tm)
-                    except TaxSubEntry.DoesNotExist:
-                        pass
+                    so_tien_clean = so_tien.replace(',', '').replace('.', '') # Fix lỗi format
+                    so_tien_decimal = Decimal(so_tien_clean)
+                    
+                    # Tìm TaxSubEntry (Optional)
+                    tax_sub_entry = TaxSubEntry.objects.filter(ma_tieu_muc=ma_tm).first()
 
                     TaxPaymentItem.objects.create(
                         statement=statement,
@@ -89,21 +100,66 @@ def save_tax_payment(request):
                         so_tien=so_tien_decimal,
                         stt=i
                     )
-
                     tong_tien += so_tien_decimal
-                except (ValueError, TypeError) as e:
+                except (ValueError, TypeError):
                     continue
 
-        # Cập nhật tổng tiền
         statement.tong_so_tien = tong_tien
         statement.save()
 
-        messages.success(request, f'Đã tạo bảng kê thành công! Tổng tiền: {tong_tien:,} VNĐ')
-        return redirect('tax_payment:export', statement_id=statement.id)
+        messages.success(request, f'{msg} Tổng tiền: {tong_tien:,.0f} VNĐ')
+        # Quay về trang danh sách sau khi lưu xong
+        return redirect('tax_payment:list')
 
     except Exception as e:
-        messages.error(request, f'Có lỗi xảy ra: {str(e)}')
+        messages.error(request, f'Lỗi hệ thống: {str(e)}')
         return redirect('tax_payment:create')
+
+
+# --- THÊM VIEW EDIT ---
+def tax_payment_edit(request, pk):
+    statement = get_object_or_404(TaxPaymentStatement, pk=pk)
+    
+    if request.method == 'POST':
+        return save_tax_payment(request, statement_id=pk)
+
+    # Chuẩn bị dữ liệu để đổ vào form
+    # 1. List Tỉnh (luôn có)
+    tinh_list = TaxLocation.objects.values_list('tinh', flat=True).distinct().order_by('tinh')
+    
+    # 2. List Cơ quan thuế (của tỉnh đã chọn)
+    co_quan_thue_list = []
+    if statement.tax_location:
+        co_quan_thue_list = TaxLocation.objects.filter(tinh=statement.tax_location.tinh)\
+            .values_list('co_quan_thue_group', flat=True).distinct().order_by('co_quan_thue_group')
+
+    # 3. List Xã phường (của cơ quan thuế đã chọn)
+    xa_phuong_list = []
+    if statement.tax_location:
+        xa_phuong_list = TaxLocation.objects.filter(
+            tinh=statement.tax_location.tinh, 
+            co_quan_thue_group=statement.tax_location.co_quan_thue_group
+        ).exclude(xa_phuong__isnull=True).values_list('xa_phuong', flat=True).distinct().order_by('xa_phuong')
+
+    context = {
+        'statement': statement,
+        'tinh_list': tinh_list,
+        'co_quan_thue_list': co_quan_thue_list, # Để pre-fill dropdown 2
+        'xa_phuong_list': xa_phuong_list,       # Để pre-fill dropdown 3
+        'items': statement.items.all().order_by('stt'),
+        'is_edit': True, # Cờ đánh dấu đang edit
+        'today': date.today(),
+    }
+    return render(request, 'tax_payment/create_statement.html', context)
+
+
+# --- THÊM VIEW DELETE ---
+def tax_payment_delete(request, pk):
+    statement = get_object_or_404(TaxPaymentStatement, pk=pk)
+    if request.method == 'POST':
+        statement.delete()
+        messages.success(request, 'Đã xóa bảng kê thành công.')
+    return redirect('tax_payment:list')
 
 
 # ===== AJAX Views cho Cascading Dropdown =====
@@ -111,49 +167,47 @@ def save_tax_payment(request):
 @require_http_methods(["GET"])
 def get_co_quan_thue(request):
     """
-    AJAX endpoint: Lấy danh sách Cơ quan thuế theo Tỉnh
+    HTMX: Trả về HTML danh sách options cơ quan thuế
     """
     tinh = request.GET.get('tinh', '').strip()
-
+    
     if not tinh:
-        return JsonResponse({'co_quan_thue': []})
-
-    # Use order_by before distinct to ensure proper deduplication
-    co_quan_thue_list = TaxLocation.objects.filter(
-        tinh=tinh
-    ).order_by('co_quan_thue_group').values_list('co_quan_thue_group', flat=True).distinct()
-
-    return JsonResponse({
-        'co_quan_thue': list(co_quan_thue_list)
-    })
+        options = []
+    else:
+        options = TaxLocation.objects.filter(tinh=tinh)\
+            .order_by('co_quan_thue_group')\
+            .values_list('co_quan_thue_group', flat=True)\
+            .distinct()
+            
+    # Trả về template con chứa các thẻ <option>
+    return render(request, 'tax_payment/dropdown_options.html', {'options': options})
 
 
 @require_http_methods(["GET"])
 def get_xa_phuong(request):
     """
-    AJAX endpoint: Lấy danh sách Xã/Phường theo Tỉnh và Cơ quan thuế
+    HTMX: Trả về HTML danh sách options xã phường
     """
     tinh = request.GET.get('tinh', '').strip()
     co_quan_thue = request.GET.get('co_quan_thue', '').strip()
-
+    
     if not tinh or not co_quan_thue:
-        return JsonResponse({'xa_phuong': []})
+        options = []
+    else:
+        options = TaxLocation.objects.filter(tinh=tinh, co_quan_thue_group=co_quan_thue)\
+            .exclude(xa_phuong__isnull=True)\
+            .exclude(xa_phuong__exact='')\
+            .order_by('xa_phuong')\
+            .values_list('xa_phuong', flat=True)\
+            .distinct()
 
-    # Use order_by before distinct to ensure proper deduplication
-    xa_phuong_list = TaxLocation.objects.filter(
-        tinh=tinh,
-        co_quan_thue_group=co_quan_thue
-    ).order_by('xa_phuong').values_list('xa_phuong', flat=True).distinct()
-
-    return JsonResponse({
-        'xa_phuong': list(xa_phuong_list)
-    })
+    return render(request, 'tax_payment/dropdown_options.html', {'options': options})
 
 
 @require_http_methods(["GET"])
 def get_location_details(request):
     """
-    AJAX endpoint: Lấy chi tiết thông tin cơ quan thu (auto-fill)
+    Lấy thông tin chi tiết (Mã CQT, Mã ĐB, KBNN) để điền tự động
     """
     tinh = request.GET.get('tinh', '').strip()
     co_quan_thue = request.GET.get('co_quan_thue', '').strip()
@@ -162,55 +216,39 @@ def get_location_details(request):
     if not tinh or not co_quan_thue or not xa_phuong:
         return JsonResponse({'error': 'Thiếu thông tin'}, status=400)
 
-    try:
-        location = TaxLocation.objects.get(
-            tinh=tinh,
-            co_quan_thue_group=co_quan_thue,
-            xa_phuong=xa_phuong
-        )
+    # Tìm chính xác địa điểm
+    location = TaxLocation.objects.filter(
+        tinh=tinh,
+        co_quan_thue_group=co_quan_thue,
+        xa_phuong=xa_phuong
+    ).first()
 
+    if location:
+        # Xử lý cắt đuôi .0 cho mã địa bàn nếu có
+        ma_dia_ban = str(location.ma_dia_ban).replace('.0', '') if location.ma_dia_ban else ''
+        
         return JsonResponse({
-            'ma_co_quan_thu': str(location.ma_co_quan_thu),
-            'ten_co_quan_thu': str(location.ten_co_quan_thu),
-            'ma_dia_ban': str(location.ma_dia_ban).replace('.0', ''),  # Remove .0 if exists
-            'kho_bac': str(location.kho_bac)
+            'ma_co_quan_thu': location.ma_co_quan_thu,
+            'ten_co_quan_thu': location.ten_co_quan_thu,
+            'ma_dia_ban': ma_dia_ban,
+            'kho_bac': location.kho_bac
         })
-    except TaxLocation.DoesNotExist:
-        return JsonResponse({'error': 'Không tìm thấy thông tin'}, status=404)
-    except TaxLocation.MultipleObjectsReturned:
-        # Trường hợp có nhiều kết quả, lấy kết quả đầu tiên
-        location = TaxLocation.objects.filter(
-            tinh=tinh,
-            co_quan_thue_group=co_quan_thue,
-            xa_phuong=xa_phuong
-        ).first()
-
-        return JsonResponse({
-            'ma_co_quan_thu': str(location.ma_co_quan_thu),
-            'ten_co_quan_thu': str(location.ten_co_quan_thu),
-            'ma_dia_ban': str(location.ma_dia_ban).replace('.0', ''),  # Remove .0 if exists
-            'kho_bac': str(location.kho_bac)
-        })
+    else:
+        return JsonResponse({'error': 'Không tìm thấy dữ liệu'}, status=404)
 
 
 @require_http_methods(["GET"])
 def search_sub_entry(request):
-    """
-    AJAX endpoint: Tìm kiếm Tiểu mục theo mã
-    """
+    """Tìm tiểu mục"""
     ma_tieu_muc = request.GET.get('ma_tieu_muc', '').strip()
-
-    if not ma_tieu_muc:
-        return JsonResponse({'error': 'Thiếu mã tiểu mục'}, status=400)
-
-    try:
-        sub_entry = TaxSubEntry.objects.get(ma_tieu_muc=ma_tieu_muc)
+    sub_entry = TaxSubEntry.objects.filter(ma_tieu_muc=ma_tieu_muc).first()
+    
+    if sub_entry:
         return JsonResponse({
             'ma_tieu_muc': sub_entry.ma_tieu_muc,
             'ten_tieu_muc': sub_entry.ten_tieu_muc
         })
-    except TaxSubEntry.DoesNotExist:
-        return JsonResponse({'error': 'Không tìm thấy tiểu mục'}, status=404)
+    return JsonResponse({'error': 'Không tìm thấy'}, status=404)
 
 
 # ===== Export Word View =====
@@ -240,7 +278,10 @@ def export_tax_statement(request, statement_id):
             'noi_dung': item.noi_dung,
             'so_tien': f"{item.so_tien:,}".replace(',', '.'),  # Format số tiền
         })
-
+    # Xử lý Mã địa bàn: Xóa đuôi .0 nếu có
+    ma_dia_ban = ''
+    if statement.tax_location and statement.tax_location.ma_dia_ban:
+        ma_dia_ban = str(statement.tax_location.ma_dia_ban).replace('.0', '')
     context = {
         # Thông tin người nộp
         'ten_nguoi_nop': statement.ten_nguoi_nop,
@@ -254,7 +295,10 @@ def export_tax_statement(request, statement_id):
         'xa_phuong': statement.tax_location.xa_phuong if statement.tax_location else '',
         'ma_co_quan_thu': statement.tax_location.ma_co_quan_thu if statement.tax_location else '',
         'ten_co_quan_thu': statement.tax_location.ten_co_quan_thu if statement.tax_location else '',
-        'ma_dia_ban': statement.tax_location.ma_dia_ban if statement.tax_location else '',
+        
+        # SỬA DÒNG NÀY: Dùng biến ma_dia_ban đã xử lý ở trên
+        'ma_dia_ban': ma_dia_ban, 
+        
         'kho_bac': statement.tax_location.kho_bac if statement.tax_location else '',
 
         # Thông tin bảng kê
