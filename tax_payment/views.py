@@ -118,9 +118,10 @@ def get_co_quan_thue(request):
     if not tinh:
         return JsonResponse({'co_quan_thue': []})
 
+    # Use order_by before distinct to ensure proper deduplication
     co_quan_thue_list = TaxLocation.objects.filter(
         tinh=tinh
-    ).values_list('co_quan_thue_group', flat=True).distinct().order_by('co_quan_thue_group')
+    ).order_by('co_quan_thue_group').values_list('co_quan_thue_group', flat=True).distinct()
 
     return JsonResponse({
         'co_quan_thue': list(co_quan_thue_list)
@@ -138,10 +139,11 @@ def get_xa_phuong(request):
     if not tinh or not co_quan_thue:
         return JsonResponse({'xa_phuong': []})
 
+    # Use order_by before distinct to ensure proper deduplication
     xa_phuong_list = TaxLocation.objects.filter(
         tinh=tinh,
         co_quan_thue_group=co_quan_thue
-    ).values_list('xa_phuong', flat=True).distinct().order_by('xa_phuong')
+    ).order_by('xa_phuong').values_list('xa_phuong', flat=True).distinct()
 
     return JsonResponse({
         'xa_phuong': list(xa_phuong_list)
