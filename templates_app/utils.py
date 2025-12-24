@@ -200,10 +200,6 @@ class JinjaWordTemplateProcessor:
         # Count checkboxes processed
         checkboxes_updated = 0
 
-        # DEBUG: Track all tags found
-        all_tags_found = []
-        occupation_tags_found = []
-
         # Tìm tất cả Structured Document Tags (Content Controls)
         for sdt in self.document.element.findall('.//w:sdt', namespaces=NSMAP):
             # Lấy tag name từ properties
@@ -214,11 +210,6 @@ class JinjaWordTemplateProcessor:
             tag_name = tag_element.get(f'{{{NSMAP["w"]}}}val')
             if not tag_name:
                 continue
-
-            # DEBUG: Track this tag
-            all_tags_found.append(tag_name)
-            if 'nghe_nghiep' in tag_name:
-                occupation_tags_found.append(tag_name)
 
             # Kiểm tra xem tag có trong context không
             if tag_name not in context:
@@ -598,10 +589,6 @@ class WordTemplateProcessor:
         # Count checkboxes processed
         checkboxes_updated = 0
 
-        # DEBUG: Track all tags found
-        all_tags_found = []
-        occupation_tags_found = []
-
         # Tìm tất cả Structured Document Tags (Content Controls)
         for sdt in self.document.element.findall('.//w:sdt', namespaces=NSMAP):
             # Lấy tag name từ properties
@@ -612,11 +599,6 @@ class WordTemplateProcessor:
             tag_name = tag_element.get(f'{{{NSMAP["w"]}}}val')
             if not tag_name:
                 continue
-
-            # DEBUG: Track this tag
-            all_tags_found.append(tag_name)
-            if 'nghe_nghiep' in tag_name:
-                occupation_tags_found.append(tag_name)
 
             # Kiểm tra xem tag có trong context không
             if tag_name not in context:
