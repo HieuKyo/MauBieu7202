@@ -1,0 +1,513 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Quản lý phân quyền{% endblock %}
+
+{% block content %}
+<style>
+    .user-row:hover {
+        background-color: #f8f9fa !important;
+    }
+
+    .user-row.superuser {
+        background-color: #fff3cd !important;
+    }
+
+    .badge-superuser {
+        background-color: #dc3545;
+    }
+
+    .badge-group {
+        background-color: #0d6efd;
+        margin-right: 4px;
+        margin-bottom: 4px;
+    }
+
+    .template-count {
+        font-weight: bold;
+        color: #198754;
+    }
+
+    .group-checkbox {
+        cursor: pointer;
+    }
+
+    .permission-detail-row {
+        font-size: 0.9rem;
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-shield-lock"></i> Quản lý phân quyền Admin</h2>
+        <div>
+            <span class="badge bg-info">Tổng số users: {{ users_permissions|length }}</span>
+            <span class="badge bg-success">Tổng số templates: {{ total_templates }}</span>
+            <span class="badge bg-primary">Tổng số nhóm: {{ all_groups|length }}</span>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-person-badge"></i> Superusers</h5>
+                    <h3 class="card-text">
+                        {% with superuser_count=users_permissions|length %}
+                            {% for item in users_permissions %}
+                                {% if item.user.is_superuser %}
+                                    {{ forloop.counter }}
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-people"></i> Nhóm quyền</h5>
+                    <h3 class="card-text">{{ all_groups|length }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Mẫu biểu</h5>
+                    <h3 class="card-text">{{ total_templates }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Permission Table -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-table"></i> Danh sách Users và Quyền</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 5%">#</th>
+                            <th style="width: 15%">Username</th>
+                            <th style="width: 20%">Họ tên</th>
+                            <th style="width: 10%" class="text-center">Superuser</th>
+                            <th style="width: 30%">Nhóm quyền</th>
+                            <th style="width: 10%" class="text-center">Templates</th>
+                            <th style="width: 10%" class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in users_permissions %}
+                        <tr class="user-row {% if item.user.is_superuser %}superuser{% endif %}">
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <strong>{{ item.user.username }}</strong>
+                                {% if item.user == request.user %}
+                                <span class="badge bg-info">Bạn</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.user.profile %}
+                                    {{ item.user.profile.full_name }}
+                                {% else %}
+                                    <em class="text-muted">Chưa có thông tin</em>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input
+                                        class="form-check-input superuser-toggle"
+                                        type="checkbox"
+                                        {% if item.user.is_superuser %}checked{% endif %}
+                                        {% if item.user == request.user %}disabled{% endif %}
+                                        data-user-id="{{ item.user.id }}"
+                                        data-username="{{ item.user.username }}"
+                                        style="cursor: pointer;">
+                                </div>
+                            </td>
+                            <td>
+                                {% if item.groups %}
+                                    {% for group in item.groups %}
+                                    <span class="badge badge-group">{{ group.name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <em class="text-muted">Chưa có nhóm</em>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="template-count">{{ item.accessible_templates_count }}</span> / {{ total_templates }}
+                            </td>
+                            <td class="text-center">
+                                <button
+                                    class="btn btn-sm btn-primary btn-edit-groups"
+                                    data-user-id="{{ item.user.id }}"
+                                    data-username="{{ item.user.username }}"
+                                    title="Chỉnh sửa nhóm quyền">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button
+                                    class="btn btn-sm btn-info btn-view-permissions"
+                                    data-user-id="{{ item.user.id }}"
+                                    data-username="{{ item.user.username }}"
+                                    title="Xem chi tiết quyền">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">Không có user nào</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danh sách các nhóm quyền hiện có -->
+    <div class="card mt-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Danh sách nhóm quyền</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for group in all_groups %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-people-fill"></i> {{ group.name }}</h6>
+                            <p class="card-text text-muted">
+                                ID: {{ group.id }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <p class="text-muted">Chưa có nhóm quyền nào. Tạo nhóm mới trong Django Admin.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Chỉnh sửa nhóm quyền -->
+<div class="modal fade" id="editGroupsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square"></i> Chỉnh sửa nhóm quyền -
+                    <span id="edit-groups-username"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-groups-user-id">
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Chọn các nhóm mà user này sẽ thuộc về. User sẽ có quyền truy cập các template được gán cho những nhóm này.
+                </div>
+
+                <div id="groups-checkboxes">
+                    {% for group in all_groups %}
+                    <div class="form-check mb-2">
+                        <input
+                            class="form-check-input group-checkbox"
+                            type="checkbox"
+                            value="{{ group.id }}"
+                            id="group-{{ group.id }}">
+                        <label class="form-check-label" for="group-{{ group.id }}">
+                            <strong>{{ group.name }}</strong>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="btn-save-groups">
+                    <i class="bi bi-save"></i> Lưu thay đổi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Xem chi tiết quyền -->
+<div class="modal fade" id="viewPermissionsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-eye"></i> Chi tiết quyền -
+                    <span id="view-permissions-username"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="permissions-loading" class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                </div>
+
+                <div id="permissions-content" style="display: none;">
+                    <!-- User info -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">Thông tin user</h6>
+                                    <p><strong>Username:</strong> <span id="detail-username"></span></p>
+                                    <p><strong>Superuser:</strong> <span id="detail-superuser"></span></p>
+                                    <p><strong>Nhóm:</strong> <span id="detail-groups"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">Thống kê quyền</h6>
+                                    <p><strong>Templates có quyền:</strong> <span id="detail-accessible-count"></span></p>
+                                    <p><strong>Tổng số templates:</strong> <span id="detail-total-count"></span></p>
+                                    <p><strong>Tỷ lệ:</strong> <span id="detail-percentage"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Templates list -->
+                    <h6>Danh sách mẫu biểu có quyền truy cập:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 5%">#</th>
+                                    <th style="width: 35%">Tên mẫu</th>
+                                    <th style="width: 25%">Danh mục</th>
+                                    <th style="width: 35%">Lý do có quyền</th>
+                                </tr>
+                            </thead>
+                            <tbody id="templates-list">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // Toggle Superuser status
+    document.querySelectorAll('.superuser-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const username = this.dataset.username;
+            const isSuperuser = this.checked;
+
+            if (confirm(`Bạn có chắc chắn muốn ${isSuperuser ? 'CẤP' : 'THU HỒI'} quyền Superuser cho ${username}?`)) {
+                fetch(`/permissions/users/${userId}/superuser/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        is_superuser: isSuperuser
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Lỗi: ' + data.error);
+                        this.checked = !isSuperuser; // Revert
+                    }
+                })
+                .catch(error => {
+                    alert('Lỗi kết nối: ' + error);
+                    this.checked = !isSuperuser; // Revert
+                });
+            } else {
+                this.checked = !isSuperuser; // Revert
+            }
+        });
+    });
+
+    // Edit Groups
+    document.querySelectorAll('.btn-edit-groups').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const username = this.dataset.username;
+
+            document.getElementById('edit-groups-user-id').value = userId;
+            document.getElementById('edit-groups-username').textContent = username;
+
+            // Load current groups
+            fetch(`/permissions/users/${userId}/permissions/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Uncheck all first
+                        document.querySelectorAll('.group-checkbox').forEach(cb => {
+                            cb.checked = false;
+                        });
+
+                        // Check user's groups
+                        data.user.groups.forEach(group => {
+                            const checkbox = document.getElementById('group-' + group.id);
+                            if (checkbox) {
+                                checkbox.checked = true;
+                            }
+                        });
+
+                        // Show modal
+                        new bootstrap.Modal(document.getElementById('editGroupsModal')).show();
+                    } else {
+                        alert('Lỗi: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('Lỗi kết nối: ' + error);
+                });
+        });
+    });
+
+    // Save Groups
+    document.getElementById('btn-save-groups').addEventListener('click', function() {
+        const userId = document.getElementById('edit-groups-user-id').value;
+        const selectedGroups = Array.from(document.querySelectorAll('.group-checkbox:checked'))
+            .map(cb => parseInt(cb.value));
+
+        fetch(`/permissions/users/${userId}/groups/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                group_ids: selectedGroups
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Lỗi: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Lỗi kết nối: ' + error);
+        });
+    });
+
+    // View Permissions Detail
+    document.querySelectorAll('.btn-view-permissions').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const username = this.dataset.username;
+
+            document.getElementById('view-permissions-username').textContent = username;
+            document.getElementById('permissions-loading').style.display = 'block';
+            document.getElementById('permissions-content').style.display = 'none';
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('viewPermissionsModal'));
+            modal.show();
+
+            // Load permissions
+            fetch(`/permissions/users/${userId}/permissions/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // User info
+                        document.getElementById('detail-username').textContent = data.user.username;
+                        document.getElementById('detail-superuser').innerHTML =
+                            data.user.is_superuser ? '<span class="badge bg-danger">Có</span>' : '<span class="badge bg-secondary">Không</span>';
+
+                        if (data.user.groups.length > 0) {
+                            document.getElementById('detail-groups').innerHTML =
+                                data.user.groups.map(g => `<span class="badge bg-primary">${g.name}</span>`).join(' ');
+                        } else {
+                            document.getElementById('detail-groups').innerHTML = '<em class="text-muted">Chưa có nhóm</em>';
+                        }
+
+                        // Stats
+                        document.getElementById('detail-accessible-count').textContent = data.total_accessible;
+                        document.getElementById('detail-total-count').textContent = data.total_templates;
+                        const percentage = data.total_templates > 0 ?
+                            ((data.total_accessible / data.total_templates) * 100).toFixed(1) : 0;
+                        document.getElementById('detail-percentage').textContent = percentage + '%';
+
+                        // Templates list
+                        const tbody = document.getElementById('templates-list');
+                        tbody.innerHTML = '';
+
+                        if (data.accessible_templates.length > 0) {
+                            data.accessible_templates.forEach((template, index) => {
+                                const tr = document.createElement('tr');
+                                tr.className = 'permission-detail-row';
+                                tr.innerHTML = `
+                                    <td>${index + 1}</td>
+                                    <td>${template.name}</td>
+                                    <td>${template.category}</td>
+                                    <td><span class="badge bg-success">${template.reason}</span></td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Không có quyền truy cập template nào</td></tr>';
+                        }
+
+                        // Show content
+                        document.getElementById('permissions-loading').style.display = 'none';
+                        document.getElementById('permissions-content').style.display = 'block';
+                    } else {
+                        alert('Lỗi: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('Lỗi kết nối: ' + error);
+                });
+        });
+    });
+});
+</script>
+
+{% endblock %}

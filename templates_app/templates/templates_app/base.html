@@ -129,6 +129,10 @@
                                 </a></li>
                                 {% if user.is_superuser %}
                                 <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'permission_management' %}">
+                                    <i class="bi bi-shield-check"></i> Quản lý Phân quyền
+                                    <small class="d-block text-muted ms-4">Cấp/thu hồi quyền Admin và Nhóm</small>
+                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'branch_config' %}">
                                     <i class="bi bi-gear"></i> Cấu hình hệ thống
                                 </a></li>
