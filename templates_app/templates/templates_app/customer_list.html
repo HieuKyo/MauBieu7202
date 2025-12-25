@@ -117,10 +117,10 @@
                             <a href="{% url 'print_customer_docs' customer.id %}" class="btn btn-sm btn-success me-1" title="In hồ sơ">
                                 <i class="bi bi-printer-fill"></i>
                             </a>
-                            <button class="btn btn-sm btn-warning me-1" onclick="editCustomer({{ customer.id }})" title="Sửa">
+                            <button class="btn btn-sm btn-warning me-1" onclick="editCustomer({{ customer.id|unlocalize }})" title="Sửa">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteCustomer({{ customer.id }}, '{{ customer.ho_ten|escapejs }}')" title="Xóa">
+                            <button class="btn btn-sm btn-danger" onclick="deleteCustomer({{ customer.id|unlocalize }}, '{{ customer.ho_ten|escapejs }}')" title="Xóa">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
