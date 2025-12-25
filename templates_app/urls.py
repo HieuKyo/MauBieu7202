@@ -124,4 +124,10 @@ urlpatterns = [
     path('reports/mail-envelope/report/', report_views.mail_envelope_report_view, name='mail_envelope_report'),
     path('reports/dien-luc/', report_views.dien_luc_report_view, name='dien_luc_report'),
     path('reports/atm-fund-balance/', report_views.atm_fund_balance_view, name='atm_fund_balance'),
+
+    # Permission Management
+    path('permissions/', views.permission_management_view, name='permission_management'),
+    path('permissions/users/<int:user_id>/superuser/', views.update_superuser_status, name='update_superuser_status'),
+    path('permissions/users/<int:user_id>/groups/', views.update_user_groups, name='update_user_groups'),
+    path('permissions/users/<int:user_id>/permissions/', views.get_user_permissions_detail, name='get_user_permissions_detail'),
 ]
