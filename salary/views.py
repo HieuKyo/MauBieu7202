@@ -12,22 +12,12 @@ from datetime import datetime
 
 from .models import Bank, CompanyAccount, Beneficiary, ProcessingHistory
 from .forms import BeneficiaryForm, CompanyAccountForm, FileUploadForm
-from .decorators import admins_only, giaodichvien_or_admin
 from .services import SalaryFileProcessor, SalaryStatisticsService
 
 
 @login_required
 def dashboard(request):
     """Dashboard chính - Thống kê tổng quan"""
-    # Kiểm tra quyền và redirect
-    user_groups = request.user.groups.values_list('name', flat=True)
-    is_admin = request.user.is_superuser or 'Admins' in user_groups
-    is_giaodichvien = 'GiaoDichViens' in user_groups
-
-    # GiaoDichViens redirect sang upload
-    if is_giaodichvien and not is_admin:
-        return redirect('salary:upload')
-
     # Lấy filter tháng và năm từ request
     filter_month = request.GET.get('filter_month', '')
     filter_year = request.GET.get('filter_year', '')
@@ -64,7 +54,6 @@ def dashboard(request):
     context = {
         'stats': stats,
         'recent_histories': recent_histories,
-        'is_admin': is_admin,
         'filter_month': filter_month,
         'filter_year': filter_year,
         'years_range': years_range,
@@ -72,7 +61,7 @@ def dashboard(request):
     return render(request, 'salary/dashboard.html', context)
 
 
-@giaodichvien_or_admin
+@login_required
 def upload_file(request):
     """Upload và xử lý file Excel/CSV"""
     if request.method == 'POST':
@@ -144,7 +133,7 @@ def upload_file(request):
     return render(request, 'salary/upload.html', {'form': form})
 
 
-@admins_only
+@login_required
 def processing_history(request):
     """Lịch sử xử lý file"""
     histories = ProcessingHistory.objects.all()
@@ -178,7 +167,7 @@ def processing_history(request):
     return render(request, 'salary/history.html', context)
 
 
-@giaodichvien_or_admin
+@login_required
 def processing_detail(request, pk):
     """Chi tiết xử lý file"""
     history = get_object_or_404(ProcessingHistory, pk=pk)
@@ -186,7 +175,7 @@ def processing_detail(request, pk):
     return render(request, 'salary/detail.html', context)
 
 
-@giaodichvien_or_admin
+@login_required
 def download_output_file(request, pk):
     """Download file CSV đã xử lý"""
     history = get_object_or_404(ProcessingHistory, pk=pk)
@@ -209,7 +198,7 @@ def download_output_file(request, pk):
     return response
 
 
-@admins_only
+@login_required
 def beneficiary_list(request):
     """Danh sách người thụ hưởng"""
     beneficiaries = Beneficiary.objects.all()
@@ -242,7 +231,7 @@ def beneficiary_list(request):
     return render(request, 'salary/beneficiary_list.html', context)
 
 
-@admins_only
+@login_required
 def company_account_list(request):
     """Danh sách tài khoản công ty"""
     accounts = CompanyAccount.objects.all()
