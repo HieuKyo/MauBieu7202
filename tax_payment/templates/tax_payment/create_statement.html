@@ -135,9 +135,14 @@
                                         <label class="form-label">STT</label>
                                         <input type="number" class="form-control text-center" value="{{ forloop.counter }}" readonly>
                                     </div>
-                                    <div class="col-md-3 mb-2">
+                                    <div class="col-md-2 mb-2">
                                         <label class="form-label">Mã tiểu mục</label>
-                                        <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" onblur="searchSubEntry(this)" value="{{ item.ma_tieu_muc }}">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" onblur="searchSubEntry(this)" value="{{ item.ma_tieu_muc }}">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="openSearchModal(this)" title="Tìm kiếm tiểu mục">
+                                                <i class="bi bi-search"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <label class="form-label">Nội dung</label>
@@ -147,7 +152,7 @@
                                         <label class="form-label">Số tiền (VNĐ)</label>
                                         <input type="text" class="form-control so-tien" name="so_tien[]" oninput="formatCurrency(this)" value="{{ item.so_tien|floatformat:0 }}">
                                     </div>
-                                    <div class="col-md-1 mb-2">
+                                    <div class="col-md-2 mb-2">
                                         <button type="button" class="btn btn-remove-item btn-sm w-100" onclick="removeItemRow(this)"><i class="bi bi-trash"></i></button>
                                     </div>
                                 </div>
@@ -160,9 +165,14 @@
                                         <label class="form-label">STT</label>
                                         <input type="number" class="form-control text-center" value="1" readonly>
                                     </div>
-                                    <div class="col-md-3 mb-2">
+                                    <div class="col-md-2 mb-2">
                                         <label class="form-label">Mã tiểu mục</label>
-                                        <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" onblur="searchSubEntry(this)">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control ma-tieu-muc" name="ma_tieu_muc[]" onblur="searchSubEntry(this)">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="openSearchModal(this)" title="Tìm kiếm tiểu mục">
+                                                <i class="bi bi-search"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <label class="form-label">Nội dung</label>
@@ -172,7 +182,7 @@
                                         <label class="form-label">Số tiền (VNĐ)</label>
                                         <input type="text" class="form-control so-tien" name="so_tien[]" oninput="formatCurrency(this)" placeholder="0">
                                     </div>
-                                    <div class="col-md-1 mb-2">
+                                    <div class="col-md-2 mb-2">
                                         <button type="button" class="btn btn-remove-item btn-sm w-100" onclick="removeItemRow(this)"><i class="bi bi-trash"></i></button>
                                     </div>
                                 </div>
@@ -189,6 +199,27 @@
                     <a href="{% url 'tax_payment:list' %}" class="btn btn-secondary btn-lg"><i class="bi bi-list"></i> Quay lại</a>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal tìm kiếm tiểu mục -->
+<div class="modal fade" id="searchSubEntryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-search"></i> Tìm kiếm Tiểu mục</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Tìm kiếm theo mã hoặc nội dung:</label>
+                    <input type="text" class="form-control" id="searchKeyword" placeholder="Nhập mã hoặc nội dung tiểu mục..." oninput="performSearch()">
+                </div>
+                <div id="searchResults" style="max-height: 400px; overflow-y: auto;">
+                    <p class="text-muted text-center">Nhập từ khóa để tìm kiếm...</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -276,6 +307,74 @@
         if(document.querySelectorAll('.item-row').length > 1) {
             btn.closest('.item-row').remove();
         }
+    }
+
+    // ===== SEARCH MODAL FUNCTIONS =====
+    let currentSearchButton = null;
+
+    function openSearchModal(button) {
+        currentSearchButton = button;
+        const modal = new bootstrap.Modal(document.getElementById('searchSubEntryModal'));
+        document.getElementById('searchKeyword').value = '';
+        document.getElementById('searchResults').innerHTML = '<p class="text-muted text-center">Nhập từ khóa để tìm kiếm...</p>';
+        modal.show();
+
+        // Focus vào ô search sau khi modal hiện
+        setTimeout(() => document.getElementById('searchKeyword').focus(), 500);
+    }
+
+    let searchTimeout = null;
+    async function performSearch() {
+        const keyword = document.getElementById('searchKeyword').value.trim();
+
+        if (!keyword || keyword.length < 1) {
+            document.getElementById('searchResults').innerHTML = '<p class="text-muted text-center">Nhập từ khóa để tìm kiếm...</p>';
+            return;
+        }
+
+        // Debounce: Chờ 300ms sau khi user ngừng gõ mới search
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            document.getElementById('searchResults').innerHTML = '<p class="text-muted text-center"><i class="bi bi-hourglass-split"></i> Đang tìm kiếm...</p>';
+
+            try {
+                const response = await fetch(`{% url 'tax_payment:ajax_search_sub_entries' %}?q=${encodeURIComponent(keyword)}`);
+                const data = await response.json();
+
+                if (data.results && data.results.length > 0) {
+                    let html = '<div class="list-group">';
+                    data.results.forEach(item => {
+                        html += `
+                            <a href="#" class="list-group-item list-group-item-action"
+                               onclick="selectSubEntry('${item.ma_tieu_muc}', '${item.ten_tieu_muc.replace(/'/g, "\\'")}'); return false;">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1"><strong>${item.ma_tieu_muc}</strong></h6>
+                                </div>
+                                <p class="mb-1">${item.ten_tieu_muc}</p>
+                            </a>
+                        `;
+                    });
+                    html += '</div>';
+                    document.getElementById('searchResults').innerHTML = html;
+                } else {
+                    document.getElementById('searchResults').innerHTML = '<p class="text-muted text-center">Không tìm thấy kết quả</p>';
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                document.getElementById('searchResults').innerHTML = '<p class="text-danger text-center">Lỗi khi tìm kiếm</p>';
+            }
+        }, 300);
+    }
+
+    function selectSubEntry(ma, ten) {
+        if (currentSearchButton) {
+            const row = currentSearchButton.closest('.item-row');
+            row.querySelector('.ma-tieu-muc').value = ma;
+            row.querySelector('.noi-dung').value = ten;
+        }
+
+        // Đóng modal
+        bootstrap.Modal.getInstance(document.getElementById('searchSubEntryModal')).hide();
     }
 </script>
 {% endblock %}

@@ -15,4 +15,5 @@ urlpatterns = [
     path('ajax/get-xa-phuong/', views.get_xa_phuong, name='ajax_get_xa_phuong'),
     path('ajax/get-location-details/', views.get_location_details, name='ajax_get_location_details'),
     path('ajax/search-sub-entry/', views.search_sub_entry, name='ajax_search_sub_entry'),
+    path('ajax/search-sub-entries/', views.search_sub_entries, name='ajax_search_sub_entries'),
 ]
