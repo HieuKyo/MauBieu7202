@@ -38,6 +38,7 @@ def save_tax_payment(request, statement_id=None):
         ma_so_thue = request.POST.get('ma_so_thue', '').strip()
         dia_chi = request.POST.get('dia_chi', '').strip()
         nguoi_nop_thay = request.POST.get('nguoi_nop_thay', '').strip()
+        dia_chi_nguoi_nop_thay = request.POST.get('dia_chi_nguoi_nop_thay', '').strip()
         ngay_lap = request.POST.get('ngay_lap', date.today())
         ma_co_quan_thu = request.POST.get('ma_co_quan_thu', '').strip()
 
@@ -60,6 +61,7 @@ def save_tax_payment(request, statement_id=None):
             statement.ma_so_thue = ma_so_thue
             statement.dia_chi = dia_chi
             statement.nguoi_nop_thay = nguoi_nop_thay
+            statement.dia_chi_nguoi_nop_thay = dia_chi_nguoi_nop_thay
             statement.ngay_lap = ngay_lap
             statement.tax_location = tax_location
             statement.save()
@@ -74,6 +76,7 @@ def save_tax_payment(request, statement_id=None):
                 ma_so_thue=ma_so_thue,
                 dia_chi=dia_chi,
                 nguoi_nop_thay=nguoi_nop_thay,
+                dia_chi_nguoi_nop_thay=dia_chi_nguoi_nop_thay,
                 tax_location=tax_location,
                 ngay_lap=ngay_lap,
                 tong_so_tien=0
@@ -330,6 +333,7 @@ def export_tax_statement(request, statement_id):
         'ma_so_thue': statement.ma_so_thue,
         'dia_chi': statement.dia_chi,
         'nguoi_nop_thay': statement.nguoi_nop_thay,
+        'dia_chi_nguoi_nop_thay': statement.dia_chi_nguoi_nop_thay,
         'ngay_lap': statement.ngay_lap.strftime('%d/%m/%Y'),
         'ngay_thang_nam_text': date_to_vietnamese_text(statement.ngay_lap),
 

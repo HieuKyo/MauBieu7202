@@ -49,6 +49,10 @@
                                    value="{{ statement.nguoi_nop_thay|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="dia_chi_nguoi_nop_thay" class="form-label">Địa chỉ người nộp thay</label>
+                            <textarea class="form-control" id="dia_chi_nguoi_nop_thay" name="dia_chi_nguoi_nop_thay" rows="2">{{ statement.dia_chi_nguoi_nop_thay|default:'' }}</textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label for="ngay_lap" class="form-label">Ngày lập bảng kê</label>
                             <input type="date" class="form-control" id="ngay_lap" name="ngay_lap"
                                    value="{{ statement.ngay_lap|date:'Y-m-d'|default:today|date:'Y-m-d' }}">
