@@ -52,18 +52,6 @@ def save_tax_payment(request, statement_id=None):
             messages.error(request, 'Không tìm thấy cơ quan thu!')
             return redirect('tax_payment:create')
 
-        # Tạo Statement
-        statement = TaxPaymentStatement.objects.create(
-            ten_nguoi_nop=ten_nguoi_nop,
-            ma_so_thue=ma_so_thue,
-            dia_chi=dia_chi,
-            nguoi_nop_thay=nguoi_nop_thay,
-            tax_location=tax_location,
-            ngay_lap=ngay_lap,
-            tong_so_tien=0
-        )
-
-        # Lấy các dòng tiểu mục
         # === XỬ LÝ TẠO MỚI HOẶC UPDATE ===
         if statement_id:
             # Update
@@ -71,10 +59,11 @@ def save_tax_payment(request, statement_id=None):
             statement.ten_nguoi_nop = ten_nguoi_nop
             statement.ma_so_thue = ma_so_thue
             statement.dia_chi = dia_chi
+            statement.nguoi_nop_thay = nguoi_nop_thay
             statement.ngay_lap = ngay_lap
             statement.tax_location = tax_location
             statement.save()
-            
+
             # Xóa hết item cũ để lưu lại từ đầu (đơn giản hóa logic update list)
             statement.items.all().delete()
             msg = 'Cập nhật bảng kê thành công!'
@@ -84,13 +73,14 @@ def save_tax_payment(request, statement_id=None):
                 ten_nguoi_nop=ten_nguoi_nop,
                 ma_so_thue=ma_so_thue,
                 dia_chi=dia_chi,
+                nguoi_nop_thay=nguoi_nop_thay,
                 tax_location=tax_location,
                 ngay_lap=ngay_lap,
                 tong_so_tien=0
             )
             msg = 'Tạo bảng kê thành công!'
 
-        # === LƯU DANH SÁCH TIỂU MỤC (GIỮ NGUYÊN LOGIC CŨ) ===
+        # === LƯU DANH SÁCH TIỂU MỤC ===
         ma_tieu_muc_list = request.POST.getlist('ma_tieu_muc[]')
         noi_dung_list = request.POST.getlist('noi_dung[]')
         so_tien_list = request.POST.getlist('so_tien[]')
