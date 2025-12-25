@@ -56,6 +56,14 @@ class Command(BaseCommand):
                 'required': False,
                 'default_value': ''
             },
+            {
+                'name': 'dia_chi_nguoi_nop_thay',
+                'label': 'Địa chỉ người nộp thay',
+                'field_type': 'textarea',
+                'help_text': 'Địa chỉ của người đại diện nộp thuế thay',
+                'required': False,
+                'default_value': ''
+            },
 
             # Thông tin cơ quan thu
             {
@@ -160,31 +168,31 @@ class Command(BaseCommand):
             },
         ]
 
-        count = 0
-        for var in vars_to_add:
-            # Map dữ liệu vào đúng trường của Model Variable
-            # name -> name
-            # desc -> label (nhãn hiển thị)
-            # desc -> help_text (gợi ý/mô tả chi tiết)
-            
-            obj, created = Variable.objects.get_or_create(
+        created_count = 0
+        updated_count = 0
+
+        for var in tax_variables:
+            obj, created = Variable.objects.update_or_create(
                 name=var['name'],
                 defaults={
-                    'label': var['desc'],      # Sửa ở đây
-                    'help_text': var['desc'],  # Sửa ở đây
-                    'field_type': 'text',      # Mặc định là text
-                    'required': False          # Không bắt buộc
+                    'label': var['label'],
+                    'help_text': var['help_text'],
+                    'field_type': var['field_type'],
+                    'required': var['required'],
+                    'default_value': var['default_value']
                 }
             )
-            
-            if created:
-                self.stdout.write(self.style.SUCCESS(f'+ Đã thêm: {var["name"]}'))
-                count += 1
-            else:
-                # Nếu đã tồn tại, cập nhật lại mô tả
-                obj.label = var['desc']
-                obj.help_text = var['desc']
-                obj.save()
-                self.stdout.write(f'* Đã cập nhật: {var["name"]}')
 
-        self.stdout.write(self.style.SUCCESS(f'Hoàn tất! Đã xử lý {count} biến mới.'))
+            if created:
+                created_count += 1
+                self.stdout.write(self.style.SUCCESS(f'✓ Đã tạo biến mới: {var["name"]}'))
+            else:
+                updated_count += 1
+                self.stdout.write(self.style.WARNING(f'↻ Đã cập nhật biến: {var["name"]}'))
+
+        self.stdout.write('')
+        self.stdout.write(self.style.SUCCESS('=' * 60))
+        self.stdout.write(self.style.SUCCESS(f'Đã tạo mới: {created_count} biến'))
+        self.stdout.write(self.style.WARNING(f'Đã cập nhật: {updated_count} biến'))
+        self.stdout.write(self.style.SUCCESS('=' * 60))
+        self.stdout.write(self.style.SUCCESS('Hoàn tất cập nhật Thư viện biến!'))
