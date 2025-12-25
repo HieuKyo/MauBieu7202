@@ -4,7 +4,6 @@
 {% block title %}{% if is_edit %}Cập nhật{% else %}Tạo mới{% endif %} Bảng Kê Nộp Thuế{% endblock %}
 
 {% block extra_head %}
-<script src="https://unpkg.com/htmx.org@1.9.10"></script>
 <style>
     .form-section { background: #fff; padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .form-section h5 { color: #AE1C3F; border-bottom: 2px solid #D69D26; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
@@ -62,13 +61,10 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Tỉnh/Thành phố <span class="text-danger">*</span></label>
-                            <select class="form-select" id="tinh" name="tinh" required
-                                    hx-get="{% url 'tax_payment:ajax_get_co_quan_thue' %}"
-                                    hx-target="#co_quan_thue"
-                                    hx-trigger="change">
+                            <select class="form-select" id="tinh" name="tinh" required onchange="loadCoQuanThue()">
                                 <option value="">-- Chọn Tỉnh --</option>
                                 {% for t in tinh_list %}
-                                    <option value="{{ t }}" 
+                                    <option value="{{ t }}"
                                         {% if statement.tax_location.tinh == t %}selected{% endif %}>
                                         {{ t }}
                                     </option>
@@ -78,11 +74,7 @@
 
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Cơ quan thuế <span class="text-danger">*</span></label>
-                            <select class="form-select" id="co_quan_thue" name="co_quan_thue" required
-                                    hx-get="{% url 'tax_payment:ajax_get_xa_phuong' %}"
-                                    hx-target="#xa_phuong"
-                                    hx-include="[name='tinh']"
-                                    hx-trigger="change">
+                            <select class="form-select" id="co_quan_thue" name="co_quan_thue" required onchange="loadXaPhuong()">
                                 <option value="">-- Chọn Tỉnh trước --</option>
                                 {% if is_edit %}
                                     {% for cqt in co_quan_thue_list %}
@@ -94,8 +86,7 @@
 
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Xã/Phường <span class="text-danger">*</span></label>
-                            <select class="form-select" id="xa_phuong" name="xa_phuong" required
-                                    onchange="loadLocationDetails()">
+                            <select class="form-select" id="xa_phuong" name="xa_phuong" required onchange="loadLocationDetails()">
                                 <option value="">-- Chọn Cơ quan thuế trước --</option>
                                 {% if is_edit %}
                                     {% for xp in xa_phuong_list %}
@@ -230,7 +221,84 @@
         document.querySelectorAll('.so-tien').forEach(input => formatCurrency(input));
     });
 
-    // 2. Hàm Auto-fill thông tin địa bàn (Giữ nguyên logic của anh)
+    // 2. Load Cơ quan thuế khi chọn Tỉnh
+    async function loadCoQuanThue() {
+        const tinh = document.getElementById('tinh').value;
+        const coQuanThueSelect = document.getElementById('co_quan_thue');
+        const xaPhuongSelect = document.getElementById('xa_phuong');
+
+        // Reset dropdowns phụ thuộc
+        coQuanThueSelect.innerHTML = '<option value="">-- Đang tải... --</option>';
+        xaPhuongSelect.innerHTML = '<option value="">-- Chọn Cơ quan thuế trước --</option>';
+        clearLocationDetails();
+
+        if (!tinh) {
+            coQuanThueSelect.innerHTML = '<option value="">-- Chọn Tỉnh trước --</option>';
+            return;
+        }
+
+        try {
+            const url = `{% url 'tax_payment:ajax_get_co_quan_thue' %}?tinh=${encodeURIComponent(tinh)}`;
+            const response = await fetch(url);
+
+            if (response.ok) {
+                const text = await response.text();
+                // Parse HTML response to get options
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const options = doc.querySelectorAll('option');
+
+                coQuanThueSelect.innerHTML = '<option value="">-- Chọn Cơ quan thuế --</option>';
+                options.forEach(opt => {
+                    coQuanThueSelect.appendChild(opt.cloneNode(true));
+                });
+            } else {
+                coQuanThueSelect.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+            }
+        } catch (e) {
+            console.error("Lỗi load cơ quan thuế:", e);
+            coQuanThueSelect.innerHTML = '<option value="">-- Lỗi kết nối --</option>';
+        }
+    }
+
+    // 3. Load Xã/Phường khi chọn Cơ quan thuế
+    async function loadXaPhuong() {
+        const tinh = document.getElementById('tinh').value;
+        const coQuanThue = document.getElementById('co_quan_thue').value;
+        const xaPhuongSelect = document.getElementById('xa_phuong');
+
+        xaPhuongSelect.innerHTML = '<option value="">-- Đang tải... --</option>';
+        clearLocationDetails();
+
+        if (!tinh || !coQuanThue) {
+            xaPhuongSelect.innerHTML = '<option value="">-- Chọn Cơ quan thuế trước --</option>';
+            return;
+        }
+
+        try {
+            const url = `{% url 'tax_payment:ajax_get_xa_phuong' %}?tinh=${encodeURIComponent(tinh)}&co_quan_thue=${encodeURIComponent(coQuanThue)}`;
+            const response = await fetch(url);
+
+            if (response.ok) {
+                const text = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const options = doc.querySelectorAll('option');
+
+                xaPhuongSelect.innerHTML = '<option value="">-- Chọn Xã/Phường --</option>';
+                options.forEach(opt => {
+                    xaPhuongSelect.appendChild(opt.cloneNode(true));
+                });
+            } else {
+                xaPhuongSelect.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+            }
+        } catch (e) {
+            console.error("Lỗi load xã phường:", e);
+            xaPhuongSelect.innerHTML = '<option value="">-- Lỗi kết nối --</option>';
+        }
+    }
+
+    // 4. Hàm Auto-fill thông tin địa bàn
     async function loadLocationDetails() {
         const tinh = document.getElementById('tinh').value;
         const coQuanThue = document.getElementById('co_quan_thue').value;
@@ -239,9 +307,9 @@
         if (!tinh || !coQuanThue || !xaPhuong) return;
 
         console.log(`Đang lấy dữ liệu cho: ${tinh} - ${coQuanThue} - ${xaPhuong}`);
-        
+
         const url = `{% url 'tax_payment:ajax_get_location_details' %}?tinh=${encodeURIComponent(tinh)}&co_quan_thue=${encodeURIComponent(coQuanThue)}&xa_phuong=${encodeURIComponent(xaPhuong)}`;
-        
+
         try {
             const response = await fetch(url);
             if (response.ok) {
