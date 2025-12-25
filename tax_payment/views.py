@@ -253,20 +253,48 @@ def get_location_details(request):
 
 @require_http_methods(["GET"])
 def search_sub_entry(request):
-    """Tìm tiểu mục"""
+    """Tìm tiểu mục theo mã chính xác"""
     ma_tieu_muc = request.GET.get('ma_tieu_muc', '').strip()
     if not ma_tieu_muc:
         return JsonResponse({'error': 'Rỗng'}, status=400)
     sub_entry = TaxSubEntry.objects.filter(ma_tieu_muc=ma_tieu_muc).first()
-    
-    if not sub_entry:
-        sub_entry = TaxSubEntry.objects.filter(ma_tieu_muc__icontains=ma_tieu_muc).first()
+
     if sub_entry:
         return JsonResponse({
             'ma_tieu_muc': sub_entry.ma_tieu_muc,
             'ten_tieu_muc': sub_entry.ten_tieu_muc
         })
     return JsonResponse({'error': 'Không tìm thấy'}, status=404)
+
+
+@require_http_methods(["GET"])
+def search_sub_entries(request):
+    """
+    API tìm kiếm tiểu mục theo keyword (mã hoặc nội dung)
+    Dùng cho modal search
+    """
+    keyword = request.GET.get('q', '').strip()
+
+    if not keyword:
+        return JsonResponse({'results': []})
+
+    # Tìm kiếm theo cả mã và tên tiểu mục
+    results = TaxSubEntry.objects.filter(
+        Q(ma_tieu_muc__icontains=keyword) |
+        Q(ten_tieu_muc__icontains=keyword)
+    ).order_by('ma_tieu_muc')[:20]  # Giới hạn 20 kết quả
+
+    data = {
+        'results': [
+            {
+                'ma_tieu_muc': item.ma_tieu_muc,
+                'ten_tieu_muc': item.ten_tieu_muc
+            }
+            for item in results
+        ]
+    }
+
+    return JsonResponse(data)
 
 
 # ===== Export Word View =====
