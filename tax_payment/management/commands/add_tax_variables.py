@@ -1,12 +1,8 @@
-"""
-Management command để thêm các biến mới của Tax Payment vào Thư viện biến
-"""
 from django.core.management.base import BaseCommand
 from templates_app.models import Variable
 
-
 class Command(BaseCommand):
-    help = 'Thêm các biến Tax Payment vào Thư viện biến'
+    help = 'Thêm các biến module Thuế vào thư viện'
 
     def handle(self, *args, **options):
         # Danh sách các biến mới cho Tax Payment
@@ -164,40 +160,31 @@ class Command(BaseCommand):
             },
         ]
 
-        created_count = 0
-        updated_count = 0
-        skipped_count = 0
+        count = 0
+        for var in vars_to_add:
+            # Map dữ liệu vào đúng trường của Model Variable
+            # name -> name
+            # desc -> label (nhãn hiển thị)
+            # desc -> help_text (gợi ý/mô tả chi tiết)
+            
+            obj, created = Variable.objects.get_or_create(
+                name=var['name'],
+                defaults={
+                    'label': var['desc'],      # Sửa ở đây
+                    'help_text': var['desc'],  # Sửa ở đây
+                    'field_type': 'text',      # Mặc định là text
+                    'required': False          # Không bắt buộc
+                }
+            )
+            
+            if created:
+                self.stdout.write(self.style.SUCCESS(f'+ Đã thêm: {var["name"]}'))
+                count += 1
+            else:
+                # Nếu đã tồn tại, cập nhật lại mô tả
+                obj.label = var['desc']
+                obj.help_text = var['desc']
+                obj.save()
+                self.stdout.write(f'* Đã cập nhật: {var["name"]}')
 
-        for var_data in tax_variables:
-            try:
-                obj, created = Variable.objects.update_or_create(
-                    name=var_data['name'],
-                    defaults={
-                        'label': var_data['label'],
-                        'field_type': var_data['field_type'],
-                        'help_text': var_data['help_text'],
-                        'required': var_data['required'],
-                        'default_value': var_data['default_value']
-                    }
-                )
-
-                if created:
-                    created_count += 1
-                    self.stdout.write(self.style.SUCCESS(f'✓ Đã tạo biến mới: {var_data["name"]}'))
-                else:
-                    updated_count += 1
-                    self.stdout.write(self.style.WARNING(f'↻ Đã cập nhật biến: {var_data["name"]}'))
-
-            except Exception as e:
-                skipped_count += 1
-                self.stdout.write(self.style.ERROR(f'✗ Lỗi với biến {var_data["name"]}: {str(e)}'))
-
-        # Tổng kết
-        self.stdout.write('')
-        self.stdout.write(self.style.SUCCESS('=' * 60))
-        self.stdout.write(self.style.SUCCESS(f'Đã tạo mới: {created_count} biến'))
-        self.stdout.write(self.style.WARNING(f'Đã cập nhật: {updated_count} biến'))
-        if skipped_count > 0:
-            self.stdout.write(self.style.ERROR(f'Bỏ qua (lỗi): {skipped_count} biến'))
-        self.stdout.write(self.style.SUCCESS('=' * 60))
-        self.stdout.write(self.style.SUCCESS('Hoàn tất cập nhật Thư viện biến!'))
+        self.stdout.write(self.style.SUCCESS(f'Hoàn tất! Đã xử lý {count} biến mới.'))

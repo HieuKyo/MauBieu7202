@@ -32,17 +32,14 @@
                     {% if statements %}
                         <div class="table-responsive">
                             <table class="table table-hover">
-                                <thead class="table-light">
+                                <thead>
                                     <tr>
-                                        <th width="5%">STT</th>
-                                        <th width="20%">Người nộp</th>
-                                        <th width="12%">Mã số thuế</th>
-                                        <th width="15%">Cơ quan thu</th>
-                                        <th width="12%">Ngày lập</th>
-                                        <th width="15%" class="text-end">Tổng tiền</th>
-                                        <th width="10%" class="text-center">Số dòng</th>
-                                        <th class="text-center">Hành động</th>
-                                    </tr>
+                                        <th>Ngày lập</th>
+                                        <th>Người nộp</th>
+                                        <th>Mã số thuế</th>
+                                        <th>Cơ quan thu</th>
+                                        <th>Tổng tiền</th>
+                                        <th class="text-center" width="150">Hành động</th> </tr>
                                 </thead>
                                 <tbody>
                                     {% for item in statements %}
@@ -50,17 +47,16 @@
                                         <td>{{ item.ngay_lap|date:"d/m/Y" }}</td>
                                         <td>{{ item.ten_nguoi_nop }}</td>
                                         <td>{{ item.ma_so_thue }}</td>
-                                        <td>{{ item.tong_so_tien|floatformat:0 }}</td>
+                                        <td>{{ item.tax_location.ten_co_quan_thu|truncatechars:30 }}</td>
+                                        <td class="fw-bold">{{ item.tong_so_tien|floatformat:0 }}</td>
                                         <td class="text-center">
-                                            <a href="{% url 'tax_payment:export' item.id %}" class="btn btn-sm btn-primary" title="Tải xuống Word">
+                                            <a href="{% url 'tax_payment:export' item.id %}" class="btn btn-sm btn-primary" title="Tải Word">
                                                 <i class="bi bi-download"></i>
                                             </a>
-                                            
-                                            <a href="{% url 'tax_payment:edit' item.id %}" class="btn btn-sm btn-warning text-white" title="Sửa">
+                                            <a href="{% url 'tax_payment:edit' item.id %}" class="btn btn-sm btn-warning" title="Sửa">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-
-                                            <form action="{% url 'tax_payment:delete' item.id %}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa bản ghi này?');">
+                                            <form action="{% url 'tax_payment:delete' item.id %}" method="POST" class="d-inline" onsubmit="return confirm('Xóa bản ghi này?');">
                                                 {% csrf_token %}
                                                 <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
                                                     <i class="bi bi-trash"></i>
