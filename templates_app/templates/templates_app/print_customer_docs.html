@@ -34,6 +34,12 @@
             padding: 0 !important;
         }
 
+        /* Print container */
+        .print-container {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
         /* Page break settings */
         .print-section {
             page-break-inside: avoid;
@@ -42,22 +48,29 @@
         /* Images in horizontal layout */
         .id-image-row {
             display: flex !important;
+            flex-direction: row !important;  /* Force horizontal layout */
+            flex-wrap: nowrap !important;  /* Không wrap xuống dòng */
             justify-content: space-between !important;
-            gap: 2mm !important;  /* Giảm từ 3mm xuống 2mm */
-            margin-bottom: 2mm !important;  /* Giảm từ 5mm xuống 2mm */
+            gap: 2mm !important;
+            margin-bottom: 2mm !important;
         }
 
         .id-image-container {
-            flex: 1 !important;
+            flex: 1 1 49% !important;  /* flex-grow, flex-shrink, flex-basis */
+            width: 49% !important;  /* Set width cụ thể */
+            max-width: 49% !important;
+            min-width: 49% !important;
             margin-bottom: 0 !important;
-            max-width: 50% !important;
+            box-sizing: border-box !important;
         }
 
         .id-image {
             width: 100% !important;
-            height: 65mm !important;  /* Giảm từ 120mm xuống 65mm để 2 ảnh vừa một hàng */
+            height: 65mm !important;
             object-fit: cover !important;
             border: 1px solid #ddd !important;
+            display: block !important;
+            image-orientation: from-image !important;  /* Giữ nguyên orientation */
         }
 
         /* Center certification text */
@@ -82,7 +95,16 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
+        .id-image-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
         .id-image-container {
+            flex: 1 1 45%;
             text-align: center;
             margin-bottom: 30px;
         }
@@ -202,9 +224,9 @@
                     <!-- Printable Content -->
                     <div class="print-container">
                         <!-- ID Images Row - Horizontal Layout for A5 -->
-                        <div class="id-image-row row">
+                        <div class="id-image-row">
                             <!-- Front ID Image (Left) -->
-                            <div class="col-md-6 print-section id-image-container">
+                            <div class="print-section id-image-container">
                                 <h6 class="text-center mb-3 no-print"><strong>Ảnh mặt trước CCCD</strong></h6>
                                 {% if customer.img_id_front %}
                                     <img src="{{ customer.img_id_front.url }}" alt="Mặt trước CCCD" class="id-image">
@@ -217,7 +239,7 @@
                             </div>
 
                             <!-- Back ID Image (Right) -->
-                            <div class="col-md-6 print-section id-image-container">
+                            <div class="print-section id-image-container">
                                 <h6 class="text-center mb-3 no-print"><strong>Ảnh mặt sau CCCD</strong></h6>
                                 {% if customer.img_id_back %}
                                     <img src="{{ customer.img_id_back.url }}" alt="Mặt sau CCCD" class="id-image">
