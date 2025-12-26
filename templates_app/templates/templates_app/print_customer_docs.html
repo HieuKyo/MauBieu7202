@@ -7,88 +7,88 @@
 <style>
     /* Print styles - A5 Landscape (210mm x 148mm) */
     @media print {
-        /* 1. Thiết lập trang in: Quan trọng nhất */
+        /* 1. Xóa lề trắng mặc định của trình duyệt (Vùng A và B của bạn) */
         @page {
-            size: A5 landscape; /* Khổ A5 ngang */
-            margin: 0; /* Xóa margin mặc định của trình duyệt để không bị chèn header/footer */
+            size: A5 landscape;   /* Khổ A5 Ngang */
+            margin: 0mm;          /* Xóa sạch lề mặc định */
         }
 
-        /* 2. Ẩn các thành phần không cần thiết */
+        /* 2. Thiết lập khung trang in */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+            /* Padding 10mm xung quanh để nội dung không sát mép giấy quá */
+            padding: 10mm; 
+            width: 210mm; /* Chiều rộng A5 */
+            height: 148mm; /* Chiều cao A5 */
+            box-sizing: border-box; /* Tính padding vào trong kích thước */
+        }
+
+        /* Ẩn các thành phần thừa */
         nav, .breadcrumb, .no-print, .btn, .card-header, footer, .alert {
             display: none !important;
         }
 
-        /* 3. Reset Body và Container */
-        html, body {
-            width: 210mm; /* Chiều rộng chuẩn A5 ngang */
-            height: 148mm; /* Chiều cao chuẩn A5 ngang */
-            margin: 0 !important;
-            padding: 0 !important;
-            background-color: white !important;
-            overflow: hidden; /* Tránh in ra trang trắng thứ 2 */
-        }
-
-        /* Ghi đè Container của Bootstrap để tránh padding thừa */
-        .container {
+        /* Reset container của Bootstrap */
+        .container, .card, .card-body, .print-container {
             width: 100% !important;
-            max-width: 100% !important;
-            padding: 0 !important;
             margin: 0 !important;
-        }
-
-        .card, .card-body {
+            padding: 0 !important;
             border: none !important;
             box-shadow: none !important;
-            padding: 0 !important;
         }
 
-        /* 4. Căn chỉnh nội dung chính - Tạo lề nội dung tại đây */
-        .print-container {
-            width: 100% !important;
-            /* Tạo lề thủ công cho nội dung cách mép giấy 5mm-10mm */
-            padding: 5mm !important; 
-            box-sizing: border-box !important;
-        }
-
-        /* Các phần hiển thị ảnh giữ nguyên logic cũ nhưng tinh chỉnh size */
+        /* --- PHẦN XỬ LÝ ẢNH CCCD --- */
+        
+        /* Khung bao quanh 2 ảnh */
         .cccd-images-wrapper {
             display: flex !important;
-            justify-content: space-between;
-            align-items: flex-start;
+            flex-direction: row !important; /* Xếp ngang */
+            flex-wrap: nowrap !important;   /* KHÔNG cho phép xuống dòng */
+            justify-content: space-between !important; /* Căn đều 2 bên */
+            align-items: center !important;
             width: 100% !important;
-            /* Tăng chiều cao lên một chút để ảnh to rõ hơn */
-            height: 90mm !important; 
-            margin-bottom: 2mm !important;
+            /* Giảm chiều cao xuống 70mm (nhỏ hơn cũ) để chừa chỗ cho chữ ký */
+            height: 70mm !important; 
+            margin-bottom: 5mm !important; /* Khoảng cách với phần chữ ký */
         }
 
+        /* Khung từng ảnh lẻ */
         .id-image-container {
-            width: 48% !important; /* Để hở 1 chút khoảng cách giữa 2 ảnh */
+            /* Đặt độ rộng 48% để tổng 2 ảnh = 96%, còn dư 4% làm khe hở giữa */
+            width: 48% !important; 
             height: 100% !important;
-            border: 1px solid #333 !important; /* Thêm viền mỏng để dễ cắt nếu cần */
-            background-color: #fff !important;
-            display: flex;
+            border: 1px solid #ccc !important; /* Viền mờ để dễ nhìn khung */
+            background-color: #f8f9fa !important;
+            display: flex !important;
             align-items: center;
             justify-content: center;
+            padding: 2mm !important; /* Padding nhỏ bên trong khung ảnh */
         }
 
+        /* Ảnh thật */
         .id-image {
-            max-width: 100% !important;
-            max-height: 100% !important;
-            width: auto !important;
-            height: auto !important;
-            object-fit: contain !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important; /* Giữ nguyên tỉ lệ ảnh, không bị méo */
         }
 
-        /* Phần chữ ký đẩy xuống dưới cùng */
+        /* --- PHẦN CHỮ KÝ --- */
         .certification-text {
             text-align: center !important;
-            margin-top: 0 !important;
+            width: 100% !important;
+        }
+
+        .certification-text p {
+            margin: 3px 0 !important;
+            font-size: 13pt !important;
+            line-height: 1.3 !important;
         }
         
-        .certification-text p {
-            margin: 2px 0 !important; /* Giảm margin giữa các dòng chữ */
-            font-size: 13pt !important; /* Chữ to rõ hơn */
-            line-height: 1.2 !important;
+        /* Ẩn tiêu đề "Ảnh mặt trước/sau" khi in để tiết kiệm chỗ */
+        h6 {
+            display: none !important; 
         }
     }
 
