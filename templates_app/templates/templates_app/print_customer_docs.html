@@ -22,7 +22,7 @@
         /* A5 Landscape page setup */
         @page {
             size: A5 landscape;
-            margin: 10mm;
+            margin: 10mm 5mm; /* top/bottom 10mm, left/right 5mm (0.5cm) */
         }
 
         .card {
@@ -43,7 +43,7 @@
         .id-image-row {
             display: flex !important;
             justify-content: space-between !important;
-            gap: 10px !important;
+            gap: 8px !important;
             margin-bottom: 15px !important;
         }
 
@@ -55,7 +55,7 @@
         .id-image {
             width: 100% !important;
             height: auto !important;
-            max-height: 85mm !important;
+            max-height: 100mm !important;
             object-fit: contain !important;
         }
 
@@ -234,11 +234,14 @@
 
                         <!-- Certification Text -->
                         <div class="certification-text print-section">
-                            <p style="font-size: 15px; margin-bottom: 10px;">
-                                <strong><em>"Đã đối chiếu khớp đúng với bản chính"</em></strong>
+                            <p style="font-size: 15px; margin-bottom: 10px; text-align: center;">
+                                <strong><em>"ĐÃ ĐỐI CHIẾU KHỚP ĐÚNG VỚI BẢN CHÍNH"</em></strong>
                             </p>
-                            <p style="font-size: 14px; margin-top: 20px;">
+                            <p style="font-size: 14px; margin-top: 20px; text-align: center;">
                                 <em>Giá Rai, ngày {{ print_date.day }} tháng {{ print_date.month }} năm {{ print_date|date:"Y" }}</em>
+                            </p>
+                            <p style="font-size: 14px; margin-top: 10px; text-align: center;">
+                                <strong>Người đối chiếu</strong>
                             </p>
                         </div>
                     </div>
