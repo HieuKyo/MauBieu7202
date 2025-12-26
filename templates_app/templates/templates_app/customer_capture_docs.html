@@ -100,10 +100,10 @@
                     </div>
 
                     <!-- Camera Status -->
-                    <div class="mb-3 d-flex align-items-center">
+                    <div class="mb-3 d-flex align-items-center flex-wrap">
                         <span class="status-indicator inactive" id="cameraStatus"></span>
-                        <span id="cameraStatusText">Đang khởi động camera...</span>
-                        <button class="btn btn-warning btn-sm ms-3" id="requestCameraBtn" style="display: none;">
+                        <span id="cameraStatusText" class="me-3">Chưa kết nối camera</span>
+                        <button class="btn btn-warning btn-sm" id="requestCameraBtn">
                             <i class="bi bi-camera-video"></i> Yêu cầu quyền camera
                         </button>
                     </div>
@@ -256,19 +256,23 @@
     // Request camera permission explicitly
     async function requestCameraPermission() {
         const btn = document.getElementById('requestCameraBtn');
+        const statusText = document.getElementById('cameraStatusText');
+
         btn.disabled = true;
         btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang yêu cầu quyền...';
+        statusText.textContent = 'Đang khởi động camera...';
 
         try {
             // Request camera permission
             await initCamera();
             // If successful, load camera list
             await getCameras();
+            // Hide button on success
+            btn.style.display = 'none';
         } catch (error) {
             console.error('Permission request failed:', error);
-        } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-camera-video"></i> Yêu cầu quyền camera';
+            btn.innerHTML = '<i class="bi bi-camera-video"></i> Thử lại';
         }
     }
 
@@ -479,8 +483,9 @@
 
     // Initialize on page load
     window.addEventListener('load', async () => {
-        await getCameras();
-        await initCamera();
+        // Don't auto-request camera on LAN networks
+        // Let user click the button to request permission
+        console.log('Page loaded. Click "Yêu cầu quyền camera" to start.');
     });
 
     // Cleanup on page unload
