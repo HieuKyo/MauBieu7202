@@ -45,14 +45,21 @@
             page-break-inside: avoid;
         }
 
+        /* CCCD Images Wrapper - Container chứa cả 2 ảnh */
+        .cccd-images-wrapper {
+            width: 100% !important;
+            height: 80mm !important;  /* Chiều cao cố định cho container */
+            margin-bottom: 3mm !important;
+        }
+
         /* Images in horizontal layout */
         .id-image-row {
             display: flex !important;
             flex-direction: row !important;  /* Force horizontal layout */
             flex-wrap: nowrap !important;  /* Không wrap xuống dòng */
             justify-content: space-between !important;
-            gap: 2mm !important;
-            margin-bottom: 2mm !important;
+            gap: 3mm !important;
+            height: 100% !important;  /* Chiếm 100% chiều cao của wrapper */
         }
 
         .id-image-container {
@@ -60,15 +67,18 @@
             width: 49% !important;  /* Set width cụ thể */
             max-width: 49% !important;
             min-width: 49% !important;
+            height: 100% !important;  /* Chiếm 100% chiều cao */
             margin-bottom: 0 !important;
             box-sizing: border-box !important;
+            overflow: hidden !important;  /* Ẩn phần thừa */
+            background-color: #f8f9fa !important;  /* Màu nền nhạt */
+            border: 1px solid #ddd !important;
         }
 
         .id-image {
             width: 100% !important;
-            height: 65mm !important;
-            object-fit: cover !important;
-            border: 1px solid #ddd !important;
+            height: 100% !important;  /* Chiếm 100% container */
+            object-fit: contain !important;  /* Fit toàn bộ ảnh vào container, giữ tỉ lệ */
             display: block !important;
             image-orientation: from-image !important;  /* Giữ nguyên orientation */
         }
@@ -95,26 +105,38 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
+        .cccd-images-wrapper {
+            width: 100%;
+            min-height: 400px;
+            margin-bottom: 30px;
+        }
+
         .id-image-row {
             display: flex;
             flex-direction: row;
             flex-wrap: wrap;
             gap: 20px;
-            margin-bottom: 20px;
+            height: 100%;
         }
 
         .id-image-container {
             flex: 1 1 45%;
             text-align: center;
             margin-bottom: 30px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
         }
 
         .id-image {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
         }
 
         .certification-text {
@@ -223,10 +245,12 @@
 
                     <!-- Printable Content -->
                     <div class="print-container">
-                        <!-- ID Images Row - Horizontal Layout for A5 -->
-                        <div class="id-image-row">
-                            <!-- Front ID Image (Left) -->
-                            <div class="print-section id-image-container">
+                        <!-- CCCD Images Wrapper - Container chứa cả 2 ảnh -->
+                        <div class="cccd-images-wrapper">
+                            <!-- ID Images Row - Horizontal Layout for A5 -->
+                            <div class="id-image-row">
+                                <!-- Front ID Image (Left) -->
+                                <div class="print-section id-image-container">
                                 <h6 class="text-center mb-3 no-print"><strong>Ảnh mặt trước CCCD</strong></h6>
                                 {% if customer.img_id_front %}
                                     <img src="{{ customer.img_id_front.url }}" alt="Mặt trước CCCD" class="id-image">
@@ -250,7 +274,9 @@
                                     </div>
                                 {% endif %}
                             </div>
+                            </div>
                         </div>
+                        <!-- End CCCD Images Wrapper -->
 
                         <!-- Portrait (Optional - can be hidden if not needed for print) -->
                         {% if customer.img_portrait %}
