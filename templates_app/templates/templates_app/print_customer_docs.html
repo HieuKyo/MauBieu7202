@@ -7,91 +7,88 @@
 <style>
     /* Print styles - A5 Landscape (210mm x 148mm) */
     @media print {
-        /* Hide non-printable elements */
-        nav, .breadcrumb, .no-print, .btn, .card-header, footer {
+        /* 1. Thiết lập trang in: Quan trọng nhất */
+        @page {
+            size: A5 landscape; /* Khổ A5 ngang */
+            margin: 0; /* Xóa margin mặc định của trình duyệt để không bị chèn header/footer */
+        }
+
+        /* 2. Ẩn các thành phần không cần thiết */
+        nav, .breadcrumb, .no-print, .btn, .card-header, footer, .alert {
             display: none !important;
         }
 
-        /* Reset body and card styles for print */
-        body {
+        /* 3. Reset Body và Container */
+        html, body {
+            width: 210mm; /* Chiều rộng chuẩn A5 ngang */
+            height: 148mm; /* Chiều cao chuẩn A5 ngang */
+            margin: 0 !important;
+            padding: 0 !important;
             background-color: white !important;
-            margin: 0;
-            padding: 0;
+            overflow: hidden; /* Tránh in ra trang trắng thứ 2 */
         }
 
-        /* A5 Landscape page setup */
-        @page {
-            size: A5 landscape;
-            margin: 5mm;  /* Giảm từ 10mm xuống 5mm để in sát lề hơn */
+        /* Ghi đè Container của Bootstrap để tránh padding thừa */
+        .container {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
-        .card {
+        .card, .card-body {
             border: none !important;
             box-shadow: none !important;
-        }
-
-        .card-body {
             padding: 0 !important;
         }
 
-        /* Print container */
+        /* 4. Căn chỉnh nội dung chính - Tạo lề nội dung tại đây */
         .print-container {
             width: 100% !important;
-            max-width: 100% !important;
+            /* Tạo lề thủ công cho nội dung cách mép giấy 5mm-10mm */
+            padding: 5mm !important; 
+            box-sizing: border-box !important;
         }
 
-        /* Page break settings */
-        .print-section {
-            page-break-inside: avoid;
-        }
-
-        /* CCCD Images Wrapper - Container chứa cả 2 ảnh */
+        /* Các phần hiển thị ảnh giữ nguyên logic cũ nhưng tinh chỉnh size */
         .cccd-images-wrapper {
-            width: 100% !important;
-            height: 80mm !important;  /* Chiều cao cố định cho container */
-            margin-bottom: 3mm !important;
-        }
-
-        /* Images in horizontal layout */
-        .id-image-row {
             display: flex !important;
-            flex-direction: row !important;  /* Force horizontal layout */
-            flex-wrap: nowrap !important;  /* Không wrap xuống dòng */
-            justify-content: space-between !important;
-            gap: 3mm !important;
-            height: 100% !important;  /* Chiếm 100% chiều cao của wrapper */
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100% !important;
+            /* Tăng chiều cao lên một chút để ảnh to rõ hơn */
+            height: 90mm !important; 
+            margin-bottom: 2mm !important;
         }
 
         .id-image-container {
-            flex: 1 1 49% !important;  /* flex-grow, flex-shrink, flex-basis */
-            width: 49% !important;  /* Set width cụ thể */
-            max-width: 49% !important;
-            min-width: 49% !important;
-            height: 100% !important;  /* Chiếm 100% chiều cao */
-            margin-bottom: 0 !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;  /* Ẩn phần thừa */
-            background-color: #f8f9fa !important;  /* Màu nền nhạt */
-            border: 1px solid #ddd !important;
+            width: 48% !important; /* Để hở 1 chút khoảng cách giữa 2 ảnh */
+            height: 100% !important;
+            border: 1px solid #333 !important; /* Thêm viền mỏng để dễ cắt nếu cần */
+            background-color: #fff !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .id-image {
-            width: 100% !important;
-            height: 100% !important;  /* Chiếm 100% container */
-            object-fit: contain !important;  /* Fit toàn bộ ảnh vào container, giữ tỉ lệ */
-            display: block !important;
-            image-orientation: from-image !important;  /* Giữ nguyên orientation */
+            max-width: 100% !important;
+            max-height: 100% !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
         }
 
-        /* Center certification text */
+        /* Phần chữ ký đẩy xuống dưới cùng */
         .certification-text {
             text-align: center !important;
-            margin-top: 1mm !important;  /* Giảm từ 3mm xuống 1mm */
-            font-size: 11pt !important;
+            margin-top: 0 !important;
         }
-
+        
         .certification-text p {
-            margin: 1mm 0 !important;  /* Giảm từ 3mm xuống 1mm */
+            margin: 2px 0 !important; /* Giảm margin giữa các dòng chữ */
+            font-size: 13pt !important; /* Chữ to rõ hơn */
+            line-height: 1.2 !important;
         }
     }
 
