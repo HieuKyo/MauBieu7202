@@ -92,13 +92,20 @@
                 <div class="card-body">
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        <strong>Số CCCD:</strong> {{ customer.so_cmnd }}
+                        <strong>Số CCCD:</strong> {{ customer.so_cmnd }}<br>
+                        <small class="text-muted">
+                            <i class="bi bi-lightbulb"></i>
+                            Nếu camera không hoạt động, hãy bấm nút "Yêu cầu quyền camera" để cấp quyền cho trình duyệt.
+                        </small>
                     </div>
 
                     <!-- Camera Status -->
-                    <div class="mb-3">
+                    <div class="mb-3 d-flex align-items-center">
                         <span class="status-indicator inactive" id="cameraStatus"></span>
                         <span id="cameraStatusText">Đang khởi động camera...</span>
+                        <button class="btn btn-warning btn-sm ms-3" id="requestCameraBtn" style="display: none;">
+                            <i class="bi bi-camera-video"></i> Yêu cầu quyền camera
+                        </button>
                     </div>
 
                     <!-- Camera Selection -->
@@ -227,12 +234,41 @@
             // Update status
             document.getElementById('cameraStatus').className = 'status-indicator active';
             document.getElementById('cameraStatusText').textContent = 'Camera đang hoạt động';
+            document.getElementById('requestCameraBtn').style.display = 'none';
 
         } catch (error) {
             console.error('Error accessing camera:', error);
             document.getElementById('cameraStatus').className = 'status-indicator inactive';
-            document.getElementById('cameraStatusText').textContent = 'Không thể truy cập camera';
-            alert('Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập camera trong trình duyệt.');
+
+            // Check if permission was denied
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                document.getElementById('cameraStatusText').textContent = 'Quyền truy cập camera bị từ chối';
+                document.getElementById('requestCameraBtn').style.display = 'inline-block';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                document.getElementById('cameraStatusText').textContent = 'Không tìm thấy camera';
+            } else {
+                document.getElementById('cameraStatusText').textContent = 'Không thể truy cập camera';
+                document.getElementById('requestCameraBtn').style.display = 'inline-block';
+            }
+        }
+    }
+
+    // Request camera permission explicitly
+    async function requestCameraPermission() {
+        const btn = document.getElementById('requestCameraBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang yêu cầu quyền...';
+
+        try {
+            // Request camera permission
+            await initCamera();
+            // If successful, load camera list
+            await getCameras();
+        } catch (error) {
+            console.error('Permission request failed:', error);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-camera-video"></i> Yêu cầu quyền camera';
         }
     }
 
@@ -437,6 +473,9 @@
     });
 
     document.getElementById('saveBtn').addEventListener('click', saveImages);
+
+    // Request camera permission button
+    document.getElementById('requestCameraBtn').addEventListener('click', requestCameraPermission);
 
     // Initialize on page load
     window.addEventListener('load', async () => {
