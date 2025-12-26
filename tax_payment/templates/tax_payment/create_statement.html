@@ -49,6 +49,10 @@
                                    value="{{ statement.nguoi_nop_thay|default:'' }}">
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="dia_chi_nguoi_nop_thay" class="form-label">Địa chỉ người nộp thay</label>
+                            <textarea class="form-control" id="dia_chi_nguoi_nop_thay" name="dia_chi_nguoi_nop_thay" rows="2">{{ statement.dia_chi_nguoi_nop_thay|default:'' }}</textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label for="ngay_lap" class="form-label">Ngày lập bảng kê</label>
                             <input type="date" class="form-control" id="ngay_lap" name="ngay_lap"
                                    value="{{ statement.ngay_lap|date:'Y-m-d'|default:today|date:'Y-m-d' }}">
@@ -122,9 +126,13 @@
                             {% for item in items %}
                             <div class="item-row" data-item-index="{{ forloop.counter }}">
                                 <div class="row align-items-end">
-                                    <div class="col-md-2 mb-2">
+                                    <div class="col-md-1 mb-2">
                                         <label class="form-label">STT</label>
                                         <input type="number" class="form-control text-center" value="{{ forloop.counter }}" readonly>
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Kỳ nộp thuế</label>
+                                        <input type="text" class="form-control" name="ky_nop_thue[]" placeholder="mm/yyyy" maxlength="7" value="{{ item.ky_nop_thue }}">
                                     </div>
                                     <div class="col-md-2 mb-2">
                                         <label class="form-label">Mã tiểu mục</label>
@@ -135,7 +143,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="col-md-4 mb-2">
+                                    <div class="col-md-3 mb-2">
                                         <label class="form-label">Nội dung</label>
                                         <input type="text" class="form-control noi-dung" name="noi_dung[]" value="{{ item.noi_dung }}">
                                     </div>
@@ -152,9 +160,13 @@
                         {% else %}
                             <div class="item-row" data-item-index="1">
                                 <div class="row align-items-end">
-                                    <div class="col-md-2 mb-2">
+                                    <div class="col-md-1 mb-2">
                                         <label class="form-label">STT</label>
                                         <input type="number" class="form-control text-center" value="1" readonly>
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Kỳ nộp thuế</label>
+                                        <input type="text" class="form-control" name="ky_nop_thue[]" placeholder="mm/yyyy" maxlength="7">
                                     </div>
                                     <div class="col-md-2 mb-2">
                                         <label class="form-label">Mã tiểu mục</label>
@@ -165,7 +177,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="col-md-4 mb-2">
+                                    <div class="col-md-3 mb-2">
                                         <label class="form-label">Nội dung</label>
                                         <input type="text" class="form-control noi-dung" name="noi_dung[]">
                                     </div>

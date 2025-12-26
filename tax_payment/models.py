@@ -58,6 +58,7 @@ class TaxPaymentStatement(models.Model):
     ma_so_thue = models.CharField(max_length=50, verbose_name="Mã số thuế", blank=True)
     dia_chi = models.TextField(verbose_name="Địa chỉ", blank=True)
     nguoi_nop_thay = models.CharField(max_length=200, verbose_name="Người nộp thay", blank=True)
+    dia_chi_nguoi_nop_thay = models.TextField(verbose_name="Địa chỉ người nộp thay", blank=True)
 
     # Thông tin cơ quan thu
     tax_location = models.ForeignKey(
@@ -102,6 +103,7 @@ class TaxPaymentItem(models.Model):
         null=True,
         verbose_name="Tiểu mục"
     )
+    ky_nop_thue = models.CharField(max_length=7, verbose_name="Kỳ nộp thuế (mm/yyyy)", blank=True)
     ma_tieu_muc = models.CharField(max_length=50, verbose_name="Mã tiểu mục")
     noi_dung = models.TextField(verbose_name="Nội dung")
     so_tien = models.DecimalField(max_digits=15, decimal_places=0, verbose_name="Số tiền")

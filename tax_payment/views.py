@@ -38,6 +38,7 @@ def save_tax_payment(request, statement_id=None):
         ma_so_thue = request.POST.get('ma_so_thue', '').strip()
         dia_chi = request.POST.get('dia_chi', '').strip()
         nguoi_nop_thay = request.POST.get('nguoi_nop_thay', '').strip()
+        dia_chi_nguoi_nop_thay = request.POST.get('dia_chi_nguoi_nop_thay', '').strip()
         ngay_lap = request.POST.get('ngay_lap', date.today())
         ma_co_quan_thu = request.POST.get('ma_co_quan_thu', '').strip()
 
@@ -60,6 +61,7 @@ def save_tax_payment(request, statement_id=None):
             statement.ma_so_thue = ma_so_thue
             statement.dia_chi = dia_chi
             statement.nguoi_nop_thay = nguoi_nop_thay
+            statement.dia_chi_nguoi_nop_thay = dia_chi_nguoi_nop_thay
             statement.ngay_lap = ngay_lap
             statement.tax_location = tax_location
             statement.save()
@@ -74,6 +76,7 @@ def save_tax_payment(request, statement_id=None):
                 ma_so_thue=ma_so_thue,
                 dia_chi=dia_chi,
                 nguoi_nop_thay=nguoi_nop_thay,
+                dia_chi_nguoi_nop_thay=dia_chi_nguoi_nop_thay,
                 tax_location=tax_location,
                 ngay_lap=ngay_lap,
                 tong_so_tien=0
@@ -81,24 +84,26 @@ def save_tax_payment(request, statement_id=None):
             msg = 'Tạo bảng kê thành công!'
 
         # === LƯU DANH SÁCH TIỂU MỤC ===
+        ky_nop_thue_list = request.POST.getlist('ky_nop_thue[]')
         ma_tieu_muc_list = request.POST.getlist('ma_tieu_muc[]')
         noi_dung_list = request.POST.getlist('noi_dung[]')
         so_tien_list = request.POST.getlist('so_tien[]')
 
         tong_tien = Decimal('0')
 
-        for i, (ma_tm, noi_dung, so_tien) in enumerate(zip(ma_tieu_muc_list, noi_dung_list, so_tien_list), start=1):
+        for i, (ky_nop, ma_tm, noi_dung, so_tien) in enumerate(zip(ky_nop_thue_list, ma_tieu_muc_list, noi_dung_list, so_tien_list), start=1):
             if ma_tm and so_tien:
                 try:
                     so_tien_clean = so_tien.replace(',', '').replace('.', '') # Fix lỗi format
                     so_tien_decimal = Decimal(so_tien_clean)
-                    
+
                     # Tìm TaxSubEntry (Optional)
                     tax_sub_entry = TaxSubEntry.objects.filter(ma_tieu_muc=ma_tm).first()
 
                     TaxPaymentItem.objects.create(
                         statement=statement,
                         tax_sub_entry=tax_sub_entry,
+                        ky_nop_thue=ky_nop,
                         ma_tieu_muc=ma_tm,
                         noi_dung=noi_dung,
                         so_tien=so_tien_decimal,
@@ -310,6 +315,7 @@ def export_tax_statement(request, statement_id):
     for item in statement.items.all():
         items_data.append({
             'stt': item.stt,
+            'ky_nop_thue': item.ky_nop_thue,
             'ma_tieu_muc': item.ma_tieu_muc,
             'noi_dung': item.noi_dung,
             'so_tien': f"{item.so_tien:,}".replace(',', '.'),  # Format số tiền
@@ -330,6 +336,7 @@ def export_tax_statement(request, statement_id):
         'ma_so_thue': statement.ma_so_thue,
         'dia_chi': statement.dia_chi,
         'nguoi_nop_thay': statement.nguoi_nop_thay,
+        'dia_chi_nguoi_nop_thay': statement.dia_chi_nguoi_nop_thay,
         'ngay_lap': statement.ngay_lap.strftime('%d/%m/%Y'),
         'ngay_thang_nam_text': date_to_vietnamese_text(statement.ngay_lap),
 
