@@ -126,9 +126,13 @@
                             {% for item in items %}
                             <div class="item-row" data-item-index="{{ forloop.counter }}">
                                 <div class="row align-items-end">
-                                    <div class="col-md-2 mb-2">
+                                    <div class="col-md-1 mb-2">
                                         <label class="form-label">STT</label>
                                         <input type="number" class="form-control text-center" value="{{ forloop.counter }}" readonly>
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Kỳ nộp thuế</label>
+                                        <input type="text" class="form-control" name="ky_nop_thue[]" placeholder="mm/yyyy" maxlength="7" value="{{ item.ky_nop_thue }}">
                                     </div>
                                     <div class="col-md-2 mb-2">
                                         <label class="form-label">Mã tiểu mục</label>
@@ -139,7 +143,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="col-md-4 mb-2">
+                                    <div class="col-md-3 mb-2">
                                         <label class="form-label">Nội dung</label>
                                         <input type="text" class="form-control noi-dung" name="noi_dung[]" value="{{ item.noi_dung }}">
                                     </div>
@@ -156,9 +160,13 @@
                         {% else %}
                             <div class="item-row" data-item-index="1">
                                 <div class="row align-items-end">
-                                    <div class="col-md-2 mb-2">
+                                    <div class="col-md-1 mb-2">
                                         <label class="form-label">STT</label>
                                         <input type="number" class="form-control text-center" value="1" readonly>
+                                    </div>
+                                    <div class="col-md-2 mb-2">
+                                        <label class="form-label">Kỳ nộp thuế</label>
+                                        <input type="text" class="form-control" name="ky_nop_thue[]" placeholder="mm/yyyy" maxlength="7">
                                     </div>
                                     <div class="col-md-2 mb-2">
                                         <label class="form-label">Mã tiểu mục</label>
@@ -169,7 +177,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="col-md-4 mb-2">
+                                    <div class="col-md-3 mb-2">
                                         <label class="form-label">Nội dung</label>
                                         <input type="text" class="form-control noi-dung" name="noi_dung[]">
                                     </div>

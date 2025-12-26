@@ -143,6 +143,14 @@ class Command(BaseCommand):
 
             # Thông tin tiểu mục (có thể dùng cho loop)
             {
+                'name': 'ky_nop_thue',
+                'label': 'Kỳ nộp thuế',
+                'field_type': 'text',
+                'help_text': 'Kỳ nộp thuế theo định dạng mm/yyyy (VD: 12/2025)',
+                'required': False,
+                'default_value': ''
+            },
+            {
                 'name': 'ma_tieu_muc_thue',
                 'label': 'Mã tiểu mục thuế',
                 'field_type': 'text',

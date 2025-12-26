@@ -103,6 +103,7 @@ class TaxPaymentItem(models.Model):
         null=True,
         verbose_name="Tiểu mục"
     )
+    ky_nop_thue = models.CharField(max_length=7, verbose_name="Kỳ nộp thuế (mm/yyyy)", blank=True)
     ma_tieu_muc = models.CharField(max_length=50, verbose_name="Mã tiểu mục")
     noi_dung = models.TextField(verbose_name="Nội dung")
     so_tien = models.DecimalField(max_digits=15, decimal_places=0, verbose_name="Số tiền")
