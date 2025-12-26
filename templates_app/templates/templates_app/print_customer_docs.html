@@ -22,7 +22,7 @@
         /* A5 Landscape page setup */
         @page {
             size: A5 landscape;
-            margin: 10mm 5mm; /* top/bottom 10mm, left/right 5mm (0.5cm) */
+            margin: 5mm;  /* Giảm từ 10mm xuống 5mm để in sát lề hơn */
         }
 
         .card {
@@ -43,8 +43,8 @@
         .id-image-row {
             display: flex !important;
             justify-content: space-between !important;
-            gap: 3mm !important;
-            margin-bottom: 5mm !important;
+            gap: 2mm !important;  /* Giảm từ 3mm xuống 2mm */
+            margin-bottom: 2mm !important;  /* Giảm từ 5mm xuống 2mm */
         }
 
         .id-image-container {
@@ -55,7 +55,7 @@
 
         .id-image {
             width: 100% !important;
-            height: 115mm !important;
+            height: 65mm !important;  /* Giảm từ 120mm xuống 65mm để 2 ảnh vừa một hàng */
             object-fit: cover !important;
             border: 1px solid #ddd !important;
         }
@@ -63,12 +63,12 @@
         /* Center certification text */
         .certification-text {
             text-align: center !important;
-            margin-top: 3mm !important;
+            margin-top: 1mm !important;  /* Giảm từ 3mm xuống 1mm */
             font-size: 11pt !important;
         }
 
         .certification-text p {
-            margin: 3mm 0 !important;
+            margin: 1mm 0 !important;  /* Giảm từ 3mm xuống 1mm */
         }
     }
 
