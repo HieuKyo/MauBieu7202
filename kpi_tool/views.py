@@ -157,7 +157,7 @@ def batch_list(request):
 
 def export_excel(request, batch_id):
     """
-    Xuất báo cáo Excel cho một lô
+    Xuất báo cáo Excel theo tháng cho giao dịch viên
     """
     batch = get_object_or_404(TellerTransactionBatch, id=batch_id)
     transactions = batch.transactions.all().select_related('matched_rule')
@@ -165,12 +165,15 @@ def export_excel(request, batch_id):
     # Tạo workbook
     wb = Workbook()
     ws = wb.active
-    ws.title = "Báo cáo KPI"
+    ws.title = "Báo cáo tháng"
 
     # Header style
     header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF", size=12)
     header_alignment = Alignment(horizontal="center", vertical="center")
+
+    # Info style
+    info_font = Font(bold=True, size=11)
 
     # Border style
     thin_border = Border(
@@ -181,38 +184,77 @@ def export_excel(request, batch_id):
     )
 
     # Tiêu đề báo cáo
-    ws.merge_cells('A1:H1')
+    ws.merge_cells('A1:G1')
     title_cell = ws['A1']
-    title_cell.value = f"BÁO CÁO QUY ĐỔI BÚT TOÁN - {batch.teller_name}"
-    title_cell.font = Font(bold=True, size=14)
+    title_cell.value = f"BÁO CÁO QUY ĐỔI BÚT TOÁN THÁNG {batch.month}/{batch.year}"
+    title_cell.font = Font(bold=True, size=14, color="FFFFFF")
     title_cell.alignment = header_alignment
+    title_cell.fill = header_fill
 
-    # Thông tin tổng quan
-    ws.merge_cells('A2:B2')
-    ws['A2'] = "Tháng/Năm:"
-    ws['C2'] = f"{batch.month}/{batch.year}"
+    # Thông tin giao dịch viên
+    current_row = 3
+    ws[f'A{current_row}'] = "Mã giao dịch viên:"
+    ws[f'A{current_row}'].font = info_font
+    ws[f'B{current_row}'] = batch.teller_id
+    ws.merge_cells(f'B{current_row}:C{current_row}')
 
-    ws.merge_cells('A3:B3')
-    ws['A3'] = "Tổng số giao dịch:"
-    ws['C3'] = batch.total_transactions
+    current_row += 1
+    ws[f'A{current_row}'] = "Tên giao dịch viên:"
+    ws[f'A{current_row}'].font = info_font
+    ws[f'B{current_row}'] = batch.teller_name
+    ws.merge_cells(f'B{current_row}:C{current_row}')
 
-    ws.merge_cells('A4:B4')
-    ws['A4'] = "Tổng điểm quy đổi:"
-    ws['C4'] = float(batch.total_score)
+    current_row += 1
+    ws[f'A{current_row}'] = "Tháng/Năm:"
+    ws[f'A{current_row}'].font = info_font
+    ws[f'B{current_row}'] = f"{batch.month}/{batch.year}"
 
-    ws.merge_cells('A5:B5')
-    ws['A5'] = "Số GD khớp:"
-    ws['C5'] = batch.matched_transactions
+    # Thống kê tổng hợp
+    current_row += 2
+    ws.merge_cells(f'A{current_row}:G{current_row}')
+    ws[f'A{current_row}'] = "THỐNG KÊ TỔNG HỢP"
+    ws[f'A{current_row}'].font = Font(bold=True, size=12)
+    ws[f'A{current_row}'].alignment = header_alignment
+    ws[f'A{current_row}'].fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
 
-    ws.merge_cells('A6:B6')
-    ws['A6'] = "Số GD không khớp:"
-    ws['C6'] = batch.unmatched_transactions
+    current_row += 1
+    stats_data = [
+        ["Chỉ tiêu", "Giá trị"],
+        ["Tổng số giao dịch", batch.total_transactions],
+        ["Giao dịch khớp quy tắc", batch.matched_transactions],
+        ["Giao dịch không khớp", batch.unmatched_transactions],
+        ["Tỷ lệ khớp", f"{(batch.matched_transactions/batch.total_transactions*100):.1f}%" if batch.total_transactions > 0 else "0%"],
+        ["Tổng điểm quy đổi", float(batch.total_score)],
+    ]
 
-    # Bỏ qua 1 dòng
-    current_row = 8
+    for row_data in stats_data:
+        ws[f'A{current_row}'] = row_data[0]
+        ws[f'B{current_row}'] = row_data[1]
+        ws[f'A{current_row}'].font = Font(bold=True) if row_data[0] == "Chỉ tiêu" else None
+        ws[f'B{current_row}'].font = Font(bold=True) if row_data[0] == "Chỉ tiêu" else None
 
-    # Header bảng chi tiết
-    headers = ['STT', 'Ngày GD', 'Số tham chiếu', 'TK Nợ', 'TK Có', 'Số tiền', 'Nghiệp vụ', 'Điểm']
+        if row_data[0] == "Chỉ tiêu":
+            ws[f'A{current_row}'].fill = header_fill
+            ws[f'B{current_row}'].fill = header_fill
+            ws[f'A{current_row}'].font = header_font
+            ws[f'B{current_row}'].font = header_font
+
+        ws[f'A{current_row}'].border = thin_border
+        ws[f'B{current_row}'].border = thin_border
+        current_row += 1
+
+    # Thống kê theo nghiệp vụ
+    current_row += 1
+    ws.merge_cells(f'A{current_row}:G{current_row}')
+    ws[f'A{current_row}'] = "THỐNG KÊ THEO NGHIỆP VỤ"
+    ws[f'A{current_row}'].font = Font(bold=True, size=12)
+    ws[f'A{current_row}'].alignment = header_alignment
+    ws[f'A{current_row}'].fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+
+    current_row += 1
+
+    # Header bảng nghiệp vụ
+    headers = ['STT', 'Mã nghiệp vụ', 'Mô tả', 'Số lượng GD', 'Tổng điểm']
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=current_row, column=col)
         cell.value = header
@@ -221,34 +263,50 @@ def export_excel(request, batch_id):
         cell.alignment = header_alignment
         cell.border = thin_border
 
-    # Dữ liệu chi tiết
+    # Tính toán thống kê theo nghiệp vụ
+    from collections import defaultdict
+    rule_stats = defaultdict(lambda: {'count': 0, 'total_score': 0, 'description': ''})
+
+    for trans in transactions:
+        if trans.matched_rule:
+            key = trans.matched_rule.code
+            rule_stats[key]['count'] += 1
+            rule_stats[key]['total_score'] += float(trans.score)
+            rule_stats[key]['description'] = trans.matched_rule.description
+
+    # Giao dịch không khớp
+    unmatched_count = batch.unmatched_transactions
+    if unmatched_count > 0:
+        rule_stats['N/A'] = {
+            'count': unmatched_count,
+            'total_score': 0,
+            'description': 'Không khớp quy tắc'
+        }
+
+    # Dữ liệu nghiệp vụ
     current_row += 1
-    for idx, trans in enumerate(transactions, start=1):
+    for idx, (code, stats) in enumerate(sorted(rule_stats.items()), start=1):
         ws.cell(row=current_row, column=1, value=idx).border = thin_border
-        ws.cell(row=current_row, column=2, value=trans.transaction_date.strftime('%d/%m/%Y')).border = thin_border
-        ws.cell(row=current_row, column=3, value=trans.reference_no).border = thin_border
-        ws.cell(row=current_row, column=4, value=trans.debit_account).border = thin_border
-        ws.cell(row=current_row, column=5, value=trans.credit_account).border = thin_border
-        ws.cell(row=current_row, column=6, value=float(trans.amount)).border = thin_border
-        ws.cell(row=current_row, column=7, value=trans.matched_rule.description if trans.matched_rule else 'Không khớp').border = thin_border
-        ws.cell(row=current_row, column=8, value=float(trans.score)).border = thin_border
+        ws.cell(row=current_row, column=2, value=code).border = thin_border
+        ws.cell(row=current_row, column=3, value=stats['description']).border = thin_border
+        ws.cell(row=current_row, column=4, value=stats['count']).border = thin_border
+        ws.cell(row=current_row, column=5, value=stats['total_score']).border = thin_border
         current_row += 1
 
     # Điều chỉnh độ rộng cột
     ws.column_dimensions['A'].width = 8
-    ws.column_dimensions['B'].width = 12
-    ws.column_dimensions['C'].width = 15
-    ws.column_dimensions['D'].width = 12
-    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['B'].width = 15
+    ws.column_dimensions['C'].width = 35
+    ws.column_dimensions['D'].width = 15
+    ws.column_dimensions['E'].width = 15
     ws.column_dimensions['F'].width = 15
-    ws.column_dimensions['G'].width = 30
-    ws.column_dimensions['H'].width = 12
+    ws.column_dimensions['G'].width = 15
 
     # Tạo response
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    filename = f"BaoCaoKPI_{batch.teller_id}_{batch.file_date.strftime('%d%m%Y')}.xlsx"
+    filename = f"BaoCaoKPI_Thang{batch.month}_{batch.year}_{batch.teller_id}.xlsx"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     wb.save(response)
