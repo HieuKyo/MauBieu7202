@@ -157,10 +157,103 @@ def batch_list(request):
 
 def export_excel(request, batch_id):
     """
-    Xuất báo cáo Excel theo tháng cho giao dịch viên
+    Xuất báo cáo Excel cho một file/lô đơn lẻ
     """
     batch = get_object_or_404(TellerTransactionBatch, id=batch_id)
     transactions = batch.transactions.all().select_related('matched_rule')
+
+    # Tạo workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Báo cáo file"
+
+    # Header style
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    header_alignment = Alignment(horizontal="center", vertical="center")
+
+    # Info style
+    info_font = Font(bold=True, size=11)
+
+    # Border style
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    # Tiêu đề báo cáo
+    ws.merge_cells('A1:G1')
+    title_cell = ws['A1']
+    title_cell.value = f"BÁO CÁO QUY ĐỔI BÚT TOÁN - FILE {batch.file_date.strftime('%d/%m/%Y')}"
+    title_cell.font = Font(bold=True, size=14, color="FFFFFF")
+    title_cell.alignment = header_alignment
+    title_cell.fill = header_fill
+
+    # Thông tin
+    current_row = 3
+    ws[f'A{current_row}'] = "Mã giao dịch viên:"
+    ws[f'A{current_row}'].font = info_font
+    ws[f'B{current_row}'] = batch.teller_id
+
+    current_row += 1
+    ws[f'A{current_row}'] = "Tên giao dịch viên:"
+    ws[f'A{current_row}'].font = info_font
+    ws[f'B{current_row}'] = batch.teller_name
+
+    current_row += 1
+    ws[f'A{current_row}'] = "Tổng GD:"
+    ws[f'A{current_row}'].font = info_font
+    ws[f'B{current_row}'] = batch.total_transactions
+
+    current_row += 1
+    ws[f'A{current_row}'] = "Tổng điểm:"
+    ws[f'A{current_row}'].font = info_font
+    ws[f'B{current_row}'] = float(batch.total_score)
+
+    # Tạo response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f"BaoCaoKPI_File_{batch.file_date.strftime('%d%m%Y')}_{batch.teller_id}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    wb.save(response)
+    return response
+
+
+def export_monthly_excel(request, teller_id, month, year):
+    """
+    Xuất báo cáo Excel tổng hợp THEO THÁNG cho giao dịch viên
+    Gộp tất cả các file/lô trong tháng
+    """
+    # Lấy tất cả batches của giao dịch viên trong tháng
+    batches = TellerTransactionBatch.objects.filter(
+        teller_id=teller_id,
+        month=month,
+        year=year,
+        processing_status='completed'
+    )
+
+    if not batches.exists():
+        messages.error(request, f'Không tìm thấy dữ liệu cho {teller_id} tháng {month}/{year}')
+        return redirect('kpi_tool:index')
+
+    # Lấy thông tin giao dịch viên từ batch đầu tiên
+    first_batch = batches.first()
+    teller_name = first_batch.teller_name
+
+    # Lấy TẤT CẢ transactions từ các batches
+    all_transactions = TellerTransactionDetail.objects.filter(
+        batch__in=batches
+    ).select_related('matched_rule')
+
+    # Tính tổng hợp
+    total_transactions = all_transactions.count()
+    matched_transactions = all_transactions.filter(is_matched=True).count()
+    unmatched_transactions = all_transactions.filter(is_matched=False).count()
+    total_score = all_transactions.aggregate(Sum('score'))['score__sum'] or 0
 
     # Tạo workbook
     wb = Workbook()
@@ -186,7 +279,7 @@ def export_excel(request, batch_id):
     # Tiêu đề báo cáo
     ws.merge_cells('A1:G1')
     title_cell = ws['A1']
-    title_cell.value = f"BÁO CÁO QUY ĐỔI BÚT TOÁN THÁNG {batch.month}/{batch.year}"
+    title_cell.value = f"BÁO CÁO QUY ĐỔI BÚT TOÁN THÁNG {month}/{year}"
     title_cell.font = Font(bold=True, size=14, color="FFFFFF")
     title_cell.alignment = header_alignment
     title_cell.fill = header_fill
@@ -195,19 +288,24 @@ def export_excel(request, batch_id):
     current_row = 3
     ws[f'A{current_row}'] = "Mã giao dịch viên:"
     ws[f'A{current_row}'].font = info_font
-    ws[f'B{current_row}'] = batch.teller_id
+    ws[f'B{current_row}'] = teller_id
     ws.merge_cells(f'B{current_row}:C{current_row}')
 
     current_row += 1
     ws[f'A{current_row}'] = "Tên giao dịch viên:"
     ws[f'A{current_row}'].font = info_font
-    ws[f'B{current_row}'] = batch.teller_name
+    ws[f'B{current_row}'] = teller_name
     ws.merge_cells(f'B{current_row}:C{current_row}')
 
     current_row += 1
     ws[f'A{current_row}'] = "Tháng/Năm:"
     ws[f'A{current_row}'].font = info_font
-    ws[f'B{current_row}'] = f"{batch.month}/{batch.year}"
+    ws[f'B{current_row}'] = f"{month}/{year}"
+
+    current_row += 1
+    ws[f'A{current_row}'] = "Số file đã xử lý:"
+    ws[f'A{current_row}'].font = info_font
+    ws[f'B{current_row}'] = batches.count()
 
     # Thống kê tổng hợp
     current_row += 2
@@ -220,11 +318,11 @@ def export_excel(request, batch_id):
     current_row += 1
     stats_data = [
         ["Chỉ tiêu", "Giá trị"],
-        ["Tổng số giao dịch", batch.total_transactions],
-        ["Giao dịch khớp quy tắc", batch.matched_transactions],
-        ["Giao dịch không khớp", batch.unmatched_transactions],
-        ["Tỷ lệ khớp", f"{(batch.matched_transactions/batch.total_transactions*100):.1f}%" if batch.total_transactions > 0 else "0%"],
-        ["Tổng điểm quy đổi", float(batch.total_score)],
+        ["Tổng số giao dịch", total_transactions],
+        ["Giao dịch khớp quy tắc", matched_transactions],
+        ["Giao dịch không khớp", unmatched_transactions],
+        ["Tỷ lệ khớp", f"{(matched_transactions/total_transactions*100):.1f}%" if total_transactions > 0 else "0%"],
+        ["Tổng điểm quy đổi", float(total_score)],
     ]
 
     for row_data in stats_data:
@@ -267,7 +365,7 @@ def export_excel(request, batch_id):
     from collections import defaultdict
     rule_stats = defaultdict(lambda: {'count': 0, 'total_score': 0, 'description': ''})
 
-    for trans in transactions:
+    for trans in all_transactions:
         if trans.matched_rule:
             key = trans.matched_rule.code
             rule_stats[key]['count'] += 1
@@ -275,10 +373,9 @@ def export_excel(request, batch_id):
             rule_stats[key]['description'] = trans.matched_rule.description
 
     # Giao dịch không khớp
-    unmatched_count = batch.unmatched_transactions
-    if unmatched_count > 0:
+    if unmatched_transactions > 0:
         rule_stats['N/A'] = {
-            'count': unmatched_count,
+            'count': unmatched_transactions,
             'total_score': 0,
             'description': 'Không khớp quy tắc'
         }
@@ -295,18 +392,16 @@ def export_excel(request, batch_id):
 
     # Điều chỉnh độ rộng cột
     ws.column_dimensions['A'].width = 8
-    ws.column_dimensions['B'].width = 15
-    ws.column_dimensions['C'].width = 35
+    ws.column_dimensions['B'].width = 18
+    ws.column_dimensions['C'].width = 40
     ws.column_dimensions['D'].width = 15
     ws.column_dimensions['E'].width = 15
-    ws.column_dimensions['F'].width = 15
-    ws.column_dimensions['G'].width = 15
 
     # Tạo response
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    filename = f"BaoCaoKPI_Thang{batch.month}_{batch.year}_{batch.teller_id}.xlsx"
+    filename = f"BaoCaoKPI_Thang{month}_{year}_{teller_id}.xlsx"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     wb.save(response)

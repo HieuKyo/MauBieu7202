@@ -19,8 +19,11 @@ urlpatterns = [
     # Chi tiết lô
     path('batch/<int:batch_id>/', views.batch_detail, name='batch_detail'),
 
-    # Xuất Excel
+    # Xuất Excel theo file
     path('batch/<int:batch_id>/export/', views.export_excel, name='export_excel'),
+
+    # Xuất Excel theo tháng (tổng hợp tất cả file)
+    path('export-monthly/<str:teller_id>/<int:month>/<int:year>/', views.export_monthly_excel, name='export_monthly_excel'),
 
     # Import quy tắc
     path('import-rules/', views.import_rules_view, name='import_rules'),
