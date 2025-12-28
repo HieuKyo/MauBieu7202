@@ -1,0 +1,152 @@
+{% extends 'kpi_tool/base.html' %}
+{% load humanize %}
+
+{% block title %}Import quy tắc - Quy đổi bút toán{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card shadow">
+            <div class="card-header" style="background-color: #AE1C3F; color: white;">
+                <h4 class="mb-0">
+                    <i class="bi bi-database-add"></i> Import quy tắc quy đổi
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Thống kê quy tắc hiện có -->
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> Thông tin hiện tại:</h6>
+                    <ul class="mb-0">
+                        <li>Tổng số quy tắc: <strong>{{ rules_count|intcomma }}</strong></li>
+                        <li>Quy tắc đang kích hoạt: <strong>{{ active_rules_count|intcomma }}</strong></li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle"></i> Lưu ý:</h6>
+                    <ul class="mb-0">
+                        <li>File phải là định dạng <strong>.BAK</strong> hoặc <strong>.DBF</strong></li>
+                        <li>File cần có cấu trúc giống file <code>hesoquydoi.BAK</code></li>
+                        <li>Các trường bắt buộc: <code>TKNO</code>, <code>TKCO</code>, <code>HESOQUAY1</code></li>
+                        <li>Nếu quy tắc đã tồn tại (trùng mã), hệ thống sẽ cập nhật</li>
+                    </ul>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" id="importForm">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label for="rule_file" class="form-label">
+                            <i class="bi bi-file-earmark-code"></i> Chọn file quy tắc
+                        </label>
+                        <input type="file" class="form-control" id="rule_file" name="rule_file"
+                               accept=".bak,.BAK,.dbf,.DBF" required>
+                        <small class="form-text text-muted">
+                            File hesoquydoi.BAK hoặc file DBF tương tự
+                        </small>
+                    </div>
+
+                    <div id="fileInfo" class="mb-3"></div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-upload"></i> Import quy tắc
+                        </button>
+                        <a href="{% url 'kpi_tool:rule_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-list-ul"></i> Xem danh sách quy tắc
+                        </a>
+                        <a href="{% url 'kpi_tool:index' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Quay lại
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Hướng dẫn -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-book"></i> Cấu trúc file quy tắc</h6>
+            </div>
+            <div class="card-body">
+                <p>File quy tắc cần có các trường sau:</p>
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tên trường</th>
+                            <th>Mô tả</th>
+                            <th>Bắt buộc</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>CODE</code> hoặc <code>MALOAI</code></td>
+                            <td>Mã nghiệp vụ</td>
+                            <td><span class="badge bg-warning">Tùy chọn</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>TKNO</code></td>
+                            <td>Tài khoản Nợ (hoặc đầu mã)</td>
+                            <td><span class="badge bg-danger">Bắt buộc</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>TKCO</code></td>
+                            <td>Tài khoản Có (hoặc đầu mã)</td>
+                            <td><span class="badge bg-danger">Bắt buộc</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>HESOQUAY1</code></td>
+                            <td>Hệ số quy đổi 1</td>
+                            <td><span class="badge bg-danger">Bắt buộc</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>HESOQUAY2</code></td>
+                            <td>Hệ số quy đổi 2</td>
+                            <td><span class="badge bg-warning">Tùy chọn</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>CONGTHUC</code></td>
+                            <td>Công thức bổ sung</td>
+                            <td><span class="badge bg-warning">Tùy chọn</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>GHICHU</code> hoặc <code>MOTA</code></td>
+                            <td>Ghi chú, mô tả</td>
+                            <td><span class="badge bg-warning">Tùy chọn</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('rule_file').addEventListener('change', function(e) {
+    const fileInfo = document.getElementById('fileInfo');
+    const file = e.target.files[0];
+
+    if (file) {
+        fileInfo.innerHTML = `
+            <div class="alert alert-secondary">
+                <h6>File đã chọn:</h6>
+                <ul class="mb-0">
+                    <li>Tên file: <strong>${file.name}</strong></li>
+                    <li>Kích thước: <strong>${(file.size / 1024).toFixed(2)} KB</strong></li>
+                </ul>
+            </div>
+        `;
+    } else {
+        fileInfo.innerHTML = '';
+    }
+});
+
+document.getElementById('importForm').addEventListener('submit', function(e) {
+    const btn = this.querySelector('button[type="submit"]');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang import...';
+    btn.disabled = true;
+});
+</script>
+{% endblock %}

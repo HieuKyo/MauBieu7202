@@ -32,3 +32,9 @@ mammoth==1.8.0
 
 # HTTP library for testing
 requests==2.32.3
+
+# DBF file handling for transaction conversion
+dbfread==2.0.7
+
+# Import/Export for Django admin
+django-import-export==4.3.3
