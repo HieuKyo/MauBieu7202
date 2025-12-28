@@ -103,16 +103,27 @@ class DBFProcessor:
             acctcd = str(record.get('ACCTCD', '')).strip()
             tramt = record.get('TRAMT', 0)
 
+            # Parse amount an toàn
+            try:
+                if tramt is None or tramt == '':
+                    amount = Decimal('0')
+                else:
+                    # Chuyển sang string và loại bỏ khoảng trắng
+                    amount_str = str(tramt).strip()
+                    amount = Decimal(amount_str) if amount_str else Decimal('0')
+            except (ValueError, TypeError, Exception):
+                amount = Decimal('0')
+
             if trdrcr == 'D':  # Debit/Nợ
                 debit_entries.append({
                     'account': acctcd,
-                    'amount': Decimal(str(tramt)) if tramt else Decimal('0'),
+                    'amount': amount,
                     'record': record
                 })
             elif trdrcr == 'C':  # Credit/Có
                 credit_entries.append({
                     'account': acctcd,
-                    'amount': Decimal(str(tramt)) if tramt else Decimal('0'),
+                    'amount': amount,
                     'record': record
                 })
 
@@ -336,8 +347,20 @@ class RuleImporter:
                 code = str(record.get('CODE', '')).strip() or str(record.get('MALOAI', '')).strip()
                 tkno = str(record.get('TKNO', '')).strip()
                 tkco = str(record.get('TKCO', '')).strip()
-                hesoquay1 = Decimal(str(record.get('HESOQUAY1', 0) or 0))
-                hesoquay2 = Decimal(str(record.get('HESOQUAY2', 0) or 0))
+
+                # Parse hệ số quy đổi an toàn
+                try:
+                    hq1_value = record.get('HESOQUAY1', 0)
+                    hesoquay1 = Decimal(str(hq1_value).strip()) if hq1_value else Decimal('0')
+                except (ValueError, TypeError, Exception):
+                    hesoquay1 = Decimal('0')
+
+                try:
+                    hq2_value = record.get('HESOQUAY2', 0)
+                    hesoquay2 = Decimal(str(hq2_value).strip()) if hq2_value else Decimal('0')
+                except (ValueError, TypeError, Exception):
+                    hesoquay2 = Decimal('0')
+
                 congthuc = str(record.get('CONGTHUC', '')).strip()
                 description = str(record.get('GHICHU', '')).strip() or str(record.get('MOTA', '')).strip()
 
