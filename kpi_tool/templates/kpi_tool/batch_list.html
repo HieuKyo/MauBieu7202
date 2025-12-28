@@ -106,11 +106,11 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'kpi_tool:batch_detail' batch.id %}" class="btn btn-outline-primary">
+                                        <a href="{% url 'kpi_tool:batch_detail' batch.id %}" class="btn btn-outline-primary" title="Xem chi tiết">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="{% url 'kpi_tool:export_excel' batch.id %}" class="btn btn-outline-success">
-                                            <i class="bi bi-file-earmark-excel"></i>
+                                        <a href="{% url 'kpi_tool:export_monthly_excel' batch.teller_id batch.month batch.year %}" class="btn btn-outline-danger" title="Xuất báo cáo tháng">
+                                            <i class="bi bi-calendar-check"></i>
                                         </a>
                                     </div>
                                 </td>
