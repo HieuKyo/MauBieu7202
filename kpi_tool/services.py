@@ -181,12 +181,62 @@ class DBFProcessor:
 
     def match_rule(self, debit_account: str, credit_account: str) -> Optional[ConversionRule]:
         """
-        Tìm quy tắc khớp với cặp tài khoản Nợ/Có
+        Tìm quy tắc khớp TỐT NHẤT với cặp tài khoản Nợ/Có
+
+        Ưu tiên theo thứ tự:
+        1. Exact match cho cả 2 tài khoản
+        2. Exact match cho 1 tài khoản, prefix match cho tài khoản kia
+        3. Prefix match cho cả 2 - ưu tiên pattern dài hơn (cụ thể hơn)
         """
+        matching_rules = []
+
+        # Tìm TẤT CẢ quy tắc khớp
         for rule in self.conversion_rules:
             if rule.matches_transaction(debit_account, credit_account):
-                return rule
-        return None
+                # Tính "độ cụ thể" của quy tắc này với giao dịch hiện tại
+                match_quality = self._calculate_match_quality(
+                    rule, debit_account, credit_account
+                )
+                matching_rules.append((rule, match_quality))
+
+        # Nếu không có quy tắc nào khớp
+        if not matching_rules:
+            return None
+
+        # Sắp xếp theo độ cụ thể (cao nhất đầu tiên)
+        matching_rules.sort(key=lambda x: x[1], reverse=True)
+
+        # Trả về quy tắc cụ thể nhất
+        return matching_rules[0][0]
+
+    def _calculate_match_quality(self, rule: ConversionRule,
+                                  debit_account: str, credit_account: str) -> int:
+        """
+        Tính "độ cụ thể" của quy tắc với giao dịch
+
+        Điểm số càng cao = quy tắc càng cụ thể
+
+        Công thức:
+        - Exact match debit: +10000 điểm
+        - Exact match credit: +10000 điểm
+        - Prefix match debit: +độ dài pattern
+        - Prefix match credit: +độ dài pattern
+        """
+        quality = 0
+
+        # Kiểm tra tài khoản Nợ
+        if debit_account == rule.debit_account_pattern:
+            quality += 10000  # Exact match
+        elif debit_account.startswith(rule.debit_account_pattern):
+            quality += len(rule.debit_account_pattern)  # Prefix match - pattern dài hơn = cụ thể hơn
+
+        # Kiểm tra tài khoản Có
+        if credit_account == rule.credit_account_pattern:
+            quality += 10000  # Exact match
+        elif credit_account.startswith(rule.credit_account_pattern):
+            quality += len(rule.credit_account_pattern)  # Prefix match - pattern dài hơn = cụ thể hơn
+
+        return quality
 
     def calculate_score(self, transaction: Dict) -> Tuple[Decimal, Optional[ConversionRule], bool]:
         """
