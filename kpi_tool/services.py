@@ -196,17 +196,19 @@ class DBFProcessor:
         return Decimal('0'), None, False
 
     @transaction.atomic
-    def process_dbf_file(self, file_path: str, teller_name: str = None) -> TellerTransactionBatch:
+    def process_dbf_file(self, file_path: str, teller_name: str = None, original_filename: str = None) -> TellerTransactionBatch:
         """
         Xử lý file DBF và lưu vào database
 
         Args:
             file_path: Đường dẫn đến file DBF
             teller_name: Tên giao dịch viên (optional, nếu không có sẽ dùng teller_id)
+            original_filename: Tên file gốc (optional, dùng khi file_path là file tạm)
 
         Returns: TellerTransactionBatch object
         """
-        filename = os.path.basename(file_path)
+        # Sử dụng original_filename nếu có, nếu không dùng basename của file_path
+        filename = original_filename if original_filename else os.path.basename(file_path)
 
         # Parse tên file
         parse_result = self.parse_filename(filename)
