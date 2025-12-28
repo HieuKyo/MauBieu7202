@@ -71,8 +71,12 @@ def upload_view(request):
                         tmp_file.write(chunk)
                     tmp_file_path = tmp_file.name
 
-                # Xử lý file
-                batch = processor.process_dbf_file(tmp_file_path, teller_name)
+                # Xử lý file - truyền tên file gốc để parse đúng
+                batch = processor.process_dbf_file(
+                    tmp_file_path,
+                    teller_name,
+                    original_filename=uploaded_file.name
+                )
                 batches.append(batch)
 
                 # Xóa file tạm
