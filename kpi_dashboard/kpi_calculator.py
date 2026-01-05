@@ -115,21 +115,55 @@ class KPICalculator:
                 if len(cell_value) > 10:
                     content_value = cell_value.lower()
 
-            # Mapping dựa trên STT hoặc từ khóa
-            if stt_value == 1 or (content_value and 'đăng ký tt kh' in content_value):
+            # Mapping dựa trên STT - ưu tiên STT trước, sau đó mới dùng từ khóa
+            # STT 12: Phát hành thẻ (kiểm tra TRƯỚC để tránh conflict)
+            if stt_value == 12:
+                self.kpi_rows['card'] = row_idx
+
+            # STT 1: CIF
+            elif stt_value == 1:
                 self.kpi_rows['cif'] = row_idx
 
-            elif stt_value == 3 or (content_value and 'chữ ký' in content_value):
+            # STT 3: Quét chữ ký
+            elif stt_value == 3:
                 self.kpi_rows['signature'] = row_idx
 
-            elif stt_value == 4 or (content_value and 'lưu trữ' in content_value):
+            # STT 4: Lưu trữ hồ sơ
+            elif stt_value == 4:
                 self.kpi_rows['archive'] = row_idx
 
-            elif stt_value == 9 or (content_value and 'sms' in content_value and 'đăng ký' in content_value):
+            # STT 9: Đăng ký SMS
+            elif stt_value == 9:
                 self.kpi_rows['sms'] = row_idx
 
-            elif stt_value == 12 or (content_value and 'phát hành thẻ' in content_value):
-                self.kpi_rows['card'] = row_idx
+            # Fallback: Tìm theo từ khóa nếu chưa tìm thấy qua STT
+            elif content_value:
+                # Tìm dòng Phát hành thẻ (nếu chưa có)
+                if 'card' not in self.kpi_rows and 'phát hành thẻ' in content_value:
+                    self.kpi_rows['card'] = row_idx
+
+                # Tìm dòng CIF (nếu chưa có)
+                elif 'cif' not in self.kpi_rows and 'đăng ký tt kh' in content_value:
+                    self.kpi_rows['cif'] = row_idx
+
+                # Tìm dòng Chữ ký (nếu chưa có)
+                elif 'signature' not in self.kpi_rows and 'quét chữ ký' in content_value:
+                    self.kpi_rows['signature'] = row_idx
+
+                # Tìm dòng Lưu trữ (nếu chưa có)
+                elif 'archive' not in self.kpi_rows and 'lưu trữ' in content_value and 'gdv' in content_value:
+                    self.kpi_rows['archive'] = row_idx
+
+                # Tìm dòng SMS (nếu chưa có) - CẨN THẬN với từ khóa SMS
+                elif 'sms' not in self.kpi_rows and 'đăng ký sms' in content_value:
+                    self.kpi_rows['sms'] = row_idx
+
+        # Debug: In ra các dòng đã tìm thấy
+        print("\n📋 Debug - Các dòng KPI đã tìm thấy:")
+        for key, row in self.kpi_rows.items():
+            cell_content = self.ws.cell(row, 3).value  # Cột C thường chứa nội dung
+            print(f"  - {key.upper()}: Dòng {row} - '{cell_content}'")
+        print()
 
     def _update_cell(self, row, day, value):
         """
