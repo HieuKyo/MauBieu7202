@@ -120,7 +120,7 @@ def main():
     st.markdown("---")
 
     # Nút phân tích
-    if st.button("🚀 Phân tích & Xuất Báo cáo", type="primary", use_container_width=True):
+    if st.button("🚀 Phân tích & Xuất Báo cáo", type="primary", width="stretch"):
         # Kiểm tra file template bắt buộc
         if template_file is None:
             st.error("⚠️ Vui lòng upload file KPI mẫu!")
@@ -211,7 +211,7 @@ def main():
 
                 if summary_data:
                     summary_df = pd.DataFrame(summary_data)
-                    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+                    st.dataframe(summary_df, width="stretch", hide_index=True)
 
                 # Nút download
                 st.markdown("---")
@@ -222,7 +222,7 @@ def main():
                     file_name=filename,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
-                    use_container_width=True
+                    width="stretch"
                 )
 
         except Exception as e:
