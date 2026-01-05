@@ -24,8 +24,27 @@ if errorlevel 1 (
 
 echo [INFO] Khoi dong ung dung...
 echo.
-echo Ung dung se mo tai: http://localhost:8501
+
+REM Lấy IP LAN
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4 Address"') do (
+    set LAN_IP=%%a
+    goto :ip_found
+)
+:ip_found
+set LAN_IP=%LAN_IP:~1%
+
+echo Dia chi truy cap:
+echo    - Local:   http://localhost:8501
+if defined LAN_IP (
+    echo    - LAN:     http://%LAN_IP%:8501
+    echo.
+    echo Cac may khac trong mang LAN co the truy cap qua:
+    echo    http://%LAN_IP%:8501
+)
+echo.
 echo Nhan Ctrl+C de dung ung dung
+echo.
+echo ==========================================
 echo.
 
 streamlit run app.py

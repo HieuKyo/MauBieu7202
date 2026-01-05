@@ -5,8 +5,9 @@ __pycache__/
 *.so
 .Python
 
-# Streamlit cache
-.streamlit/
+# Streamlit cache (except config)
+.streamlit/*
+!.streamlit/config.toml
 
 # Virtual environment
 venv/
@@ -32,6 +33,9 @@ Thumbs.db
 # Except sample data
 !sample_data/*.xlsx
 !sample_data/*.csv
+
+# Offline packages (downloaded for offline deployment)
+offline_packages/
 
 # Logs
 *.log

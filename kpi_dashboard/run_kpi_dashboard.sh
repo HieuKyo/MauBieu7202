@@ -22,8 +22,27 @@ fi
 
 echo "[INFO] Khởi động ứng dụng..."
 echo ""
-echo "Ứng dụng sẽ mở tại: http://localhost:8501"
-echo "Nhấn Ctrl+C để dừng ứng dụng"
+
+# Lấy IP LAN
+LAN_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
+if [ -z "$LAN_IP" ]; then
+    # Fallback nếu hostname -I không hoạt động
+    LAN_IP=$(ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | head -n1)
+fi
+
+echo "📍 Địa chỉ truy cập:"
+echo "   - Local:   http://localhost:8501"
+if [ ! -z "$LAN_IP" ]; then
+    echo "   - LAN:     http://$LAN_IP:8501"
+    echo ""
+    echo "💡 Các máy khác trong mạng LAN có thể truy cập qua:"
+    echo "   http://$LAN_IP:8501"
+fi
+echo ""
+echo "⚠️  Nhấn Ctrl+C để dừng ứng dụng"
+echo ""
+echo "=========================================="
 echo ""
 
 streamlit run app.py
+

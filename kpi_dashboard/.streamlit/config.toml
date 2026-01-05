@@ -1,0 +1,56 @@
+# Streamlit Configuration for Offline/LAN Usage
+# ==============================================
+# This configuration optimizes Streamlit for use in LAN environment without Internet
+
+[server]
+# Port configuration
+port = 8501
+# Allow access from other computers in LAN
+headless = true
+# Enable CORS for LAN access
+enableCORS = false
+enableXsrfProtection = false
+
+# Server address - use 0.0.0.0 to allow LAN access
+# Change to specific IP if needed
+address = "0.0.0.0"
+
+# File watcher type (use 'none' for better performance in production)
+fileWatcherType = "auto"
+
+# Max upload size (200MB for large Excel files)
+maxUploadSize = 200
+
+[browser]
+# Don't try to open browser automatically
+gatherUsageStats = false
+serverAddress = "localhost"
+serverPort = 8501
+
+[theme]
+# Agribank theme colors
+primaryColor = "#16A34A"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+font = "sans serif"
+
+[client]
+# Disable telemetry and analytics (important for offline)
+toolbarMode = "minimal"
+showErrorDetails = true
+showSidebarNavigation = true
+
+[runner]
+# Performance optimizations
+magicEnabled = true
+fastReruns = true
+
+[logger]
+# Logging level
+level = "info"
+messageFormat = "%(asctime)s %(message)s"
+
+[deprecation]
+# Disable deprecation warnings
+showPyplotGlobalUse = false
