@@ -75,12 +75,10 @@
                                 </div>
                                 <div class="col-6">
                                     <select class="form-select" name="year" required>
-                                        {% for y in "20202021202220232024202520262027202820292030" %}
-                                        {% with year_val=forloop.counter|add:2019 %}
-                                        <option value="{{ year_val }}" {% if year_val == current_year %}selected{% endif %}>
-                                            {{ year_val }}
+                                        {% for year in year_range %}
+                                        <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>
+                                            {{ year }}
                                         </option>
-                                        {% endwith %}
                                         {% endfor %}
                                     </select>
                                 </div>
