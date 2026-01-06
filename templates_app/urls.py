@@ -5,6 +5,7 @@ from django.urls import path
 from . import views
 from . import report_views
 from . import kpi_views
+from . import atm_report_views
 
 urlpatterns = [
     # Authentication
@@ -135,4 +136,10 @@ urlpatterns = [
     # KPI Dashboard (Django integrated - no Streamlit)
     path('kpi-dashboard/', kpi_views.kpi_dashboard_view, name='kpi_dashboard'),
     path('kpi-dashboard/process/', kpi_views.kpi_process_view, name='kpi_process'),
+
+    # ATM Transaction Report
+    path('atm-report/', atm_report_views.atm_report_dashboard, name='atm_report_dashboard'),
+    path('atm-report/import/', atm_report_views.atm_report_import, name='atm_report_import'),
+    path('atm-report/delete/<int:upload_id>/', atm_report_views.atm_report_delete, name='atm_report_delete'),
+    path('atm-report/detail/<str:atm_no>/', atm_report_views.atm_report_detail, name='atm_report_detail'),
 ]
