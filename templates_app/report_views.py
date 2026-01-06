@@ -639,30 +639,93 @@ def import_atm_excel(excel_file, user):
 
 @login_required
 def atm_transaction_report(request):
-    """Dashboard hiển thị báo cáo ATM với bộ lọc"""
+    """Dashboard hiển thị báo cáo ATM với bộ lọc nâng cao"""
     from .models import ATMTransactionReport, ATMReportUpload
-    from django.db.models import Sum, Count
+    from django.db.models import Sum, Count, Q, Case, When, IntegerField, DecimalField
+    from dateutil.relativedelta import relativedelta
 
     # Lấy tham số filter từ request
     selected_period = request.GET.get('period', '')
+    selected_atm = request.GET.get('atm', '')
+    selected_branch = request.GET.get('branch', '')
+    period_type = request.GET.get('period_type', 'month')  # month hoặc 6months
+    tx_type_filter = request.GET.get('tx_type', '')  # deposit (0210) hoặc withdrawal (khác)
 
     # Lấy danh sách các kỳ báo cáo có sẵn
     available_periods = ATMReportUpload.objects.all().order_by('-report_period')
 
+    # Lấy danh sách ATM và chi nhánh để làm filter
+    all_atms = ATMTransactionReport.objects.values('atm_no').distinct().order_by('atm_no')
+    all_branches = ATMTransactionReport.objects.values('branch_code').distinct().order_by('branch_code')
+
     # Base queryset
     queryset = ATMTransactionReport.objects.all()
 
-    # Filter theo period nếu có
+    # Filter theo period
     if selected_period:
         try:
-            # Parse period format: YYYY-MM-DD
             period_date = datetime.strptime(selected_period, '%Y-%m-%d').date()
-            queryset = queryset.filter(report_period=period_date)
+
+            if period_type == '6months':
+                # Lấy 6 tháng gần nhất tính từ tháng được chọn
+                start_date = period_date - relativedelta(months=5)
+                queryset = queryset.filter(
+                    report_period__gte=start_date,
+                    report_period__lte=period_date
+                )
+            else:
+                # Chỉ lấy tháng được chọn
+                queryset = queryset.filter(report_period=period_date)
         except ValueError:
             messages.error(request, 'Định dạng thời gian không hợp lệ')
 
-    # Group by ATM_No và tính tổng
-    report_data = queryset.values('atm_no', 'branch_code', 'report_period').annotate(
+    # Filter theo ATM
+    if selected_atm:
+        queryset = queryset.filter(atm_no=selected_atm)
+
+    # Filter theo chi nhánh
+    if selected_branch:
+        queryset = queryset.filter(branch_code=selected_branch)
+
+    # Filter theo loại giao dịch
+    if tx_type_filter == 'deposit':
+        queryset = queryset.filter(tx_code='0210')
+    elif tx_type_filter == 'withdrawal':
+        queryset = queryset.exclude(tx_code='0210')
+
+    # Group by ATM_No và tính tổng riêng cho nộp/rút tiền
+    report_data = queryset.values('atm_no', 'branch_code').annotate(
+        # Giao dịch nộp tiền (Tx_Code = '0210')
+        deposit_count=Sum(
+            Case(
+                When(tx_code='0210', then='tx_count'),
+                default=0,
+                output_field=IntegerField()
+            )
+        ),
+        deposit_amount=Sum(
+            Case(
+                When(tx_code='0210', then='tx_amount'),
+                default=0,
+                output_field=DecimalField()
+            )
+        ),
+        # Giao dịch rút tiền (Tx_Code khác '0210')
+        withdrawal_count=Sum(
+            Case(
+                When(~Q(tx_code='0210'), then='tx_count'),
+                default=0,
+                output_field=IntegerField()
+            )
+        ),
+        withdrawal_amount=Sum(
+            Case(
+                When(~Q(tx_code='0210'), then='tx_amount'),
+                default=0,
+                output_field=DecimalField()
+            )
+        ),
+        # Tổng cộng
         total_tx_count=Sum('tx_count'),
         total_tx_amount=Sum('tx_amount'),
         total_tx_fee=Sum('tx_fee'),
@@ -670,8 +733,36 @@ def atm_transaction_report(request):
         transaction_types=Count('tx_code', distinct=True)
     ).order_by('branch_code', 'atm_no')
 
-    # Tính tổng cộng
+    # Tính tổng cộng toàn bộ
     totals = queryset.aggregate(
+        grand_deposit_count=Sum(
+            Case(
+                When(tx_code='0210', then='tx_count'),
+                default=0,
+                output_field=IntegerField()
+            )
+        ),
+        grand_deposit_amount=Sum(
+            Case(
+                When(tx_code='0210', then='tx_amount'),
+                default=0,
+                output_field=DecimalField()
+            )
+        ),
+        grand_withdrawal_count=Sum(
+            Case(
+                When(~Q(tx_code='0210'), then='tx_count'),
+                default=0,
+                output_field=IntegerField()
+            )
+        ),
+        grand_withdrawal_amount=Sum(
+            Case(
+                When(~Q(tx_code='0210'), then='tx_amount'),
+                default=0,
+                output_field=DecimalField()
+            )
+        ),
         grand_total_count=Sum('tx_count'),
         grand_total_amount=Sum('tx_amount'),
         grand_total_fee=Sum('tx_fee'),
@@ -680,7 +771,13 @@ def atm_transaction_report(request):
 
     context = {
         'available_periods': available_periods,
+        'all_atms': all_atms,
+        'all_branches': all_branches,
         'selected_period': selected_period,
+        'selected_atm': selected_atm,
+        'selected_branch': selected_branch,
+        'period_type': period_type,
+        'tx_type_filter': tx_type_filter,
         'report_data': report_data,
         'totals': totals,
         'record_count': report_data.count()
