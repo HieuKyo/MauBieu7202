@@ -1,7 +1,8 @@
 """
-Data Processor Module
-=====================
-Module xử lý dữ liệu từ các file Card, SMS, E-Mobile
+Data Processor Module for KPI Dashboard
+========================================
+Module xử lý dữ liệu từ các file Card, SMS, E-Mobile cho KPI Dashboard
+Tích hợp vào Django - Agribank
 """
 
 import pandas as pd
@@ -34,7 +35,7 @@ class DataProcessor:
         Đọc file Excel hoặc CSV
 
         Args:
-            file_obj: File object từ Streamlit uploader
+            file_obj: File object từ Django request.FILES
 
         Returns:
             DataFrame
@@ -43,7 +44,8 @@ class DataProcessor:
         file_obj.seek(0)
 
         # Đọc file dựa vào extension
-        if file_obj.name.endswith('.csv'):
+        filename = file_obj.name.lower()
+        if filename.endswith('.csv'):
             df = pd.read_csv(file_obj)
         else:
             df = pd.read_excel(file_obj)
