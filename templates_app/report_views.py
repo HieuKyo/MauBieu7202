@@ -645,10 +645,9 @@ def atm_transaction_report(request):
     from dateutil.relativedelta import relativedelta
 
     # Định nghĩa mã giao dịch cho từng loại
-    # NOTE: Có thể cần điều chỉnh các mã này dựa trên dữ liệu thực tế
     DEPOSIT_CODES = ['0210']  # Nộp tiền
-    TRANSFER_CODES = ['0220', '0230']  # Chuyển khoản (ATM Transfer Debit, ATM IBFT Debit)
-    WITHDRAWAL_CODES = ['0100', '0110']  # Rút tiền (có thể thêm các mã khác)
+    WITHDRAWAL_CODES = ['ATM Withdrawal']  # Rút tiền
+    TRANSFER_CODES = ['ATM Transfer Debit', 'ATM IBFT Debit']  # Chuyển khoản
     # GD khác: Tất cả các mã còn lại
 
     # Lấy tham số filter từ request
