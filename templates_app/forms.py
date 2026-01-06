@@ -438,8 +438,8 @@ class ATMReportUploadForm(forms.Form):
     def clean_excel_file(self):
         file = self.cleaned_data.get('excel_file')
         if file:
-            # Kiểm tra extension
-            file_name = file.name
+            # Kiểm tra extension (không phân biệt chữ hoa/thường)
+            file_name = file.name.lower()
             if not (file_name.endswith('.xls') or file_name.endswith('.xlsx')):
                 raise forms.ValidationError('File phải có định dạng .xls hoặc .xlsx')
 
