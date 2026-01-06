@@ -11,6 +11,7 @@ import pandas as pd
 import openpyxl
 import io
 import json
+import re
 import traceback
 from openpyxl.utils.dataframe import dataframe_to_rows
 from copy import copy
