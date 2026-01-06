@@ -13,8 +13,8 @@ import calendar
 from datetime import datetime
 from io import BytesIO
 
-from .utils.kpi_data_processor import DataProcessor
-from .utils.kpi_calculator import KPICalculator
+from .kpi_utils.kpi_data_processor import DataProcessor
+from .kpi_utils.kpi_calculator import KPICalculator
 
 
 # Danh sách GDV
