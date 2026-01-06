@@ -4,6 +4,7 @@ URL configuration for templates_app
 from django.urls import path
 from . import views
 from . import report_views
+from . import kpi_views
 
 urlpatterns = [
     # Authentication
@@ -130,4 +131,8 @@ urlpatterns = [
     path('permissions/users/<int:user_id>/superuser/', views.update_superuser_status, name='update_superuser_status'),
     path('permissions/users/<int:user_id>/groups/', views.update_user_groups, name='update_user_groups'),
     path('permissions/users/<int:user_id>/permissions/', views.get_user_permissions_detail, name='get_user_permissions_detail'),
+
+    # KPI Dashboard (Django integrated - no Streamlit)
+    path('kpi-dashboard/', kpi_views.kpi_dashboard_view, name='kpi_dashboard'),
+    path('kpi-dashboard/process/', kpi_views.kpi_process_view, name='kpi_process'),
 ]
