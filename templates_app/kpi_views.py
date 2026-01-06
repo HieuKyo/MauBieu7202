@@ -72,12 +72,19 @@ def kpi_process_view(request):
 
         # Validate and convert month/year
         try:
-            month = int(float(month_str))  # Convert via float first to handle decimal strings
-            year = int(float(year_str))
+            # Remove any locale-specific thousand separators (. or ,)
+            # Handle cases like "2.025" or "2,025" which should be "2025"
+            if month_str:
+                month_str = month_str.replace('.', '').replace(',', '')
+            if year_str:
+                year_str = year_str.replace('.', '').replace(',', '')
+
+            month = int(month_str)
+            year = int(year_str)
         except (ValueError, TypeError) as e:
             return JsonResponse({
                 'success': False,
-                'error': f'Tháng hoặc năm không hợp lệ. Vui lòng chọn lại từ dropdown.'
+                'error': f'Tháng hoặc năm không hợp lệ: {month_str}, {year_str}'
             }, status=400)
 
         # Validate ranges
