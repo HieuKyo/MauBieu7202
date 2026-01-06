@@ -2855,3 +2855,49 @@ class ReportConfiguration(models.Model):
 
     def __str__(self):
         return self.get_report_type_display()
+
+
+# ===== ATM TRANSACTION REPORT MODELS =====
+
+class ATMReportUpload(models.Model):
+    """Model để theo dõi các file báo cáo ATM đã upload"""
+    file_name = models.CharField(max_length=255, verbose_name="Tên file")
+    report_period = models.DateField(verbose_name="Kỳ báo cáo")
+    upload_date = models.DateTimeField(auto_now_add=True, verbose_name="Ngày upload")
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Người upload")
+    record_count = models.IntegerField(default=0, verbose_name="Số lượng bản ghi")
+
+    class Meta:
+        verbose_name = "File báo cáo ATM"
+        verbose_name_plural = "Lịch sử upload báo cáo ATM"
+        ordering = ['-report_period', '-upload_date']
+        unique_together = ['report_period']
+
+    def __str__(self):
+        return f"{self.file_name} - {self.report_period.strftime('%m/%Y')}"
+
+
+class ATMTransactionReport(models.Model):
+    """Model lưu trữ dữ liệu báo cáo giao dịch ATM"""
+    upload = models.ForeignKey(ATMReportUpload, on_delete=models.CASCADE, related_name='transactions', verbose_name="File upload")
+    branch_code = models.CharField(max_length=50, verbose_name="Mã chi nhánh", db_index=True)
+    atm_no = models.CharField(max_length=50, verbose_name="Số hiệu ATM", db_index=True)
+    tx_code = models.CharField(max_length=50, verbose_name="Mã giao dịch")
+    tx_count = models.IntegerField(default=0, verbose_name="Số lượng giao dịch")
+    tx_amount = models.DecimalField(max_digits=20, decimal_places=2, default=0, verbose_name="Số tiền giao dịch")
+    tx_fee = models.DecimalField(max_digits=20, decimal_places=2, default=0, verbose_name="Phí giao dịch")
+    vatamt = models.DecimalField(max_digits=20, decimal_places=2, default=0, verbose_name="VAT")
+    report_period = models.DateField(verbose_name="Kỳ báo cáo", db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+
+    class Meta:
+        verbose_name = "Giao dịch ATM"
+        verbose_name_plural = "Báo cáo giao dịch ATM"
+        ordering = ['-report_period', 'atm_no']
+        indexes = [
+            models.Index(fields=['report_period', 'atm_no']),
+            models.Index(fields=['report_period', 'branch_code']),
+        ]
+
+    def __str__(self):
+        return f"ATM {self.atm_no} - {self.report_period.strftime('%m/%Y')}"

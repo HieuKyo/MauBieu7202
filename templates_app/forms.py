@@ -420,3 +420,31 @@ class ATMDiscrepancyForm(forms.ModelForm):
                 )
 
         return cleaned_data
+
+
+# ===== ATM TRANSACTION REPORT FORMS =====
+
+class ATMReportUploadForm(forms.Form):
+    """Form upload file báo cáo ATM"""
+    excel_file = forms.FileField(
+        label='Chọn file Excel báo cáo ATM',
+        help_text='File Excel định dạng: MMYYYY.xls hoặc MMYYYY.xlsx (VD: 122025.xls)',
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.xls,.xlsx'
+        })
+    )
+
+    def clean_excel_file(self):
+        file = self.cleaned_data.get('excel_file')
+        if file:
+            # Kiểm tra extension
+            file_name = file.name
+            if not (file_name.endswith('.xls') or file_name.endswith('.xlsx')):
+                raise forms.ValidationError('File phải có định dạng .xls hoặc .xlsx')
+
+            # Kiểm tra kích thước file (max 10MB)
+            if file.size > 10 * 1024 * 1024:
+                raise forms.ValidationError('File không được vượt quá 10MB')
+
+        return file
