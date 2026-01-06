@@ -644,12 +644,19 @@ def atm_transaction_report(request):
     from django.db.models import Sum, Count, Q, Case, When, IntegerField, DecimalField
     from dateutil.relativedelta import relativedelta
 
+    # Định nghĩa mã giao dịch cho từng loại
+    # NOTE: Có thể cần điều chỉnh các mã này dựa trên dữ liệu thực tế
+    DEPOSIT_CODES = ['0210']  # Nộp tiền
+    TRANSFER_CODES = ['0220', '0230']  # Chuyển khoản (ATM Transfer Debit, ATM IBFT Debit)
+    WITHDRAWAL_CODES = ['0100', '0110']  # Rút tiền (có thể thêm các mã khác)
+    # GD khác: Tất cả các mã còn lại
+
     # Lấy tham số filter từ request
     selected_period = request.GET.get('period', '')
     selected_atm = request.GET.get('atm', '')
     selected_branch = request.GET.get('branch', '')
     period_type = request.GET.get('period_type', 'month')  # month hoặc 6months
-    tx_type_filter = request.GET.get('tx_type', '')  # deposit (0210) hoặc withdrawal (khác)
+    tx_type_filter = request.GET.get('tx_type', '')  # deposit, withdrawal, transfer, other
 
     # Lấy danh sách các kỳ báo cáo có sẵn
     available_periods = ATMReportUpload.objects.all().order_by('-report_period')
@@ -689,38 +696,80 @@ def atm_transaction_report(request):
 
     # Filter theo loại giao dịch
     if tx_type_filter == 'deposit':
-        queryset = queryset.filter(tx_code='0210')
+        queryset = queryset.filter(tx_code__in=DEPOSIT_CODES)
+    elif tx_type_filter == 'transfer':
+        queryset = queryset.filter(tx_code__in=TRANSFER_CODES)
     elif tx_type_filter == 'withdrawal':
-        queryset = queryset.exclude(tx_code='0210')
+        queryset = queryset.filter(tx_code__in=WITHDRAWAL_CODES)
+    elif tx_type_filter == 'other':
+        # GD khác: không phải deposit, transfer, withdrawal
+        all_known_codes = DEPOSIT_CODES + TRANSFER_CODES + WITHDRAWAL_CODES
+        queryset = queryset.exclude(tx_code__in=all_known_codes)
 
-    # Group by ATM_No và tính tổng riêng cho nộp/rút tiền
+    # Group by ATM_No và tính tổng riêng cho từng loại giao dịch
     report_data = queryset.values('atm_no', 'branch_code').annotate(
-        # Giao dịch nộp tiền (Tx_Code = '0210')
+        # Giao dịch nộp tiền
         deposit_count=Sum(
             Case(
-                When(tx_code='0210', then='tx_count'),
+                When(tx_code__in=DEPOSIT_CODES, then='tx_count'),
                 default=0,
                 output_field=IntegerField()
             )
         ),
         deposit_amount=Sum(
             Case(
-                When(tx_code='0210', then='tx_amount'),
+                When(tx_code__in=DEPOSIT_CODES, then='tx_amount'),
                 default=0,
                 output_field=DecimalField()
             )
         ),
-        # Giao dịch rút tiền (Tx_Code khác '0210')
+        # Giao dịch rút tiền
         withdrawal_count=Sum(
             Case(
-                When(~Q(tx_code='0210'), then='tx_count'),
+                When(tx_code__in=WITHDRAWAL_CODES, then='tx_count'),
                 default=0,
                 output_field=IntegerField()
             )
         ),
         withdrawal_amount=Sum(
             Case(
-                When(~Q(tx_code='0210'), then='tx_amount'),
+                When(tx_code__in=WITHDRAWAL_CODES, then='tx_amount'),
+                default=0,
+                output_field=DecimalField()
+            )
+        ),
+        # Giao dịch chuyển khoản
+        transfer_count=Sum(
+            Case(
+                When(tx_code__in=TRANSFER_CODES, then='tx_count'),
+                default=0,
+                output_field=IntegerField()
+            )
+        ),
+        transfer_amount=Sum(
+            Case(
+                When(tx_code__in=TRANSFER_CODES, then='tx_amount'),
+                default=0,
+                output_field=DecimalField()
+            )
+        ),
+        # Giao dịch khác
+        other_count=Sum(
+            Case(
+                When(
+                    ~Q(tx_code__in=DEPOSIT_CODES + TRANSFER_CODES + WITHDRAWAL_CODES),
+                    then='tx_count'
+                ),
+                default=0,
+                output_field=IntegerField()
+            )
+        ),
+        other_amount=Sum(
+            Case(
+                When(
+                    ~Q(tx_code__in=DEPOSIT_CODES + TRANSFER_CODES + WITHDRAWAL_CODES),
+                    then='tx_amount'
+                ),
                 default=0,
                 output_field=DecimalField()
             )
@@ -737,28 +786,62 @@ def atm_transaction_report(request):
     totals = queryset.aggregate(
         grand_deposit_count=Sum(
             Case(
-                When(tx_code='0210', then='tx_count'),
+                When(tx_code__in=DEPOSIT_CODES, then='tx_count'),
                 default=0,
                 output_field=IntegerField()
             )
         ),
         grand_deposit_amount=Sum(
             Case(
-                When(tx_code='0210', then='tx_amount'),
+                When(tx_code__in=DEPOSIT_CODES, then='tx_amount'),
                 default=0,
                 output_field=DecimalField()
             )
         ),
         grand_withdrawal_count=Sum(
             Case(
-                When(~Q(tx_code='0210'), then='tx_count'),
+                When(tx_code__in=WITHDRAWAL_CODES, then='tx_count'),
                 default=0,
                 output_field=IntegerField()
             )
         ),
         grand_withdrawal_amount=Sum(
             Case(
-                When(~Q(tx_code='0210'), then='tx_amount'),
+                When(tx_code__in=WITHDRAWAL_CODES, then='tx_amount'),
+                default=0,
+                output_field=DecimalField()
+            )
+        ),
+        grand_transfer_count=Sum(
+            Case(
+                When(tx_code__in=TRANSFER_CODES, then='tx_count'),
+                default=0,
+                output_field=IntegerField()
+            )
+        ),
+        grand_transfer_amount=Sum(
+            Case(
+                When(tx_code__in=TRANSFER_CODES, then='tx_amount'),
+                default=0,
+                output_field=DecimalField()
+            )
+        ),
+        grand_other_count=Sum(
+            Case(
+                When(
+                    ~Q(tx_code__in=DEPOSIT_CODES + TRANSFER_CODES + WITHDRAWAL_CODES),
+                    then='tx_count'
+                ),
+                default=0,
+                output_field=IntegerField()
+            )
+        ),
+        grand_other_amount=Sum(
+            Case(
+                When(
+                    ~Q(tx_code__in=DEPOSIT_CODES + TRANSFER_CODES + WITHDRAWAL_CODES),
+                    then='tx_amount'
+                ),
                 default=0,
                 output_field=DecimalField()
             )
