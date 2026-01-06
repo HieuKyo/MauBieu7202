@@ -141,7 +141,7 @@
                             <div class="text-end">
                                 <span class="badge bg-success">{{ upload.record_count }} records</span>
                                 <form method="post" action="{% url 'atm_transaction_delete' upload.id %}"
-                                      onsubmit="return confirm('Bạn có chắc muốn xóa dữ liệu tháng {{ upload.report_period|date:\"m/Y\" }}?');"
+                                      onsubmit="return confirm('Bạn có chắc muốn xóa dữ liệu tháng {{ upload.report_period|date:'m/Y' }}?');"
                                       style="display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-outline-danger mt-2">
