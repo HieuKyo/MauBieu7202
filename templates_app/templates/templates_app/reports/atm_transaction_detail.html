@@ -1,0 +1,132 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Chi tiết ATM {{ atm_no }} - Hệ thống Mẫu biểu{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stats-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid main-container">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2><i class="bi bi-credit-card-2-front"></i> Chi tiết máy ATM: {{ atm_no }}</h2>
+                <p class="mb-0">Thông tin chi tiết giao dịch theo loại</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'atm_transaction_report' %}{% if selected_period %}?period={{ selected_period }}{% endif %}"
+                   class="btn btn-light">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    {% if totals %}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h6 class="text-muted mb-2">Tổng số giao dịch</h6>
+                <h3 class="mb-0 text-primary">{{ totals.total_count|intcomma|default:"0" }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h6 class="text-muted mb-2">Tổng số tiền</h6>
+                <h3 class="mb-0 text-success">{{ totals.total_amount|floatformat:0|intcomma|default:"0" }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h6 class="text-muted mb-2">Tổng phí</h6>
+                <h3 class="mb-0 text-info">{{ totals.total_fee|floatformat:0|intcomma|default:"0" }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h6 class="text-muted mb-2">Tổng VAT</h6>
+                <h3 class="mb-0 text-warning">{{ totals.total_vat|floatformat:0|intcomma|default:"0" }}</h3>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Transaction Details Table -->
+    <div class="table-container">
+        <h5 class="mb-4"><i class="bi bi-list-ul"></i> Chi tiết theo loại giao dịch</h5>
+
+        {% if transactions %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>STT</th>
+                        <th>Mã chi nhánh</th>
+                        <th>Mã giao dịch</th>
+                        <th>Kỳ báo cáo</th>
+                        <th class="text-end">Số lượng GD</th>
+                        <th class="text-end">Số tiền GD</th>
+                        <th class="text-end">Phí GD</th>
+                        <th class="text-end">VAT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ tx.branch_code }}</strong></td>
+                        <td><span class="badge bg-primary">{{ tx.tx_code }}</span></td>
+                        <td>{{ tx.report_period|date:"m/Y" }}</td>
+                        <td class="text-end">{{ tx.tx_count|intcomma }}</td>
+                        <td class="text-end">{{ tx.tx_amount|floatformat:0|intcomma }}</td>
+                        <td class="text-end">{{ tx.tx_fee|floatformat:0|intcomma }}</td>
+                        <td class="text-end">{{ tx.vatamt|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th colspan="4" class="text-end">Tổng cộng:</th>
+                        <th class="text-end">{{ totals.total_count|intcomma }}</th>
+                        <th class="text-end">{{ totals.total_amount|floatformat:0|intcomma }}</th>
+                        <th class="text-end">{{ totals.total_fee|floatformat:0|intcomma }}</th>
+                        <th class="text-end">{{ totals.total_vat|floatformat:0|intcomma }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle"></i> Không có dữ liệu giao dịch
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
