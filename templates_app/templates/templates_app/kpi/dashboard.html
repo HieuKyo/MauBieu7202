@@ -34,6 +34,11 @@
     .coef-input {
         width: 80px;
     }
+    /* Prevent number formatting in select dropdowns */
+    select option {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum";
+    }
 </style>
 {% endblock %}
 
@@ -88,7 +93,7 @@
                         <!-- User ID -->
                         <div class="mb-3">
                             <label class="form-label fw-bold">Mã GDV</label>
-                            <select class="form-select" name="user_id" required>
+                            <select class="form-select" name="user_id" id="userIdSelect" required>
                                 <option value="">-- Chọn GDV --</option>
                                 {% for gdv in gdv_list %}
                                 <option value="{{ gdv }}">{{ gdv }}</option>
@@ -239,6 +244,39 @@
 </div>
 
 <script>
+// Hệ số KPI mặc định cho từng GDV
+const gdvCoefficients = {
+    'GRATHIEU': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
+    'GRATNNHI': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
+    'GRACACHI': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
+    'GRANSINH': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
+    'GRALTHUC': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
+    'GRATTHAO': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
+    'GRANTHAO': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
+    'GRASHANH': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 }
+};
+
+// Load hệ số KPI khi chọn GDV
+document.getElementById('userIdSelect').addEventListener('change', function(e) {
+    const selectedGdv = e.target.value;
+    if (selectedGdv && gdvCoefficients[selectedGdv]) {
+        const coef = gdvCoefficients[selectedGdv];
+        document.querySelector('input[name="coef_card"]').value = coef.card;
+        document.querySelector('input[name="coef_signature"]').value = coef.signature;
+        document.querySelector('input[name="coef_sms"]').value = coef.sms;
+        document.querySelector('input[name="coef_archive"]').value = coef.archive;
+        document.querySelector('input[name="coef_cif"]').value = coef.cif;
+
+        // Mở accordion để người dùng thấy hệ số đã được load
+        const coefficientsCollapse = document.getElementById('coefficients');
+        if (coefficientsCollapse && !coefficientsCollapse.classList.contains('show')) {
+            const bsCollapse = new bootstrap.Collapse(coefficientsCollapse, {
+                show: true
+            });
+        }
+    }
+});
+
 // File upload handlers
 const fileInputs = [
     {id: 'templateFile', infoId: 'templateInfo', areaId: 'templateUploadArea'},
