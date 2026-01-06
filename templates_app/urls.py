@@ -132,8 +132,7 @@ urlpatterns = [
     path('permissions/users/<int:user_id>/groups/', views.update_user_groups, name='update_user_groups'),
     path('permissions/users/<int:user_id>/permissions/', views.get_user_permissions_detail, name='get_user_permissions_detail'),
 
-    # KPI Dashboard
+    # KPI Dashboard (Django integrated - no Streamlit)
     path('kpi-dashboard/', kpi_views.kpi_dashboard_view, name='kpi_dashboard'),
-    path('api/kpi-dashboard/status/', kpi_views.kpi_dashboard_status, name='kpi_dashboard_status'),
-    path('api/kpi-dashboard/launch/', kpi_views.kpi_dashboard_launch, name='kpi_dashboard_launch'),
+    path('kpi-dashboard/process/', kpi_views.kpi_process_view, name='kpi_process'),
 ]
