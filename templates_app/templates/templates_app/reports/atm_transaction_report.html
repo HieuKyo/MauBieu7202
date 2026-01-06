@@ -28,7 +28,12 @@
     }
     .stats-card .stats-icon {
         font-size: 2.5rem;
-        color: #667eea;
+    }
+    .stats-card.deposit .stats-icon {
+        color: #28a745;
+    }
+    .stats-card.withdrawal .stats-icon {
+        color: #dc3545;
     }
     .table-container {
         background: white;
@@ -66,53 +71,113 @@
         </div>
     </div>
 
-    <!-- Filter Section -->
+    <!-- Advanced Filter Section -->
     <div class="filter-section">
-        <form method="get" class="row g-3 align-items-end">
-            <div class="col-md-4">
-                <label class="form-label"><i class="bi bi-calendar3"></i> Chọn kỳ báo cáo</label>
-                <select name="period" class="form-select" onchange="this.form.submit()">
-                    <option value="">-- Tất cả các kỳ --</option>
+        <h5 class="mb-3"><i class="bi bi-funnel"></i> Bộ lọc nâng cao</h5>
+        <form method="get" class="row g-3">
+            <!-- Kỳ báo cáo -->
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar3"></i> Kỳ báo cáo</label>
+                <select name="period" class="form-select">
+                    <option value="">-- Tất cả --</option>
                     {% for upload in available_periods %}
                     <option value="{{ upload.report_period|date:'Y-m-d' }}"
                             {% if selected_period == upload.report_period|date:'Y-m-d' %}selected{% endif %}>
-                        Tháng {{ upload.report_period|date:'m/Y' }} ({{ upload.record_count }} bản ghi)
+                        {{ upload.report_period|date:'m/Y' }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
-                {% if selected_period %}
-                <a href="{% url 'atm_transaction_report' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-x-circle"></i> Xóa bộ lọc
-                </a>
-                {% endif %}
+
+            <!-- Loại chu kỳ -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-calendar-range"></i> Chu kỳ</label>
+                <select name="period_type" class="form-select">
+                    <option value="month" {% if period_type == 'month' %}selected{% endif %}>Theo tháng</option>
+                    <option value="6months" {% if period_type == '6months' %}selected{% endif %}>6 tháng</option>
+                </select>
+            </div>
+
+            <!-- Chi nhánh -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-building"></i> Chi nhánh</label>
+                <select name="branch" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    {% for branch in all_branches %}
+                    <option value="{{ branch.branch_code }}"
+                            {% if selected_branch == branch.branch_code %}selected{% endif %}>
+                        {{ branch.branch_code }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Máy ATM -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-credit-card-2-front"></i> Máy ATM</label>
+                <select name="atm" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    {% for atm in all_atms %}
+                    <option value="{{ atm.atm_no }}"
+                            {% if selected_atm == atm.atm_no %}selected{% endif %}>
+                        {{ atm.atm_no }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Loại giao dịch -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-arrow-left-right"></i> Loại GD</label>
+                <select name="tx_type" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    <option value="deposit" {% if tx_type_filter == 'deposit' %}selected{% endif %}>Nộp tiền</option>
+                    <option value="withdrawal" {% if tx_type_filter == 'withdrawal' %}selected{% endif %}>Rút tiền</option>
+                </select>
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Lọc
+                </button>
             </div>
         </form>
+
+        {% if selected_period or selected_atm or selected_branch or tx_type_filter %}
+        <div class="mt-3">
+            <a href="{% url 'atm_transaction_report' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x-circle"></i> Xóa tất cả bộ lọc
+            </a>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Statistics Cards -->
     {% if totals %}
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="stats-card">
+            <div class="stats-card deposit">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted mb-1">Tổng số giao dịch</h6>
-                        <h3 class="mb-0">{{ totals.grand_total_count|intcomma|default:"0" }}</h3>
+                        <h6 class="text-muted mb-1">GD Nộp tiền</h6>
+                        <h3 class="mb-0 text-success">{{ totals.grand_deposit_count|intcomma|default:"0" }}</h3>
+                        <small class="text-muted">giao dịch</small>
                     </div>
                     <div class="stats-icon">
-                        <i class="bi bi-arrow-left-right"></i>
+                        <i class="bi bi-arrow-down-circle"></i>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stats-card">
+            <div class="stats-card deposit">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted mb-1">Tổng số tiền GD</h6>
-                        <h3 class="mb-0">{{ totals.grand_total_amount|floatformat:0|intcomma|default:"0" }}</h3>
+                        <h6 class="text-muted mb-1">Số tiền Nộp</h6>
+                        <h3 class="mb-0 text-success">{{ totals.grand_deposit_amount|floatformat:0|intcomma|default:"0" }}</h3>
+                        <small class="text-muted">VNĐ</small>
                     </div>
                     <div class="stats-icon">
                         <i class="bi bi-cash-coin"></i>
@@ -121,27 +186,29 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stats-card">
+            <div class="stats-card withdrawal">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted mb-1">Tổng phí GD</h6>
-                        <h3 class="mb-0">{{ totals.grand_total_fee|floatformat:0|intcomma|default:"0" }}</h3>
+                        <h6 class="text-muted mb-1">GD Rút tiền</h6>
+                        <h3 class="mb-0 text-danger">{{ totals.grand_withdrawal_count|intcomma|default:"0" }}</h3>
+                        <small class="text-muted">giao dịch</small>
                     </div>
                     <div class="stats-icon">
-                        <i class="bi bi-receipt"></i>
+                        <i class="bi bi-arrow-up-circle"></i>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stats-card">
+            <div class="stats-card withdrawal">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted mb-1">Tổng VAT</h6>
-                        <h3 class="mb-0">{{ totals.grand_total_vat|floatformat:0|intcomma|default:"0" }}</h3>
+                        <h6 class="text-muted mb-1">Số tiền Rút</h6>
+                        <h3 class="mb-0 text-danger">{{ totals.grand_withdrawal_amount|floatformat:0|intcomma|default:"0" }}</h3>
+                        <small class="text-muted">VNĐ</small>
                     </div>
                     <div class="stats-icon">
-                        <i class="bi bi-percent"></i>
+                        <i class="bi bi-wallet2"></i>
                     </div>
                 </div>
             </div>
@@ -164,12 +231,10 @@
                         <th>STT</th>
                         <th>Mã Chi nhánh</th>
                         <th>Số hiệu ATM</th>
-                        <th>Kỳ báo cáo</th>
-                        <th class="text-end">Số lượng GD</th>
-                        <th class="text-end">Tổng tiền GD</th>
-                        <th class="text-end">Tổng phí</th>
-                        <th class="text-end">VAT</th>
-                        <th class="text-center">Loại GD</th>
+                        <th class="text-end">Tổng GD Rút</th>
+                        <th class="text-end">Số tiền Rút</th>
+                        <th class="text-end">Tổng GD Nộp</th>
+                        <th class="text-end">Số tiền Nộp</th>
                         <th class="text-center">Chi tiết</th>
                     </tr>
                 </thead>
@@ -179,16 +244,20 @@
                         <td>{{ forloop.counter }}</td>
                         <td><strong>{{ item.branch_code }}</strong></td>
                         <td><span class="badge bg-info">{{ item.atm_no }}</span></td>
-                        <td>{{ item.report_period|date:"m/Y" }}</td>
-                        <td class="text-end">{{ item.total_tx_count|intcomma }}</td>
-                        <td class="text-end">{{ item.total_tx_amount|floatformat:0|intcomma }}</td>
-                        <td class="text-end">{{ item.total_tx_fee|floatformat:0|intcomma }}</td>
-                        <td class="text-end">{{ item.total_vatamt|floatformat:0|intcomma }}</td>
-                        <td class="text-center">
-                            <span class="badge bg-secondary">{{ item.transaction_types }}</span>
+                        <td class="text-end text-danger">
+                            <strong>{{ item.withdrawal_count|intcomma|default:"0" }}</strong>
+                        </td>
+                        <td class="text-end text-danger">
+                            {{ item.withdrawal_amount|floatformat:0|intcomma|default:"0" }}
+                        </td>
+                        <td class="text-end text-success">
+                            <strong>{{ item.deposit_count|intcomma|default:"0" }}</strong>
+                        </td>
+                        <td class="text-end text-success">
+                            {{ item.deposit_amount|floatformat:0|intcomma|default:"0" }}
                         </td>
                         <td class="text-center">
-                            <a href="{% url 'atm_transaction_detail' item.atm_no %}?period={{ item.report_period|date:'Y-m-d' }}"
+                            <a href="{% url 'atm_transaction_detail' item.atm_no %}?{% if selected_period %}period={{ selected_period }}{% endif %}"
                                class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-eye"></i> Xem
                             </a>
@@ -196,6 +265,16 @@
                     </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <th colspan="3" class="text-end">Tổng cộng:</th>
+                        <th class="text-end text-danger">{{ totals.grand_withdrawal_count|intcomma|default:"0" }}</th>
+                        <th class="text-end text-danger">{{ totals.grand_withdrawal_amount|floatformat:0|intcomma|default:"0" }}</th>
+                        <th class="text-end text-success">{{ totals.grand_deposit_count|intcomma|default:"0" }}</th>
+                        <th class="text-end text-success">{{ totals.grand_deposit_amount|floatformat:0|intcomma|default:"0" }}</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
             </table>
         </div>
         {% else %}
