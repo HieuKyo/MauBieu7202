@@ -17,6 +17,7 @@ pandas>=1.5.0
 xlrd>=2.0.0
 xlsxwriter>=3.0.0
 dbfread>=2.0.7  # For reading DBF files (dBase, FoxPro)
+django-import-export>=3.3.0  # Import/Export data from Excel, CSV
 
 # Production WSGI server (for deployment)
 # Using waitress for cross-platform compatibility (Windows/Linux)
