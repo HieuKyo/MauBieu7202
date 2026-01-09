@@ -101,6 +101,7 @@ def upload_file(request):
             )
 
             # Lưu lịch sử
+            from decimal import Decimal
             history = ProcessingHistory.objects.create(
                 filename=file.name,
                 transaction_type=transaction_type,
@@ -108,7 +109,7 @@ def upload_file(request):
                 total_records=result.get('total_records', 0),
                 successful_records=result.get('total_records', 0) if result['success'] else 0,
                 failed_records=0 if result['success'] else result.get('total_records', 0),
-                total_amount=result.get('total_amount', 0),
+                total_amount=Decimal(str(result.get('total_amount', 0))),
                 duplicate_accounts=','.join(map(str, result.get('duplicate_accounts', []))),
                 status='SUCCESS' if result['success'] else 'ERROR',
                 error_message='\n'.join(result.get('errors', [])),
