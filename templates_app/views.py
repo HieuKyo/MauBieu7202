@@ -254,15 +254,17 @@ def generate_document_view(request, template_id):
         branch_config = BranchConfig.get_for_user(request.user)
         data.update(branch_config.get_all_variables())
 
-        # Thêm date variables nếu có customer
+        # Merge toàn bộ customer data nếu có customer
+        # Customer data có priority thấp hơn - không overwrite form data
         if customer_id:
             try:
                 customer = Customer.objects.get(id=customer_id)
                 customer_data = customer.get_data_dict()
-                # Thêm các biến d1, d2, m1, m2, y1, y2, y3, y4
-                for key in ['d1', 'd2', 'm1', 'm2', 'y1', 'y2', 'y3', 'y4']:
-                    if key in customer_data:
-                        data[key] = customer_data[key]
+                # Merge: customer data first, then overlay with session data
+                # This ensures form inputs take precedence over customer defaults
+                for key, value in customer_data.items():
+                    if key not in data or data[key] in ('', None):
+                        data[key] = value
             except Customer.DoesNotExist:
                 pass
 
@@ -1660,6 +1662,16 @@ def generate_document_direct(request, template_id):
         # Card
         data['loai_the'] = request.POST.get('loai_the', '')
         data['hang_the'] = request.POST.get('hang_the', '')
+        data['so_the_atm'] = request.POST.get('so_the_atm', '')
+        data['so_the'] = data['so_the_atm']  # Alias for convenience
+
+        # FIX: Split card number into individual digits (sothe_1 to sothe_16)
+        so_the = data['so_the_atm'] or ''
+        so_the_cleaned = ''.join(filter(str.isdigit, so_the))
+        so_the_padded = so_the_cleaned.ljust(16)
+        for i in range(1, 17):
+            data[f'sothe_{i}'] = so_the_padded[i-1] if i <= len(so_the_cleaned) else ''
+
         # FIX: Auto-fill ten_the_1 and ten_the_2 from card_name_source (ten_tieng_anh)
         data['ten_the_1'] = card_name_source  # For first card name table
         data['ten_the_2'] = card_name_source  # For second card name table

@@ -764,6 +764,7 @@ class Customer(models.Model):
             'loai_the': self.loai_the or '',
             'hang_the': self.hang_the or '',
             'so_the_atm': self.so_the_atm or '',
+            'so_the': self.so_the_atm or '',  # Alias for convenience
             'thoi_han_the': self.thoi_han_the or '',
             'ngay_tra_the': self.ngay_tra_the.strftime('%d/%m/%Y') if self.ngay_tra_the else '',
             'loai_phi': self.loai_phi or '',
