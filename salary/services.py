@@ -73,7 +73,7 @@ class SalaryFileProcessor:
     def process_excel_file(self, file_path, transaction_type, company_account=None):
         """Xu ly file Excel/CSV - Su dung logic code cu"""
         try:
-            from datetime import datetime
+            from django.utils import timezone
 
             # Doc file KHONG CO header (nhu code cu)
             if file_path.endswith('.csv'):
@@ -96,7 +96,7 @@ class SalaryFileProcessor:
                 return {'success': False, 'errors': self.errors, 'warnings': self.warnings}
 
             company_name_unsigned = self.normalize_text(company_account.account_name)
-            current_date = datetime.now().strftime('%Y%m%d')
+            current_date = timezone.now().strftime('%Y%m%d')
 
             successful_rows = []
             error_rows = []
@@ -298,10 +298,11 @@ class SalaryStatisticsService:
         """Lay thong ke theo khoang thoi gian"""
         from django.db.models import Sum, Count
         from django.db.models.functions import Coalesce
-        from datetime import datetime, timedelta
+        from django.utils import timezone
+        from datetime import timedelta
 
         if not start_date:
-            today = datetime.now()
+            today = timezone.now()
             if period == 'week':
                 start_date = today - timedelta(days=7)
             elif period == 'month':

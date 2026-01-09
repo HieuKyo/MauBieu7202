@@ -38,8 +38,8 @@ def dashboard(request):
             filter_year = ''
 
     # Tạo danh sách năm (từ 2020 đến năm hiện tại + 1)
-    from datetime import datetime
-    current_year = datetime.now().year
+    from django.utils import timezone
+    current_year = timezone.now().year
     years_range = range(2020, current_year + 2)
 
     # Lấy thống kê
