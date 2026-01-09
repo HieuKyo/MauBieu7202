@@ -13,8 +13,8 @@ import calendar
 from datetime import datetime
 from io import BytesIO
 
-from .utils.kpi_data_processor import DataProcessor
-from .utils.kpi_calculator import KPICalculator
+from .kpi_utils.kpi_data_processor import DataProcessor
+from .kpi_utils.kpi_calculator import KPICalculator
 
 
 # Danh sách GDV
@@ -52,6 +52,7 @@ def kpi_dashboard_view(request):
         'gdv_list': GDV_LIST,
         'current_month': current_month,
         'current_year': current_year,
+        'year_range': range(2020, 2031),  # 2020 to 2030
         'coefficients': DEFAULT_COEFFICIENTS,
     }
     return render(request, 'templates_app/kpi/dashboard.html', context)
@@ -64,10 +65,40 @@ def kpi_process_view(request):
     Process KPI calculation and return Excel file
     """
     try:
-        # Get form data
-        month = int(request.POST.get('month'))
-        year = int(request.POST.get('year'))
+        # Get form data with validation
+        month_str = request.POST.get('month')
+        year_str = request.POST.get('year')
         user_id = request.POST.get('user_id')
+
+        # Validate and convert month/year
+        try:
+            # Remove any locale-specific thousand separators (. or ,)
+            # Handle cases like "2.025" or "2,025" which should be "2025"
+            if month_str:
+                month_str = month_str.replace('.', '').replace(',', '')
+            if year_str:
+                year_str = year_str.replace('.', '').replace(',', '')
+
+            month = int(month_str)
+            year = int(year_str)
+        except (ValueError, TypeError) as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Tháng hoặc năm không hợp lệ: {month_str}, {year_str}'
+            }, status=400)
+
+        # Validate ranges
+        if not (1 <= month <= 12):
+            return JsonResponse({
+                'success': False,
+                'error': 'Tháng phải từ 1 đến 12.'
+            }, status=400)
+
+        if not (2020 <= year <= 2030):
+            return JsonResponse({
+                'success': False,
+                'error': 'Năm phải từ 2020 đến 2030.'
+            }, status=400)
 
         # Get coefficients (with defaults)
         coefficients = {

@@ -1,0 +1,342 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Báo cáo Nộp/rút ATM - Hệ thống Mẫu biểu{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stats-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .stats-card .stats-icon {
+        font-size: 2.5rem;
+    }
+    .stats-card.deposit .stats-icon {
+        color: #28a745;
+    }
+    .stats-card.withdrawal .stats-icon {
+        color: #dc3545;
+    }
+    .stats-card.transfer .stats-icon {
+        color: #007bff;
+    }
+    .stats-card.other .stats-icon {
+        color: #6c757d;
+    }
+    .table-container {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .filter-section {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid main-container">
+    <!-- Header -->
+    <div class="report-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2><i class="bi bi-cash-stack"></i> Báo cáo Nộp/rút ATM</h2>
+                <p class="mb-0">Theo dõi và phân tích giao dịch ATM theo kỳ báo cáo</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'report_hub' %}" class="btn btn-outline-light me-2">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+                <a href="{% url 'atm_transaction_import' %}" class="btn btn-light btn-lg">
+                    <i class="bi bi-cloud-upload"></i> Import dữ liệu
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Filter Section -->
+    <div class="filter-section">
+        <h5 class="mb-3"><i class="bi bi-funnel"></i> Bộ lọc nâng cao</h5>
+        <form method="get" class="row g-3">
+            <!-- Kỳ báo cáo -->
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar3"></i> Kỳ báo cáo</label>
+                <select name="period" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    {% for upload in available_periods %}
+                    <option value="{{ upload.report_period|date:'Y-m-d' }}"
+                            {% if selected_period == upload.report_period|date:'Y-m-d' %}selected{% endif %}>
+                        {{ upload.report_period|date:'m/Y' }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Loại chu kỳ -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-calendar-range"></i> Chu kỳ</label>
+                <select name="period_type" class="form-select">
+                    <option value="month" {% if period_type == 'month' %}selected{% endif %}>Theo tháng</option>
+                    <option value="6months" {% if period_type == '6months' %}selected{% endif %}>6 tháng</option>
+                </select>
+            </div>
+
+            <!-- Chi nhánh -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-building"></i> Chi nhánh</label>
+                <select name="branch" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    {% for branch in all_branches %}
+                    <option value="{{ branch.branch_code }}"
+                            {% if selected_branch == branch.branch_code %}selected{% endif %}>
+                        {{ branch.branch_code }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Máy ATM -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-credit-card-2-front"></i> Máy ATM</label>
+                <select name="atm" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    {% for atm in all_atms %}
+                    <option value="{{ atm.atm_no }}"
+                            {% if selected_atm == atm.atm_no %}selected{% endif %}>
+                        {{ atm.atm_no }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Loại giao dịch -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-arrow-left-right"></i> Loại GD</label>
+                <select name="tx_type" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    <option value="deposit" {% if tx_type_filter == 'deposit' %}selected{% endif %}>Nộp tiền</option>
+                    <option value="withdrawal" {% if tx_type_filter == 'withdrawal' %}selected{% endif %}>Rút tiền</option>
+                    <option value="transfer" {% if tx_type_filter == 'transfer' %}selected{% endif %}>Chuyển khoản</option>
+                    <option value="other" {% if tx_type_filter == 'other' %}selected{% endif %}>GD khác</option>
+                </select>
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Lọc
+                </button>
+            </div>
+        </form>
+
+        {% if selected_period or selected_atm or selected_branch or tx_type_filter %}
+        <div class="mt-3">
+            <a href="{% url 'atm_transaction_report' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x-circle"></i> Xóa tất cả bộ lọc
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Statistics Cards -->
+    {% if totals %}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card deposit">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">GD Nộp tiền</h6>
+                        <h3 class="mb-0 text-success">{{ totals.grand_deposit_count|intcomma|default:"0" }}</h3>
+                        <small class="text-muted">{{ totals.grand_deposit_amount|floatformat:0|intcomma|default:"0" }} VNĐ</small>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="bi bi-arrow-down-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card withdrawal">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">GD Rút tiền</h6>
+                        <h3 class="mb-0 text-danger">{{ totals.grand_withdrawal_count|intcomma|default:"0" }}</h3>
+                        <small class="text-muted">{{ totals.grand_withdrawal_amount|floatformat:0|intcomma|default:"0" }} VNĐ</small>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="bi bi-arrow-up-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card transfer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">GD Chuyển khoản</h6>
+                        <h3 class="mb-0 text-primary">{{ totals.grand_transfer_count|intcomma|default:"0" }}</h3>
+                        <small class="text-muted">{{ totals.grand_transfer_amount|floatformat:0|intcomma|default:"0" }} VNĐ</small>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="bi bi-arrow-left-right"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card other">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">GD Khác</h6>
+                        <h3 class="mb-0 text-secondary">{{ totals.grand_other_count|intcomma|default:"0" }}</h3>
+                        <small class="text-muted">{{ totals.grand_other_amount|floatformat:0|intcomma|default:"0" }} VNĐ</small>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="bi bi-three-dots"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Report Table -->
+    <div class="table-container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5><i class="bi bi-table"></i> Báo cáo tổng hợp theo máy ATM</h5>
+            <span class="badge bg-primary">{{ record_count }} máy ATM</span>
+        </div>
+
+        {% if report_data %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th rowspan="2" class="align-middle">STT</th>
+                        <th rowspan="2" class="align-middle">Mã Chi nhánh</th>
+                        <th rowspan="2" class="align-middle">Số hiệu ATM</th>
+                        <th colspan="2" class="text-center">Rút tiền</th>
+                        <th colspan="2" class="text-center">Nộp tiền</th>
+                        <th colspan="2" class="text-center">Chuyển khoản</th>
+                        <th colspan="2" class="text-center">GD Khác</th>
+                        <th rowspan="2" class="align-middle text-center">Chi tiết</th>
+                    </tr>
+                    <tr>
+                        <th class="text-end">Số GD</th>
+                        <th class="text-end">Số tiền</th>
+                        <th class="text-end">Số GD</th>
+                        <th class="text-end">Số tiền</th>
+                        <th class="text-end">Số GD</th>
+                        <th class="text-end">Số tiền</th>
+                        <th class="text-end">Số GD</th>
+                        <th class="text-end">Số tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in report_data %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ item.branch_code }}</strong></td>
+                        <td><span class="badge bg-info">{{ item.atm_no }}</span></td>
+                        <!-- Rút tiền -->
+                        <td class="text-end text-danger">
+                            <strong>{{ item.withdrawal_count|intcomma|default:"0" }}</strong>
+                        </td>
+                        <td class="text-end text-danger">
+                            {{ item.withdrawal_amount|floatformat:0|intcomma|default:"0" }}
+                        </td>
+                        <!-- Nộp tiền -->
+                        <td class="text-end text-success">
+                            <strong>{{ item.deposit_count|intcomma|default:"0" }}</strong>
+                        </td>
+                        <td class="text-end text-success">
+                            {{ item.deposit_amount|floatformat:0|intcomma|default:"0" }}
+                        </td>
+                        <!-- Chuyển khoản -->
+                        <td class="text-end text-primary">
+                            <strong>{{ item.transfer_count|intcomma|default:"0" }}</strong>
+                        </td>
+                        <td class="text-end text-primary">
+                            {{ item.transfer_amount|floatformat:0|intcomma|default:"0" }}
+                        </td>
+                        <!-- GD Khác -->
+                        <td class="text-end text-secondary">
+                            <strong>{{ item.other_count|intcomma|default:"0" }}</strong>
+                        </td>
+                        <td class="text-end text-secondary">
+                            {{ item.other_amount|floatformat:0|intcomma|default:"0" }}
+                        </td>
+                        <!-- Chi tiết -->
+                        <td class="text-center">
+                            <a href="{% url 'atm_transaction_detail' item.atm_no %}?{% if selected_period %}period={{ selected_period }}{% endif %}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <th colspan="3" class="text-end">Tổng cộng:</th>
+                        <!-- Rút tiền -->
+                        <th class="text-end text-danger">{{ totals.grand_withdrawal_count|intcomma|default:"0" }}</th>
+                        <th class="text-end text-danger">{{ totals.grand_withdrawal_amount|floatformat:0|intcomma|default:"0" }}</th>
+                        <!-- Nộp tiền -->
+                        <th class="text-end text-success">{{ totals.grand_deposit_count|intcomma|default:"0" }}</th>
+                        <th class="text-end text-success">{{ totals.grand_deposit_amount|floatformat:0|intcomma|default:"0" }}</th>
+                        <!-- Chuyển khoản -->
+                        <th class="text-end text-primary">{{ totals.grand_transfer_count|intcomma|default:"0" }}</th>
+                        <th class="text-end text-primary">{{ totals.grand_transfer_amount|floatformat:0|intcomma|default:"0" }}</th>
+                        <!-- GD Khác -->
+                        <th class="text-end text-secondary">{{ totals.grand_other_count|intcomma|default:"0" }}</th>
+                        <th class="text-end text-secondary">{{ totals.grand_other_amount|floatformat:0|intcomma|default:"0" }}</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Legend -->
+        <div class="mt-3">
+            <small class="text-muted">
+                <strong>Ghi chú:</strong>
+                <span class="text-success">■ Nộp tiền (Tx_Code: 0210)</span> |
+                <span class="text-danger">■ Rút tiền (ATM Withdrawal)</span> |
+                <span class="text-primary">■ Chuyển khoản (ATM Transfer Debit, ATM IBFT Debit)</span> |
+                <span class="text-secondary">■ GD Khác (Các Tx_Code còn lại)</span>
+            </small>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle"></i>
+            Chưa có dữ liệu báo cáo. Vui lòng <a href="{% url 'atm_transaction_import' %}">import dữ liệu</a> để bắt đầu.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -7,62 +7,88 @@
 <style>
     /* Print styles - A5 Landscape (210mm x 148mm) */
     @media print {
-        /* Hide non-printable elements */
-        nav, .breadcrumb, .no-print, .btn, .card-header, footer {
+        /* 1. Xóa lề trắng mặc định của trình duyệt (Vùng A và B của bạn) */
+        @page {
+            size: A5 landscape;   /* Khổ A5 Ngang */
+            margin: 0mm;          /* Xóa sạch lề mặc định */
+        }
+
+        /* 2. Thiết lập khung trang in */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+            /* Padding 10mm xung quanh để nội dung không sát mép giấy quá */
+            padding: 10mm; 
+            width: 210mm; /* Chiều rộng A5 */
+            height: 148mm; /* Chiều cao A5 */
+            box-sizing: border-box; /* Tính padding vào trong kích thước */
+        }
+
+        /* Ẩn các thành phần thừa */
+        nav, .breadcrumb, .no-print, .btn, .card-header, footer, .alert {
             display: none !important;
         }
 
-        /* Reset body and card styles for print */
-        body {
-            background-color: white !important;
-            margin: 0;
-            padding: 0;
-        }
-
-        /* A5 Landscape page setup */
-        @page {
-            size: A5 landscape;
-            margin: 10mm 5mm; /* top/bottom 10mm, left/right 5mm (0.5cm) */
-        }
-
-        .card {
+        /* Reset container của Bootstrap */
+        .container, .card, .card-body, .print-container {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             border: none !important;
             box-shadow: none !important;
         }
 
-        .card-body {
-            padding: 0 !important;
-        }
-
-        /* Page break settings */
-        .print-section {
-            page-break-inside: avoid;
-        }
-
-        /* Images in horizontal layout */
-        .id-image-row {
+        /* --- PHẦN XỬ LÝ ẢNH CCCD --- */
+        
+        /* Khung bao quanh 2 ảnh */
+        .cccd-images-wrapper {
             display: flex !important;
-            justify-content: space-between !important;
-            gap: 8px !important;
-            margin-bottom: 15px !important;
+            flex-direction: row !important; /* Xếp ngang */
+            flex-wrap: nowrap !important;   /* KHÔNG cho phép xuống dòng */
+            justify-content: space-between !important; /* Căn đều 2 bên */
+            align-items: center !important;
+            width: 100% !important;
+            /* Giảm chiều cao xuống 70mm (nhỏ hơn cũ) để chừa chỗ cho chữ ký */
+            height: 70mm !important; 
+            margin-bottom: 5mm !important; /* Khoảng cách với phần chữ ký */
         }
 
+        /* Khung từng ảnh lẻ */
         .id-image-container {
-            flex: 1 !important;
-            margin-bottom: 0 !important;
+            /* Đặt độ rộng 48% để tổng 2 ảnh = 96%, còn dư 4% làm khe hở giữa */
+            width: 48% !important; 
+            height: 100% !important;
+            border: 1px solid #ccc !important; /* Viền mờ để dễ nhìn khung */
+            background-color: #f8f9fa !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            padding: 2mm !important; /* Padding nhỏ bên trong khung ảnh */
         }
 
+        /* Ảnh thật */
         .id-image {
             width: 100% !important;
-            height: auto !important;
-            max-height: 100mm !important;
-            object-fit: contain !important;
+            height: 100% !important;
+            object-fit: contain !important; /* Giữ nguyên tỉ lệ ảnh, không bị méo */
         }
 
-        /* Center certification text */
+        /* --- PHẦN CHỮ KÝ --- */
         .certification-text {
             text-align: center !important;
-            margin-top: 10px !important;
+            width: 100% !important;
+        }
+
+        .certification-text p {
+            margin: 3px 0 !important;
+            font-size: 13pt !important;
+            line-height: 1.3 !important;
+        }
+        
+        /* Ẩn tiêu đề "Ảnh mặt trước/sau" khi in để tiết kiệm chỗ */
+        h6 {
+            display: none !important; 
         }
     }
 
@@ -76,17 +102,38 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
-        .id-image-container {
-            text-align: center;
+        .cccd-images-wrapper {
+            width: 100%;
+            min-height: 400px;
             margin-bottom: 30px;
         }
 
-        .id-image {
-            max-width: 100%;
-            height: auto;
+        .id-image-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .id-image-container {
+            flex: 1 1 45%;
+            text-align: center;
+            margin-bottom: 30px;
+            background-color: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 10px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .id-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
         }
 
         .certification-text {
@@ -195,10 +242,12 @@
 
                     <!-- Printable Content -->
                     <div class="print-container">
-                        <!-- ID Images Row - Horizontal Layout for A5 -->
-                        <div class="id-image-row row">
-                            <!-- Front ID Image (Left) -->
-                            <div class="col-md-6 print-section id-image-container">
+                        <!-- CCCD Images Wrapper - Container chứa cả 2 ảnh -->
+                        <div class="cccd-images-wrapper">
+                            <!-- ID Images Row - Horizontal Layout for A5 -->
+                            <div class="id-image-row">
+                                <!-- Front ID Image (Left) -->
+                                <div class="print-section id-image-container">
                                 <h6 class="text-center mb-3 no-print"><strong>Ảnh mặt trước CCCD</strong></h6>
                                 {% if customer.img_id_front %}
                                     <img src="{{ customer.img_id_front.url }}" alt="Mặt trước CCCD" class="id-image">
@@ -211,7 +260,7 @@
                             </div>
 
                             <!-- Back ID Image (Right) -->
-                            <div class="col-md-6 print-section id-image-container">
+                            <div class="print-section id-image-container">
                                 <h6 class="text-center mb-3 no-print"><strong>Ảnh mặt sau CCCD</strong></h6>
                                 {% if customer.img_id_back %}
                                     <img src="{{ customer.img_id_back.url }}" alt="Mặt sau CCCD" class="id-image">
@@ -222,7 +271,9 @@
                                     </div>
                                 {% endif %}
                             </div>
+                            </div>
                         </div>
+                        <!-- End CCCD Images Wrapper -->
 
                         <!-- Portrait (Optional - can be hidden if not needed for print) -->
                         {% if customer.img_portrait %}

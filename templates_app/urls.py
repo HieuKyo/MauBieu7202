@@ -135,4 +135,10 @@ urlpatterns = [
     # KPI Dashboard (Django integrated - no Streamlit)
     path('kpi-dashboard/', kpi_views.kpi_dashboard_view, name='kpi_dashboard'),
     path('kpi-dashboard/process/', kpi_views.kpi_process_view, name='kpi_process'),
+
+    # ATM Transaction Report (trong hệ thống báo cáo)
+    path('reports/atm-transaction/', report_views.atm_transaction_report, name='atm_transaction_report'),
+    path('reports/atm-transaction/import/', report_views.atm_transaction_import, name='atm_transaction_import'),
+    path('reports/atm-transaction/delete/<int:upload_id>/', report_views.atm_transaction_delete, name='atm_transaction_delete'),
+    path('reports/atm-transaction/detail/<str:atm_no>/', report_views.atm_transaction_detail, name='atm_transaction_detail'),
 ]

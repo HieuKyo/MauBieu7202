@@ -72,6 +72,7 @@ class KPICalculator:
     def _map_day_columns(self):
         """
         Tạo mapping giữa ngày (1-31) và cột Excel
+        Dữ liệu bắt đầu từ cột F (ngày 1)
         """
         if self.header_row is None:
             raise ValueError("Không tìm thấy dòng header chứa các ngày!")
@@ -82,18 +83,33 @@ class KPICalculator:
             cell_value = self.ws.cell(self.header_row, col_idx).value
             if isinstance(cell_value, (int, float)) and 1 <= cell_value <= 31:
                 day = int(cell_value)
-                self.day_columns[day] = get_column_letter(col_idx)
+                col_letter = get_column_letter(col_idx)
+                self.day_columns[day] = col_letter
+
+        # Debug: In ra mapping ngày → cột
+        print(f"\n📅 Debug - Header row: Dòng {self.header_row}")
+        if 1 in self.day_columns:
+            print(f"✓ Ngày 1 → Cột {self.day_columns[1]} (Ô {self.day_columns[1]}{self.header_row})")
+        print(f"   Tổng số ngày tìm thấy: {len(self.day_columns)}")
+        if self.day_columns:
+            first_day = min(self.day_columns.keys())
+            last_day = max(self.day_columns.keys())
+            print(f"   Từ ngày {first_day} (cột {self.day_columns[first_day]}) đến ngày {last_day} (cột {self.day_columns[last_day]})")
+        print()
 
     def _find_kpi_rows(self):
         """
         Tìm các dòng KPI dựa trên STT hoặc từ khóa
 
-        Tìm:
-        - STT 1 (CIF): "Đăng ký TT KH cá nhân"
-        - STT 3 (Signature): "Quét chữ ký"
-        - STT 4 (Archive): "lưu trữ"
-        - STT 9 (SMS): "SMS"
-        - STT 12 (Card): "Phát hành thẻ"
+        Theo quy tắc mới:
+        - STT 1: "Đăng ký TT KH cá nhân" → CIF cá nhân
+        - STT 2: "Đăng ký TT KH tổ chức" → CIF tổ chức
+        - STT 3: "Quét chữ ký KH (TGTT, TGTK)" → Signature
+        - STT 4: "GDV lưu trữ HS mở TK, PH thẻ, SMS" → Archive
+        - STT 9: "Đăng ký SMS (TGTT, Loan)" → SMS Banking
+        - STT 12: "Phát hành thẻ" → Card
+
+        Dữ liệu bắt đầu từ ô F9 (cột F, dòng 9)
         """
         self.kpi_rows = {}
 
@@ -116,13 +132,14 @@ class KPICalculator:
                     content_value = cell_value.lower()
 
             # Mapping dựa trên STT - ưu tiên STT trước, sau đó mới dùng từ khóa
-            # STT 12: Phát hành thẻ (kiểm tra TRƯỚC để tránh conflict)
-            if stt_value == 12:
-                self.kpi_rows['card'] = row_idx
+            # STT 1: Đăng ký TT KH cá nhân
+            if stt_value == 1:
+                self.kpi_rows['cif_personal'] = row_idx
+                self.kpi_rows['cif'] = row_idx  # Giữ backward compatibility
 
-            # STT 1: CIF
-            elif stt_value == 1:
-                self.kpi_rows['cif'] = row_idx
+            # STT 2: Đăng ký TT KH tổ chức
+            elif stt_value == 2:
+                self.kpi_rows['cif_corporate'] = row_idx
 
             # STT 3: Quét chữ ký
             elif stt_value == 3:
@@ -136,36 +153,51 @@ class KPICalculator:
             elif stt_value == 9:
                 self.kpi_rows['sms'] = row_idx
 
+            # STT 12: Phát hành thẻ
+            elif stt_value == 12:
+                self.kpi_rows['card'] = row_idx
+
             # Fallback: Tìm theo từ khóa nếu chưa tìm thấy qua STT
             elif content_value:
-                # Tìm dòng Phát hành thẻ (nếu chưa có)
-                if 'card' not in self.kpi_rows and 'phát hành thẻ' in content_value:
-                    self.kpi_rows['card'] = row_idx
-
-                # Tìm dòng CIF (nếu chưa có)
-                elif 'cif' not in self.kpi_rows and 'đăng ký tt kh' in content_value:
+                # STT 1: CIF cá nhân
+                if 'cif_personal' not in self.kpi_rows and 'cá nhân' in content_value and 'đăng ký' in content_value:
+                    self.kpi_rows['cif_personal'] = row_idx
                     self.kpi_rows['cif'] = row_idx
 
-                # Tìm dòng Chữ ký (nếu chưa có)
+                # STT 2: CIF tổ chức
+                elif 'cif_corporate' not in self.kpi_rows and 'tổ chức' in content_value and 'đăng ký' in content_value:
+                    self.kpi_rows['cif_corporate'] = row_idx
+
+                # STT 3: Quét chữ ký
                 elif 'signature' not in self.kpi_rows and 'quét chữ ký' in content_value:
                     self.kpi_rows['signature'] = row_idx
 
-                # Tìm dòng Lưu trữ (nếu chưa có)
+                # STT 4: Lưu trữ
                 elif 'archive' not in self.kpi_rows and 'lưu trữ' in content_value and 'gdv' in content_value:
                     self.kpi_rows['archive'] = row_idx
 
-                # Tìm dòng SMS (nếu chưa có) - CẨN THẬN với từ khóa SMS
+                # STT 9: SMS
                 elif 'sms' not in self.kpi_rows and 'đăng ký sms' in content_value:
                     self.kpi_rows['sms'] = row_idx
 
+                # STT 12: Phát hành thẻ
+                elif 'card' not in self.kpi_rows and 'phát hành thẻ' in content_value:
+                    self.kpi_rows['card'] = row_idx
+
         # Debug: In ra các dòng đã tìm thấy
         print("\n📋 Debug - Các dòng KPI đã tìm thấy:")
-        for key, row in self.kpi_rows.items():
-            cell_content = self.ws.cell(row, 3).value  # Cột C thường chứa nội dung
-            print(f"  - {key.upper()}: Dòng {row} - '{cell_content}'")
+        for key, row in sorted(self.kpi_rows.items(), key=lambda x: x[1]):
+            # Tìm nội dung từ các cột
+            content = ""
+            for col_idx in range(1, 6):
+                val = self.ws.cell(row, col_idx).value
+                if val and len(str(val)) > 5:
+                    content = str(val)
+                    break
+            print(f"  - {key.upper()}: Dòng {row} - '{content}'")
         print()
 
-    def _update_cell(self, row, day, value):
+    def _update_cell(self, row, day, value, debug_label=""):
         """
         Cập nhật giá trị vào một ô cụ thể
 
@@ -173,13 +205,19 @@ class KPICalculator:
             row: Số dòng
             day: Ngày (1-31)
             value: Giá trị cần ghi
+            debug_label: Label để debug (tùy chọn)
         """
         if day not in self.day_columns:
             return  # Bỏ qua nếu không có cột cho ngày này
 
         col_letter = self.day_columns[day]
-        cell = self.ws[f"{col_letter}{row}"]
+        cell_ref = f"{col_letter}{row}"
+        cell = self.ws[cell_ref]
         cell.value = value if value > 0 else None
+
+        # Debug ô đầu tiên được điền
+        if day == 1 and value and value > 0:
+            print(f"   ✍️  {debug_label or 'Dữ liệu'}: Ô {cell_ref} = {value}")
 
     def _update_row_totals(self, row, coefficient):
         """
@@ -271,7 +309,13 @@ class KPICalculator:
         if not self.kpi_rows:
             raise ValueError("Không tìm thấy các dòng KPI trong file mẫu!")
 
+        # Debug: In ra ô đầu tiên sẽ được điền
+        if 1 in self.day_columns and 'cif' in self.kpi_rows:
+            first_cell = f"{self.day_columns[1]}{self.kpi_rows['cif']}"
+            print(f"\n✅ Ô đầu tiên sẽ điền dữ liệu: {first_cell} (Ngày 1, STT 1 - CIF cá nhân)")
+
         # Duyệt qua từng ngày và cập nhật
+        print(f"\n📊 Bắt đầu điền dữ liệu cho {days_in_month} ngày...")
         for day in range(1, days_in_month + 1):
             # Lấy dữ liệu cho ngày này
             card_count = self._get_count(card_data, day, 'count')
@@ -279,27 +323,40 @@ class KPICalculator:
             sms_count = self._get_count(sms_data, day, 'count')
             emobile_count = self._get_count(emobile_data, day, 'count')
 
-            # Cập nhật các dòng KPI
-            # STT 12: Phát hành thẻ
-            if 'card' in self.kpi_rows:
-                self._update_cell(self.kpi_rows['card'], day, card_count)
+            # Cập nhật các dòng KPI theo thứ tự STT
+
+            # STT 1: Đăng ký TT KH cá nhân (CIF cá nhân = New Issue)
+            if 'cif' in self.kpi_rows:
+                self._update_cell(self.kpi_rows['cif'], day, new_issue_count,
+                                 debug_label="STT 1 - CIF cá nhân")
+
+            # STT 2: Đăng ký TT KH tổ chức (chưa có data, để 0 hoặc skip)
+            # if 'cif_corporate' in self.kpi_rows:
+            #     self._update_cell(self.kpi_rows['cif_corporate'], day, 0,
+            #                      debug_label="STT 2 - CIF tổ chức")
 
             # STT 3: Quét chữ ký (= New Issue * 2)
             if 'signature' in self.kpi_rows:
-                self._update_cell(self.kpi_rows['signature'], day, new_issue_count * 2)
-
-            # STT 1: CIF mới (= New Issue)
-            if 'cif' in self.kpi_rows:
-                self._update_cell(self.kpi_rows['cif'], day, new_issue_count)
-
-            # STT 9: Đăng ký SMS
-            if 'sms' in self.kpi_rows:
-                self._update_cell(self.kpi_rows['sms'], day, sms_count)
+                self._update_cell(self.kpi_rows['signature'], day, new_issue_count * 2,
+                                 debug_label="STT 3 - Quét chữ ký")
 
             # STT 4: Lưu trữ hồ sơ (= Card + SMS + E-Mobile)
             if 'archive' in self.kpi_rows:
                 archive_count = card_count + sms_count + emobile_count
-                self._update_cell(self.kpi_rows['archive'], day, archive_count)
+                self._update_cell(self.kpi_rows['archive'], day, archive_count,
+                                 debug_label="STT 4 - Lưu trữ HS")
+
+            # STT 9: Đăng ký SMS
+            if 'sms' in self.kpi_rows:
+                self._update_cell(self.kpi_rows['sms'], day, sms_count,
+                                 debug_label="STT 9 - SMS Banking")
+
+            # STT 12: Phát hành thẻ
+            if 'card' in self.kpi_rows:
+                self._update_cell(self.kpi_rows['card'], day, card_count,
+                                 debug_label="STT 12 - Phát hành thẻ")
+
+        print(f"✅ Hoàn thành điền dữ liệu {days_in_month} ngày!\n")
 
         # Cập nhật tổng cho từng dòng
         if 'card' in self.kpi_rows:

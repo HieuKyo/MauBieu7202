@@ -1,0 +1,150 @@
+{% extends 'kpi_tool/base.html' %}
+
+{% block title %}Upload file DBF - Quy đổi bút toán{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card shadow">
+            <div class="card-header" style="background-color: #AE1C3F; color: white;">
+                <h4 class="mb-0">
+                    <i class="bi bi-cloud-upload"></i> Upload file nhật ký giao dịch
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> Hướng dẫn:</h6>
+                    <ul class="mb-0">
+                        <li>Chọn một hoặc nhiều file nhật ký giao dịch (.DBF)</li>
+                        <li>Tên file phải theo format: <strong>[USER_ID][DDMMYYYY].DBF</strong></li>
+                        <li>Ví dụ: <code>GRATHIEU26092025.DBF</code></li>
+                        <li>Hệ thống sẽ tự động phân tích và tính điểm KPI</li>
+                    </ul>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label for="teller_name" class="form-label">
+                            <i class="bi bi-person"></i> Tên giao dịch viên (tùy chọn)
+                        </label>
+                        <input type="text" class="form-control" id="teller_name" name="teller_name"
+                               placeholder="Nếu không nhập, sẽ dùng mã từ tên file">
+                        <small class="form-text text-muted">
+                            Nếu bạn để trống, hệ thống sẽ sử dụng mã giao dịch viên từ tên file
+                        </small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="dbf_files" class="form-label">
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Chọn file DBF
+                        </label>
+                        <input type="file" class="form-control" id="dbf_files" name="dbf_files"
+                               multiple accept=".dbf,.DBF" required>
+                        <small class="form-text text-muted">
+                            Bạn có thể chọn nhiều file cùng lúc bằng cách giữ Ctrl/Cmd khi click
+                        </small>
+                    </div>
+
+                    <div id="fileList" class="mb-3"></div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-arrow-up-circle"></i> Phân tích và Tính điểm
+                        </button>
+                        <a href="{% url 'kpi_tool:index' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Quay lại
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Thông tin bổ sung -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-question-circle"></i> Câu hỏi thường gặp</h6>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="faqAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                Tên file phải có định dạng như thế nào?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Tên file phải theo format: <strong>[USER_ID][DDMMYYYY].DBF</strong><br>
+                                Ví dụ: <code>GRATHIEU26092025.DBF</code> nghĩa là:<br>
+                                - User ID: GRATHIEU<br>
+                                - Ngày: 26/09/2025
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                File DBF cần có cấu trúc như thế nào?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                File DBF cần có các trường sau:<br>
+                                - <strong>ACCTCD</strong>: Số tài khoản<br>
+                                - <strong>TRDRCR</strong>: Loại giao dịch (D = Nợ, C = Có)<br>
+                                - <strong>REFNO</strong>: Số tham chiếu (để gom nhóm bút toán)<br>
+                                - <strong>TRAMT</strong>: Số tiền<br>
+                                - <strong>TRTIME</strong>: Thời gian giao dịch
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                Điểm KPI được tính như thế nào?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Hệ thống sẽ:<br>
+                                1. Gom nhóm các bút toán Nợ/Có theo REFNO<br>
+                                2. So khớp với bảng quy tắc (hesoquydoi)<br>
+                                3. Nếu khớp, cộng điểm theo hệ số quy đổi<br>
+                                4. Tổng hợp điểm theo ngày và theo tháng
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('dbf_files').addEventListener('change', function(e) {
+    const fileList = document.getElementById('fileList');
+    const files = e.target.files;
+
+    if (files.length > 0) {
+        let html = '<div class="alert alert-secondary"><h6>File đã chọn:</h6><ul class="mb-0">';
+        for (let i = 0; i < files.length; i++) {
+            html += `<li>${files[i].name} (${(files[i].size / 1024).toFixed(2)} KB)</li>`;
+        }
+        html += '</ul></div>';
+        fileList.innerHTML = html;
+    } else {
+        fileList.innerHTML = '';
+    }
+});
+
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    const btn = this.querySelector('button[type="submit"]');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
+    btn.disabled = true;
+});
+</script>
+{% endblock %}

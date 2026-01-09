@@ -1,0 +1,181 @@
+{% extends 'kpi_tool/base.html' %}
+{% load humanize %}
+
+{% block title %}Chi tiết lô - {{ batch.teller_name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <a href="{% url 'kpi_tool:index' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+        <div class="float-end">
+            <a href="{% url 'kpi_tool:export_monthly_excel' batch.teller_id batch.month batch.year %}" class="btn btn-danger">
+                <i class="bi bi-calendar-check"></i> Xuất báo cáo tháng
+            </a>
+            <a href="{% url 'kpi_tool:export_excel' batch.id %}" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark"></i> Xuất file này
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Thông tin lô -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header" style="background-color: #AE1C3F; color: white;">
+                <h4 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Thông tin lô giao dịch
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="40%">Mã giao dịch viên:</th>
+                                <td><strong>{{ batch.teller_id }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Tên giao dịch viên:</th>
+                                <td><strong>{{ batch.teller_name }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Tháng/Năm:</th>
+                                <td><strong>{{ batch.month }}/{{ batch.year }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Ngày file:</th>
+                                <td>{{ batch.file_date|date:"d/m/Y" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="40%">Tổng giao dịch:</th>
+                                <td><strong class="text-primary">{{ batch.total_transactions|intcomma }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>GD khớp quy tắc:</th>
+                                <td><strong class="text-success">{{ batch.matched_transactions|intcomma }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>GD không khớp:</th>
+                                <td><strong class="text-warning">{{ batch.unmatched_transactions|intcomma }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Tổng điểm KPI:</th>
+                                <td><strong class="text-danger" style="font-size: 1.2rem;">{{ batch.total_score|floatformat:2|intcomma }}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Thống kê theo ngày -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header" style="background-color: #f8f9fa;">
+                <h5 class="mb-0"><i class="bi bi-calendar3"></i> Thống kê theo ngày</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ngày</th>
+                                <th class="text-end">Số giao dịch</th>
+                                <th class="text-end">Tổng điểm</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in daily_stats %}
+                            <tr>
+                                <td>{{ day.transaction_date|date:"d/m/Y" }}</td>
+                                <td class="text-end">{{ day.count|intcomma }}</td>
+                                <td class="text-end"><strong class="text-success">{{ day.total_score|floatformat:2|intcomma }}</strong></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Không có dữ liệu</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chi tiết giao dịch -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header" style="background-color: #f8f9fa;">
+                <h5 class="mb-0"><i class="bi bi-list-ul"></i> Chi tiết giao dịch</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>STT</th>
+                                <th>Ngày GD</th>
+                                <th>Số tham chiếu</th>
+                                <th>TK Nợ</th>
+                                <th>TK Có</th>
+                                <th class="text-end">Số tiền</th>
+                                <th>Nghiệp vụ</th>
+                                <th class="text-end">Điểm</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trans in transactions %}
+                            <tr {% if not trans.is_matched %}class="table-warning"{% endif %}>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ trans.transaction_date|date:"d/m/Y" }}</td>
+                                <td><code>{{ trans.reference_no }}</code></td>
+                                <td>{{ trans.debit_account }}</td>
+                                <td>{{ trans.credit_account }}</td>
+                                <td class="text-end">{{ trans.amount|floatformat:2|intcomma }}</td>
+                                <td>
+                                    {% if trans.matched_rule %}
+                                        <small>{{ trans.matched_rule.code }} - {{ trans.matched_rule.description|truncatewords:5 }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <strong class="{% if trans.score > 0 %}text-success{% else %}text-muted{% endif %}">
+                                        {{ trans.score|floatformat:2 }}
+                                    </strong>
+                                </td>
+                                <td>
+                                    {% if trans.is_matched %}
+                                        <span class="badge bg-success">Khớp</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Không khớp</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">Không có giao dịch nào</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
