@@ -86,21 +86,26 @@ class JinjaWordTemplateProcessor:
         for paragraph in self.document.paragraphs:
             self._render_paragraph(paragraph, context)
 
-        # Process tables
+        # Process tables (including nested tables)
         for table in self.document.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    for paragraph in cell.paragraphs:
-                        self._render_paragraph(paragraph, context)
+            self._render_table(table, context)
 
         # Process headers
         for section in self.document.sections:
             for paragraph in section.header.paragraphs:
                 self._render_paragraph(paragraph, context)
 
+            # Process tables in headers
+            for table in section.header.tables:
+                self._render_table(table, context)
+
             # Process footers
             for paragraph in section.footer.paragraphs:
                 self._render_paragraph(paragraph, context)
+
+            # Process tables in footers
+            for table in section.footer.tables:
+                self._render_table(table, context)
 
         # Process Content Control checkboxes
         self._render_content_control_checkboxes(context)
@@ -112,6 +117,24 @@ class JinjaWordTemplateProcessor:
         self._render_card_name_tables(context)
 
         return self.document
+
+    def _render_table(self, table, context):
+        """
+        Recursively render table và tất cả nested tables
+
+        Args:
+            table: Table object
+            context: Dictionary chứa các biến
+        """
+        for row in table.rows:
+            for cell in row.cells:
+                # Process paragraphs in cell
+                for paragraph in cell.paragraphs:
+                    self._render_paragraph(paragraph, context)
+
+                # Recursively process nested tables in cell
+                for nested_table in cell.tables:
+                    self._render_table(nested_table, context)
 
     def _render_paragraph(self, paragraph, context):
         """
@@ -339,11 +362,31 @@ class JinjaWordTemplateProcessor:
 
                 textboxes_updated += 1
 
+    def _collect_all_tables(self, tables):
+        """
+        Recursively collect all tables including nested tables
+
+        Args:
+            tables: List of table objects
+
+        Returns:
+            List of all tables (including nested ones)
+        """
+        all_tables = []
+        for table in tables:
+            all_tables.append(table)
+            # Check for nested tables in cells
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.tables:
+                        all_tables.extend(self._collect_all_tables(cell.tables))
+        return all_tables
+
     def _render_card_name_tables(self, context):
         """
         Tìm và điền tên thẻ vào tables (tên trên thẻ)
         Tìm tables có 15+ columns và điền từng ký tự vào từng cell
-        Quét cả main body, headers và footers
+        Quét cả main body, headers, footers và nested tables
 
         Args:
             context: Dictionary chứa biến ten_the_1 và ten_the_2
@@ -403,22 +446,27 @@ class JinjaWordTemplateProcessor:
                 return True
             return False
 
+        # Collect all tables (including nested) from main body
+        all_body_tables = self._collect_all_tables(self.document.tables)
+
         # Fill tables in main body
-        for table in self.document.tables:
+        for table in all_body_tables:
             if current_card_table_index < len(card_names):
                 if fill_table_with_name(table, card_names[current_card_table_index], 'body'):
                     current_card_table_index += 1
 
         # Fill tables in headers and footers
         for section in self.document.sections:
-            # Headers
-            for table in section.header.tables:
+            # Collect all tables in headers (including nested)
+            all_header_tables = self._collect_all_tables(section.header.tables)
+            for table in all_header_tables:
                 if current_card_table_index < len(card_names):
                     if fill_table_with_name(table, card_names[current_card_table_index], 'header'):
                         current_card_table_index += 1
 
-            # Footers
-            for table in section.footer.tables:
+            # Collect all tables in footers (including nested)
+            all_footer_tables = self._collect_all_tables(section.footer.tables)
+            for table in all_footer_tables:
                 if current_card_table_index < len(card_names):
                     if fill_table_with_name(table, card_names[current_card_table_index], 'footer'):
                         current_card_table_index += 1
@@ -474,21 +522,26 @@ class WordTemplateProcessor:
         for paragraph in self.document.paragraphs:
             self._replace_in_paragraph(paragraph, context)
 
-        # Thay thế trong tables
+        # Thay thế trong tables (including nested tables)
         for table in self.document.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    for paragraph in cell.paragraphs:
-                        self._replace_in_paragraph(paragraph, context)
+            self._process_table(table, context)
 
         # Thay thế trong headers
         for section in self.document.sections:
             for paragraph in section.header.paragraphs:
                 self._replace_in_paragraph(paragraph, context)
 
+            # Process tables in headers
+            for table in section.header.tables:
+                self._process_table(table, context)
+
             # Thay thế trong footers
             for paragraph in section.footer.paragraphs:
                 self._replace_in_paragraph(paragraph, context)
+
+            # Process tables in footers
+            for table in section.footer.tables:
+                self._process_table(table, context)
 
         # Process Content Control checkboxes (IMPORTANT!)
         self._render_content_control_checkboxes(context)
@@ -500,6 +553,24 @@ class WordTemplateProcessor:
         self._render_card_name_tables(context)
 
         return self.document
+
+    def _process_table(self, table, context):
+        """
+        Recursively process table và tất cả nested tables
+
+        Args:
+            table: Table object
+            context: Dictionary chứa các biến
+        """
+        for row in table.rows:
+            for cell in row.cells:
+                # Process paragraphs in cell
+                for paragraph in cell.paragraphs:
+                    self._replace_in_paragraph(paragraph, context)
+
+                # Recursively process nested tables in cell
+                for nested_table in cell.tables:
+                    self._process_table(nested_table, context)
 
     def _replace_in_paragraph(self, paragraph, context):
         """
@@ -728,11 +799,31 @@ class WordTemplateProcessor:
 
                 textboxes_updated += 1
 
+    def _collect_all_tables(self, tables):
+        """
+        Recursively collect all tables including nested tables
+
+        Args:
+            tables: List of table objects
+
+        Returns:
+            List of all tables (including nested ones)
+        """
+        all_tables = []
+        for table in tables:
+            all_tables.append(table)
+            # Check for nested tables in cells
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.tables:
+                        all_tables.extend(self._collect_all_tables(cell.tables))
+        return all_tables
+
     def _render_card_name_tables(self, context):
         """
         Tìm và điền tên thẻ vào tables (tên trên thẻ)
         Tìm tables có 15+ columns và điền từng ký tự vào từng cell
-        Quét cả main body, headers và footers
+        Quét cả main body, headers, footers và nested tables
 
         Args:
             context: Dictionary chứa biến ten_the_1 và ten_the_2
@@ -792,22 +883,27 @@ class WordTemplateProcessor:
                 return True
             return False
 
+        # Collect all tables (including nested) from main body
+        all_body_tables = self._collect_all_tables(self.document.tables)
+
         # Fill tables in main body
-        for table in self.document.tables:
+        for table in all_body_tables:
             if current_card_table_index < len(card_names):
                 if fill_table_with_name(table, card_names[current_card_table_index], 'body'):
                     current_card_table_index += 1
 
         # Fill tables in headers and footers
         for section in self.document.sections:
-            # Headers
-            for table in section.header.tables:
+            # Collect all tables in headers (including nested)
+            all_header_tables = self._collect_all_tables(section.header.tables)
+            for table in all_header_tables:
                 if current_card_table_index < len(card_names):
                     if fill_table_with_name(table, card_names[current_card_table_index], 'header'):
                         current_card_table_index += 1
 
-            # Footers
-            for table in section.footer.tables:
+            # Collect all tables in footers (including nested)
+            all_footer_tables = self._collect_all_tables(section.footer.tables)
+            for table in all_footer_tables:
                 if current_card_table_index < len(card_names):
                     if fill_table_with_name(table, card_names[current_card_table_index], 'footer'):
                         current_card_table_index += 1
