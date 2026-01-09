@@ -39,7 +39,33 @@
                 <p>Đã chọn: <span id="file-count">0</span> file.</p>
 
                 <button id="calculateButton">
-                    <i class="bi bi-calculator"></i> 3. Tạo Báo Cáo
+                    <i class="bi bi-calculator"></i> 3. Tạo Báo Cáo Bình Quân ATM
+                </button>
+
+                <hr style="margin: 40px 0; border-top: 2px solid #dee2e6;">
+
+                <h5 class="text-center mb-3" style="color: var(--agri-red);">
+                    <i class="bi bi-cash"></i> BÁO CÁO TIỀN MẶT BÌNH QUÂN TẠI QUỸ
+                </h5>
+
+                <label for="cashFileInput">4. Upload file Tiền mặt Tháng:</label>
+                <input type="file" id="cashFileInput" accept=".xls,.xlsx" />
+                <small class="form-text text-muted">File Excel chứa cột afterbal_dr (cột P)</small>
+
+                <label for="forexFileInput">5. Upload file Ngoại tệ Tháng:</label>
+                <input type="file" id="forexFileInput" accept=".xls,.xlsx" />
+                <small class="form-text text-muted">File Excel chứa cột afterbal_dr (cột P)</small>
+
+                <label for="exchangeRateInput">6. Nhập tỷ giá ngoại tệ:</label>
+                <input type="number" id="exchangeRateInput" step="0.01" placeholder="Ví dụ: 23500" style="padding: 10px;" />
+                <small class="form-text text-muted">Tỷ giá quy đổi USD sang VND</small>
+
+                <label for="atmAverageInput">7. Nhập tổng bình quân ATM:</label>
+                <input type="number" id="atmAverageInput" step="0.01" placeholder="Ví dụ: 50000000" style="padding: 10px;" />
+                <small class="form-text text-muted">Số liệu từ báo cáo bình quân ATM (ở trên). Để trống nếu không cần trừ.</small>
+
+                <button id="calculateCashButton">
+                    <i class="bi bi-calculator"></i> 8. Tạo Báo Cáo Tiền Mặt Bình Quân
                 </button>
 
                 <a href="{% url 'report_hub' %}" class="btn btn-secondary mt-3 w-100">
@@ -149,6 +175,17 @@
 
             const daysInMonth = new Date(year, month, 0).getDate();
 
+            // Lưu tổng bình quân ATM vào localStorage để sử dụng cho báo cáo tiền mặt
+            let grandTotalAverage = 0;
+            const displayOrder = ["7202ATM04", "7202ATM06", "7202ATM05"];
+            displayOrder.forEach(atmID => {
+                const info = atmInfo[atmID];
+                const averageBalance = info.totalBalance / daysInMonth;
+                grandTotalAverage += Math.round(averageBalance);
+            });
+            localStorage.setItem('lastATMAverage', grandTotalAverage);
+            localStorage.setItem('lastATMMonth', `${year}-${String(month).padStart(2, '0')}`);
+
             generatePrintPage(atmInfo, daysInMonth, month, year);
 
         } catch (error) {
@@ -188,7 +225,7 @@
                     <td style="text-align: center;">7202</td>
                     <td>${info.name}</td>
                     <td>${info.address}</td>
-                    <td style="text-align: right;">${new Intl.NumberFormat('vi-VN').format(roundedAverageBalance)}</td>
+                    <td style="text-align: right;">${roundedAverageBalance.toLocaleString('en-US')}</td>
                 </tr>
             `;
         });
@@ -260,7 +297,7 @@
                             ${reportBodyHtml}
                             <tr>
                                 <td colspan="4" style="text-align: center; font-weight: bold;">TỔNG CỘNG</td>
-                                <td style="text-align: right; font-weight: bold;">${new Intl.NumberFormat('vi-VN').format(grandTotalAverage)}</td>
+                                <td style="text-align: right; font-weight: bold;">${grandTotalAverage.toLocaleString('en-US')}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -293,6 +330,240 @@
                         });
                     }
                 <\/script>
+            </body>
+            </html>`;
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(printHtml);
+        printWindow.document.close();
+        printWindow.focus();
+    }
+
+    // ===== BÁO CÁO TIỀN MẶT BÌNH QUÂN TẠI QUỸ =====
+    const calculateCashButton = document.getElementById('calculateCashButton');
+    const atmAverageInput = document.getElementById('atmAverageInput');
+
+    // Tự động điền giá trị ATM từ localStorage nếu có
+    window.addEventListener('DOMContentLoaded', () => {
+        const lastATMAverage = localStorage.getItem('lastATMAverage');
+        const lastATMMonth = localStorage.getItem('lastATMMonth');
+        if (lastATMAverage && lastATMMonth) {
+            atmAverageInput.value = lastATMAverage;
+            atmAverageInput.placeholder = `Từ báo cáo ATM tháng ${lastATMMonth}`;
+        }
+    });
+
+    calculateCashButton.addEventListener('click', async () => {
+        const cashFile = document.getElementById('cashFileInput').files[0];
+        const forexFile = document.getElementById('forexFileInput').files[0];
+        const exchangeRate = parseFloat(document.getElementById('exchangeRateInput').value);
+        const atmAverage = parseFloat(atmAverageInput.value) || 0;
+        let monthStr = document.getElementById('reportMonth').value;
+
+        // Validation
+        if (!cashFile) { alert("Vui lòng chọn file Tiền mặt."); return; }
+        if (!forexFile) { alert("Vui lòng chọn file Ngoại tệ."); return; }
+        if (!exchangeRate || exchangeRate <= 0) { alert("Vui lòng nhập tỷ giá hợp lệ."); return; }
+        if (!monthStr) { alert("Vui lòng chọn tháng báo cáo."); return; }
+
+        // Parse month input (handle both YYYY-MM and MM/YYYY formats)
+        let year, month;
+        if (monthStr.includes('-')) {
+            [year, month] = monthStr.split('-').map(Number);
+        } else if (monthStr.includes('/')) {
+            const parts = monthStr.split('/');
+            month = parseInt(parts[0]);
+            year = parseInt(parts[1]);
+        } else {
+            alert("Định dạng tháng không hợp lệ.");
+            return;
+        }
+
+        if (month < 1 || month > 12 || year < 2000 || year > 2100) {
+            alert("Tháng hoặc năm không hợp lệ.");
+            return;
+        }
+
+        calculateCashButton.textContent = 'Đang xử lý...';
+        calculateCashButton.disabled = true;
+
+        try {
+            // Đọc file tiền mặt
+            const cashData = await readExcelFile(cashFile);
+            const cashAverage = calculateAverageAfterBalance(cashData);
+
+            // Đọc file ngoại tệ
+            const forexData = await readExcelFile(forexFile);
+            const forexAverage = calculateAverageAfterBalance(forexData);
+
+            // Tính toán
+            const forexInVND = forexAverage * exchangeRate;
+            const totalCashAverage = cashAverage + forexInVND;
+            const finalResult = totalCashAverage - atmAverage;
+
+            // Tạo báo cáo
+            generateCashBalanceReport(month, year, finalResult, cashAverage, forexAverage, forexInVND, exchangeRate, atmAverage);
+
+        } catch (error) {
+            alert(`Đã xảy ra lỗi: ${error.message}`);
+        } finally {
+            calculateCashButton.textContent = '7. Tạo Báo Cáo Tiền Mặt Bình Quân';
+            calculateCashButton.disabled = false;
+        }
+    });
+
+    function readExcelFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    resolve(data);
+                } catch (err) {
+                    reject(new Error(`Lỗi đọc file: ${file.name}`));
+                }
+            };
+            reader.onerror = () => reject(new Error(`Không thể đọc file: ${file.name}`));
+            reader.readAsBinaryString(file);
+        });
+    }
+
+    function calculateAverageAfterBalance(sheetData) {
+        // Cột afterbal_dr là cột P (index 15 nếu đếm từ 0)
+        // Dữ liệu: trdt onofftp ccy acctcd customer drcnt dramt crcnt cramt custnm ctrycdnatl locctrycd subunit beforebal_dr beforebal_cr afterbal_dr afterbal_cr
+        // Index:   0     1       2   3      4        5     6     7     8     9      10          11        12      13            14            15          16
+
+        let total = 0;
+        let count = 0;
+
+        // Bỏ qua header (dòng đầu tiên)
+        for (let i = 1; i < sheetData.length; i++) {
+            const row = sheetData[i];
+            if (!row || row.length < 16) continue;
+
+            const afterBalDr = parseFloat(row[15]); // Cột P (afterbal_dr)
+
+            if (!isNaN(afterBalDr) && afterBalDr > 0) {
+                total += afterBalDr;
+                count++;
+            }
+        }
+
+        return count > 0 ? total / count : 0;
+    }
+
+    function generateCashBalanceReport(month, year, finalResult, cashAvg, forexAvg, forexVND, exchangeRate, atmAvg) {
+        const today = new Date();
+        const reportDateString = `Ngày ${String(today.getDate()).padStart(2, '0')} tháng ${String(today.getMonth() + 1).padStart(2, '0')} năm ${today.getFullYear()}`;
+
+        // Lấy ngày cuối cùng của tháng trước
+        const lastDayOfMonth = new Date(year, month, 0).getDate();
+        const reportPeriodString = `31 THÁNG ${String(month).padStart(2, '0')} NĂM ${year}`;
+
+        // Format số theo định dạng với dấu phẩy
+        const formatNumber = (num) => {
+            return Math.round(num).toLocaleString('en-US').replace(/,/g, ',');
+        };
+
+        const printHtml = `
+            <html>
+            <head>
+                <title>Báo Cáo Tiền Mặt Bình Quân Tháng ${month}/${year}</title>
+                <style>
+                    body { font-family: 'Times New Roman', Times, serif; margin: 0; font-size: 13pt; }
+                    .page-container { width: 210mm; margin: 0 auto; padding: 20mm; box-sizing: border-box; }
+                    .controls { text-align: center; margin-bottom: 20px; }
+                    .controls button { display: inline-block; width: auto; padding: 10px 20px; margin: 0 10px; font-size: 14pt; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+                    .header-container { text-align: center; margin-bottom: 5px; }
+                    .header-container p { margin: 2px 0; font-weight: bold; }
+                    .header-right { text-align: right; font-style: italic; margin-bottom: 20px; }
+                    .title-container { text-align: center; margin: 20px 0; font-weight: bold; }
+                    .title-container h2 { margin: 5px 0; font-size: 14pt; }
+                    .title-container p { margin: 5px 0; font-size: 13pt; color: red; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th, td { border: 1px solid black; padding: 8px; text-align: center; }
+                    th { font-weight: bold; }
+                    td.number { text-align: right; padding-right: 10px; }
+                    .signature-container { display: flex; justify-content: space-between; margin-top: 50px; text-align: center; font-weight: bold; }
+                    .signature-box { width: 30%; }
+                    .signature-box .signer-title { margin-bottom: 100px; }
+                    @page { size: A4 portrait; margin: 15mm; }
+                    @media print { body { margin: 0; } .no-print { display: none; } }
+                </style>
+            </head>
+            <body>
+                <div class="page-container">
+                    <div class="controls no-print">
+                        <button onclick="window.print()">In Báo Cáo</button>
+                    </div>
+
+                    <div class="header-container">
+                        <p>NGÂN HÀNG NÔNG NGHIỆP</p>
+                        <p>VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM</p>
+                        <p><u>CHI NHÁNH GIÁ RAI BẮC LIÊU</u></p>
+                    </div>
+
+                    <div class="header-right">
+                        <p style="margin-right: 50px;">Mẫu 03/ABIC</p>
+                        <p style="margin-right: 50px; font-style: italic;">${reportDateString}</p>
+                    </div>
+
+                    <div class="title-container">
+                        <h2>BÁO CÁO SỐ LIỆU TIỀN MẶT (VND+USD quy đổi) BÌNH QUÂN TẠI QUỸ</h2>
+                        <p>SỐ LIỆU TỚI NGÀY ${reportPeriodString}</p>
+                        <p style="font-size: 11pt; font-style: italic; color: black;">(Theo điểm 3 VB 11610/NHNo-TCKT ngày 26/12/2019)</p>
+                        <p style="text-align: right; font-size: 11pt; font-style: italic; color: black; margin-right: 20px;">Đơn vị: đồng</p>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 10%;">STT</th>
+                                <th style="width: 20%;">THÁNG</th>
+                                <th style="width: 50%;">SỐ TIỀN</th>
+                                <th style="width: 20%;">GHI CHÚ</th>
+                            </tr>
+                            <tr style="font-style: italic; font-weight: normal;">
+                                <td>1</td>
+                                <td>2</td>
+                                <td>3</td>
+                                <td>4</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>${String(month).padStart(2, '0')}/${year}</td>
+                                <td class="number">${formatNumber(finalResult)}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="font-weight: bold;">Tổng cộng</td>
+                                <td class="number" style="font-weight: bold;">${formatNumber(finalResult)}</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 30px; font-size: 11pt;">
+                        <p><strong>Chi tiết tính toán:</strong></p>
+                        <p>- Bình quân tiền mặt: ${formatNumber(cashAvg)} VND</p>
+                        <p>- Bình quân ngoại tệ: ${formatNumber(forexAvg)} USD</p>
+                        <p>- Tỷ giá: ${formatNumber(exchangeRate)} VND/USD</p>
+                        <p>- Ngoại tệ quy đổi: ${formatNumber(forexVND)} VND</p>
+                        <p>- Tổng tiền mặt + ngoại tệ: ${formatNumber(cashAvg + forexVND)} VND</p>
+                        <p>- Trừ bình quân ATM: ${formatNumber(atmAvg)} VND</p>
+                        <p>- <strong>Kết quả cuối cùng: ${formatNumber(finalResult)} VND</strong></p>
+                    </div>
+
+                    <div class="signature-container">
+                        <div class="signature-box"><p class="signer-title">LẬP BIỂU</p></div>
+                        <div class="signature-box"><p class="signer-title">KIỂM SOÁT</p></div>
+                        <div class="signature-box"><p class="signer-title">GIÁM ĐỐC</p></div>
+                    </div>
+                </div>
             </body>
             </html>`;
 
