@@ -119,7 +119,16 @@ REM =====================================================
 echo [3/4] Thiet lap database...
 echo.
 
-echo Dang chay migrations...
+echo Dang tao migrations moi...
+python manage.py makemigrations
+if errorlevel 1 (
+    echo.
+    echo CANH BAO: Makemigrations gap van de
+    echo Tiep tuc voi migrations hien co...
+)
+
+echo.
+echo Dang ap dung migrations...
 python manage.py migrate
 if errorlevel 1 (
     echo.
