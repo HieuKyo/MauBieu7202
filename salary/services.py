@@ -297,6 +297,7 @@ class SalaryStatisticsService:
     def get_statistics(period='month', start_date=None, end_date=None):
         """Lay thong ke theo khoang thoi gian"""
         from django.db.models import Sum, Count
+        from django.db.models.functions import Coalesce
         from datetime import datetime, timedelta
 
         if not start_date:
@@ -317,26 +318,42 @@ class SalaryStatisticsService:
         if end_date:
             queryset = queryset.filter(processed_at__lte=end_date)
 
-        stats = queryset.aggregate(
-            total_amount=Sum('total_amount'),
-            total_files=Count('id')
-        )
+        # Use Coalesce to handle NULL values and ensure Decimal type
+        try:
+            stats = queryset.aggregate(
+                total_amount=Coalesce(Sum('total_amount'), Decimal('0.00')),
+                total_files=Count('id')
+            )
 
-        payroll_stats = queryset.filter(transaction_type='PAYROLL').aggregate(
-            payroll_amount=Sum('total_amount'),
-            payroll_count=Count('id')
-        )
+            payroll_stats = queryset.filter(transaction_type='PAYROLL').aggregate(
+                payroll_amount=Coalesce(Sum('total_amount'), Decimal('0.00')),
+                payroll_count=Count('id')
+            )
 
-        collection_stats = queryset.filter(transaction_type='COLLECTION').aggregate(
-            collection_amount=Sum('total_amount'),
-            collection_count=Count('id')
-        )
+            collection_stats = queryset.filter(transaction_type='COLLECTION').aggregate(
+                collection_amount=Coalesce(Sum('total_amount'), Decimal('0.00')),
+                collection_count=Count('id')
+            )
 
-        return {
-            'total_amount': stats['total_amount'] or Decimal('0.00'),
-            'total_files': stats['total_files'] or 0,
-            'payroll_amount': payroll_stats['payroll_amount'] or Decimal('0.00'),
-            'payroll_count': payroll_stats['payroll_count'] or 0,
-            'collection_amount': collection_stats['collection_amount'] or Decimal('0.00'),
-            'collection_count': collection_stats['collection_count'] or 0,
-        }
+            return {
+                'total_amount': stats['total_amount'] or Decimal('0.00'),
+                'total_files': stats['total_files'] or 0,
+                'payroll_amount': payroll_stats['payroll_amount'] or Decimal('0.00'),
+                'payroll_count': payroll_stats['payroll_count'] or 0,
+                'collection_amount': collection_stats['collection_amount'] or Decimal('0.00'),
+                'collection_count': collection_stats['collection_count'] or 0,
+            }
+        except Exception as e:
+            # If aggregation fails, return zero values
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error calculating statistics: {e}")
+
+            return {
+                'total_amount': Decimal('0.00'),
+                'total_files': 0,
+                'payroll_amount': Decimal('0.00'),
+                'payroll_count': 0,
+                'collection_amount': Decimal('0.00'),
+                'collection_count': 0,
+            }
