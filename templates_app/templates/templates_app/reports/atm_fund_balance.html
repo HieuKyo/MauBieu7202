@@ -390,16 +390,18 @@
         try {
             // Đọc file tiền mặt
             const cashData = await readExcelFile(cashFile);
-            const cashAverage = calculateAverageAfterBalance(cashData);
+            const cashAverageRaw = calculateAverageAfterBalance(cashData);
+            const cashAverage = Math.round(cashAverageRaw);
 
             // Đọc file ngoại tệ
             const forexData = await readExcelFile(forexFile);
-            const forexAverage = calculateAverageAfterBalance(forexData);
+            const forexAverageRaw = calculateAverageAfterBalance(forexData);
+            const forexAverage = Math.round(forexAverageRaw);
 
-            // Tính toán
-            const forexInVND = forexAverage * exchangeRate;
-            const totalCashAverage = cashAverage + forexInVND;
-            const finalResult = totalCashAverage - atmAverage;
+            // Tính toán - làm tròn từng bước
+            const forexInVND = Math.round(forexAverage * exchangeRate);
+            const totalCashAverage = Math.round(cashAverage + forexInVND);
+            const finalResult = Math.round(totalCashAverage - atmAverage);
 
             // Tạo báo cáo
             generateCashBalanceReport(month, year, finalResult, cashAverage, forexAverage, forexInVND, exchangeRate, atmAverage);
@@ -462,14 +464,9 @@
         const lastDayOfMonth = new Date(year, month, 0).getDate();
         const reportPeriodString = `31 THÁNG ${String(month).padStart(2, '0')} NĂM ${year}`;
 
-        // Format số theo định dạng với dấu phẩy
+        // Format số theo định dạng với dấu phẩy (số nguyên)
         const formatNumber = (num) => {
             return Math.round(num).toLocaleString('en-US');
-        };
-
-        // Format số với 2 chữ số thập phân cho chi tiết tính toán
-        const formatNumberDetail = (num) => {
-            return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         };
 
         const printHtml = `
@@ -554,12 +551,12 @@
 
                     <div style="margin-top: 30px; font-size: 11pt;">
                         <p><strong>Chi tiết tính toán:</strong></p>
-                        <p>- Bình quân tiền mặt: ${formatNumberDetail(cashAvg)} VND</p>
-                        <p>- Bình quân ngoại tệ: ${formatNumberDetail(forexAvg)} USD</p>
-                        <p>- Tỷ giá: ${formatNumberDetail(exchangeRate)} VND/USD</p>
-                        <p>- <strong>Phép tính:</strong> ${formatNumberDetail(forexAvg)} × ${formatNumberDetail(exchangeRate)} = ${formatNumberDetail(forexVND)} VND</p>
-                        <p>- Tổng tiền mặt + ngoại tệ: ${formatNumberDetail(cashAvg)} + ${formatNumberDetail(forexVND)} = ${formatNumberDetail(cashAvg + forexVND)} VND</p>
-                        <p>- Trừ bình quân ATM: ${formatNumberDetail(cashAvg + forexVND)} - ${formatNumberDetail(atmAvg)} = ${formatNumberDetail(finalResult)} VND</p>
+                        <p>- Bình quân tiền mặt: ${formatNumber(cashAvg)} VND</p>
+                        <p>- Bình quân ngoại tệ: ${formatNumber(forexAvg)} USD</p>
+                        <p>- Tỷ giá: ${formatNumber(exchangeRate)} VND/USD</p>
+                        <p>- <strong>Phép tính:</strong> ${formatNumber(forexAvg)} × ${formatNumber(exchangeRate)} = ${formatNumber(forexVND)} VND</p>
+                        <p>- Tổng tiền mặt + ngoại tệ: ${formatNumber(cashAvg)} + ${formatNumber(forexVND)} = ${formatNumber(cashAvg + forexVND)} VND</p>
+                        <p>- Trừ bình quân ATM: ${formatNumber(cashAvg + forexVND)} - ${formatNumber(atmAvg)} = ${formatNumber(finalResult)} VND</p>
                         <p>- <strong>Kết quả cuối cùng: ${formatNumber(finalResult)} VND</strong></p>
                     </div>
 
