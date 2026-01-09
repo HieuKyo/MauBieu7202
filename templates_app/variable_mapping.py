@@ -65,6 +65,7 @@ OLD_TO_NEW_MAPPING = {
     # ===== BIẾN TÀI KHOẢN & THẺ (Customer) =====
     '[SoTaiKhoan]': 'so_tai_khoan',
     '[SoTheATM]': 'so_the_atm',
+    '[SoThe]': 'so_the',  # Alias for so_the_atm
     '[ThoiHanThe]': 'thoi_han_the',
     '[LoaiThe]': 'loai_the',
     '[LoaiPhi]': 'loai_phi',
@@ -210,7 +211,7 @@ CUSTOMER_VARIABLES = [
     'so_dien_thoai', 'email', 'dia_chi', 'ho_khau',
     'so_cmnd', 'ngay_cap_cmnd', 'noi_cap_cmnd', 'ngay_het_han_cmnd',
     'ma_khach_hang', 'ma_so_thue',
-    'so_tai_khoan', 'so_the_atm', 'thoi_han_the', 'loai_the',
+    'so_tai_khoan', 'so_the_atm', 'so_the', 'thoi_han_the', 'loai_the',
     'loai_phi', 'ngay_tra_the', 'loai_tien_te'
 ]
 
