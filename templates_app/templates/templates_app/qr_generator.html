@@ -51,16 +51,18 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        width: fit-content;
+        margin: 0 auto;
+        transition: all 0.3s ease;
     }
 
     .qr-frame.portrait {
-        width: 350px;
-        min-height: 490px;
+        min-width: 350px;
+        flex-direction: column;
     }
 
     .qr-frame.landscape {
-        width: 600px;
-        min-height: 400px;
+        min-width: 500px;
         flex-direction: row;
         gap: 30px;
     }
@@ -99,12 +101,17 @@
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         margin: 15px 0;
+        width: fit-content;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     #qrcode {
         display: flex;
         justify-content: center;
         align-items: center;
+        min-height: 50px;
+        min-width: 50px;
     }
 
     .account-info {
@@ -533,6 +540,33 @@
         return qrData;
     }
 
+    // Adjust frame size based on QR code size
+    function adjustFrameSize(qrSize) {
+        const qrFrame = document.getElementById('qrFrame');
+        const isPortrait = qrFrame.classList.contains('portrait');
+
+        // Calculate appropriate frame size based on QR size
+        // Frame = QR + wrapper padding (15px * 2) + account info (~150px) + margins
+        const wrapperPadding = 30; // 15px * 2
+        const accountInfoHeight = 150;
+        const headerHeight = 120;
+        const margins = 60;
+
+        if (isPortrait) {
+            // Portrait: vertical layout
+            const minWidth = Math.max(350, qrSize + wrapperPadding + 100);
+            qrFrame.style.minWidth = minWidth + 'px';
+            qrFrame.style.maxWidth = (minWidth + 100) + 'px';
+            console.log('Frame adjusted (Portrait):', minWidth + 'px');
+        } else {
+            // Landscape: horizontal layout
+            const minWidth = Math.max(500, (qrSize + wrapperPadding) * 2 + 50);
+            qrFrame.style.minWidth = minWidth + 'px';
+            qrFrame.style.maxWidth = (minWidth + 100) + 'px';
+            console.log('Frame adjusted (Landscape):', minWidth + 'px');
+        }
+    }
+
     // QR Code instance
     let qrCodeInstance = null;
     let currentQRData = '';
@@ -576,6 +610,16 @@
         } else {
             qrFrame.classList.remove('portrait');
             qrFrame.classList.add('landscape');
+        }
+
+        // Re-adjust frame size if QR code exists
+        if (qrCodeInstance) {
+            const currentQRSize = parseInt(sizePresetSelect.value === 'custom'
+                ? customSizeInput.value
+                : sizePresetSelect.value === 'small' ? 200
+                : sizePresetSelect.value === 'large' ? 400
+                : 300);
+            adjustFrameSize(currentQRSize);
         }
     });
 
@@ -634,14 +678,24 @@
         console.log('QR Data Length:', currentQRData.length);
         console.log('QR Data:', currentQRData);
         console.log('CRC Checksum:', currentQRData.slice(-4));
+        console.log('QR Size:', qrSize + 'x' + qrSize);
         console.log('========================');
 
         // Clear existing QR code completely
         const qrcodeDiv = document.getElementById('qrcode');
         qrcodeDiv.innerHTML = '';
 
-        // Small delay to ensure DOM is cleared
-        setTimeout(function() {
+        // Destroy old instance if exists
+        if (qrCodeInstance) {
+            try {
+                qrCodeInstance.clear();
+            } catch(e) {
+                console.log('Old QR instance cleared');
+            }
+            qrCodeInstance = null;
+        }
+
+        try {
             // Create new QR code with proper size
             qrCodeInstance = new QRCode(qrcodeDiv, {
                 text: currentQRData,
@@ -652,8 +706,16 @@
                 correctLevel: QRCode.CorrectLevel.H
             });
 
-            console.log('QR Code generated successfully with size:', qrSize + 'x' + qrSize);
-        }, 100);
+            console.log('✅ QR Code generated successfully!');
+            console.log('Canvas size:', qrSize + 'x' + qrSize + 'px');
+
+            // Adjust frame size based on QR size
+            adjustFrameSize(qrSize);
+
+        } catch(error) {
+            console.error('❌ Error generating QR code:', error);
+            alert('Lỗi khi tạo mã QR: ' + error.message);
+        }
 
         // Update display info
         document.getElementById('displayAccountNumber').textContent = accountNumber;
