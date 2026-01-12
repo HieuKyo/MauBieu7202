@@ -152,6 +152,21 @@
         flex-wrap: wrap;
     }
 
+    /* Fix QR code size rendering - prevent CSS distortion */
+    #qrcode {
+        width: fit-content !important;
+        margin: 0 auto;
+    }
+
+    #qrcode canvas,
+    #qrcode img {
+        display: block !important;
+        margin: 0 auto !important;
+        max-width: none !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
     .btn-agribank {
         background: linear-gradient(135deg, var(--agri-red), var(--agri-dark-red));
         border: 2px solid var(--agri-gold);
@@ -430,34 +445,90 @@
         return str.toUpperCase();
     }
 
-    // Generate VietQR EMVCo format
+    // Calculate CRC16 checksum for VietQR (REQUIRED for valid QR codes)
+    function calculateCRC16(data) {
+        let crc = 0xFFFF;
+        for (let i = 0; i < data.length; i++) {
+            crc ^= data.charCodeAt(i) << 8;
+            for (let j = 0; j < 8; j++) {
+                if ((crc & 0x8000) !== 0) {
+                    crc = (crc << 1) ^ 0x1021;
+                } else {
+                    crc <<= 1;
+                }
+            }
+        }
+        return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+    }
+
+    // Format field with length prefix (EMVCo format)
+    function formatField(id, value) {
+        const length = value.length.toString().padStart(2, '0');
+        return id + length + value;
+    }
+
+    // Generate VietQR EMVCo format (NAPAS Standard)
     function generateVietQRData(accountNumber, accountName, amount = '', message = '') {
         const AGRIBANK_BIN = '970405';
-        const AGRIBANK_GUID = 'A000000727';
+        const NAPAS_GUID = 'A000000727';
+        const SERVICE_CODE = 'QRIBFTTA'; // QR Interbank Fund Transfer to Account
 
-        // Build EMVCo format
-        let qrData = '00020101021238';
+        // Normalize account name (no diacritics, uppercase)
+        const cleanName = removeVietnameseDiacritics(accountName);
 
-        // Merchant Account Information
-        qrData += '54' + ('0010' + AGRIBANK_GUID + '01' + ('0' + AGRIBANK_BIN.length).slice(-2) + AGRIBANK_BIN + '02' + ('0' + accountNumber.length).slice(-2) + accountNumber).length.toString().padStart(2, '0');
-        qrData += '0010' + AGRIBANK_GUID + '01' + ('0' + AGRIBANK_BIN.length).slice(-2) + AGRIBANK_BIN + '02' + ('0' + accountNumber.length).slice(-2) + accountNumber;
+        // Build Consumer Account Information
+        const binField = formatField('00', AGRIBANK_BIN);
+        const accountField = formatField('01', accountNumber);
+        const consumerAccount = binField + accountField;
 
-        // Country Code
-        qrData += '5802VN';
+        // Build Merchant Account Information (ID 38)
+        const guidField = formatField('00', NAPAS_GUID);
+        const consumerField = formatField('01', consumerAccount);
+        const serviceField = formatField('02', SERVICE_CODE);
+        const merchantInfo = guidField + consumerField + serviceField;
 
-        // Transaction Amount (if provided)
-        if (amount && amount !== '0') {
-            qrData += '54' + ('0' + amount.length).slice(-2) + amount;
+        // Start building QR data
+        let qrData = '';
+
+        // Payload Format Indicator (ID 00)
+        qrData += formatField('00', '01');
+
+        // Point of Initiation Method (ID 01) - Static QR
+        qrData += formatField('01', '11');
+
+        // Merchant Account Information (ID 38) - VietQR
+        qrData += formatField('38', merchantInfo);
+
+        // Transaction Currency (ID 53) - VND (704)
+        qrData += formatField('52', '5999');
+        qrData += formatField('53', '704');
+
+        // Transaction Amount (ID 54) - Optional
+        if (amount && amount !== '0' && amount !== '') {
+            qrData += formatField('54', amount);
         }
 
-        // Additional Data Field
+        // Country Code (ID 58)
+        qrData += formatField('58', 'VN');
+
+        // Merchant Name (ID 59) - Account holder name
+        qrData += formatField('59', cleanName);
+
+        // Merchant City (ID 60)
+        qrData += formatField('60', 'HANOI');
+
+        // Additional Data Field (ID 62) - Optional
         if (message) {
-            const additionalData = '08' + ('0' + message.length).slice(-2) + message;
-            qrData += '62' + ('0' + additionalData.length).slice(-2) + additionalData;
+            const purposeField = formatField('08', message);
+            qrData += formatField('62', purposeField);
         }
 
-        // CRC (simplified - using fixed value for demo)
-        qrData += '6304';
+        // CRC (ID 63) - Must be calculated and appended last
+        qrData += '6304'; // Placeholder for CRC
+
+        // Calculate actual CRC and replace placeholder
+        const crc = calculateCRC16(qrData);
+        qrData = qrData.slice(0, -4) + crc;
 
         return qrData;
     }
@@ -516,8 +587,21 @@
         const accountNumber = accountNumberInput.value.trim();
         const storeName = storeNameInput.value.trim();
 
+        // Validation
         if (!accountName || !accountNumber) {
             alert('Vui lòng nhập đầy đủ họ tên và số tài khoản!');
+            return;
+        }
+
+        // Check account number is numeric
+        if (!/^\d+$/.test(accountNumber)) {
+            alert('Số tài khoản chỉ được chứa chữ số!');
+            return;
+        }
+
+        // Check account name length (VietQR limit: 25 characters)
+        if (accountName.length > 25) {
+            alert('Tên chủ tài khoản không được vượt quá 25 ký tự sau khi bỏ dấu!\nHiện tại: ' + accountName.length + ' ký tự');
             return;
         }
 
@@ -539,22 +623,37 @@
                 break;
         }
 
-        // Generate VietQR data
+        // Generate VietQR data with proper EMVCo format
         currentQRData = generateVietQRData(accountNumber, accountName, '', storeName);
 
-        // Clear existing QR code
+        // Log QR data for debugging
+        console.log('=== VIETQR DEBUG INFO ===');
+        console.log('Account Number:', accountNumber);
+        console.log('Account Name:', accountName);
+        console.log('Store Name:', storeName);
+        console.log('QR Data Length:', currentQRData.length);
+        console.log('QR Data:', currentQRData);
+        console.log('CRC Checksum:', currentQRData.slice(-4));
+        console.log('========================');
+
+        // Clear existing QR code completely
         const qrcodeDiv = document.getElementById('qrcode');
         qrcodeDiv.innerHTML = '';
 
-        // Create new QR code
-        qrCodeInstance = new QRCode(qrcodeDiv, {
-            text: currentQRData,
-            width: qrSize,
-            height: qrSize,
-            colorDark: '#AE1C3F',  // Agribank red
-            colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H
-        });
+        // Small delay to ensure DOM is cleared
+        setTimeout(function() {
+            // Create new QR code with proper size
+            qrCodeInstance = new QRCode(qrcodeDiv, {
+                text: currentQRData,
+                width: qrSize,
+                height: qrSize,
+                colorDark: '#AE1C3F',  // Agribank red
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            console.log('QR Code generated successfully with size:', qrSize + 'x' + qrSize);
+        }, 100);
 
         // Update display info
         document.getElementById('displayAccountNumber').textContent = accountNumber;
