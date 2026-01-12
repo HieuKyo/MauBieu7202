@@ -114,8 +114,6 @@
         min-width: 50px;
     }
 
-<<<<<<< HEAD
-=======
     /* FIX: Ensure only ONE QR code is displayed */
     #qrcode canvas,
     #qrcode img {
@@ -131,7 +129,6 @@
         display: none !important;
     }
 
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
     .account-info {
         background: white;
         padding: 20px;
@@ -177,24 +174,6 @@
         flex-wrap: wrap;
     }
 
-<<<<<<< HEAD
-    /* Fix QR code size rendering - prevent CSS distortion */
-    #qrcode {
-        width: fit-content !important;
-        margin: 0 auto;
-    }
-
-    #qrcode canvas,
-    #qrcode img {
-        display: block !important;
-        margin: 0 auto !important;
-        max-width: none !important;
-        width: auto !important;
-        height: auto !important;
-    }
-
-=======
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
     .btn-agribank {
         background: linear-gradient(135deg, var(--agri-red), var(--agri-dark-red));
         border: 2px solid var(--agri-gold);
@@ -527,15 +506,10 @@
         // Merchant Account Information (ID 38) - VietQR
         qrData += formatField('38', merchantInfo);
 
-<<<<<<< HEAD
-        // Transaction Currency (ID 53) - VND (704)
-        qrData += formatField('52', '5999');
-=======
         // Merchant Category Code (ID 52) - FIX: Use 4-digit MCC
         qrData += formatField('52', '0000');
 
         // Transaction Currency (ID 53) - VND (704)
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
         qrData += formatField('53', '704');
 
         // Transaction Amount (ID 54) - Optional
@@ -706,41 +680,23 @@
         console.log('QR Data Length:', currentQRData.length);
         console.log('QR Data:', currentQRData);
         console.log('CRC Checksum:', currentQRData.slice(-4));
-<<<<<<< HEAD
-        console.log('QR Size:', qrSize + 'x' + qrSize);
-        console.log('========================');
-
-        // Clear existing QR code completely
-        const qrcodeDiv = document.getElementById('qrcode');
-        qrcodeDiv.innerHTML = '';
-=======
         console.log('QR Size:', qrSize + 'x' + qrSize + 'px');
         console.log('========================');
 
         // FIX 1: Clear old instance FIRST, then clear DOM
         const qrcodeDiv = document.getElementById('qrcode');
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
 
         // Destroy old instance if exists
         if (qrCodeInstance) {
             try {
                 qrCodeInstance.clear();
-<<<<<<< HEAD
-            } catch(e) {
-                console.log('Old QR instance cleared');
-=======
                 console.log('✓ Old QR instance cleared');
             } catch(e) {
                 console.log('Note: QR instance already cleared');
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
             }
             qrCodeInstance = null;
         }
 
-<<<<<<< HEAD
-        try {
-            // Create new QR code with proper size
-=======
         // Now clear the DOM completely
         qrcodeDiv.innerHTML = '';
 
@@ -748,26 +704,18 @@
             // FIX 2: Create new QR code with proper size
             // NOTE: QRCode.js creates BOTH canvas AND img by default
             // We use CSS to hide canvas and only show img
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
             qrCodeInstance = new QRCode(qrcodeDiv, {
                 text: currentQRData,
                 width: qrSize,
                 height: qrSize,
                 colorDark: '#AE1C3F',  // Agribank red
                 colorLight: '#ffffff',
-<<<<<<< HEAD
-                correctLevel: QRCode.CorrectLevel.H
-=======
                 correctLevel: QRCode.CorrectLevel.H  // High error correction for better scanning
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
             });
 
             console.log('✅ QR Code generated successfully!');
             console.log('Canvas size:', qrSize + 'x' + qrSize + 'px');
-<<<<<<< HEAD
-=======
             console.log('Frame adjusted (Portrait): 530px');
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
 
             // Adjust frame size based on QR size
             adjustFrameSize(qrSize);
@@ -775,10 +723,7 @@
         } catch(error) {
             console.error('❌ Error generating QR code:', error);
             alert('Lỗi khi tạo mã QR: ' + error.message);
-<<<<<<< HEAD
-=======
             return;
->>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
         }
 
         // Update display info
