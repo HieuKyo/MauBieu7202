@@ -5479,3 +5479,11 @@ def get_user_permissions_detail(request, user_id):
             'success': False,
             'error': f'Lỗi khi lấy thông tin: {str(e)}'
         }, status=500)
+
+
+@login_required
+def qr_generator_view(request):
+    """
+    Tạo mã QR thanh toán Agribank với frame template và xuất ảnh offline
+    """
+    return render(request, 'templates_app/qr_generator.html')
