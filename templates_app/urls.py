@@ -72,7 +72,11 @@ urlpatterns = [
     path('beautiful-number-list/', views.beautiful_number_list, name='beautiful_number_list'),
     path('api/beautiful-numbers/generate/', views.generate_beautiful_numbers_ajax, name='generate_beautiful_numbers'),
 
+<<<<<<< HEAD
     # QR Generator - Agribank
+=======
+    # QR Code Generator
+>>>>>>> 08c80192388b272dca630a382fdb4020c0aa784d
     path('qr-generator/', views.qr_generator_view, name='qr_generator'),
 
     # Test Address Selector
