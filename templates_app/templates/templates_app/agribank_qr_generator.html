@@ -39,7 +39,7 @@
     .qr-frame {
         position: relative;
         background: linear-gradient(135deg, #AE1C3F 0%, #C12E50 100%);
-        padding: 30px;
+        padding: 10px;
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(174,28,63,0.3);
     }
@@ -68,8 +68,8 @@
 
     .qr-frame-header {
         text-align: center;
-        margin-bottom: 15px;
-        padding-bottom: 15px;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
         border-bottom: 2px solid rgba(255,255,255,0.3);
     }
 
@@ -126,6 +126,7 @@
         word-wrap: break-word;
         word-break: break-word;
         overflow-wrap: break-word;
+        font-weight: bold;
     }
 
     .frame-option-card {
@@ -269,8 +270,8 @@
                         <!-- Padding Frame -->
                         <div class="mb-3">
                             <label class="form-label fw-bold">Padding khung (px)</label>
-                            <input type="number" class="form-control" id="frame-padding" placeholder="Padding" min="10" max="100" step="5" value="30">
-                            <small class="text-muted">Tăng padding để khung lớn hơn (mặc định: 30px)</small>
+                            <input type="number" class="form-control" id="frame-padding" placeholder="Padding" min="10" max="100" step="5" value="10">
+                            <small class="text-muted">Tăng padding để khung lớn hơn (mặc định: 10px)</small>
                         </div>
 
                         <!-- Frame Type -->
@@ -508,7 +509,7 @@ document.getElementById('btn-reset')?.addEventListener('click', function() {
     document.getElementById('qr-height').value = 5;
     document.getElementById('qr-width').value = 3.5;
     document.getElementById('account-format').value = 'xxxx xxx xxx xxx';
-    document.getElementById('frame-padding').value = 30;
+    document.getElementById('frame-padding').value = 10;
     // Reset frame
     currentFrameType = 'default';
     customFrameImage = null;
@@ -561,7 +562,7 @@ function generateQR() {
     qrImageUrl = apiUrl;
 
     // Get frame padding
-    const framePadding = parseInt(document.getElementById('frame-padding').value) || 30;
+    const framePadding = parseInt(document.getElementById('frame-padding').value) || 10;
 
     // Load QR image
     const qrImage = document.getElementById('qr-image');
