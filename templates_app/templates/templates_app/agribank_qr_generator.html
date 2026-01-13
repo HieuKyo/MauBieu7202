@@ -44,6 +44,37 @@
         box-shadow: 0 8px 24px rgba(174,28,63,0.3);
     }
 
+    /* Frame color variants */
+    .qr-frame.frame-red {
+        background: linear-gradient(135deg, #AE1C3F 0%, #C12E50 100%);
+        box-shadow: 0 8px 24px rgba(174,28,63,0.3);
+    }
+
+    .qr-frame.frame-white {
+        background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        border: 2px solid #e0e0e0;
+    }
+
+    .qr-frame.frame-white .qr-frame-header {
+        border-bottom-color: #e0e0e0;
+    }
+
+    .qr-frame.frame-green {
+        background: linear-gradient(135deg, #006838 0%, #008844 100%);
+        box-shadow: 0 8px 24px rgba(0,104,56,0.3);
+    }
+
+    .qr-frame.frame-blue {
+        background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+        box-shadow: 0 8px 24px rgba(30,58,138,0.3);
+    }
+
+    .qr-frame.frame-black {
+        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+        box-shadow: 0 8px 24px rgba(31,41,55,0.3);
+    }
+
     .qr-frame.custom-frame {
         background: none;
         padding: 0;
@@ -105,6 +136,8 @@
         padding: 15px;
         border-radius: 8px;
         color: #333;
+        max-width: 100%;
+        overflow: hidden;
     }
 
     .qr-info-item {
@@ -113,6 +146,9 @@
         word-wrap: break-word;
         word-break: break-word;
         overflow-wrap: break-word;
+        white-space: normal;
+        max-width: 100%;
+        display: block;
     }
 
     .qr-info-label {
@@ -276,23 +312,53 @@
 
                         <!-- Frame Type -->
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Loại khung</label>
+                            <label class="form-label fw-bold">Màu khung</label>
                             <div class="row g-2 mb-2">
-                                <div class="col-6">
-                                    <div class="frame-option-card active" data-frame="default" onclick="selectFrame('default')">
+                                <div class="col-4">
+                                    <div class="frame-option-card active" data-frame="red" onclick="selectFrame('red')">
                                         <div class="text-center">
-                                            <i class="bi bi-palette-fill" style="font-size: 24px; color: #AE1C3F;"></i>
-                                            <div class="small fw-bold mt-1">Khung mặc định</div>
-                                            <div class="small text-muted">Màu đỏ Agribank</div>
+                                            <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #AE1C3F, #C12E50); border-radius: 6px; margin: 0 auto;"></div>
+                                            <div class="small fw-bold mt-1">Đỏ</div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
+                                    <div class="frame-option-card" data-frame="white" onclick="selectFrame('white')">
+                                        <div class="text-center">
+                                            <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #ffffff, #f5f5f5); border: 1px solid #e0e0e0; border-radius: 6px; margin: 0 auto;"></div>
+                                            <div class="small fw-bold mt-1">Trắng</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="frame-option-card" data-frame="green" onclick="selectFrame('green')">
+                                        <div class="text-center">
+                                            <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #006838, #008844); border-radius: 6px; margin: 0 auto;"></div>
+                                            <div class="small fw-bold mt-1">Xanh lá</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="frame-option-card" data-frame="blue" onclick="selectFrame('blue')">
+                                        <div class="text-center">
+                                            <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-radius: 6px; margin: 0 auto;"></div>
+                                            <div class="small fw-bold mt-1">Xanh dương</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="frame-option-card" data-frame="black" onclick="selectFrame('black')">
+                                        <div class="text-center">
+                                            <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #1f2937, #374151); border-radius: 6px; margin: 0 auto;"></div>
+                                            <div class="small fw-bold mt-1">Đen</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
                                     <div class="frame-option-card" data-frame="custom" onclick="selectFrame('custom')">
                                         <div class="text-center">
                                             <i class="bi bi-image-fill" style="font-size: 24px; color: #6c757d;"></i>
-                                            <div class="small fw-bold mt-1">Khung tùy chỉnh</div>
-                                            <div class="small text-muted">Upload ảnh</div>
+                                            <div class="small fw-bold mt-1">Tùy chỉnh</div>
                                         </div>
                                     </div>
                                 </div>
@@ -324,8 +390,8 @@
                         <li>Nhập họ tên chủ tài khoản và số tài khoản Agribank</li>
                         <li>Tùy chỉnh định dạng hiển thị STK (VD: xxxx xxx xxx xxx)</li>
                         <li>Điều chỉnh kích thước QR (Đề xuất: 8x8 hoặc 7x5 cm)</li>
+                        <li>Chọn màu khung: Đỏ, Trắng, Xanh lá, Xanh dương, Đen hoặc Upload ảnh</li>
                         <li><strong>Khung bị kéo dài?</strong> Tăng padding hoặc đổi tỷ lệ H/W</li>
-                        <li>Chọn khung mặc định (đỏ) hoặc upload ảnh tùy chỉnh</li>
                         <li>Nhấn "Tạo mã QR" và tải về/in kết quả</li>
                     </ol>
                 </div>
@@ -410,7 +476,7 @@
 
 <script>
 let qrImageUrl = '';
-let currentFrameType = 'default';
+let currentFrameType = 'red';
 let customFrameImage = null;
 
 // Select frame type
@@ -511,9 +577,9 @@ document.getElementById('btn-reset')?.addEventListener('click', function() {
     document.getElementById('account-format').value = 'xxxx xxx xxx xxx';
     document.getElementById('frame-padding').value = 10;
     // Reset frame
-    currentFrameType = 'default';
+    currentFrameType = 'red';
     customFrameImage = null;
-    selectFrame('default');
+    selectFrame('red');
 });
 
 // Generate QR Code
@@ -580,6 +646,9 @@ function generateQR() {
         const qrFrame = document.getElementById('qr-frame');
         const customFrameBg = document.getElementById('custom-frame-bg');
 
+        // Remove all frame color classes first
+        qrFrame.classList.remove('frame-red', 'frame-white', 'frame-green', 'frame-blue', 'frame-black', 'custom-frame');
+
         if (currentFrameType === 'custom' && customFrameImage) {
             // Use custom frame
             qrFrame.classList.add('custom-frame');
@@ -588,8 +657,8 @@ function generateQR() {
             // Set padding for custom frame content
             document.querySelector('.qr-frame-content').style.padding = framePadding + 'px';
         } else {
-            // Use default frame
-            qrFrame.classList.remove('custom-frame');
+            // Use color frame
+            qrFrame.classList.add('frame-' + currentFrameType);
             customFrameBg.classList.add('hidden');
             qrFrame.style.padding = framePadding + 'px';
             document.querySelector('.qr-frame-content').style.padding = '0';
