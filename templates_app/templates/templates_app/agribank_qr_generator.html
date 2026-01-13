@@ -147,12 +147,9 @@
     .qr-info-item {
         margin-bottom: 8px;
         font-size: 14px;
-        word-wrap: break-word;
-        word-break: break-word;
-        overflow-wrap: break-word;
-        white-space: normal;
         max-width: 100%;
         display: block;
+        overflow: hidden;
     }
 
     .qr-info-label {
@@ -163,10 +160,10 @@
     #info-name, #info-account-formatted {
         display: inline-block;
         max-width: 100%;
-        word-wrap: break-word;
-        word-break: break-word;
-        overflow-wrap: break-word;
         font-weight: bold;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .frame-option-card {
@@ -563,6 +560,29 @@ function formatAccountNumber(accountNumber, pattern) {
     return result.join(' ');
 }
 
+// Auto-shrink text to fit container width
+// Automatically reduces font-size until text fits in one line
+function fitTextToContainer(element, maxWidth, minFontSize = 10) {
+    if (!element) return;
+
+    // Reset font-size to default first
+    const defaultFontSize = 14; // Default font size from CSS
+    element.style.fontSize = defaultFontSize + 'px';
+
+    let currentFontSize = defaultFontSize;
+
+    // Keep reducing font size until text fits or reaches minimum
+    while (element.scrollWidth > maxWidth && currentFontSize > minFontSize) {
+        currentFontSize -= 0.5; // Reduce by 0.5px for smoother transition
+        element.style.fontSize = currentFontSize + 'px';
+    }
+
+    // If still doesn't fit at minimum size, truncate with ellipsis
+    if (element.scrollWidth > maxWidth) {
+        element.style.textOverflow = 'ellipsis';
+    }
+}
+
 // Form submission
 document.getElementById('qr-form').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -680,6 +700,19 @@ function generateQR() {
         // Update info fields - Display name with diacritics in Title Case
         document.getElementById('info-name').textContent = displayName;
         document.getElementById('info-account-formatted').textContent = formattedAccountNumber;
+
+        // AUTO-SHRINK TEXT: Tự động giảm font-size nếu text quá dài
+        // Tính chiều rộng available cho text (chiều rộng QR - padding của .qr-info)
+        const qrInfoPadding = 15; // padding của .qr-info là 15px (left + right = 30px)
+        const availableTextWidth = widthPx - (qrInfoPadding * 2);
+
+        // Apply auto-shrink cho tên chủ tài khoản
+        const infoNameElement = document.getElementById('info-name');
+        fitTextToContainer(infoNameElement, availableTextWidth, 10);
+
+        // Apply auto-shrink cho số tài khoản
+        const infoAccountElement = document.getElementById('info-account-formatted');
+        fitTextToContainer(infoAccountElement, availableTextWidth, 10);
     };
 
     qrImage.onerror = function() {
