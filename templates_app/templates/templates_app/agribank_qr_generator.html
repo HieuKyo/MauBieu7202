@@ -66,8 +66,8 @@
     }
 
     .qr-frame.frame-blue {
-        background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-        box-shadow: 0 8px 24px rgba(30,58,138,0.3);
+        background: linear-gradient(135deg, #23336e 0%, #3d5afe 100%);
+        box-shadow: 0 8px 24px rgba(35,51,110,0.3);
     }
 
     .qr-frame.frame-black {
@@ -122,6 +122,8 @@
         border-radius: 8px;
         text-align: center;
         margin-bottom: 15px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .qr-code-image {
@@ -136,8 +138,10 @@
         padding: 15px;
         border-radius: 8px;
         color: #333;
+        width: 100%;
         max-width: 100%;
         overflow: hidden;
+        box-sizing: border-box;
     }
 
     .qr-info-item {
@@ -341,7 +345,7 @@
                                 <div class="col-4">
                                     <div class="frame-option-card" data-frame="blue" onclick="selectFrame('blue')">
                                         <div class="text-center">
-                                            <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-radius: 6px; margin: 0 auto;"></div>
+                                            <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #23336e, #3d5afe); border-radius: 6px; margin: 0 auto;"></div>
                                             <div class="small fw-bold mt-1">Xanh dương</div>
                                         </div>
                                     </div>
@@ -645,6 +649,15 @@ function generateQR() {
         // Apply frame styling
         const qrFrame = document.getElementById('qr-frame');
         const customFrameBg = document.getElementById('custom-frame-bg');
+
+        // KHÓA CHIỀU RỘNG CỦA KHUNG - Ngăn không cho khung giãn ra khi tên dài
+        // Reset width trước
+        qrFrame.style.width = "fit-content";
+        // Tính tổng chiều rộng: chiều rộng QR + (padding * 2)
+        const totalFrameWidth = widthPx + (framePadding * 2);
+        // Khóa cứng chiều rộng và max-width
+        qrFrame.style.maxWidth = totalFrameWidth + 'px';
+        qrFrame.style.width = totalFrameWidth + 'px';
 
         // Remove all frame color classes first
         qrFrame.classList.remove('frame-red', 'frame-white', 'frame-green', 'frame-blue', 'frame-black', 'custom-frame');
