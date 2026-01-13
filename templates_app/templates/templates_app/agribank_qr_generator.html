@@ -30,18 +30,40 @@
     #qr-export-area {
         position: relative;
         display: inline-block;
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        background: transparent;
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
     }
 
     .qr-frame {
         position: relative;
-        background: linear-gradient(135deg, #006838 0%, #008844 100%);
-        padding: 25px;
+        background: linear-gradient(135deg, #AE1C3F 0%, #C12E50 100%);
+        padding: 30px;
         border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0,104,56,0.3);
+        box-shadow: 0 8px 24px rgba(174,28,63,0.3);
+    }
+
+    .qr-frame.custom-frame {
+        background: none;
+        padding: 0;
+        position: relative;
+    }
+
+    .custom-frame-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 12px;
+        z-index: 0;
+    }
+
+    .qr-frame-content {
+        position: relative;
+        z-index: 1;
     }
 
     .qr-frame-header {
@@ -92,11 +114,44 @@
 
     .qr-info-label {
         font-weight: 600;
-        color: #006838;
+        color: #AE1C3F;
+    }
+
+    .frame-option-card {
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .frame-option-card:hover {
+        border-color: #AE1C3F;
+        background-color: #fff5f7;
+    }
+
+    .frame-option-card.active {
+        border-color: #AE1C3F;
+        background-color: #fff5f7;
     }
 
     .size-btn-group .btn {
         min-width: 80px;
+    }
+
+    /* Override Bootstrap success color with Agribank red */
+    .btn-success {
+        background-color: #AE1C3F !important;
+        border-color: #AE1C3F !important;
+    }
+
+    .btn-success:hover {
+        background-color: #8e1632 !important;
+        border-color: #8e1632 !important;
+    }
+
+    .text-success {
+        color: #AE1C3F !important;
     }
 
     .action-buttons {
@@ -131,7 +186,7 @@
 <div class="container py-4">
     <!-- Header -->
     <div class="mb-4">
-        <h2 class="text-center" style="color: var(--agribank-green);">
+        <h2 class="text-center" style="color: #AE1C3F;">
             <i class="bi bi-qr-code"></i> Tạo mã QR Agribank
         </h2>
         <p class="text-center text-muted">Tạo mã QR chuyển khoản với API VietQR.io - Quét để chuyển tiền nhanh chóng</p>
@@ -141,7 +196,7 @@
         <!-- Left Panel: Form Input -->
         <div class="col-lg-5">
             <div class="card shadow-sm">
-                <div class="card-header" style="background-color: var(--agribank-green); color: white;">
+                <div class="card-header" style="background-color: #AE1C3F; color: white;">
                     <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Thông tin chuyển khoản</h5>
                 </div>
                 <div class="card-body">
@@ -197,7 +252,43 @@
                                     <input type="number" class="form-control" id="qr-width" placeholder="Chiều rộng" min="1" max="20" step="0.1" value="3.5">
                                 </div>
                             </div>
-                            <small class="text-muted">Nhập kích thước theo centimet (cm)</small>
+                            <small class="text-muted">Nhập kích thước theo centimet (cm). Đề xuất: 8x8 hoặc 7x5 để cân đối hơn</small>
+                        </div>
+
+                        <!-- Padding Frame -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Padding khung (px)</label>
+                            <input type="number" class="form-control" id="frame-padding" placeholder="Padding" min="10" max="100" step="5" value="30">
+                            <small class="text-muted">Tăng padding để khung lớn hơn (mặc định: 30px)</small>
+                        </div>
+
+                        <!-- Frame Type -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Loại khung</label>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <div class="frame-option-card active" data-frame="default" onclick="selectFrame('default')">
+                                        <div class="text-center">
+                                            <i class="bi bi-palette-fill" style="font-size: 24px; color: #AE1C3F;"></i>
+                                            <div class="small fw-bold mt-1">Khung mặc định</div>
+                                            <div class="small text-muted">Màu đỏ Agribank</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="frame-option-card" data-frame="custom" onclick="selectFrame('custom')">
+                                        <div class="text-center">
+                                            <i class="bi bi-image-fill" style="font-size: 24px; color: #6c757d;"></i>
+                                            <div class="small fw-bold mt-1">Khung tùy chỉnh</div>
+                                            <div class="small text-muted">Upload ảnh</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="custom-frame-upload" class="hidden">
+                                <input type="file" class="form-control" id="custom-frame-file" accept="image/*">
+                                <small class="text-muted">Chọn ảnh làm nền khung (PNG, JPG)</small>
+                            </div>
                         </div>
 
                         <!-- Buttons -->
@@ -216,13 +307,14 @@
             <!-- Info Card -->
             <div class="card shadow-sm mt-3">
                 <div class="card-body">
-                    <h6 class="fw-bold text-success"><i class="bi bi-info-circle"></i> Hướng dẫn sử dụng</h6>
+                    <h6 class="fw-bold text-success"><i class="bi bi-info-circle"></i> Hướng dẫn & Giải pháp</h6>
                     <ol class="small mb-0">
                         <li>Nhập họ tên chủ tài khoản và số tài khoản Agribank</li>
                         <li>Tùy chỉnh định dạng hiển thị STK (VD: xxxx xxx xxx xxx)</li>
-                        <li>Chọn kiểu hiển thị QR và điều chỉnh kích thước (H x W)</li>
-                        <li>Nhấn "Tạo mã QR" để xem kết quả</li>
-                        <li>Tải về hoặc in mã QR để sử dụng</li>
+                        <li>Điều chỉnh kích thước QR (Đề xuất: 8x8 hoặc 7x5 cm)</li>
+                        <li><strong>Khung bị kéo dài?</strong> Tăng padding hoặc đổi tỷ lệ H/W</li>
+                        <li>Chọn khung mặc định (đỏ) hoặc upload ảnh tùy chỉnh</li>
+                        <li>Nhấn "Tạo mã QR" và tải về/in kết quả</li>
                     </ol>
                 </div>
             </div>
@@ -231,7 +323,7 @@
         <!-- Right Panel: QR Preview -->
         <div class="col-lg-7">
             <div class="card shadow-sm">
-                <div class="card-header" style="background-color: var(--agribank-green); color: white;">
+                <div class="card-header" style="background-color: #AE1C3F; color: white;">
                     <h5 class="mb-0"><i class="bi bi-eye"></i> Xem trước mã QR</h5>
                 </div>
                 <div class="card-body">
@@ -244,24 +336,30 @@
 
                         <!-- QR Export Area (Hidden initially) -->
                         <div id="qr-export-area" class="hidden">
-                            <div class="qr-frame">
-                                <!-- Header with logo -->
-                                <div class="qr-frame-header">
-                                    <img src="{% static 'images/agribank_logo.png' %}" alt="Agribank Logo" class="qr-frame-logo">
-                                </div>
+                            <div class="qr-frame" id="qr-frame">
+                                <!-- Custom frame background image (hidden by default) -->
+                                <img id="custom-frame-bg" class="custom-frame-image hidden" src="" alt="Custom Frame">
 
-                                <!-- QR Code -->
-                                <div class="qr-code-wrapper">
-                                    <img id="qr-image" src="" alt="QR Code" class="qr-code-image" crossorigin="anonymous">
-                                </div>
-
-                                <!-- Account Info -->
-                                <div class="qr-info">
-                                    <div class="qr-info-item">
-                                        <span class="qr-info-label">Chủ TK:</span> <span id="info-name"></span>
+                                <!-- Frame content -->
+                                <div class="qr-frame-content">
+                                    <!-- Header with logo -->
+                                    <div class="qr-frame-header">
+                                        <img src="{% static 'images/agribank_logo.png' %}" alt="Agribank Logo" class="qr-frame-logo">
                                     </div>
-                                    <div class="qr-info-item">
-                                        <span class="qr-info-label">Số TK:</span> <span id="info-account-formatted"></span>
+
+                                    <!-- QR Code -->
+                                    <div class="qr-code-wrapper">
+                                        <img id="qr-image" src="" alt="QR Code" class="qr-code-image" crossorigin="anonymous">
+                                    </div>
+
+                                    <!-- Account Info -->
+                                    <div class="qr-info">
+                                        <div class="qr-info-item">
+                                            <span class="qr-info-label">Chủ TK:</span> <span id="info-name"></span>
+                                        </div>
+                                        <div class="qr-info-item">
+                                            <span class="qr-info-label">Số TK:</span> <span id="info-account-formatted"></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -300,6 +398,39 @@
 
 <script>
 let qrImageUrl = '';
+let currentFrameType = 'default';
+let customFrameImage = null;
+
+// Select frame type
+function selectFrame(type) {
+    currentFrameType = type;
+
+    // Update UI
+    document.querySelectorAll('.frame-option-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    document.querySelector(`[data-frame="${type}"]`).classList.add('active');
+
+    // Show/hide custom frame upload
+    if (type === 'custom') {
+        document.getElementById('custom-frame-upload').classList.remove('hidden');
+    } else {
+        document.getElementById('custom-frame-upload').classList.add('hidden');
+    }
+}
+
+// Handle custom frame upload
+document.getElementById('custom-frame-file')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            customFrameImage = event.target.result;
+            alert('Frame đã được tải lên! Nhấn "Tạo mã QR" để xem kết quả.');
+        };
+        reader.readAsDataURL(file);
+    }
+});
 
 // Remove Vietnamese diacritics
 function removeVietnameseDiacritics(str) {
@@ -366,6 +497,11 @@ document.getElementById('btn-reset')?.addEventListener('click', function() {
     document.getElementById('qr-height').value = 5;
     document.getElementById('qr-width').value = 3.5;
     document.getElementById('account-format').value = 'xxxx xxx xxx xxx';
+    document.getElementById('frame-padding').value = 30;
+    // Reset frame
+    currentFrameType = 'default';
+    customFrameImage = null;
+    selectFrame('default');
 });
 
 // Generate QR Code
@@ -413,6 +549,9 @@ function generateQR() {
 
     qrImageUrl = apiUrl;
 
+    // Get frame padding
+    const framePadding = parseInt(document.getElementById('frame-padding').value) || 30;
+
     // Load QR image
     const qrImage = document.getElementById('qr-image');
     qrImage.onload = function() {
@@ -424,6 +563,25 @@ function generateQR() {
         // Set QR image size
         qrImage.style.width = widthPx + 'px';
         qrImage.style.height = heightPx + 'px';
+
+        // Apply frame styling
+        const qrFrame = document.getElementById('qr-frame');
+        const customFrameBg = document.getElementById('custom-frame-bg');
+
+        if (currentFrameType === 'custom' && customFrameImage) {
+            // Use custom frame
+            qrFrame.classList.add('custom-frame');
+            customFrameBg.src = customFrameImage;
+            customFrameBg.classList.remove('hidden');
+            // Set padding for custom frame content
+            document.querySelector('.qr-frame-content').style.padding = framePadding + 'px';
+        } else {
+            // Use default frame
+            qrFrame.classList.remove('custom-frame');
+            customFrameBg.classList.add('hidden');
+            qrFrame.style.padding = framePadding + 'px';
+            document.querySelector('.qr-frame-content').style.padding = '0';
+        }
 
         // Update info fields - Display name with diacritics in Title Case
         document.getElementById('info-name').textContent = displayName;
