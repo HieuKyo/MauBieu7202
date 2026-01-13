@@ -144,4 +144,7 @@ urlpatterns = [
     path('reports/atm-transaction/import/', report_views.atm_transaction_import, name='atm_transaction_import'),
     path('reports/atm-transaction/delete/<int:upload_id>/', report_views.atm_transaction_delete, name='atm_transaction_delete'),
     path('reports/atm-transaction/detail/<str:atm_no>/', report_views.atm_transaction_detail, name='atm_transaction_detail'),
+
+    # Agribank QR Code Generator
+    path('agribank-qr/', views.agribank_qr_generator, name='agribank_qr_generator'),
 ]
