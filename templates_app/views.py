@@ -5479,3 +5479,18 @@ def get_user_permissions_detail(request, user_id):
             'success': False,
             'error': f'Lỗi khi lấy thông tin: {str(e)}'
         }, status=500)
+
+
+# ==============================================================================
+# AGRIBANK QR CODE GENERATOR
+# ==============================================================================
+
+@login_required
+def agribank_qr_generator(request):
+    """
+    Agribank QR Code Generator
+    Tạo mã QR cho chuyển khoản Agribank sử dụng API VietQR.io
+    """
+    return render(request, 'templates_app/agribank_qr_generator.html', {
+        'page_title': 'Tạo mã QR Agribank'
+    })
