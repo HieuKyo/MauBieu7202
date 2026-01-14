@@ -314,6 +314,91 @@
         display: none !important;
     }
 
+    /* Overlay Custom Layout - User positioned QR & Text on custom background */
+    .qr-overlay-custom {
+        position: relative;
+        max-width: 100%;
+        display: inline-block;
+    }
+
+    .overlay-background {
+        width: 100%;
+        height: auto;
+        display: block;
+        object-fit: contain;
+        max-width: 800px;
+    }
+
+    .overlay-qr-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+    }
+
+    .overlay-qr-container img {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    .overlay-text-container {
+        position: absolute;
+        top: 70%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 11;
+        text-align: center;
+        width: 50%;
+    }
+
+    .overlay-text-line {
+        font-weight: bold;
+        margin: 3px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 16px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+
+    .control-group {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .control-group h6 {
+        margin-bottom: 10px;
+        color: #AE1C3F;
+        font-weight: bold;
+    }
+
+    .control-item {
+        margin-bottom: 10px;
+    }
+
+    .control-item label {
+        font-size: 12px;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 3px;
+    }
+
+    .control-item input[type="range"] {
+        width: 100%;
+    }
+
+    .control-value {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: bold;
+        color: #666;
+        margin-left: 5px;
+    }
+
     /* Loading spinner */
     .spinner-overlay {
         position: absolute;
@@ -383,8 +468,56 @@
                             <select class="form-select" id="layout-type">
                                 <option value="standard">Mẫu chuẩn (Standard)</option>
                                 <option value="card-15x10">Thẻ QR 15x10cm (Split Layout)</option>
+                                <option value="overlay-custom">Tùy biến vị trí trên ảnh nền (Overlay)</option>
                             </select>
                             <small class="text-muted">Chọn mẫu thẻ QR bạn muốn sử dụng</small>
+                        </div>
+
+                        <!-- Overlay Positioning Controls (only show when overlay-custom is selected) -->
+                        <div id="overlay-controls" class="hidden">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Ảnh nền (Background)</label>
+                                <input type="file" class="form-control" id="overlay-background-file" accept="image/*">
+                                <small class="text-muted">Upload ảnh nền để làm background cho QR và text</small>
+                            </div>
+
+                            <!-- QR Position Controls -->
+                            <div class="control-group">
+                                <h6><i class="bi bi-qr-code"></i> Vị trí mã QR</h6>
+                                <div class="control-item">
+                                    <label>Top (%) <span class="control-value" id="qr-top-value">50</span>%</label>
+                                    <input type="range" id="qr-top" min="0" max="100" value="50" step="1">
+                                </div>
+                                <div class="control-item">
+                                    <label>Left (%) <span class="control-value" id="qr-left-value">50</span>%</label>
+                                    <input type="range" id="qr-left" min="0" max="100" value="50" step="1">
+                                </div>
+                                <div class="control-item">
+                                    <label>Kích thước (%) <span class="control-value" id="qr-size-value">25</span>%</label>
+                                    <input type="range" id="qr-size" min="10" max="80" value="25" step="1">
+                                </div>
+                            </div>
+
+                            <!-- Text Position Controls -->
+                            <div class="control-group">
+                                <h6><i class="bi bi-text-left"></i> Vị trí văn bản</h6>
+                                <div class="control-item">
+                                    <label>Top (%) <span class="control-value" id="text-top-value">70</span>%</label>
+                                    <input type="range" id="text-top" min="0" max="100" value="70" step="1">
+                                </div>
+                                <div class="control-item">
+                                    <label>Left (%) <span class="control-value" id="text-left-value">50</span>%</label>
+                                    <input type="range" id="text-left" min="0" max="100" value="50" step="1">
+                                </div>
+                                <div class="control-item">
+                                    <label>Chiều rộng (%) <span class="control-value" id="text-width-value">50</span>%</label>
+                                    <input type="range" id="text-width" min="20" max="100" value="50" step="1">
+                                </div>
+                                <div class="control-item">
+                                    <label>Màu chữ</label>
+                                    <input type="color" class="form-control" id="text-color" value="#ffffff">
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Template QR -->
@@ -576,6 +709,23 @@
                                     <img src="{% static 'images/agribank_logo.png' %}" alt="Agribank Logo" class="card-right-logo">
                                 </div>
                             </div>
+
+                            <!-- Overlay Custom Layout -->
+                            <div class="qr-overlay-custom hidden" id="qr-overlay-custom">
+                                <!-- Background Image -->
+                                <img id="overlay-bg-image" src="" alt="Background" class="overlay-background">
+
+                                <!-- QR Code Container -->
+                                <div class="overlay-qr-container" id="overlay-qr-position">
+                                    <img id="overlay-qr-image" src="" crossorigin="anonymous">
+                                </div>
+
+                                <!-- Text Container -->
+                                <div class="overlay-text-container" id="overlay-text-position">
+                                    <div class="overlay-text-line" id="overlay-text-name">NGUYEN VAN A</div>
+                                    <div class="overlay-text-line" id="overlay-text-account">STK: 7202 201 001 510</div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Loading Spinner -->
@@ -613,6 +763,7 @@
 let qrImageUrl = '';
 let currentFrameType = 'red';
 let customFrameImage = null;
+let overlayBackgroundImage = null;
 
 // Select frame type
 function selectFrame(type) {
@@ -644,6 +795,114 @@ document.getElementById('custom-frame-file')?.addEventListener('change', functio
         reader.readAsDataURL(file);
     }
 });
+
+// Layout type change handler - show/hide overlay controls
+document.getElementById('layout-type')?.addEventListener('change', function() {
+    const layoutType = this.value;
+    const overlayControls = document.getElementById('overlay-controls');
+
+    if (layoutType === 'overlay-custom') {
+        overlayControls.classList.remove('hidden');
+    } else {
+        overlayControls.classList.add('hidden');
+    }
+});
+
+// Handle overlay background image upload
+document.getElementById('overlay-background-file')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            overlayBackgroundImage = event.target.result;
+            // Update preview immediately if QR is already generated
+            const overlayBgImage = document.getElementById('overlay-bg-image');
+            if (overlayBgImage) {
+                overlayBgImage.src = overlayBackgroundImage;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Real-time slider updates for overlay positioning
+function setupOverlayControls() {
+    // QR Position Controls
+    document.getElementById('qr-top')?.addEventListener('input', function() {
+        const value = this.value;
+        document.getElementById('qr-top-value').textContent = value;
+        updateOverlayQRPosition();
+    });
+
+    document.getElementById('qr-left')?.addEventListener('input', function() {
+        const value = this.value;
+        document.getElementById('qr-left-value').textContent = value;
+        updateOverlayQRPosition();
+    });
+
+    document.getElementById('qr-size')?.addEventListener('input', function() {
+        const value = this.value;
+        document.getElementById('qr-size-value').textContent = value;
+        updateOverlayQRPosition();
+    });
+
+    // Text Position Controls
+    document.getElementById('text-top')?.addEventListener('input', function() {
+        const value = this.value;
+        document.getElementById('text-top-value').textContent = value;
+        updateOverlayTextPosition();
+    });
+
+    document.getElementById('text-left')?.addEventListener('input', function() {
+        const value = this.value;
+        document.getElementById('text-left-value').textContent = value;
+        updateOverlayTextPosition();
+    });
+
+    document.getElementById('text-width')?.addEventListener('input', function() {
+        const value = this.value;
+        document.getElementById('text-width-value').textContent = value;
+        updateOverlayTextPosition();
+    });
+
+    document.getElementById('text-color')?.addEventListener('input', function() {
+        const value = this.value;
+        updateOverlayTextPosition();
+    });
+}
+
+// Update overlay QR position in real-time
+function updateOverlayQRPosition() {
+    const qrContainer = document.getElementById('overlay-qr-position');
+    if (!qrContainer) return;
+
+    const top = document.getElementById('qr-top').value;
+    const left = document.getElementById('qr-left').value;
+    const size = document.getElementById('qr-size').value;
+
+    qrContainer.style.top = top + '%';
+    qrContainer.style.left = left + '%';
+    qrContainer.style.width = size + '%';
+}
+
+// Update overlay text position in real-time
+function updateOverlayTextPosition() {
+    const textContainer = document.getElementById('overlay-text-position');
+    if (!textContainer) return;
+
+    const top = document.getElementById('text-top').value;
+    const left = document.getElementById('text-left').value;
+    const width = document.getElementById('text-width').value;
+    const color = document.getElementById('text-color').value;
+
+    textContainer.style.top = top + '%';
+    textContainer.style.left = left + '%';
+    textContainer.style.width = width + '%';
+    textContainer.style.color = color;
+}
+
+// Initialize overlay controls on page load
+setupOverlayControls();
 
 // Remove Vietnamese diacritics
 function removeVietnameseDiacritics(str) {
@@ -737,7 +996,25 @@ document.getElementById('btn-reset')?.addEventListener('click', function() {
     // Reset frame
     currentFrameType = 'red';
     customFrameImage = null;
+    overlayBackgroundImage = null;
     selectFrame('red');
+    // Hide overlay controls
+    document.getElementById('overlay-controls').classList.add('hidden');
+    // Reset overlay sliders
+    document.getElementById('qr-top').value = 50;
+    document.getElementById('qr-left').value = 50;
+    document.getElementById('qr-size').value = 25;
+    document.getElementById('text-top').value = 70;
+    document.getElementById('text-left').value = 50;
+    document.getElementById('text-width').value = 50;
+    document.getElementById('text-color').value = '#ffffff';
+    // Update slider value displays
+    document.getElementById('qr-top-value').textContent = '50';
+    document.getElementById('qr-left-value').textContent = '50';
+    document.getElementById('qr-size-value').textContent = '25';
+    document.getElementById('text-top-value').textContent = '70';
+    document.getElementById('text-left-value').textContent = '50';
+    document.getElementById('text-width-value').textContent = '50';
 });
 
 // Generate QR Code
@@ -846,10 +1123,41 @@ function generateQR() {
             fitTextToContainer(cardNameElement, cardAvailableWidth, 10);
             fitTextToContainer(cardAccountElement, cardAvailableWidth, 10);
 
+        } else if (layoutType === 'overlay-custom') {
+            // Show overlay layout, hide others
+            document.getElementById('qr-frame').classList.add('hidden');
+            document.getElementById('qr-card-15x10').classList.add('hidden');
+            document.getElementById('qr-overlay-custom').classList.remove('hidden');
+
+            // Validate that background image is uploaded
+            if (!overlayBackgroundImage) {
+                alert('Vui lòng upload ảnh nền trước khi tạo mã QR với layout Overlay!');
+                document.getElementById('loading-spinner').classList.add('hidden');
+                return;
+            }
+
+            // Set background image
+            const overlayBgImage = document.getElementById('overlay-bg-image');
+            overlayBgImage.src = overlayBackgroundImage;
+
+            // Set QR image for overlay
+            const overlayQrImage = document.getElementById('overlay-qr-image');
+            overlayQrImage.src = apiUrl;
+            overlayQrImage.crossOrigin = 'anonymous';
+
+            // Update text content
+            document.getElementById('overlay-text-name').textContent = displayName;
+            document.getElementById('overlay-text-account').textContent = 'STK: ' + formattedAccountNumber;
+
+            // Apply initial positions from sliders
+            updateOverlayQRPosition();
+            updateOverlayTextPosition();
+
         } else {
             // Show standard layout, hide card layout
             document.getElementById('qr-frame').classList.remove('hidden');
             document.getElementById('qr-card-15x10').classList.add('hidden');
+            document.getElementById('qr-overlay-custom').classList.add('hidden');
 
             // Set QR image size for standard layout
             qrImage.style.width = widthPx + 'px';
