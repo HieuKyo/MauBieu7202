@@ -203,6 +203,106 @@
         color: #AE1C3F !important;
     }
 
+    /* QR Card 15x10cm Layout */
+    .qr-card-15x10 {
+        width: 567px;  /* 15cm * 37.8 */
+        height: 378px; /* 10cm * 37.8 */
+        display: flex;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .card-left {
+        width: 60%;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .card-left.bg-red {
+        background: linear-gradient(135deg, #AE1C3F 0%, #C12E50 100%);
+    }
+
+    .card-left.bg-white {
+        background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+    }
+
+    .card-left.bg-green {
+        background: linear-gradient(135deg, #006838 0%, #008844 100%);
+    }
+
+    .card-left.bg-blue {
+        background: linear-gradient(135deg, #23336e 0%, #3d5afe 100%);
+    }
+
+    .card-left.bg-black {
+        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    }
+
+    .card-right {
+        width: 40%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .card-right-logo {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+    }
+
+    .qr-overlay-container {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    .qr-overlay-logo {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 20%;
+        height: 20%;
+        border-radius: 50%;
+        border: 3px solid white;
+        background: white;
+        padding: 5px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        z-index: 10;
+    }
+
+    .card-info-text {
+        text-align: center;
+        width: 100%;
+    }
+
+    .card-info-text.text-white {
+        color: white;
+    }
+
+    .card-info-text.text-dark {
+        color: #333;
+    }
+
+    .card-info-text .info-line {
+        margin: 5px 0;
+        font-size: 13px;
+        font-weight: bold;
+    }
+
+    .card-info-text .info-name {
+        font-size: 15px;
+        margin-bottom: 8px;
+    }
+
     .action-buttons {
         display: flex;
         gap: 10px;
@@ -275,6 +375,16 @@
                             </label>
                             <input type="text" class="form-control" id="account-format" placeholder="VD: xxxx xxx xxx xxx" value="xxxx xxx xxx xxx">
                             <small class="text-muted">Nhập pattern: dùng 'x' cho chữ số, dấu cách để phân tách. VD: xxxx xxx xxx xxx</small>
+                        </div>
+
+                        <!-- Layout Type -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Kiểu mẫu</label>
+                            <select class="form-select" id="layout-type">
+                                <option value="standard">Mẫu chuẩn (Standard)</option>
+                                <option value="card-15x10">Thẻ QR 15x10cm (Split Layout)</option>
+                            </select>
+                            <small class="text-muted">Chọn mẫu thẻ QR bạn muốn sử dụng</small>
                         </div>
 
                         <!-- Template QR -->
@@ -415,6 +525,7 @@
 
                         <!-- QR Export Area (Hidden initially) -->
                         <div id="qr-export-area" class="hidden">
+                            <!-- Standard Layout -->
                             <div class="qr-frame" id="qr-frame">
                                 <!-- Custom frame background image (hidden by default) -->
                                 <img id="custom-frame-bg" class="custom-frame-image hidden" src="" alt="Custom Frame">
@@ -440,6 +551,29 @@
                                             <span class="qr-info-label">Số TK:</span> <span id="info-account-formatted"></span>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- 15x10cm Card Layout (Split) -->
+                            <div class="qr-card-15x10 hidden" id="qr-card-15x10">
+                                <!-- Left Side: QR + Info -->
+                                <div class="card-left bg-red" id="card-left">
+                                    <!-- QR with overlay logo -->
+                                    <div class="qr-overlay-container">
+                                        <img id="card-qr-image" src="" alt="QR Code" style="width: 200px; height: 200px; display: block;" crossorigin="anonymous">
+                                        <img src="{% static 'images/agribank_logo.png' %}" alt="Logo Overlay" class="qr-overlay-logo">
+                                    </div>
+
+                                    <!-- Info Text -->
+                                    <div class="card-info-text text-white" id="card-info-text">
+                                        <div class="info-name" id="card-info-name">NGUYEN VAN A</div>
+                                        <div class="info-line" id="card-info-account">STK: 7202 201 001 510</div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Side: Logo -->
+                                <div class="card-right">
+                                    <img src="{% static 'images/agribank_logo.png' %}" alt="Agribank Logo" class="card-right-logo">
                                 </div>
                             </div>
                         </div>
@@ -613,6 +747,7 @@ function generateQR() {
     const accountNumber = document.getElementById('account-number').value.trim();
     const template = document.getElementById('qr-template').value;
     const accountPattern = document.getElementById('account-format').value.trim();
+    const layoutType = document.getElementById('layout-type').value;
 
     // Validation
     if (!accountName || !accountNumber) {
@@ -656,63 +791,118 @@ function generateQR() {
 
     // Load QR image
     const qrImage = document.getElementById('qr-image');
+    const cardQrImage = document.getElementById('card-qr-image');
+
+    // Set QR image src for both layouts
+    qrImage.src = apiUrl;
+    cardQrImage.src = apiUrl;
+
     qrImage.onload = function() {
         // Hide loading, show QR
         document.getElementById('loading-spinner').classList.add('hidden');
         document.getElementById('qr-export-area').classList.remove('hidden');
         document.getElementById('action-buttons').classList.remove('hidden');
 
-        // Set QR image size
-        qrImage.style.width = widthPx + 'px';
-        qrImage.style.height = heightPx + 'px';
+        // Choose layout based on user selection
+        if (layoutType === 'card-15x10') {
+            // Show card layout, hide standard layout
+            document.getElementById('qr-frame').classList.add('hidden');
+            document.getElementById('qr-card-15x10').classList.remove('hidden');
 
-        // Apply frame styling
-        const qrFrame = document.getElementById('qr-frame');
-        const customFrameBg = document.getElementById('custom-frame-bg');
+            // Apply color to card-left
+            const cardLeft = document.getElementById('card-left');
+            const cardInfoText = document.getElementById('card-info-text');
 
-        // KHÓA CHIỀU RỘNG CỦA KHUNG - Ngăn không cho khung giãn ra khi tên dài
-        // Reset width trước
-        qrFrame.style.width = "fit-content";
-        // Tính tổng chiều rộng: chiều rộng QR + (padding * 2)
-        const totalFrameWidth = widthPx + (framePadding * 2);
-        // Khóa cứng chiều rộng và max-width
-        qrFrame.style.maxWidth = totalFrameWidth + 'px';
-        qrFrame.style.width = totalFrameWidth + 'px';
+            // Remove all bg classes first
+            cardLeft.classList.remove('bg-red', 'bg-white', 'bg-green', 'bg-blue', 'bg-black');
+            cardInfoText.classList.remove('text-white', 'text-dark');
 
-        // Remove all frame color classes first
-        qrFrame.classList.remove('frame-red', 'frame-white', 'frame-green', 'frame-blue', 'frame-black', 'custom-frame');
+            // Apply selected color
+            if (currentFrameType === 'custom' && customFrameImage) {
+                cardLeft.style.backgroundImage = `url(${customFrameImage})`;
+                cardLeft.style.backgroundSize = 'cover';
+                cardInfoText.classList.add('text-white');
+            } else {
+                cardLeft.style.backgroundImage = 'none';
+                cardLeft.classList.add('bg-' + currentFrameType);
 
-        if (currentFrameType === 'custom' && customFrameImage) {
-            // Use custom frame
-            qrFrame.classList.add('custom-frame');
-            customFrameBg.src = customFrameImage;
-            customFrameBg.classList.remove('hidden');
-            // Set padding for custom frame content
-            document.querySelector('.qr-frame-content').style.padding = framePadding + 'px';
+                // Text color based on background
+                if (currentFrameType === 'white') {
+                    cardInfoText.classList.add('text-dark');
+                } else {
+                    cardInfoText.classList.add('text-white');
+                }
+            }
+
+            // Update card info
+            document.getElementById('card-info-name').textContent = displayName;
+            document.getElementById('card-info-account').textContent = 'STK: ' + formattedAccountNumber;
+
+            // Auto-shrink text for card layout
+            const cardNameElement = document.getElementById('card-info-name');
+            const cardAccountElement = document.getElementById('card-info-account');
+            const cardAvailableWidth = 340 - 40; // card-left width 60% of 567px minus padding
+
+            fitTextToContainer(cardNameElement, cardAvailableWidth, 10);
+            fitTextToContainer(cardAccountElement, cardAvailableWidth, 10);
+
         } else {
-            // Use color frame
-            qrFrame.classList.add('frame-' + currentFrameType);
-            customFrameBg.classList.add('hidden');
-            qrFrame.style.padding = framePadding + 'px';
-            document.querySelector('.qr-frame-content').style.padding = '0';
+            // Show standard layout, hide card layout
+            document.getElementById('qr-frame').classList.remove('hidden');
+            document.getElementById('qr-card-15x10').classList.add('hidden');
+
+            // Set QR image size for standard layout
+            qrImage.style.width = widthPx + 'px';
+            qrImage.style.height = heightPx + 'px';
+
+            // Apply frame styling for standard layout
+            const qrFrame = document.getElementById('qr-frame');
+            const customFrameBg = document.getElementById('custom-frame-bg');
+
+            // KHÓA CHIỀU RỘNG CỦA KHUNG - Ngăn không cho khung giãn ra khi tên dài
+            // Reset width trước
+            qrFrame.style.width = "fit-content";
+            // Tính tổng chiều rộng: chiều rộng QR + (padding * 2)
+            const totalFrameWidth = widthPx + (framePadding * 2);
+            // Khóa cứng chiều rộng và max-width
+            qrFrame.style.maxWidth = totalFrameWidth + 'px';
+            qrFrame.style.width = totalFrameWidth + 'px';
+
+            // Remove all frame color classes first
+            qrFrame.classList.remove('frame-red', 'frame-white', 'frame-green', 'frame-blue', 'frame-black', 'custom-frame');
+
+            if (currentFrameType === 'custom' && customFrameImage) {
+                // Use custom frame
+                qrFrame.classList.add('custom-frame');
+                customFrameBg.src = customFrameImage;
+                customFrameBg.classList.remove('hidden');
+                // Set padding for custom frame content
+                document.querySelector('.qr-frame-content').style.padding = framePadding + 'px';
+            } else {
+                // Use color frame
+                qrFrame.classList.add('frame-' + currentFrameType);
+                customFrameBg.classList.add('hidden');
+                qrFrame.style.padding = framePadding + 'px';
+                document.querySelector('.qr-frame-content').style.padding = '0';
+            }
+
+            // Update info fields - Display name with diacritics in Title Case
+            document.getElementById('info-name').textContent = displayName;
+            document.getElementById('info-account-formatted').textContent = formattedAccountNumber;
+
+            // AUTO-SHRINK TEXT: Tự động giảm font-size nếu text quá dài
+            // Tính chiều rộng available cho text (chiều rộng QR - padding của .qr-info)
+            const qrInfoPadding = 15; // padding của .qr-info là 15px (left + right = 30px)
+            const availableTextWidth = widthPx - (qrInfoPadding * 2);
+
+            // Apply auto-shrink cho tên chủ tài khoản
+            const infoNameElement = document.getElementById('info-name');
+            fitTextToContainer(infoNameElement, availableTextWidth, 10);
+
+            // Apply auto-shrink cho số tài khoản
+            const infoAccountElement = document.getElementById('info-account-formatted');
+            fitTextToContainer(infoAccountElement, availableTextWidth, 10);
         }
-
-        // Update info fields - Display name with diacritics in Title Case
-        document.getElementById('info-name').textContent = displayName;
-        document.getElementById('info-account-formatted').textContent = formattedAccountNumber;
-
-        // AUTO-SHRINK TEXT: Tự động giảm font-size nếu text quá dài
-        // Tính chiều rộng available cho text (chiều rộng QR - padding của .qr-info)
-        const qrInfoPadding = 15; // padding của .qr-info là 15px (left + right = 30px)
-        const availableTextWidth = widthPx - (qrInfoPadding * 2);
-
-        // Apply auto-shrink cho tên chủ tài khoản
-        const infoNameElement = document.getElementById('info-name');
-        fitTextToContainer(infoNameElement, availableTextWidth, 10);
-
-        // Apply auto-shrink cho số tài khoản
-        const infoAccountElement = document.getElementById('info-account-formatted');
-        fitTextToContainer(infoAccountElement, availableTextWidth, 10);
     };
 
     qrImage.onerror = function() {
@@ -720,9 +910,9 @@ function generateQR() {
         alert('Lỗi khi tải mã QR. Vui lòng kiểm tra lại thông tin và kết nối Internet!');
     };
 
-    // Set crossOrigin before setting src
+    // Set crossOrigin before loading images
     qrImage.crossOrigin = 'anonymous';
-    qrImage.src = apiUrl;
+    cardQrImage.crossOrigin = 'anonymous';
 }
 
 // Download QR as image
