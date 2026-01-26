@@ -4,8 +4,18 @@
 
 {% block content %}
 <style>
+    /* Monarch envelope: 3.875" x 7.5" (98mm x 191mm) */
+    @page {
+        size: 7.5in 3.875in; /* Monarch envelope landscape */
+        margin: 0;
+    }
+
     /* Print styles */
     @media print {
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
         body * {
             visibility: hidden;
         }
@@ -21,32 +31,56 @@
         .no-print {
             display: none !important;
         }
+        .envelope-container {
+            display: block;
+        }
         .envelope-label {
+            width: 7.5in;
+            height: 3.875in;
+            max-width: none;
+            border: none;
+            margin: 0;
+            padding: 0.5in;
             page-break-after: always;
             break-after: page;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         .envelope-label:last-child {
             page-break-after: avoid;
             break-after: avoid;
         }
+        .envelope-title {
+            font-size: 24pt;
+        }
+        .envelope-date-range {
+            font-size: 18pt;
+        }
     }
 
-    /* Envelope label styles */
+    /* Screen preview styles - simulate Monarch envelope */
     .envelope-label {
-        width: 100%;
-        max-width: 400px;
-        min-height: 150px;
+        width: 191mm;
+        height: 98mm;
+        max-width: 191mm;
         border: 2px dashed #333;
-        padding: 20px 30px;
+        padding: 15mm;
         margin: 20px auto;
         text-align: center;
         font-family: 'Times New Roman', Times, serif;
         background: #fff;
         box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
 
     .envelope-title {
-        font-size: 18px;
+        font-size: 20px;
         font-weight: bold;
         color: #000;
         margin-bottom: 15px;
@@ -89,6 +123,12 @@
         border-radius: 8px;
         margin-top: 20px;
     }
+
+    .envelope-size-info {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
 </style>
 
 <div class="container">
@@ -99,6 +139,7 @@
                 <i class="bi bi-printer"></i> IN NHÃN BAO THƯ - PHÁT HÀNH THẺ
             </h2>
             <p class="text-center text-muted">In nhãn bao thư cho các phòng giao dịch</p>
+            <p class="text-center envelope-size-info">Định dạng: Monarch Envelope (7.5" x 3.875" / 191mm x 98mm)</p>
         </div>
     </div>
 

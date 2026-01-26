@@ -382,6 +382,16 @@ def process_phat_hanh_the_report(request):
                         adjusted_width = min((max_length + 2), 60)
                         worksheet.column_dimensions[column_letter].width = adjusted_width
 
+                    # Fit sheet on one page when printing
+                    worksheet.page_setup.fitToPage = True
+                    worksheet.page_setup.fitToWidth = 1
+                    worksheet.page_setup.fitToHeight = 0  # 0 = không giới hạn chiều cao, co dãn theo chiều rộng
+                    if worksheet.sheet_properties.pageSetUpPr is None:
+                        from openpyxl.worksheet.properties import PageSetupProperties
+                        worksheet.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+                    else:
+                        worksheet.sheet_properties.pageSetUpPr.fitToPage = True
+
         # Kiểm tra xem có sheet nào được tạo không
         if not writer.sheets:
             messages.warning(request, "Không có dữ liệu nào để tạo báo cáo. Vui lòng kiểm tra lại file và cấu hình.")
