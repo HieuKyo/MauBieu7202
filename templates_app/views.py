@@ -3030,15 +3030,6 @@ def test_address_selector(request):
     return render(request, 'templates_app/test_address_selector.html')
 
 
-@login_required
-def qr_generator_view(request):
-    """
-    QR Code Generator for Agribank VietQR
-    Generates VietQR compliant QR codes with EMVCo standard (NAPAS)
-    """
-    return render(request, 'templates_app/qr_generator.html')
-
-
 def area_lookup(request):
     """
     Trang tra cứu thông tin địa bàn hành chính.
