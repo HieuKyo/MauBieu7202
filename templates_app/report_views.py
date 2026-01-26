@@ -207,6 +207,9 @@ def process_lai_ton_dong_report(request):
 @login_required
 def phat_hanh_the_report_view(request):
     """Giao diện báo cáo Phát hành thẻ"""
+    # Xóa session data cũ khi truy cập trang mới
+    if 'phat_hanh_the_data' in request.session:
+        del request.session['phat_hanh_the_data']
     return render(request, 'templates_app/reports/phat_hanh_the.html')
 
 
@@ -386,6 +389,19 @@ def process_phat_hanh_the_report(request):
 
         print(f"DEBUG: Total sheets created: {len(writer.sheets)}")
 
+        # Lưu dữ liệu vào session để sử dụng cho print preview
+        pgd_data_for_session = {}
+        for pgd_name in pgd_user_map.keys():
+            pgd_df = final_df[final_df['PGD'] == pgd_name]
+            if not pgd_df.empty:
+                pgd_data_for_session[pgd_name] = len(pgd_df)
+
+        request.session['phat_hanh_the_data'] = {
+            'pgd_list': pgd_data_for_session,
+            'start_date': pd.to_datetime(start_date_str).strftime('%d/%m/%Y'),
+            'end_date': pd.to_datetime(end_date_str).strftime('%d/%m/%Y'),
+        }
+
         output.seek(0)
         response = HttpResponse(
             output.getvalue(),
@@ -400,6 +416,127 @@ def process_phat_hanh_the_report(request):
         traceback.print_exc()
         messages.error(request, f"Đã xảy ra lỗi: {e}")
         return redirect('phat_hanh_the_report')
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_phat_hanh_the_for_print(request):
+    """Xử lý báo cáo Phát hành thẻ và chuyển tới trang in preview"""
+    try:
+        # Lấy cấu hình từ database
+        try:
+            config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
+            pht_config = config_obj.config_data
+        except (ReportConfiguration.DoesNotExist, Exception):
+            pht_config = {
+                'pgd_user_map': {
+                    "PGD Phường 1": ["GRALTHUC", "GRATTHAO"],
+                    "PGD Láng Tròn": ["GRANTHAO", "GRASHANH"],
+                    "Hội Sở": ["GRATNNHI", "GRANSINH", "GRATHIEU", "GRACACHI", "Yến Mi"]
+                }
+            }
+
+        data_file = request.FILES.get('data_file')
+        start_date_str = request.POST.get('start_date')
+        end_date_str = request.POST.get('end_date')
+
+        if not all([data_file, start_date_str, end_date_str]):
+            messages.error(request, "Vui lòng cung cấp đủ file và khoảng thời gian.")
+            return redirect('phat_hanh_the_report')
+
+        df = pd.read_excel(data_file)
+
+        if 'acctseq' in df.columns:
+            df['acctseq'] = df['acctseq'].astype(str)
+
+        if 'dlvrydt' not in df.columns:
+            messages.error(request, "File không có cột 'dlvrydt'. Vui lòng kiểm tra lại file Excel.")
+            return redirect('phat_hanh_the_report')
+
+        df['dlvrydt_datetime'] = pd.to_datetime(df['dlvrydt'], format='%d/%m/%Y', errors='coerce').dt.normalize()
+
+        start_date = pd.to_datetime(start_date_str)
+        end_date = pd.to_datetime(end_date_str)
+
+        mask = (df['dlvrydt_datetime'] >= start_date) & (df['dlvrydt_datetime'] <= end_date)
+        filtered_df = df.loc[mask].copy()
+
+        if filtered_df.empty:
+            messages.warning(request, "Không có dữ liệu phát hành thẻ trong khoảng thời gian đã chọn.")
+            return redirect('phat_hanh_the_report')
+
+        pgd_user_map = pht_config.get('pgd_user_map', {})
+        user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
+
+        if 'dlvryusrid' not in filtered_df.columns:
+            messages.error(request, "File không có cột 'dlvryusrid'. Vui lòng kiểm tra lại file Excel.")
+            return redirect('phat_hanh_the_report')
+
+        filtered_df['PGD'] = filtered_df['dlvryusrid'].map(user_to_pgd_map)
+        final_df = filtered_df.dropna(subset=['PGD'])
+
+        if final_df.empty:
+            messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình.")
+            return redirect('phat_hanh_the_report')
+
+        # Lưu dữ liệu vào session
+        pgd_data_for_session = {}
+        for pgd_name in pgd_user_map.keys():
+            pgd_df = final_df[final_df['PGD'] == pgd_name]
+            if not pgd_df.empty:
+                pgd_data_for_session[pgd_name] = len(pgd_df)
+
+        request.session['phat_hanh_the_data'] = {
+            'pgd_list': pgd_data_for_session,
+            'start_date': pd.to_datetime(start_date_str).strftime('%d/%m/%Y'),
+            'end_date': pd.to_datetime(end_date_str).strftime('%d/%m/%Y'),
+        }
+
+        return redirect('phat_hanh_the_print_preview')
+
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"Đã xảy ra lỗi: {e}")
+        return redirect('phat_hanh_the_report')
+
+
+@login_required
+def phat_hanh_the_print_preview(request):
+    """Print preview cho nhãn bao thư phát hành thẻ"""
+    # Lấy PGD name từ URL parameter
+    pgd_name = request.GET.get('pgd', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Nếu không có parameter, lấy từ session
+    if not pgd_name or not start_date or not end_date:
+        session_data = request.session.get('phat_hanh_the_data', {})
+        if not session_data:
+            messages.error(request, 'Không có dữ liệu để in. Vui lòng xử lý báo cáo trước.')
+            return redirect('phat_hanh_the_report')
+
+        start_date = session_data.get('start_date', '')
+        end_date = session_data.get('end_date', '')
+        pgd_list = session_data.get('pgd_list', {})
+
+        # Nếu không chỉ định PGD, hiển thị tất cả PGD
+        if not pgd_name:
+            context = {
+                'pgd_list': pgd_list,
+                'start_date': start_date,
+                'end_date': end_date,
+                'show_all': True,
+            }
+            return render(request, 'templates_app/reports/phat_hanh_the_print_preview.html', context)
+
+    context = {
+        'pgd_name': pgd_name,
+        'start_date': start_date,
+        'end_date': end_date,
+        'show_all': False,
+    }
+
+    return render(request, 'templates_app/reports/phat_hanh_the_print_preview.html', context)
 
 
 @login_required

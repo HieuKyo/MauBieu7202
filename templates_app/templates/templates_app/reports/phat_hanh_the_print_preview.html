@@ -1,0 +1,280 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}In Nhãn Bao Thư - Phát Hành Thẻ{% endblock %}
+
+{% block content %}
+<style>
+    /* Print styles */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .print-area, .print-area * {
+            visibility: visible;
+        }
+        .print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .envelope-label {
+            page-break-after: always;
+            break-after: page;
+        }
+        .envelope-label:last-child {
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+    }
+
+    /* Envelope label styles */
+    .envelope-label {
+        width: 100%;
+        max-width: 400px;
+        min-height: 150px;
+        border: 2px dashed #333;
+        padding: 20px 30px;
+        margin: 20px auto;
+        text-align: center;
+        font-family: 'Times New Roman', Times, serif;
+        background: #fff;
+        box-sizing: border-box;
+    }
+
+    .envelope-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #000;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+    }
+
+    .envelope-date-range {
+        font-size: 16px;
+        color: #333;
+        margin-top: 10px;
+    }
+
+    .envelope-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+    }
+
+    /* Selection card */
+    .pgd-select-card {
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+
+    .pgd-select-card:hover {
+        border-color: var(--agri-green, #00a651);
+        transform: translateY(-2px);
+    }
+
+    .pgd-select-card.selected {
+        border-color: var(--agri-green, #00a651);
+        background: rgba(0, 166, 81, 0.1);
+    }
+
+    .print-preview-container {
+        background: #f5f5f5;
+        padding: 30px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+</style>
+
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4 no-print">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-printer"></i> IN NHÃN BAO THƯ - PHÁT HÀNH THẺ
+            </h2>
+            <p class="text-center text-muted">In nhãn bao thư cho các phòng giao dịch</p>
+        </div>
+    </div>
+
+    {% if show_all %}
+    <!-- Show list of PGDs to select -->
+    <div class="row justify-content-center no-print">
+        <div class="col-md-10">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-building"></i> Chọn PGD để in nhãn bao thư</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Thời gian:</strong> từ ngày {{ start_date }} đến ngày {{ end_date }}</p>
+                    <hr>
+                    <div class="row" id="pgd-selection">
+                        {% for pgd_name, count in pgd_list.items %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card pgd-select-card h-100" data-pgd="{{ pgd_name }}">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">{{ pgd_name }}</h6>
+                                    <p class="text-muted mb-0">{{ count }} thẻ</p>
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input pgd-checkbox" type="checkbox"
+                                               value="{{ pgd_name }}" id="check_{{ forloop.counter }}" checked>
+                                        <label class="form-check-label" for="check_{{ forloop.counter }}">
+                                            Chọn in
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                Không có dữ liệu PGD. Vui lòng xử lý báo cáo trước.
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if pgd_list %}
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <button type="button" class="btn btn-success btn-lg" id="btn-preview">
+                            <i class="bi bi-eye"></i> Xem trước
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg" id="btn-print" disabled>
+                            <i class="bi bi-printer"></i> In nhãn (Ctrl+P)
+                        </button>
+                        <a href="{% url 'phat_hanh_the_report' %}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-arrow-left"></i> Quay lại
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print preview area -->
+    <div class="print-preview-container" id="preview-container" style="display: none;">
+        <h4 class="text-center mb-4 no-print">Xem trước nhãn bao thư</h4>
+        <div class="print-area" id="print-area">
+            <!-- Labels will be generated here -->
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Single PGD print preview -->
+    <div class="row justify-content-center no-print">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-center gap-3 mb-4">
+                <button type="button" class="btn btn-primary btn-lg" onclick="window.print()">
+                    <i class="bi bi-printer"></i> In nhãn (Ctrl+P)
+                </button>
+                <a href="{% url 'phat_hanh_the_print_preview' %}" class="btn btn-secondary btn-lg">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="print-area">
+        <div class="envelope-container">
+            <div class="envelope-label">
+                <div class="envelope-title">THẺ ATM {{ pgd_name|upper }}</div>
+                <div class="envelope-date-range">
+                    từ ngày {{ start_date }} tới ngày {{ end_date }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if show_all %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const previewBtn = document.getElementById('btn-preview');
+    const printBtn = document.getElementById('btn-print');
+    const previewContainer = document.getElementById('preview-container');
+    const printArea = document.getElementById('print-area');
+    const pgdCards = document.querySelectorAll('.pgd-select-card');
+
+    // Toggle selection when clicking card
+    pgdCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            if (e.target.type !== 'checkbox') {
+                const checkbox = this.querySelector('.pgd-checkbox');
+                checkbox.checked = !checkbox.checked;
+                this.classList.toggle('selected', checkbox.checked);
+            }
+        });
+
+        // Sync checkbox state with card style
+        const checkbox = card.querySelector('.pgd-checkbox');
+        if (checkbox) {
+            checkbox.addEventListener('change', function() {
+                card.classList.toggle('selected', this.checked);
+            });
+            // Initial state
+            card.classList.toggle('selected', checkbox.checked);
+        }
+    });
+
+    // Preview button
+    previewBtn.addEventListener('click', function() {
+        const selectedPgds = [];
+        document.querySelectorAll('.pgd-checkbox:checked').forEach(cb => {
+            selectedPgds.push(cb.value);
+        });
+
+        if (selectedPgds.length === 0) {
+            alert('Vui lòng chọn ít nhất một PGD để in nhãn.');
+            return;
+        }
+
+        // Generate labels
+        const startDate = '{{ start_date }}';
+        const endDate = '{{ end_date }}';
+
+        let labelsHtml = '<div class="envelope-container">';
+        selectedPgds.forEach(pgd => {
+            labelsHtml += `
+                <div class="envelope-label">
+                    <div class="envelope-title">THẺ ATM ${pgd.toUpperCase()}</div>
+                    <div class="envelope-date-range">
+                        từ ngày ${startDate} tới ngày ${endDate}
+                    </div>
+                </div>
+            `;
+        });
+        labelsHtml += '</div>';
+
+        printArea.innerHTML = labelsHtml;
+        previewContainer.style.display = 'block';
+        printBtn.disabled = false;
+
+        // Scroll to preview
+        previewContainer.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Print button
+    printBtn.addEventListener('click', function() {
+        window.print();
+    });
+
+    // Keyboard shortcut Ctrl+P
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'p') {
+            if (!printBtn.disabled) {
+                e.preventDefault();
+                window.print();
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

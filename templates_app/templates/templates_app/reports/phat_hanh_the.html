@@ -50,8 +50,12 @@
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-gear"></i> Xử lý và tạo báo cáo
+                            <button type="submit" class="btn btn-primary btn-lg" name="action" value="download">
+                                <i class="bi bi-file-earmark-excel"></i> Xử lý và tải Excel
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg" name="action" value="print"
+                                    formaction="{% url 'process_phat_hanh_the_for_print' %}">
+                                <i class="bi bi-printer"></i> Xử lý và in nhãn bao thư
                             </button>
                             <a href="{% url 'report_hub' %}" class="btn btn-secondary">
                                 <i class="bi bi-arrow-left"></i> Quay lại
