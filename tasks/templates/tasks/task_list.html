@@ -1,0 +1,644 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Quản lý Công việc - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .task-completed {
+        text-decoration: line-through;
+        opacity: 0.6;
+    }
+    .task-urgent {
+        background-color: #f8d7da !important;
+        border-left: 4px solid #dc3545;
+    }
+    .task-overdue {
+        background-color: #fff3cd !important;
+    }
+    .task-row {
+        transition: all 0.3s ease;
+    }
+    .task-row:hover {
+        background-color: #f8f9fa;
+    }
+    .task-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    .priority-badge-urgent {
+        background-color: #dc3545;
+        color: white;
+    }
+    .priority-badge-normal {
+        background-color: #6c757d;
+        color: white;
+    }
+    .recurring-icon {
+        color: #0d6efd;
+    }
+    .btn-action {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    .filter-section {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .stats-card {
+        border-left: 4px solid;
+    }
+    .stats-card.pending {
+        border-left-color: #ffc107;
+    }
+    .stats-card.completed {
+        border-left-color: #198754;
+    }
+    .stats-card.urgent {
+        border-left-color: #dc3545;
+    }
+    .toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 1050;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-check2-square text-primary"></i>
+                Quản lý Công việc
+            </h2>
+            <p class="text-muted mb-0">Theo dõi và quản lý các công việc cần thực hiện</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#taskModal" onclick="openCreateModal()">
+            <i class="bi bi-plus-lg"></i> Thêm mới
+        </button>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card stats-card pending">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Chờ xử lý</h6>
+                            <h3 class="mb-0" id="stats-pending">{{ tasks|length }}</h3>
+                        </div>
+                        <i class="bi bi-clock-history fs-1 text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card completed">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Hoàn thành</h6>
+                            <h3 class="mb-0" id="stats-completed">0</h3>
+                        </div>
+                        <i class="bi bi-check-circle fs-1 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card urgent">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Gấp</h6>
+                            <h3 class="mb-0" id="stats-urgent">0</h3>
+                        </div>
+                        <i class="bi bi-exclamation-triangle fs-1 text-danger"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Trạng thái</label>
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="all" {% if filter_status == 'all' %}selected{% endif %}>Tất cả</option>
+                    <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>Chờ xử lý</option>
+                    <option value="completed" {% if filter_status == 'completed' %}selected{% endif %}>Hoàn thành</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Phân loại</label>
+                <select name="category" class="form-select" onchange="this.form.submit()">
+                    <option value="">Tất cả</option>
+                    {% for value, label in category_choices %}
+                    <option value="{{ value }}" {% if filter_category == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Độ ưu tiên</label>
+                <select name="priority" class="form-select" onchange="this.form.submit()">
+                    <option value="">Tất cả</option>
+                    {% for value, label in priority_choices %}
+                    <option value="{{ value }}" {% if filter_priority == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <a href="{% url 'tasks:list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Task List -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="taskTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;"></th>
+                            <th>Công việc</th>
+                            <th style="width: 120px;">Hạn chót</th>
+                            <th style="width: 100px;">Độ ưu tiên</th>
+                            <th style="width: 100px;">Phân loại</th>
+                            <th style="width: 120px;">Lặp lại</th>
+                            <th style="width: 120px;" class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskTableBody">
+                        {% for task in tasks %}
+                        <tr class="task-row {% if task.priority == 'urgent' and not task.is_completed %}task-urgent{% endif %} {% if task.is_overdue %}task-overdue{% endif %}"
+                            data-task-id="{{ task.id }}"
+                            id="task-row-{{ task.id }}">
+                            <td class="align-middle text-center">
+                                <input type="checkbox"
+                                       class="form-check-input task-checkbox"
+                                       data-task-id="{{ task.id }}"
+                                       {% if task.is_completed %}checked{% endif %}>
+                            </td>
+                            <td class="align-middle">
+                                <div class="{% if task.is_completed %}task-completed{% endif %}" id="task-title-{{ task.id }}">
+                                    <strong>{{ task.title }}</strong>
+                                    {% if task.description %}
+                                    <br><small class="text-muted">{{ task.description|truncatewords:15 }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="align-middle">
+                                {% if task.due_date %}
+                                <span class="{% if task.is_overdue %}text-danger fw-bold{% endif %}">
+                                    {{ task.due_date|date:"d/m/Y" }}
+                                </span>
+                                {% if task.is_overdue %}
+                                <i class="bi bi-exclamation-circle text-danger" title="Quá hạn"></i>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge {% if task.priority == 'urgent' %}priority-badge-urgent{% else %}priority-badge-normal{% endif %}">
+                                    {% if task.priority == 'urgent' %}
+                                    <i class="bi bi-lightning-fill"></i>
+                                    {% endif %}
+                                    {{ task.get_priority_display }}
+                                </span>
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge {{ task.category_badge_class }}">
+                                    {{ task.get_category_display }}
+                                </span>
+                            </td>
+                            <td class="align-middle">
+                                {% if task.recurring_type != 'none' %}
+                                <span class="badge {{ task.recurring_badge_class }}">
+                                    <i class="bi bi-arrow-repeat recurring-icon"></i>
+                                    {{ task.get_recurring_type_display }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle text-center">
+                                <button class="btn btn-outline-primary btn-action" onclick="openEditModal({{ task.id }})" title="Sửa">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-action" onclick="confirmDelete({{ task.id }}, '{{ task.title|escapejs }}')" title="Xóa">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="empty-row">
+                            <td colspan="7" class="text-center py-5">
+                                <i class="bi bi-inbox fs-1 text-muted"></i>
+                                <p class="text-muted mt-2">Chưa có công việc nào. Bấm "Thêm mới" để tạo công việc.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Task Modal (Create/Edit) -->
+<div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskModalLabel">
+                    <i class="bi bi-plus-circle"></i> Thêm công việc mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="taskForm">
+                {% csrf_token %}
+                <input type="hidden" id="taskId" name="task_id" value="">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">Tiêu đề <span class="text-danger">*</span></label>
+                        {{ form.title }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Mô tả</label>
+                        {{ form.description }}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_due_date" class="form-label">Hạn chót</label>
+                            {{ form.due_date }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_priority" class="form-label">Độ ưu tiên</label>
+                            {{ form.priority }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_category" class="form-label">Phân loại</label>
+                            {{ form.category }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_recurring_type" class="form-label">Loại lặp</label>
+                            {{ form.recurring_type }}
+                            <small class="form-text text-muted">
+                                Khi hoàn thành, hệ thống sẽ tự động tạo công việc mới với hạn chót tương ứng.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i> Hủy
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="saveTaskBtn">
+                        <i class="bi bi-check-lg"></i> Lưu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Xác nhận xóa
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa công việc:</p>
+                <p class="fw-bold" id="deleteTaskTitle"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash"></i> Xóa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    // CSRF Token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    // URLs
+    const urls = {
+        toggle: '{% url "tasks:toggle_api" %}',
+        create: '{% url "tasks:create_api" %}',
+        list: '{% url "tasks:list" %}'
+    };
+
+    // Modals
+    let taskModal, deleteModal;
+
+    $(document).ready(function() {
+        // Initialize modals
+        taskModal = new bootstrap.Modal(document.getElementById('taskModal'));
+        deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+        // Update statistics
+        updateStatistics();
+
+        // Handle checkbox toggle
+        $(document).on('change', '.task-checkbox', function() {
+            const taskId = $(this).data('task-id');
+            const isCompleted = $(this).prop('checked');
+            toggleTask(taskId, isCompleted);
+        });
+
+        // Handle form submission
+        $('#taskForm').on('submit', function(e) {
+            e.preventDefault();
+            saveTask();
+        });
+    });
+
+    // Toggle task completion
+    function toggleTask(taskId, isCompleted) {
+        const checkbox = $(`.task-checkbox[data-task-id="${taskId}"]`);
+        checkbox.prop('disabled', true);
+
+        fetch(urls.toggle, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                task_id: taskId,
+                is_completed: isCompleted
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const row = $(`#task-row-${taskId}`);
+                const titleDiv = $(`#task-title-${taskId}`);
+
+                if (isCompleted) {
+                    titleDiv.addClass('task-completed');
+                    row.removeClass('task-urgent');
+                } else {
+                    titleDiv.removeClass('task-completed');
+                    // Check if urgent
+                    const priorityBadge = row.find('.priority-badge-urgent');
+                    if (priorityBadge.length) {
+                        row.addClass('task-urgent');
+                    }
+                }
+
+                // Show notification for recurring task
+                if (data.new_task) {
+                    showToast('success', data.new_task.message);
+                    // Reload page to show new task
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showToast('success', data.message);
+                }
+
+                updateStatistics();
+            } else {
+                showToast('error', data.message);
+                checkbox.prop('checked', !isCompleted);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('error', 'Đã xảy ra lỗi khi cập nhật!');
+            checkbox.prop('checked', !isCompleted);
+        })
+        .finally(() => {
+            checkbox.prop('disabled', false);
+        });
+    }
+
+    // Open create modal
+    function openCreateModal() {
+        $('#taskModalLabel').html('<i class="bi bi-plus-circle"></i> Thêm công việc mới');
+        $('#taskId').val('');
+        $('#taskForm')[0].reset();
+    }
+
+    // Open edit modal
+    function openEditModal(taskId) {
+        $('#taskModalLabel').html('<i class="bi bi-pencil"></i> Sửa công việc');
+        $('#taskId').val(taskId);
+
+        // Fetch task details
+        fetch(`/tasks/api/${taskId}/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const task = data.task;
+                $('#id_title').val(task.title);
+                $('#id_description').val(task.description);
+                $('#id_due_date').val(task.due_date);
+                $('#id_priority').val(task.priority);
+                $('#id_category').val(task.category);
+                $('#id_recurring_type').val(task.recurring_type);
+                taskModal.show();
+            } else {
+                showToast('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('error', 'Không thể tải thông tin công việc!');
+        });
+    }
+
+    // Save task (create or update)
+    function saveTask() {
+        const taskId = $('#taskId').val();
+        const formData = new FormData($('#taskForm')[0]);
+        const isEdit = taskId !== '';
+
+        const url = isEdit
+            ? `/tasks/api/${taskId}/update/`
+            : urls.create;
+
+        $('#saveTaskBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Đang lưu...');
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', data.message);
+                taskModal.hide();
+                // Reload to show updated data
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                showToast('error', data.message);
+                if (data.errors) {
+                    // Show validation errors
+                    for (const [field, errors] of Object.entries(data.errors)) {
+                        $(`#id_${field}`).addClass('is-invalid');
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('error', 'Đã xảy ra lỗi khi lưu!');
+        })
+        .finally(() => {
+            $('#saveTaskBtn').prop('disabled', false).html('<i class="bi bi-check-lg"></i> Lưu');
+        });
+    }
+
+    // Confirm delete
+    let deleteTaskId = null;
+
+    function confirmDelete(taskId, taskTitle) {
+        deleteTaskId = taskId;
+        $('#deleteTaskTitle').text(taskTitle);
+        deleteModal.show();
+    }
+
+    // Delete task
+    $('#confirmDeleteBtn').on('click', function() {
+        if (!deleteTaskId) return;
+
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Đang xóa...');
+
+        fetch(`/tasks/api/${deleteTaskId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', data.message);
+                deleteModal.hide();
+                // Remove row from table
+                $(`#task-row-${deleteTaskId}`).fadeOut(300, function() {
+                    $(this).remove();
+                    updateStatistics();
+                    // Show empty message if no tasks
+                    if ($('#taskTableBody tr:visible').length === 0) {
+                        $('#taskTableBody').html(`
+                            <tr id="empty-row">
+                                <td colspan="7" class="text-center py-5">
+                                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                                    <p class="text-muted mt-2">Chưa có công việc nào. Bấm "Thêm mới" để tạo công việc.</p>
+                                </td>
+                            </tr>
+                        `);
+                    }
+                });
+            } else {
+                showToast('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('error', 'Đã xảy ra lỗi khi xóa!');
+        })
+        .finally(() => {
+            $('#confirmDeleteBtn').prop('disabled', false).html('<i class="bi bi-trash"></i> Xóa');
+            deleteTaskId = null;
+        });
+    });
+
+    // Update statistics
+    function updateStatistics() {
+        const rows = $('.task-row');
+        let pending = 0, completed = 0, urgent = 0;
+
+        rows.each(function() {
+            const checkbox = $(this).find('.task-checkbox');
+            const isUrgent = $(this).find('.priority-badge-urgent').length > 0;
+
+            if (checkbox.prop('checked')) {
+                completed++;
+            } else {
+                pending++;
+                if (isUrgent) {
+                    urgent++;
+                }
+            }
+        });
+
+        $('#stats-pending').text(pending);
+        $('#stats-completed').text(completed);
+        $('#stats-urgent').text(urgent);
+    }
+
+    // Show toast notification
+    function showToast(type, message) {
+        const toastId = 'toast-' + Date.now();
+        const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+        const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-${icon} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+
+        $('#toastContainer').append(toastHtml);
+        const toastEl = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+
+        // Remove toast element after hidden
+        toastEl.addEventListener('hidden.bs.toast', function() {
+            $(this).remove();
+        });
+    }
+</script>
+{% endblock %}
