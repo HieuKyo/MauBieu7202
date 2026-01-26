@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib import messages
-from django.db.models import Case, When, Value, IntegerField
+from django.db.models import Case, When, Value, IntegerField, Q
 from django.utils import timezone
 
 from .models import Task
@@ -17,16 +17,25 @@ from .forms import TaskForm
 @login_required
 def task_list_view(request):
     """
-    Hiển thị danh sách công việc.
+    Hiển thị danh sách công việc với phân quyền người dùng (User Isolation).
+    Chỉ hiển thị:
+    - Task do user tạo (created_by == request.user)
+    - HOẶC task được giao cho user (assigned_to == request.user)
+
     Sắp xếp: Việc gấp lên đầu, sau đó đến hạn chót gần nhất.
     """
-    # Annotate để sắp xếp priority (urgent = 0, normal = 1)
-    tasks = Task.objects.annotate(
+    user = request.user
+
+    # User Isolation: Chỉ lấy task của user hoặc được giao cho user
+    tasks = Task.objects.filter(
+        Q(created_by=user) | Q(assigned_to=user)
+    ).annotate(
         priority_order=Case(
             When(priority=Task.PRIORITY_URGENT, then=Value(0)),
             default=Value(1),
             output_field=IntegerField()
         )
+    ).select_related('created_by', 'assigned_to', 'created_by__profile', 'assigned_to__profile'
     ).order_by('is_completed', 'priority_order', 'due_date', '-created_at')
 
     # Lọc theo trạng thái nếu có
@@ -46,18 +55,33 @@ def task_list_view(request):
     if filter_priority:
         tasks = tasks.filter(priority=filter_priority)
 
+    # Lọc theo loại task (của tôi / được giao)
+    filter_task_type = request.GET.get('task_type', '')
+    if filter_task_type == 'own':
+        tasks = tasks.filter(created_by=user)
+    elif filter_task_type == 'assigned':
+        tasks = tasks.filter(assigned_to=user).exclude(created_by=user)
+
+    # Annotate task type for each task for display
+    task_list = []
+    for task in tasks:
+        task.task_type = task.get_task_type_for_user(user)
+        task_list.append(task)
+
     # Form cho modal thêm mới
     form = TaskForm()
 
     context = {
-        'tasks': tasks,
+        'tasks': task_list,
         'form': form,
         'filter_status': filter_status,
         'filter_category': filter_category,
         'filter_priority': filter_priority,
+        'filter_task_type': filter_task_type,
         'priority_choices': Task.PRIORITY_CHOICES,
         'category_choices': Task.CATEGORY_CHOICES,
         'recurring_choices': Task.RECURRING_CHOICES,
+        'current_user': user,
     }
     return render(request, 'tasks/task_list.html', context)
 
@@ -68,13 +92,20 @@ def task_toggle_api(request):
     """
     API xử lý toggle checkbox (đánh dấu hoàn thành/chưa hoàn thành).
     Khi đánh dấu hoàn thành, nếu task có recurring_type thì tự động tạo bản sao.
+
+    User phải là người tạo hoặc người được giao mới được phép toggle.
     """
     try:
         data = json.loads(request.body)
         task_id = data.get('task_id')
         is_completed = data.get('is_completed', False)
 
-        task = get_object_or_404(Task, id=task_id)
+        # User Isolation: Chỉ cho phép toggle task của mình hoặc được giao
+        task = get_object_or_404(
+            Task,
+            Q(created_by=request.user) | Q(assigned_to=request.user),
+            id=task_id
+        )
         task.is_completed = is_completed
 
         new_task = None
@@ -123,6 +154,8 @@ def create_recurring_task(original_task):
     Tạo bản sao của task với due_date được cộng thêm.
     - Monthly: cộng 1 tháng
     - Quarterly: cộng 3 tháng
+
+    Giữ nguyên assigned_to để người được giao cũng nhận task mới.
     """
     # Tính toán due_date mới
     if original_task.due_date:
@@ -142,7 +175,7 @@ def create_recurring_task(original_task):
         else:
             new_due_date = None
 
-    # Tạo task mới (bản sao)
+    # Tạo task mới (bản sao) - giữ nguyên assigned_to
     new_task = Task.objects.create(
         title=original_task.title,
         description=original_task.description,
@@ -152,6 +185,7 @@ def create_recurring_task(original_task):
         category=original_task.category,
         recurring_type=original_task.recurring_type,
         created_by=original_task.created_by,
+        assigned_to=original_task.assigned_to,  # Giữ nguyên người được giao
     )
 
     return new_task
@@ -167,6 +201,9 @@ def task_create_api(request):
             task = form.save(commit=False)
             task.created_by = request.user
             task.save()
+
+            # Determine task type for current user
+            task_type = task.get_task_type_for_user(request.user)
 
             return JsonResponse({
                 'success': True,
@@ -186,6 +223,10 @@ def task_create_api(request):
                     'priority_display_class': task.priority_display_class,
                     'category_badge_class': task.category_badge_class,
                     'recurring_badge_class': task.recurring_badge_class,
+                    'assigned_to_id': task.assigned_to.id if task.assigned_to else None,
+                    'assigned_to_display': task.assigned_to_display,
+                    'created_by_display': task.created_by_display,
+                    'task_type': task_type,
                 }
             })
         else:
@@ -205,7 +246,12 @@ def task_create_api(request):
 @login_required
 def task_detail_api(request, task_id):
     """API lấy chi tiết task để edit."""
-    task = get_object_or_404(Task, id=task_id)
+    # User Isolation: Chỉ cho phép xem task của mình hoặc được giao
+    task = get_object_or_404(
+        Task,
+        Q(created_by=request.user) | Q(assigned_to=request.user),
+        id=task_id
+    )
 
     return JsonResponse({
         'success': True,
@@ -218,6 +264,9 @@ def task_detail_api(request, task_id):
             'category': task.category,
             'recurring_type': task.recurring_type,
             'is_completed': task.is_completed,
+            'assigned_to': task.assigned_to.id if task.assigned_to else '',
+            'assigned_to_display': task.assigned_to_display,
+            'created_by_display': task.created_by_display,
         }
     })
 
@@ -227,11 +276,19 @@ def task_detail_api(request, task_id):
 def task_update_api(request, task_id):
     """API cập nhật task."""
     try:
-        task = get_object_or_404(Task, id=task_id)
+        # User Isolation: Chỉ cho phép update task của mình hoặc được giao
+        task = get_object_or_404(
+            Task,
+            Q(created_by=request.user) | Q(assigned_to=request.user),
+            id=task_id
+        )
         form = TaskForm(request.POST, instance=task)
 
         if form.is_valid():
             task = form.save()
+
+            # Determine task type for current user
+            task_type = task.get_task_type_for_user(request.user)
 
             return JsonResponse({
                 'success': True,
@@ -251,6 +308,10 @@ def task_update_api(request, task_id):
                     'priority_display_class': task.priority_display_class,
                     'category_badge_class': task.category_badge_class,
                     'recurring_badge_class': task.recurring_badge_class,
+                    'assigned_to_id': task.assigned_to.id if task.assigned_to else None,
+                    'assigned_to_display': task.assigned_to_display,
+                    'created_by_display': task.created_by_display,
+                    'task_type': task_type,
                 }
             })
         else:
@@ -272,7 +333,8 @@ def task_update_api(request, task_id):
 def task_delete_api(request, task_id):
     """API xóa task."""
     try:
-        task = get_object_or_404(Task, id=task_id)
+        # User Isolation: Chỉ người tạo mới được xóa task
+        task = get_object_or_404(Task, id=task_id, created_by=request.user)
         task_title = task.title
         task.delete()
 

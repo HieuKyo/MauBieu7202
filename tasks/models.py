@@ -62,13 +62,23 @@ class Task(models.Model):
         default=RECURRING_NONE
     )
 
+    # Giao việc (Assignment)
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_tasks',
+        verbose_name='Người được giao'
+    )
+
     # Metadata
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='tasks',
+        related_name='created_tasks',
         verbose_name='Người tạo'
     )
     created_at = models.DateTimeField('Ngày tạo', auto_now_add=True)
@@ -124,3 +134,59 @@ class Task(models.Model):
             self.RECURRING_QUARTERLY: 'bg-warning text-dark',
         }
         return classes.get(self.recurring_type, 'bg-light text-dark')
+
+    def is_owner(self, user):
+        """Kiểm tra user có phải là người tạo task không."""
+        return self.created_by == user
+
+    def is_assignee(self, user):
+        """Kiểm tra user có phải là người được giao task không."""
+        return self.assigned_to == user
+
+    def get_task_type_for_user(self, user):
+        """
+        Trả về loại task đối với user:
+        - 'own': Task do user tạo
+        - 'assigned': Task được giao cho user
+        - 'both': User vừa tạo vừa được giao (tự giao cho mình)
+        """
+        is_owner = self.is_owner(user)
+        is_assignee = self.is_assignee(user)
+
+        if is_owner and is_assignee:
+            return 'both'
+        elif is_owner:
+            return 'own'
+        elif is_assignee:
+            return 'assigned'
+        return None
+
+    @property
+    def created_by_display(self):
+        """Hiển thị tên người tạo kèm chức vụ."""
+        if not self.created_by:
+            return 'N/A'
+        try:
+            profile = self.created_by.profile
+            position = profile.get_position_display() if profile.position else ''
+            name = profile.full_name or self.created_by.username
+            if position:
+                return f"{name} - {position}"
+            return name
+        except Exception:
+            return self.created_by.username
+
+    @property
+    def assigned_to_display(self):
+        """Hiển thị tên người được giao kèm chức vụ."""
+        if not self.assigned_to:
+            return None
+        try:
+            profile = self.assigned_to.profile
+            position = profile.get_position_display() if profile.position else ''
+            name = profile.full_name or self.assigned_to.username
+            if position:
+                return f"{name} - {position}"
+            return name
+        except Exception:
+            return self.assigned_to.username
