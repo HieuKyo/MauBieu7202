@@ -11,6 +11,7 @@ class TaskAdmin(admin.ModelAdmin):
         'due_date',
         'is_completed',
         'recurring_type',
+        'assigned_to',
         'created_by',
         'created_at',
     ]
@@ -19,11 +20,14 @@ class TaskAdmin(admin.ModelAdmin):
         'category',
         'is_completed',
         'recurring_type',
+        'assigned_to',
+        'created_by',
         'created_at',
     ]
     search_fields = ['title', 'description']
     date_hierarchy = 'created_at'
     ordering = ['-priority', 'due_date', '-created_at']
+    autocomplete_fields = ['assigned_to', 'created_by']
 
     fieldsets = (
         ('Thông tin cơ bản', {
@@ -31,6 +35,9 @@ class TaskAdmin(admin.ModelAdmin):
         }),
         ('Phân loại', {
             'fields': ('priority', 'category', 'recurring_type')
+        }),
+        ('Giao việc', {
+            'fields': ('assigned_to',)
         }),
         ('Trạng thái', {
             'fields': ('is_completed', 'completed_at')

@@ -16,6 +16,9 @@
     .task-overdue {
         background-color: #fff3cd !important;
     }
+    .task-assigned {
+        border-left: 4px solid #0d6efd;
+    }
     .task-row {
         transition: all 0.3s ease;
     }
@@ -60,11 +63,29 @@
     .stats-card.urgent {
         border-left-color: #dc3545;
     }
+    .stats-card.assigned {
+        border-left-color: #0d6efd;
+    }
     .toast-container {
         position: fixed;
         top: 80px;
         right: 20px;
         z-index: 1050;
+    }
+    .badge-own {
+        background-color: #198754;
+        color: white;
+    }
+    .badge-assigned {
+        background-color: #0d6efd;
+        color: white;
+    }
+    .assignee-info {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .task-meta {
+        margin-top: 0.25rem;
     }
 </style>
 {% endblock %}
@@ -87,41 +108,54 @@
 
     <!-- Statistics Cards -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card stats-card pending">
-                <div class="card-body">
+                <div class="card-body py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Chờ xử lý</h6>
-                            <h3 class="mb-0" id="stats-pending">{{ tasks|length }}</h3>
+                            <h3 class="mb-0" id="stats-pending">0</h3>
                         </div>
-                        <i class="bi bi-clock-history fs-1 text-warning"></i>
+                        <i class="bi bi-clock-history fs-2 text-warning"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card stats-card completed">
-                <div class="card-body">
+                <div class="card-body py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Hoàn thành</h6>
                             <h3 class="mb-0" id="stats-completed">0</h3>
                         </div>
-                        <i class="bi bi-check-circle fs-1 text-success"></i>
+                        <i class="bi bi-check-circle fs-2 text-success"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card stats-card urgent">
-                <div class="card-body">
+                <div class="card-body py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Gấp</h6>
                             <h3 class="mb-0" id="stats-urgent">0</h3>
                         </div>
-                        <i class="bi bi-exclamation-triangle fs-1 text-danger"></i>
+                        <i class="bi bi-exclamation-triangle fs-2 text-danger"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card assigned">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Được giao</h6>
+                            <h3 class="mb-0" id="stats-assigned">0</h3>
+                        </div>
+                        <i class="bi bi-person-check fs-2 text-primary"></i>
                     </div>
                 </div>
             </div>
@@ -131,7 +165,7 @@
     <!-- Filter Section -->
     <div class="filter-section">
         <form method="get" class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Trạng thái</label>
                 <select name="status" class="form-select" onchange="this.form.submit()">
                     <option value="all" {% if filter_status == 'all' %}selected{% endif %}>Tất cả</option>
@@ -139,7 +173,15 @@
                     <option value="completed" {% if filter_status == 'completed' %}selected{% endif %}>Hoàn thành</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label">Loại task</label>
+                <select name="task_type" class="form-select" onchange="this.form.submit()">
+                    <option value="" {% if not filter_task_type %}selected{% endif %}>Tất cả</option>
+                    <option value="own" {% if filter_task_type == 'own' %}selected{% endif %}>Của tôi</option>
+                    <option value="assigned" {% if filter_task_type == 'assigned' %}selected{% endif %}>Được giao</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Phân loại</label>
                 <select name="category" class="form-select" onchange="this.form.submit()">
                     <option value="">Tất cả</option>
@@ -148,7 +190,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Độ ưu tiên</label>
                 <select name="priority" class="form-select" onchange="this.form.submit()">
                     <option value="">Tất cả</option>
@@ -157,8 +199,8 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
-                <a href="{% url 'tasks:list' %}" class="btn btn-outline-secondary">
+            <div class="col-md-2">
+                <a href="{% url 'tasks:list' %}" class="btn btn-outline-secondary w-100">
                     <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
                 </a>
             </div>
@@ -178,13 +220,14 @@
                             <th style="width: 100px;">Độ ưu tiên</th>
                             <th style="width: 100px;">Phân loại</th>
                             <th style="width: 120px;">Lặp lại</th>
-                            <th style="width: 120px;" class="text-center">Thao tác</th>
+                            <th style="width: 140px;" class="text-center">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody id="taskTableBody">
                         {% for task in tasks %}
-                        <tr class="task-row {% if task.priority == 'urgent' and not task.is_completed %}task-urgent{% endif %} {% if task.is_overdue %}task-overdue{% endif %}"
+                        <tr class="task-row {% if task.priority == 'urgent' and not task.is_completed %}task-urgent{% endif %} {% if task.is_overdue %}task-overdue{% endif %} {% if task.task_type == 'assigned' %}task-assigned{% endif %}"
                             data-task-id="{{ task.id }}"
+                            data-task-type="{{ task.task_type }}"
                             id="task-row-{{ task.id }}">
                             <td class="align-middle text-center">
                                 <input type="checkbox"
@@ -194,10 +237,34 @@
                             </td>
                             <td class="align-middle">
                                 <div class="{% if task.is_completed %}task-completed{% endif %}" id="task-title-{{ task.id }}">
-                                    <strong>{{ task.title }}</strong>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <strong>{{ task.title }}</strong>
+                                        {% if task.task_type == 'own' or task.task_type == 'both' %}
+                                        <span class="badge badge-own" title="Công việc của bạn">
+                                            <i class="bi bi-person-fill"></i> Của tôi
+                                        </span>
+                                        {% endif %}
+                                        {% if task.task_type == 'assigned' %}
+                                        <span class="badge badge-assigned" title="Được giao cho bạn">
+                                            <i class="bi bi-arrow-right-circle"></i> Được giao
+                                        </span>
+                                        {% endif %}
+                                    </div>
                                     {% if task.description %}
-                                    <br><small class="text-muted">{{ task.description|truncatewords:15 }}</small>
+                                    <small class="text-muted d-block">{{ task.description|truncatewords:15 }}</small>
                                     {% endif %}
+                                    <div class="task-meta">
+                                        {% if task.task_type == 'assigned' and task.created_by %}
+                                        <small class="assignee-info">
+                                            <i class="bi bi-person"></i> Người giao: <strong>{{ task.created_by_display }}</strong>
+                                        </small>
+                                        {% endif %}
+                                        {% if task.assigned_to and task.task_type != 'assigned' %}
+                                        <small class="assignee-info">
+                                            <i class="bi bi-arrow-right"></i> Giao cho: <strong>{{ task.assigned_to_display }}</strong>
+                                        </small>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </td>
                             <td class="align-middle">
@@ -239,9 +306,15 @@
                                 <button class="btn btn-outline-primary btn-action" onclick="openEditModal({{ task.id }})" title="Sửa">
                                     <i class="bi bi-pencil"></i>
                                 </button>
+                                {% if task.task_type == 'own' or task.task_type == 'both' %}
                                 <button class="btn btn-outline-danger btn-action" onclick="confirmDelete({{ task.id }}, '{{ task.title|escapejs }}')" title="Xóa">
                                     <i class="bi bi-trash"></i>
                                 </button>
+                                {% else %}
+                                <button class="btn btn-outline-secondary btn-action" disabled title="Chỉ người tạo mới được xóa">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
@@ -301,6 +374,17 @@
                             {{ form.recurring_type }}
                             <small class="form-text text-muted">
                                 Khi hoàn thành, hệ thống sẽ tự động tạo công việc mới với hạn chót tương ứng.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="id_assigned_to" class="form-label">
+                                <i class="bi bi-person-plus"></i> Giao cho
+                            </label>
+                            {{ form.assigned_to }}
+                            <small class="form-text text-muted">
+                                Để trống nếu đây là công việc cá nhân của bạn.
                             </small>
                         </div>
                     </div>
@@ -450,6 +534,8 @@
         $('#taskModalLabel').html('<i class="bi bi-plus-circle"></i> Thêm công việc mới');
         $('#taskId').val('');
         $('#taskForm')[0].reset();
+        // Reset assigned_to dropdown
+        $('#id_assigned_to').val('');
     }
 
     // Open edit modal
@@ -474,6 +560,7 @@
                 $('#id_priority').val(task.priority);
                 $('#id_category').val(task.category);
                 $('#id_recurring_type').val(task.recurring_type);
+                $('#id_assigned_to').val(task.assigned_to || '');
                 taskModal.show();
             } else {
                 showToast('error', data.message);
@@ -591,11 +678,12 @@
     // Update statistics
     function updateStatistics() {
         const rows = $('.task-row');
-        let pending = 0, completed = 0, urgent = 0;
+        let pending = 0, completed = 0, urgent = 0, assigned = 0;
 
         rows.each(function() {
             const checkbox = $(this).find('.task-checkbox');
             const isUrgent = $(this).find('.priority-badge-urgent').length > 0;
+            const taskType = $(this).data('task-type');
 
             if (checkbox.prop('checked')) {
                 completed++;
@@ -605,11 +693,17 @@
                     urgent++;
                 }
             }
+
+            // Count assigned tasks (not own)
+            if (taskType === 'assigned') {
+                assigned++;
+            }
         });
 
         $('#stats-pending').text(pending);
         $('#stats-completed').text(completed);
         $('#stats-urgent').text(urgent);
+        $('#stats-assigned').text(assigned);
     }
 
     // Show toast notification
