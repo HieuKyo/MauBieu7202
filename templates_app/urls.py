@@ -72,9 +72,6 @@ urlpatterns = [
     path('beautiful-number-list/', views.beautiful_number_list, name='beautiful_number_list'),
     path('api/beautiful-numbers/generate/', views.generate_beautiful_numbers_ajax, name='generate_beautiful_numbers'),
 
-    # QR Code Generator
-    path('qr-generator/', views.qr_generator_view, name='qr_generator'),
-
     # Test Address Selector
     path('test-address-selector/', views.test_address_selector, name='test_address_selector'),
 
