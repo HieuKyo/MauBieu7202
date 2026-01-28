@@ -286,7 +286,12 @@
                     opt.dataset.rateMin = r.term_month_min;
                     opt.dataset.rateMax = r.term_month_max;
                     opt.dataset.rate = r.interest_rate_yearly;
-                    opt.textContent = r.description + ' (' + r.interest_rate_yearly + '%/năm)';
+                    const label = r.description
+                        ? r.description
+                        : (r.term_month_min === r.term_month_max
+                            ? r.term_month_min + ' tháng'
+                            : r.term_month_min + ' đến ' + r.term_month_max + ' tháng');
+                    opt.textContent = label + '  —  ' + r.interest_rate_yearly + '%/năm';
                     termSelect.appendChild(opt);
                 });
                 termSelect.disabled = false;
