@@ -14,6 +14,27 @@ from .models import Task
 from .forms import TaskForm
 
 
+# Chức vụ NHAN_VIEN không được giao việc
+EMPLOYEE_POSITION = 'NHAN_VIEN'
+
+
+def can_assign_tasks(user):
+    """
+    Kiểm tra user có quyền giao việc hay không.
+    - superuser: luôn được
+    - Có profile với chức vụ KHÁC NHAN_VIEN: được
+    - Không có profile hoặc chức vụ là NHAN_VIEN: không được
+    """
+    if user.is_superuser:
+        return True
+    try:
+        profile = user.profile
+        # Có chức vụ và chức vụ khác Nhân viên => được giao việc
+        return profile.position and profile.position != EMPLOYEE_POSITION
+    except Exception:
+        return False
+
+
 @login_required
 def task_list_view(request):
     """
@@ -68,8 +89,11 @@ def task_list_view(request):
         task.task_type = task.get_task_type_for_user(user)
         task_list.append(task)
 
-    # Form cho modal thêm mới
-    form = TaskForm()
+    # Kiểm tra quyền giao việc
+    user_can_assign = can_assign_tasks(user)
+
+    # Form cho modal thêm mới (truyền user để kiểm tra quyền)
+    form = TaskForm(can_assign=user_can_assign)
 
     context = {
         'tasks': task_list,
@@ -82,6 +106,7 @@ def task_list_view(request):
         'category_choices': Task.CATEGORY_CHOICES,
         'recurring_choices': Task.RECURRING_CHOICES,
         'current_user': user,
+        'can_assign': user_can_assign,
     }
     return render(request, 'tasks/task_list.html', context)
 
@@ -196,10 +221,17 @@ def create_recurring_task(original_task):
 def task_create_api(request):
     """API tạo task mới."""
     try:
-        form = TaskForm(request.POST)
+        user_can_assign = can_assign_tasks(request.user)
+        form = TaskForm(request.POST, can_assign=user_can_assign)
+
         if form.is_valid():
             task = form.save(commit=False)
             task.created_by = request.user
+
+            # Bảo vệ server-side: nhân viên không được giao việc
+            if not user_can_assign:
+                task.assigned_to = None
+
             task.save()
 
             # Determine task type for current user
@@ -282,10 +314,18 @@ def task_update_api(request, task_id):
             Q(created_by=request.user) | Q(assigned_to=request.user),
             id=task_id
         )
-        form = TaskForm(request.POST, instance=task)
+
+        user_can_assign = can_assign_tasks(request.user)
+        form = TaskForm(request.POST, instance=task, can_assign=user_can_assign)
 
         if form.is_valid():
-            task = form.save()
+            task = form.save(commit=False)
+
+            # Bảo vệ server-side: nhân viên không được giao việc
+            if not user_can_assign:
+                task.assigned_to = None
+
+            task.save()
 
             # Determine task type for current user
             task_type = task.get_task_type_for_user(request.user)

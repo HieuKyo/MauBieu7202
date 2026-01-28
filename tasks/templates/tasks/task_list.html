@@ -377,6 +377,7 @@
                             </small>
                         </div>
                     </div>
+                    {% if can_assign %}
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label for="id_assigned_to" class="form-label">
@@ -388,6 +389,7 @@
                             </small>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">

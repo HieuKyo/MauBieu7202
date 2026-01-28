@@ -84,12 +84,17 @@ class TaskForm(forms.ModelForm):
             'assigned_to': 'Để trống nếu đây là công việc cá nhân của bạn.',
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, can_assign=True, **kwargs):
         super().__init__(*args, **kwargs)
-        # Order users by profile full_name if available
-        self.fields['assigned_to'].queryset = User.objects.filter(
-            is_active=True
-        ).select_related('profile').order_by('profile__full_name', 'username')
+
+        if can_assign:
+            # Sắp xếp danh sách user theo tên
+            self.fields['assigned_to'].queryset = User.objects.filter(
+                is_active=True
+            ).select_related('profile').order_by('profile__full_name', 'username')
+        else:
+            # Nhân viên: xóa trường assigned_to khỏi form
+            del self.fields['assigned_to']
 
     def clean_title(self):
         title = self.cleaned_data.get('title')
