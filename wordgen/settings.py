@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "tax_payment",
     "kpi_tool",
     "tasks",
+    "savings_calculator",
 ]
 
 MIDDLEWARE = [

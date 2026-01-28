@@ -1,0 +1,412 @@
+[
+{
+  "model": "savings_calculator.savingsproduct",
+  "pk": 1,
+  "fields": {
+    "name": "Tiết kiệm có kỳ hạn - Trả lãi sau",
+    "code": "TK_TRA_LAI_SAU",
+    "description": "Sản phẩm tiết kiệm có kỳ hạn trả lãi cuối kỳ.",
+    "is_active": true,
+    "order": 1,
+    "created_at": "2026-01-28T07:28:45.937Z",
+    "updated_at": "2026-01-28T07:28:45.937Z"
+  }
+},
+{
+  "model": "savings_calculator.savingsproduct",
+  "pk": 2,
+  "fields": {
+    "name": "Tiết kiệm rút gốc linh hoạt",
+    "code": "TK_RUT_GOC_LINH_HOAT",
+    "description": "Tiết kiệm cho phép rút gốc linh hoạt, lãi suất thấp hơn ~0.1%.",
+    "is_active": true,
+    "order": 2,
+    "created_at": "2026-01-28T07:28:46.053Z",
+    "updated_at": "2026-01-28T07:28:46.053Z"
+  }
+},
+{
+  "model": "savings_calculator.savingsproduct",
+  "pk": 3,
+  "fields": {
+    "name": "Tiết kiệm trả lãi định kỳ hàng tháng",
+    "code": "TK_TRA_LAI_DINH_KY",
+    "description": "Trả lãi định kỳ hàng tháng, lãi suất lẻ.",
+    "is_active": true,
+    "order": 3,
+    "created_at": "2026-01-28T07:28:46.156Z",
+    "updated_at": "2026-01-28T07:28:46.156Z"
+  }
+},
+{
+  "model": "savings_calculator.savingsproduct",
+  "pk": 4,
+  "fields": {
+    "name": "Tiết kiệm trực tuyến (E-Mobile)",
+    "code": "TK_ONLINE",
+    "description": "Tiết kiệm online qua ứng dụng E-Mobile Banking, lãi suất ưu đãi.",
+    "is_active": true,
+    "order": 4,
+    "created_at": "2026-01-28T07:28:46.246Z",
+    "updated_at": "2026-01-28T07:28:46.246Z"
+  }
+},
+{
+  "model": "savings_calculator.savingsproduct",
+  "pk": 5,
+  "fields": {
+    "name": "Tiết kiệm An Sinh",
+    "code": "TK_AN_SINH",
+    "description": "Sản phẩm tiết kiệm An Sinh xã hội.",
+    "is_active": true,
+    "order": 5,
+    "created_at": "2026-01-28T07:28:46.315Z",
+    "updated_at": "2026-01-28T07:28:46.315Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 1,
+  "fields": {
+    "product": 1,
+    "term_month_min": 1,
+    "term_month_max": 2,
+    "interest_rate_yearly": 2.6,
+    "description": "1 đến 2 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:45.957Z",
+    "updated_at": "2026-01-28T07:28:45.957Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 2,
+  "fields": {
+    "product": 1,
+    "term_month_min": 3,
+    "term_month_max": 5,
+    "interest_rate_yearly": 2.9,
+    "description": "3 đến 5 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:45.973Z",
+    "updated_at": "2026-01-28T07:28:45.973Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 3,
+  "fields": {
+    "product": 1,
+    "term_month_min": 6,
+    "term_month_max": 11,
+    "interest_rate_yearly": 4.0,
+    "description": "6 đến 11 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:45.989Z",
+    "updated_at": "2026-01-28T07:28:45.989Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 4,
+  "fields": {
+    "product": 1,
+    "term_month_min": 12,
+    "term_month_max": 17,
+    "interest_rate_yearly": 5.2,
+    "description": "12 đến 17 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.004Z",
+    "updated_at": "2026-01-28T07:28:46.004Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 5,
+  "fields": {
+    "product": 1,
+    "term_month_min": 18,
+    "term_month_max": 23,
+    "interest_rate_yearly": 5.2,
+    "description": "18 đến 23 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.020Z",
+    "updated_at": "2026-01-28T07:28:46.020Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 6,
+  "fields": {
+    "product": 1,
+    "term_month_min": 24,
+    "term_month_max": 24,
+    "interest_rate_yearly": 5.3,
+    "description": "24 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.037Z",
+    "updated_at": "2026-01-28T07:28:46.037Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 7,
+  "fields": {
+    "product": 2,
+    "term_month_min": 1,
+    "term_month_max": 2,
+    "interest_rate_yearly": 2.5,
+    "description": "1 đến 2 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.068Z",
+    "updated_at": "2026-01-28T07:28:46.068Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 8,
+  "fields": {
+    "product": 2,
+    "term_month_min": 3,
+    "term_month_max": 5,
+    "interest_rate_yearly": 2.8,
+    "description": "3 đến 5 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.083Z",
+    "updated_at": "2026-01-28T07:28:46.083Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 9,
+  "fields": {
+    "product": 2,
+    "term_month_min": 6,
+    "term_month_max": 11,
+    "interest_rate_yearly": 3.9,
+    "description": "6 đến 11 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.098Z",
+    "updated_at": "2026-01-28T07:28:46.098Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 10,
+  "fields": {
+    "product": 2,
+    "term_month_min": 12,
+    "term_month_max": 17,
+    "interest_rate_yearly": 5.1,
+    "description": "12 đến 17 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.113Z",
+    "updated_at": "2026-01-28T07:28:46.113Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 11,
+  "fields": {
+    "product": 2,
+    "term_month_min": 18,
+    "term_month_max": 23,
+    "interest_rate_yearly": 5.1,
+    "description": "18 đến 23 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.126Z",
+    "updated_at": "2026-01-28T07:28:46.126Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 12,
+  "fields": {
+    "product": 2,
+    "term_month_min": 24,
+    "term_month_max": 24,
+    "interest_rate_yearly": 5.2,
+    "description": "24 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.141Z",
+    "updated_at": "2026-01-28T07:28:46.141Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 13,
+  "fields": {
+    "product": 3,
+    "term_month_min": 3,
+    "term_month_max": 5,
+    "interest_rate_yearly": 2.892,
+    "description": "3 đến 5 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.170Z",
+    "updated_at": "2026-01-28T07:28:46.170Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 14,
+  "fields": {
+    "product": 3,
+    "term_month_min": 6,
+    "term_month_max": 11,
+    "interest_rate_yearly": 3.957,
+    "description": "6 đến 11 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.184Z",
+    "updated_at": "2026-01-28T07:28:46.184Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 15,
+  "fields": {
+    "product": 3,
+    "term_month_min": 12,
+    "term_month_max": 17,
+    "interest_rate_yearly": 5.089,
+    "description": "12 đến 17 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.201Z",
+    "updated_at": "2026-01-28T07:28:46.201Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 16,
+  "fields": {
+    "product": 3,
+    "term_month_min": 18,
+    "term_month_max": 23,
+    "interest_rate_yearly": 5.089,
+    "description": "18 đến 23 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.215Z",
+    "updated_at": "2026-01-28T07:28:46.215Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 17,
+  "fields": {
+    "product": 3,
+    "term_month_min": 24,
+    "term_month_max": 24,
+    "interest_rate_yearly": 5.184,
+    "description": "24 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.232Z",
+    "updated_at": "2026-01-28T07:28:46.232Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 18,
+  "fields": {
+    "product": 4,
+    "term_month_min": 1,
+    "term_month_max": 2,
+    "interest_rate_yearly": 3.0,
+    "description": "1 đến 2 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.259Z",
+    "updated_at": "2026-01-28T07:28:46.259Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 19,
+  "fields": {
+    "product": 4,
+    "term_month_min": 3,
+    "term_month_max": 5,
+    "interest_rate_yearly": 3.5,
+    "description": "3 đến 5 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.271Z",
+    "updated_at": "2026-01-28T07:28:46.271Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 20,
+  "fields": {
+    "product": 4,
+    "term_month_min": 6,
+    "term_month_max": 11,
+    "interest_rate_yearly": 5.0,
+    "description": "6 đến 11 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.286Z",
+    "updated_at": "2026-01-28T07:28:46.286Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 21,
+  "fields": {
+    "product": 4,
+    "term_month_min": 12,
+    "term_month_max": 23,
+    "interest_rate_yearly": 5.3,
+    "description": "12 đến 23 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.300Z",
+    "updated_at": "2026-01-28T07:28:46.300Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 22,
+  "fields": {
+    "product": 5,
+    "term_month_min": 1,
+    "term_month_max": 11,
+    "interest_rate_yearly": 3.8,
+    "description": "Dưới 12 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.330Z",
+    "updated_at": "2026-01-28T07:28:46.330Z"
+  }
+},
+{
+  "model": "savings_calculator.interestrate",
+  "pk": 23,
+  "fields": {
+    "product": 5,
+    "term_month_min": 12,
+    "term_month_max": 24,
+    "interest_rate_yearly": 5.0,
+    "description": "12 đến 24 tháng",
+    "effective_date": "2026-01-15",
+    "is_active": true,
+    "created_at": "2026-01-28T07:28:46.344Z",
+    "updated_at": "2026-01-28T07:28:46.344Z"
+  }
+}
+]
