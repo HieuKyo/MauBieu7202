@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "salary",
     "tax_payment",
     "kpi_tool",
+    "tasks",
     "savings_calculator",
 ]
 
