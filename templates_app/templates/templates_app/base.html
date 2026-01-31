@@ -56,25 +56,10 @@
                                 <i class="bi bi-house"></i> Trang chủ
                             </a>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-grid"></i> Dịch vụ
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'print_templates' %}">
+                                <i class="bi bi-printer"></i> In mẫu biểu
                             </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'print_templates' %}">
-                                    <i class="bi bi-printer"></i> In mẫu biểu
-                                    <small class="d-block text-muted ms-4">Tạo và in các mẫu biểu nghiệp vụ</small>
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'beautiful_number_lookup' %}">
-                                    <i class="bi bi-calculator"></i> Tra cứu phí số đẹp
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'beautiful_number_list' %}">
-                                    <i class="bi bi-list-stars"></i> Danh sách số đẹp
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'savings_calculator:calculator' %}">
-                                    <i class="bi bi-piggy-bank"></i> Tính lãi Tiết kiệm
-                                </a></li>
-                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'report_hub' %}">
