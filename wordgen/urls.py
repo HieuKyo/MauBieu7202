@@ -27,6 +27,7 @@ urlpatterns = [
     path("tax-payment/", include("tax_payment.urls")),
     path("kpi-tool/", include("kpi_tool.urls")),
     path("tasks/", include("tasks.urls")),
+    path("savings/", include("savings_calculator.urls")),
     path("", include("templates_app.urls")),
 ]
 
