@@ -1,0 +1,379 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Tính lãi Tiết kiệm - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calc-card { border: none; box-shadow: 0 2px 12px rgba(0,0,0,.08); border-radius: 12px; }
+    .calc-card .card-header { background: linear-gradient(135deg, #AE1C3F 0%, #8a1230 100%); color: #fff; border-radius: 12px 12px 0 0 !important; }
+    .result-card { border-left: 4px solid #D69D26; }
+    .result-number { font-size: 1.35rem; font-weight: 700; color: #AE1C3F; }
+    .rate-badge { font-size: .95rem; padding: 6px 14px; }
+    .cashflow-table th { background: #f8f0e3; color: #333; font-weight: 600; }
+    .input-group-text { min-width: 42px; justify-content: center; }
+    #resultSection { display: none; }
+
+    /* ===== Print styles ===== */
+    @media print {
+        body * { visibility: hidden; }
+        #printArea, #printArea * { visibility: visible; }
+        #printArea {
+            position: absolute; left: 0; top: 0; width: 100%;
+            font-size: 11pt; color: #000;
+        }
+        .no-print { display: none !important; }
+
+        .print-header {
+            text-align: center; border-bottom: 2px solid #000;
+            padding-bottom: 10px; margin-bottom: 16px;
+        }
+        .print-header img { height: 50px; }
+        .print-header h4 { margin: 6px 0 2px; font-weight: 700; }
+        .print-header p { margin: 0; font-size: 10pt; }
+
+        .print-footer {
+            margin-top: 40px; page-break-inside: avoid;
+        }
+        .sig-line {
+            display: inline-block; width: 45%; text-align: center;
+            margin-top: 60px; border-top: 1px dotted #000;
+            padding-top: 4px; font-weight: 600;
+        }
+
+        table { border-collapse: collapse; width: 100%; }
+        table th, table td { border: 1px solid #333; padding: 5px 8px; }
+        table th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        @page { size: A4 portrait; margin: 15mm; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Trang chủ</a></li>
+                <li class="breadcrumb-item active">Tính lãi Tiết kiệm</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- ============ FORM NHẬP LIỆU ============ -->
+<div class="row">
+    <div class="col-lg-5 mb-4">
+        <div class="card calc-card">
+            <div class="card-header py-3">
+                <h5 class="mb-0"><i class="bi bi-calculator"></i> Nhập thông tin gửi tiết kiệm</h5>
+            </div>
+            <div class="card-body">
+                <form id="calcForm">
+                    <!-- Sản phẩm -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Sản phẩm tiết kiệm</label>
+                        <select id="productSelect" class="form-select" required>
+                            <option value="">-- Chọn sản phẩm --</option>
+                            {% for p in products %}
+                            <option value="{{ p.id }}">{{ p.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Kỳ hạn -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Kỳ hạn gửi</label>
+                        <select id="termSelect" class="form-select" required disabled>
+                            <option value="">-- Chọn kỳ hạn --</option>
+                        </select>
+                    </div>
+
+                    <!-- Lãi suất (auto-fill, cho sửa tay) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Lãi suất (%/năm)</label>
+                        <div class="input-group">
+                            <input type="number" id="rateInput" class="form-control" step="0.001" min="0" placeholder="0.000" required>
+                            <span class="input-group-text">%/năm</span>
+                        </div>
+                        <small class="text-muted">Tự động điền khi chọn kỳ hạn. Có thể sửa tay nếu lãi suất thỏa thuận.</small>
+                    </div>
+
+                    <!-- Số tiền gửi -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Số tiền gửi (VNĐ)</label>
+                        <div class="input-group">
+                            <input type="text" id="principalInput" class="form-control" placeholder="100,000,000" required>
+                            <span class="input-group-text">đ</span>
+                        </div>
+                    </div>
+
+                    <!-- Số tháng gửi (manual) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Số tháng gửi</label>
+                        <div class="input-group">
+                            <input type="number" id="termMonthInput" class="form-control" min="1" max="120" placeholder="12" required>
+                            <span class="input-group-text">tháng</span>
+                        </div>
+                    </div>
+
+                    <!-- Ngày gửi -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ngày gửi</label>
+                        <input type="date" id="depositDate" class="form-control" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100 py-2 fw-semibold">
+                        <i class="bi bi-calculator"></i> Tính lãi
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ KẾT QUẢ ============ -->
+    <div class="col-lg-7 mb-4" id="resultSection">
+        <div id="printArea">
+            <!-- Print header (chỉ hiện khi in) -->
+            <div class="print-header d-none d-print-block">
+                <img src="{% static 'images/agribank_logo.png' %}" alt="Agribank">
+                <h4>NGÂN HÀNG NÔNG NGHIỆP VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM</h4>
+                <p><strong>Chi nhánh Giá Rai Bạc Liêu</strong></p>
+                <p style="margin-top:8px; font-size:13pt; font-weight:700;">BẢNG TÍNH LÃI TIẾT KIỆM</p>
+            </div>
+
+            <!-- Thông tin tổng hợp -->
+            <div class="card result-card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="bi bi-info-circle"></i> Kết quả tính lãi</h5>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="p-3 bg-light rounded">
+                                <small class="text-muted d-block">Sản phẩm</small>
+                                <strong id="resProduct">-</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 bg-light rounded">
+                                <small class="text-muted d-block">Lãi suất áp dụng</small>
+                                <span class="badge bg-success rate-badge" id="resRate">-</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 bg-light rounded">
+                                <small class="text-muted d-block">Ngày gửi</small>
+                                <strong id="resDepositDate">-</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 bg-light rounded">
+                                <small class="text-muted d-block">Ngày đáo hạn</small>
+                                <strong id="resMaturityDate">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center g-3">
+                        <div class="col-4">
+                            <small class="text-muted d-block">Tổng gốc</small>
+                            <div class="result-number" id="resPrincipal">0</div>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted d-block">Tổng lãi dự kiến</small>
+                            <div class="result-number text-success" id="resTotalInterest">0</div>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted d-block">Tổng thực nhận</small>
+                            <div class="result-number" id="resTotalReceive">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bảng dòng tiền -->
+            <div class="card mb-3">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-table"></i> Bảng chi tiết dòng tiền (Cashflow)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0 cashflow-table" id="cashflowTable">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width:80px">Tháng</th>
+                                    <th class="text-end">Lãi trong tháng (VNĐ)</th>
+                                    <th class="text-end">Lãi lũy kế (VNĐ)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cashflowBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Print footer (chỉ hiện khi in) -->
+            <div class="print-footer d-none d-print-block">
+                <p style="font-style:italic; font-size:9pt;">Bảng tính mang tính chất tham khảo. Lãi suất thực tế theo quy định tại thời điểm gửi tiền.</p>
+                <div style="display:flex; justify-content:space-between;">
+                    <div class="sig-line">KHÁCH HÀNG</div>
+                    <div class="sig-line">GIAO DỊCH VIÊN</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nút In -->
+        <div class="text-end mt-3 no-print">
+            <button class="btn btn-outline-secondary" onclick="window.print()">
+                <i class="bi bi-printer"></i> In bảng tính (A4)
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const csrfToken = '{{ csrf_token }}';
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('depositDate').value = today;
+
+    // === Format tiền tệ ===
+    function formatCurrency(n) {
+        return Math.round(n).toLocaleString('vi-VN');
+    }
+
+    // === Format input tiền tệ khi gõ ===
+    const principalInput = document.getElementById('principalInput');
+    principalInput.addEventListener('input', function() {
+        let raw = this.value.replace(/[^0-9]/g, '');
+        if (raw) {
+            this.value = parseInt(raw).toLocaleString('vi-VN');
+        }
+    });
+
+    function getPrincipalValue() {
+        return parseInt(principalInput.value.replace(/[^0-9]/g, '')) || 0;
+    }
+
+    // === Khi chọn sản phẩm → load lãi suất ===
+    const productSelect = document.getElementById('productSelect');
+    const termSelect = document.getElementById('termSelect');
+    const rateInput = document.getElementById('rateInput');
+    const termMonthInput = document.getElementById('termMonthInput');
+
+    let ratesData = [];
+
+    productSelect.addEventListener('change', function() {
+        const pid = this.value;
+        termSelect.innerHTML = '<option value="">-- Chọn kỳ hạn --</option>';
+        termSelect.disabled = true;
+        rateInput.value = '';
+        termMonthInput.value = '';
+        ratesData = [];
+
+        if (!pid) return;
+
+        fetch(`{% url 'savings_calculator:api_rates' %}?product_id=${pid}`)
+            .then(r => r.json())
+            .then(data => {
+                ratesData = data.rates || [];
+                ratesData.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.dataset.rateMin = r.term_month_min;
+                    opt.dataset.rateMax = r.term_month_max;
+                    opt.dataset.rate = r.interest_rate_yearly;
+                    const label = r.description
+                        ? r.description
+                        : (r.term_month_min === r.term_month_max
+                            ? r.term_month_min + ' tháng'
+                            : r.term_month_min + ' đến ' + r.term_month_max + ' tháng');
+                    opt.textContent = label + '  —  ' + r.interest_rate_yearly + '%/năm';
+                    termSelect.appendChild(opt);
+                });
+                termSelect.disabled = false;
+            });
+    });
+
+    // === Khi chọn kỳ hạn → auto-fill lãi suất & số tháng ===
+    termSelect.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        if (opt && opt.dataset.rate) {
+            rateInput.value = opt.dataset.rate;
+            termMonthInput.value = opt.dataset.rateMin;
+        } else {
+            rateInput.value = '';
+            termMonthInput.value = '';
+        }
+    });
+
+    // === Submit tính toán ===
+    document.getElementById('calcForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const principal = getPrincipalValue();
+        const termMonths = parseInt(termMonthInput.value) || 0;
+        const yearlyRate = parseFloat(rateInput.value) || 0;
+        const depositDate = document.getElementById('depositDate').value;
+
+        if (principal <= 0 || termMonths <= 0 || yearlyRate <= 0) {
+            alert('Vui lòng nhập đầy đủ thông tin hợp lệ.');
+            return;
+        }
+
+        fetch("{% url 'savings_calculator:api_calculate' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                principal: principal,
+                term_months: termMonths,
+                yearly_rate: yearlyRate,
+                deposit_date: depositDate,
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            renderResult(data);
+        });
+    });
+
+    // === Render kết quả ===
+    function renderResult(data) {
+        const productName = productSelect.options[productSelect.selectedIndex].text;
+        document.getElementById('resProduct').textContent = productName;
+        document.getElementById('resRate').textContent = data.yearly_rate + '%/năm';
+        document.getElementById('resDepositDate').textContent = data.deposit_date;
+        document.getElementById('resMaturityDate').textContent = data.maturity_date;
+        document.getElementById('resPrincipal').textContent = formatCurrency(data.principal) + ' đ';
+        document.getElementById('resTotalInterest').textContent = formatCurrency(data.total_interest) + ' đ';
+        document.getElementById('resTotalReceive').textContent = formatCurrency(data.total_receive) + ' đ';
+
+        // Bảng cashflow
+        const tbody = document.getElementById('cashflowBody');
+        tbody.innerHTML = '';
+        data.cashflow.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-center">${row.month}</td>
+                <td class="text-end">${formatCurrency(row.interest)}</td>
+                <td class="text-end">${formatCurrency(row.cumulative_interest)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('resultSection').style.display = 'block';
+        document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+})();
+</script>
+{% endblock %}
