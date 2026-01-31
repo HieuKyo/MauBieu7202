@@ -2902,3 +2902,27 @@ class ATMTransactionReport(models.Model):
 
     def __str__(self):
         return f"ATM {self.atm_no} - {self.report_period.strftime('%m/%Y')}"
+
+
+class Promotion(models.Model):
+    """Chương trình khuyến mãi / Tin tức nội bộ"""
+    title = models.CharField(max_length=255, verbose_name="Tiêu đề chương trình")
+    content = models.TextField(verbose_name="Nội dung chi tiết")
+    image = models.ImageField(
+        upload_to='promotions/',
+        blank=True,
+        null=True,
+        verbose_name="Hình ảnh banner"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng")
+    start_date = models.DateField(verbose_name="Ngày bắt đầu hiệu lực")
+    end_date = models.DateField(verbose_name="Ngày hết hạn")
+    is_active = models.BooleanField(default=True, verbose_name="Hiển thị")
+
+    class Meta:
+        verbose_name = "Chương trình khuyến mãi"
+        verbose_name_plural = "Chương trình khuyến mãi"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
