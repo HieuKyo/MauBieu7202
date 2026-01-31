@@ -59,8 +59,27 @@ def is_safe_redirect_url(url, allowed_host):
 @login_required
 def dashboard_view(request):
     """
-    Trang chủ - Hiển thị danh sách khách hàng và mẫu biểu
-    Layout: Customers (left) | Customer Detail + Templates (right)
+    Trang chủ - News Feed hiển thị chương trình khuyến mãi/tin tức
+    """
+    from .models import Promotion
+    today = date.today()
+    promotions = Promotion.objects.filter(
+        is_active=True,
+        end_date__gte=today,
+    ).order_by('-created_at')
+
+    context = {
+        'promotions': promotions,
+        'user': user if (user := request.user) else None,
+    }
+    return render(request, 'templates_app/news_feed.html', context)
+
+
+@login_required
+def print_templates_view(request):
+    """
+    In mẫu biểu - Hiển thị danh sách khách hàng và mẫu biểu
+    (Chức năng Dashboard cũ được di chuyển sang đây)
     """
     user = request.user
 

@@ -8,7 +8,8 @@ from .models import (
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction,
     UserProfile, Course, CourseEnrollment,
-    ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy
+    ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy,
+    Promotion,
 )
 from .import_helpers import (
     import_variables_from_csv,
@@ -990,6 +991,37 @@ class ATMDiscrepancyAdmin(admin.ModelAdmin):
         if not change:  # Chỉ khi tạo mới
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Promotion)
+class PromotionAdmin(admin.ModelAdmin):
+    """Admin cho Chương trình khuyến mãi / Tin tức"""
+    list_display = ['title', 'start_date', 'end_date', 'is_active', 'is_expired', 'created_at']
+    list_filter = ['is_active', 'start_date', 'end_date']
+    list_editable = ['is_active']
+    search_fields = ['title', 'content']
+    ordering = ['-created_at']
+
+    fieldsets = (
+        ('Nội dung', {
+            'fields': ('title', 'content', 'image')
+        }),
+        ('Thời gian hiệu lực', {
+            'fields': ('start_date', 'end_date')
+        }),
+        ('Trạng thái', {
+            'fields': ('is_active',)
+        }),
+    )
+
+    def is_expired(self, obj):
+        """Hiển thị trạng thái hết hạn"""
+        from datetime import date
+        if obj.end_date < date.today():
+            return False
+        return True
+    is_expired.boolean = True
+    is_expired.short_description = 'Còn hiệu lực'
 
 
 #@admin.register(BranchConfig)
