@@ -11,8 +11,11 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
 
-    # Dashboard
+    # Dashboard (News Feed)
     path('', views.dashboard_view, name='dashboard'),
+
+    # In mẫu biểu (Print Templates - chức năng Dashboard cũ)
+    path('print-templates/', views.print_templates_view, name='print_templates'),
 
     # Category
     path('category/<int:category_id>/', views.category_detail_view, name='category_detail'),
