@@ -1,0 +1,70 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Thi nghiệp vụ - Agribank{% endblock %}
+
+{% block content %}
+<div class="container main-container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold" style="color: var(--agri-red);">
+                <i class="bi bi-journal-check me-2"></i>Thi nghiệp vụ
+            </h2>
+            <p class="text-muted">Chọn kỳ thi để tra cứu câu hỏi</p>
+        </div>
+    </div>
+
+    {% if exams %}
+        <div class="row g-4">
+            {% for exam in exams %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                 style="width:48px;height:48px;background:linear-gradient(135deg,#AE1C3F,#D69D26);">
+                                <i class="bi bi-file-earmark-text text-white fs-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title mb-1 fw-bold">{{ exam.title }}</h5>
+                                {% if exam.description %}
+                                <p class="card-text text-muted small mb-0">{{ exam.description }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mt-auto">
+                            <div class="d-flex align-items-center text-muted small mb-3">
+                                <i class="bi bi-collection me-1"></i>
+                                {{ exam.quizzes.count }} đề thi &nbsp;|&nbsp;
+                                <i class="bi bi-question-circle ms-1 me-1"></i>
+                                {% with total=exam.quizzes.all %}
+                                    {% for q in total %}{% endfor %}
+                                {% endwith %}
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'quiz_list' exam_id=exam.id %}"
+                                   class="btn btn-danger flex-grow-1">
+                                    <i class="bi bi-play-fill me-1"></i> Ôn tập
+                                </a>
+                                <a href="{% url 'question_lookup' exam_id=exam.id %}"
+                                   class="btn btn-outline-secondary">
+                                    <i class="bi bi-search"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card border-0 shadow-sm text-center py-5">
+            <div class="card-body">
+                <i class="bi bi-inbox text-muted" style="font-size:3rem;"></i>
+                <h5 class="mt-3 text-muted">Chưa có kỳ thi nào</h5>
+                <p class="text-muted">Vào <a href="/admin/quiz/exam/add/">Admin</a> để thêm kỳ thi và import câu hỏi.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Kết quả - {{ quiz.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .result-badge { font-size: 3rem; font-weight: 700; }
+    .answer-item { border-left: 4px solid #dee2e6; padding-left: 1rem; margin-bottom: 1rem; }
+    .answer-item.correct { border-color: #198754; }
+    .answer-item.wrong   { border-color: #dc3545; }
+    .answer-item.skipped { border-color: #ffc107; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container" style="max-width:760px;">
+
+    <!-- Score card -->
+    <div class="card border-0 shadow-sm mb-4 text-center">
+        <div class="card-body py-4">
+            <p class="text-muted mb-1">{{ quiz.title }}</p>
+            <div class="result-badge" style="color:{% if score >= total|add:'-10' %}#198754{% elif score >= total|floatformat:0 %}#0d6efd{% else %}#dc3545{% endif %};">
+                {{ score }}/{{ total }}
+            </div>
+            <p class="text-muted mt-1">
+                {% widthratio score total 100 %}% chính xác
+            </p>
+            <div class="d-flex justify-content-center gap-3 mt-3">
+                <a href="{% url 'quiz_start' quiz_id=quiz.id %}" class="btn btn-danger">
+                    <i class="bi bi-arrow-repeat me-1"></i> Làm lại
+                </a>
+                <a href="{% url 'quiz_list' exam_id=quiz.exam_id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-grid me-1"></i> Chọn đề khác
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail -->
+    <h6 class="fw-bold mb-3 text-muted">Chi tiết từng câu</h6>
+    {% for r in results %}
+    <div class="answer-item {% if r.is_correct %}correct{% elif r.user_choice %}wrong{% else %}skipped{% endif %}">
+        <div class="d-flex align-items-start justify-content-between">
+            <p class="mb-1 fw-semibold small">Câu {{ forloop.counter }}: {{ r.question.text|truncatechars:120 }}</p>
+            {% if r.is_correct %}
+                <span class="badge bg-success ms-2 flex-shrink-0">Đúng</span>
+            {% elif r.user_choice %}
+                <span class="badge bg-danger ms-2 flex-shrink-0">Sai</span>
+            {% else %}
+                <span class="badge bg-warning text-dark ms-2 flex-shrink-0">Bỏ qua</span>
+            {% endif %}
+        </div>
+        {% if not r.is_correct %}
+        <small class="text-muted">
+            {% if r.user_choice %}Bạn chọn: <em>{{ r.user_choice.text|truncatechars:80 }}</em><br>{% endif %}
+            Đáp án đúng: <strong class="text-success">{{ r.correct_choice.text|truncatechars:80 }}</strong>
+        </small>
+        {% endif %}
+        {% if r.question.explanation %}
+        <small class="d-block text-muted mt-1"><i class="bi bi-lightbulb me-1"></i>{{ r.question.explanation|truncatechars:100 }}</small>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Câu {{ index|add:1 }}/{{ total }} - {{ quiz.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .choice-btn {
+        text-align: left;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #fff;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    .choice-btn:hover { border-color: #AE1C3F; background: rgba(174,28,63,0.04); }
+    .choice-btn.selected { border-color: #0d6efd; background: rgba(13,110,253,0.08); }
+    .choice-btn.correct  { border-color: #198754; background: rgba(25,135,84,0.1); color: #0a3622; }
+    .choice-btn.wrong    { border-color: #dc3545; background: rgba(220,53,69,0.08); color: #58151c; }
+    .progress-bar-custom { height: 6px; background: #dee2e6; border-radius: 3px; }
+    .progress-bar-fill   { height: 6px; background: linear-gradient(90deg,#AE1C3F,#D69D26); border-radius: 3px; transition: width 0.3s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container" style="max-width:760px;">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <a href="{% url 'quiz_list' exam_id=quiz.exam_id %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-x-lg"></i>
+        </a>
+        <span class="text-muted small fw-semibold">{{ quiz.title }}</span>
+        <span class="badge bg-secondary">{{ index|add:1 }} / {{ total }}</span>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-bar-custom mb-4">
+        <div class="progress-bar-fill" style="width:{% widthratio index|add:1 total 100 %}%"></div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <p class="fw-semibold mb-4" style="font-size:1.05rem;">
+                <span class="badge me-2" style="background:#AE1C3F;">Câu {{ index|add:1 }}</span>
+                {{ question.text }}
+            </p>
+
+            <div id="choices-container">
+                {% for choice in question.choices.all %}
+                <button class="choice-btn {% if selected_choice_id == choice.id %}selected{% endif %}"
+                        data-choice-id="{{ choice.id }}"
+                        data-is-correct="{{ choice.is_correct|lower }}"
+                        onclick="selectChoice(this)">
+                    <span class="choice-label me-2 fw-bold">{{ forloop.counter|add:64|stringformat:"c" }}.</span>
+                    {{ choice.text }}
+                </button>
+                {% endfor %}
+            </div>
+
+            <!-- Feedback box -->
+            <div id="feedback-box" class="mt-3" style="display:none;">
+                <div id="feedback-content" class="p-3 rounded"></div>
+            </div>
+        </div>
+
+        <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+            {% if index > 0 %}
+            <a href="{% url 'quiz_question' quiz_id=quiz.id index=index|add:-1 %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Trước
+            </a>
+            {% else %}
+            <span></span>
+            {% endif %}
+
+            {% if is_last %}
+            <a href="{% url 'quiz_result' quiz_id=quiz.id %}" class="btn btn-danger btn-sm" id="next-btn">
+                <i class="bi bi-flag-fill me-1"></i> Nộp bài
+            </a>
+            {% else %}
+            <a href="{% url 'quiz_question' quiz_id=quiz.id index=index|add:1 %}" class="btn btn-primary btn-sm" id="next-btn">
+                Tiếp <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+const QUIZ_ID = "{{ quiz.id }}";
+const Q_ID = "{{ question.id }}";
+const CSRF = "{{ csrf_token }}";
+let answered = {{ selected_choice_id|yesno:"true,false" }};
+
+{% if selected_choice_id %}
+// Restore answered state
+document.querySelectorAll('.choice-btn').forEach(btn => {
+    const isCorrect = btn.dataset.isCorrect === 'true';
+    const isSelected = parseInt(btn.dataset.choiceId) === {{ selected_choice_id }};
+    if (isSelected) btn.classList.add(isCorrect ? 'correct' : 'wrong');
+    if (isCorrect && !isSelected) btn.classList.add('correct');
+    btn.disabled = true;
+});
+{% endif %}
+
+function selectChoice(btn) {
+    if (answered) return;
+    answered = true;
+
+    document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+
+    fetch("{% url 'quiz_check_answer' %}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF},
+        body: `choice_id=${btn.dataset.choiceId}&quiz_id=${QUIZ_ID}&question_id=${Q_ID}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        const isCorrect = data.is_correct;
+        btn.classList.add(isCorrect ? 'correct' : 'wrong');
+
+        if (!isCorrect) {
+            document.querySelectorAll('.choice-btn').forEach(b => {
+                if (b.dataset.isCorrect === 'true') b.classList.add('correct');
+            });
+        }
+
+        const box = document.getElementById('feedback-box');
+        const content = document.getElementById('feedback-content');
+        box.style.display = 'block';
+
+        if (isCorrect) {
+            content.className = 'p-3 rounded alert alert-success mb-0';
+            content.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i><strong>Chính xác!</strong>' +
+                (data.explanation ? `<div class="mt-1 small">${data.explanation}</div>` : '');
+        } else {
+            content.className = 'p-3 rounded alert alert-danger mb-0';
+            content.innerHTML = '<i class="bi bi-x-circle-fill me-2"></i><strong>Sai rồi!</strong>' +
+                (data.correct_answer_text ? `<div class="mt-1 small">Đáp án đúng: <strong>${data.correct_answer_text}</strong></div>` : '') +
+                (data.explanation ? `<div class="mt-1 small">${data.explanation}</div>` : '');
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}{{ exam.title }} - Thi nghiệp vụ{% endblock %}
+
+{% block content %}
+<div class="container main-container">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'quiz_exam_list' %}">Thi nghiệp vụ</a></li>
+            <li class="breadcrumb-item active">{{ exam.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0" style="color:var(--agri-red);">{{ exam.title }}</h4>
+            <p class="text-muted small mb-0">Chọn chủ đề để bắt đầu ôn tập</p>
+        </div>
+        <a href="{% url 'question_lookup' exam_id=exam.id %}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-search me-1"></i> Tra cứu câu hỏi
+        </a>
+    </div>
+
+    {% if quizzes %}
+    <div class="row g-3">
+        {% for quiz in quizzes %}
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                         style="width:44px;height:44px;background:linear-gradient(135deg,#AE1C3F,#D69D26);">
+                        <i class="bi bi-collection text-white"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-bold">{{ quiz.title }}</h6>
+                        <small class="text-muted">
+                            <i class="bi bi-question-circle me-1"></i>{{ quiz.question_count }} câu hỏi
+                        </small>
+                    </div>
+                    <a href="{% url 'quiz_start' quiz_id=quiz.id %}"
+                       class="btn btn-danger btn-sm ms-2">
+                        <i class="bi bi-play-fill me-1"></i> Ôn tập
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card border-0 shadow-sm text-center py-5">
+        <div class="card-body">
+            <i class="bi bi-inbox text-muted" style="font-size:3rem;"></i>
+            <h5 class="mt-3 text-muted">Chưa có đề thi nào</h5>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

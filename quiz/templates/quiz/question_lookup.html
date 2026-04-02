@@ -1,0 +1,156 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Tra cứu - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(174,28,63,0.08);
+        color: #AE1C3F;
+    }
+    .accordion-button:focus {
+        box-shadow: 0 0 0 0.2rem rgba(174,28,63,0.25);
+    }
+    .correct-answer {
+        color: #198754;
+        background: rgba(25,135,84,0.08);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+    }
+    .search-box {
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        transition: border-color 0.2s;
+    }
+    .search-box:focus {
+        border-color: #AE1C3F;
+        box-shadow: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'quiz_exam_list' %}">Thi nghiệp vụ</a></li>
+            <li class="breadcrumb-item active">{{ exam.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header py-3" style="background:linear-gradient(90deg,#AE1C3F,#8a1230);border-bottom:3px solid #D69D26;">
+            <h4 class="mb-0 text-white fw-bold">
+                <i class="bi bi-search me-2"></i>Tra cứu câu hỏi
+            </h4>
+            <p class="mb-0 text-white-50 small mt-1">{{ exam.title }}</p>
+        </div>
+
+        <div class="card-body">
+            <form method="POST" action="{% url 'question_lookup' exam_id=exam.id %}">
+                {% csrf_token %}
+                <div class="input-group mb-4">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text"
+                           class="form-control search-box border-start-0 ps-0"
+                           name="query"
+                           id="search-query-input"
+                           value="{{ query }}"
+                           placeholder="Nhập từ viết tắt (tnqs...) hoặc nội dung câu hỏi..."
+                           autofocus>
+                    {% if query %}
+                    <a href="{% url 'question_lookup' exam_id=exam.id %}"
+                       class="btn btn-outline-secondary" title="Xóa tìm kiếm">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                    {% endif %}
+                    <button class="btn btn-danger" type="submit">
+                        <i class="bi bi-search me-1"></i> Tìm kiếm
+                    </button>
+                </div>
+            </form>
+
+            <hr class="my-3">
+
+            {% if request.method == 'POST' %}
+                {% if questions %}
+                    <p class="text-muted mb-3">
+                        Tìm thấy <strong class="text-danger">{{ questions|length }}</strong> kết quả cho
+                        <strong>"{{ query }}"</strong>:
+                    </p>
+                    <div class="accordion" id="resultAccordion">
+                        {% for question in questions %}
+                        <div class="accordion-item border mb-2 rounded">
+                            <h2 class="accordion-header" id="heading-{{ forloop.counter }}">
+                                <button class="accordion-button collapsed rounded"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapse-{{ forloop.counter }}"
+                                        aria-expanded="false">
+                                    <span class="badge bg-secondary me-2">{{ forloop.counter }}</span>
+                                    {{ question.text|truncatechars:120 }}
+                                </button>
+                            </h2>
+                            <div id="collapse-{{ forloop.counter }}"
+                                 class="accordion-collapse collapse"
+                                 data-bs-parent="#resultAccordion">
+                                <div class="accordion-body">
+                                    <p class="mb-3"><strong>Câu hỏi:</strong> {{ question.text }}</p>
+
+                                    <div class="mb-2">
+                                        <strong class="text-muted">Các lựa chọn:</strong>
+                                        <ul class="list-unstyled mt-1 ms-2">
+                                            {% for choice in question.choices.all %}
+                                            <li class="{% if choice.is_correct %}fw-bold text-success{% else %}text-muted{% endif %} mb-1">
+                                                {% if choice.is_correct %}
+                                                    <i class="bi bi-check-circle-fill me-1"></i>
+                                                {% else %}
+                                                    <i class="bi bi-circle me-1"></i>
+                                                {% endif %}
+                                                {{ choice.text }}
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+
+                                    {% if question.explanation %}
+                                    <div class="correct-answer mt-2">
+                                        <i class="bi bi-lightbulb-fill me-1"></i>
+                                        <strong>Diễn giải:</strong> {{ question.explanation }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-search text-muted" style="font-size:2.5rem;"></i>
+                        <p class="mt-2 text-danger">
+                            Không tìm thấy câu hỏi nào khớp với <strong>"{{ query }}"</strong>.
+                        </p>
+                        <p class="text-muted small">Thử tìm bằng từ viết tắt (vd: "nq08") hoặc nội dung đầy đủ hơn.</p>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-keyboard" style="font-size:2rem;"></i>
+                    <p class="mt-2">Nhập từ khóa và nhấn <strong>Tìm kiếm</strong> để tra cứu câu hỏi.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer text-end bg-light">
+            <a href="{% url 'quiz_exam_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại danh sách kỳ thi
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
