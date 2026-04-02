@@ -121,6 +121,33 @@ def quiz_result(request, quiz_id):
 
 
 @login_required
+def quiz_review(request, quiz_id):
+    quiz = get_object_or_404(Quiz, pk=quiz_id)
+    ids = request.session.get(f'quiz_{quiz_id}_ids', [])
+    answers = request.session.get(f'quiz_{quiz_id}_answers', {})
+
+    questions_status = []
+    for i, q_id in enumerate(ids):
+        questions_status.append({
+            'index': i,
+            'number': i + 1,
+            'answered': str(q_id) in answers,
+        })
+
+    answered_count = sum(1 for q in questions_status if q['answered'])
+    unanswered_count = len(questions_status) - answered_count
+
+    context = {
+        'quiz': quiz,
+        'questions_status': questions_status,
+        'answered_count': answered_count,
+        'unanswered_count': unanswered_count,
+        'total': len(ids),
+    }
+    return render(request, 'quiz/quiz_review.html', context)
+
+
+@login_required
 def question_lookup(request, exam_id):
     exam = get_object_or_404(Exam, pk=exam_id)
     questions = []
