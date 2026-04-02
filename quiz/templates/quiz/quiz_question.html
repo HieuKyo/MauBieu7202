@@ -1,5 +1,5 @@
 {% extends 'templates_app/base.html' %}
-{% load static %}
+{% load static l10n %}
 
 {% block title %}Câu {{ index|add:1 }}/{{ total }} - {{ quiz.title }}{% endblock %}
 
@@ -52,7 +52,7 @@
             <div id="choices-container">
                 {% for choice in question.choices.all %}
                 <button class="choice-btn {% if selected_choice_id == choice.id %}selected{% endif %}"
-                        data-choice-id="{{ choice.id }}"
+                        data-choice-id="{{ choice.id|unlocalize }}"
                         data-is-correct="{{ choice.is_correct|lower }}"
                         onclick="selectChoice(this)">
                     <span class="choice-label me-2 fw-bold">{{ forloop.counter|add:64|stringformat:"c" }}.</span>
@@ -90,8 +90,8 @@
 </div>
 
 <script>
-const QUIZ_ID = "{{ quiz.id }}";
-const Q_ID = "{{ question.id }}";
+const QUIZ_ID = "{{ quiz.id|unlocalize }}";
+const Q_ID = "{{ question.id|unlocalize }}";
 const CSRF = "{{ csrf_token }}";
 let answered = {{ selected_choice_id|yesno:"true,false" }};
 
@@ -100,6 +100,7 @@ let answered = {{ selected_choice_id|yesno:"true,false" }};
 document.querySelectorAll('.choice-btn').forEach(btn => {
     const isCorrect = btn.dataset.isCorrect === 'true';
     const isSelected = parseInt(btn.dataset.choiceId) === {{ selected_choice_id }};
+    const choiceId = parseInt(btn.dataset.choiceId);
     if (isSelected) btn.classList.add(isCorrect ? 'correct' : 'wrong');
     if (isCorrect && !isSelected) btn.classList.add('correct');
     btn.disabled = true;
