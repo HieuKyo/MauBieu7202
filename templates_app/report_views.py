@@ -1104,3 +1104,194 @@ def atm_transaction_detail(request, atm_no):
     }
 
     return render(request, 'templates_app/reports/atm_transaction_detail.html', context)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BÁO CÁO ĐÓNG/MỞ TÀI KHOẢN
+# ─────────────────────────────────────────────────────────────────────────────
+
+import math
+
+def _to_json_safe(obj):
+    """Chuyển đổi đệ quy các kiểu dữ liệu pandas/numpy thành kiểu JSON thuần."""
+    import numpy as np
+    if isinstance(obj, dict):
+        return {k: _to_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_json_safe(i) for i in obj]
+    if isinstance(obj, pd.Timestamp):
+        return obj.strftime('%d/%m/%Y') if not pd.isnull(obj) else None
+    if isinstance(obj, float) and math.isnan(obj):
+        return None
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating,)):
+        v = float(obj)
+        return None if math.isnan(v) else v
+    if isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    if obj is pd.NaT:
+        return None
+    return obj
+
+# Danh mục phân loại
+_LOAI_CA_NHAN = [
+    'TG KKH Cá nhân (Số đẹp)',
+    'TG KKH CB lương Ngân sách',
+    'Tiền gửi thanh toán cá nhân',
+    'TG thanh toán cá nhân eKYC',
+]
+_LOAI_TO_CHUC = [
+    'Tg KKH TCKT (Số đẹp)',
+    'TG KKH TCKT',
+    'TKTT Hộ kinh doanh',
+]
+# locdpnm dùng để nhận diện HSSV (phải là CA NHÂN loại này)
+_LOCDPNM_HSSV = 'Tiền gửi thanh toán cá nhân'
+
+# Các tên cột số tài khoản có thể có trong file mở TK (theo thứ tự ưu tiên)
+_POSSIBLE_ACCTNO_COLS = ['acctno', 'acctcd', 'acctseq', 'so_tai_khoan', 'account_no']
+
+
+def _find_col(df_cols, candidates):
+    """Tìm tên cột trong df theo danh sách ứng viên (case-insensitive)."""
+    lower_map = {c.lower(): c for c in df_cols}
+    for cand in candidates:
+        if cand.lower() in lower_map:
+            return lower_map[cand.lower()]
+    return None
+
+
+@login_required
+def dong_mo_tai_khoan_report_view(request):
+    """Giao diện báo cáo Đóng/Mở tài khoản"""
+    if 'dmtk_result' in request.session:
+        del request.session['dmtk_result']
+    return render(request, 'templates_app/reports/dong_mo_tai_khoan.html')
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_dong_mo_tai_khoan_report(request):
+    """Xử lý báo cáo Đóng/Mở tài khoản"""
+    try:
+        mo_tk_file  = request.FILES.get('mo_tk_file')
+        the_file    = request.FILES.get('the_file')   # tùy chọn
+
+        if not mo_tk_file:
+            messages.error(request, "Vui lòng tải lên file Mở tài khoản.")
+            return redirect('dong_mo_tai_khoan_report')
+
+        # ── Đọc file mở tài khoản ──────────────────────────────────────────
+        try:
+            df_mo = pd.read_excel(mo_tk_file)
+            df_mo.columns = df_mo.columns.str.strip()
+        except Exception as e:
+            messages.error(request, f"Không đọc được file Mở tài khoản: {e}")
+            return redirect('dong_mo_tai_khoan_report')
+
+        # Kiểm tra cột bắt buộc locdpnm
+        locdpnm_col = _find_col(df_mo.columns, ['locdpnm', 'loai_sp', 'loai_tk', 'product_name'])
+        if locdpnm_col is None:
+            messages.error(
+                request,
+                f"Không tìm thấy cột 'locdpnm' trong file Mở tài khoản. "
+                f"Các cột hiện có: {', '.join(df_mo.columns.tolist())}"
+            )
+            return redirect('dong_mo_tai_khoan_report')
+
+        df_mo[locdpnm_col] = df_mo[locdpnm_col].astype(str).str.strip()
+
+        # ── Phân loại cơ bản ───────────────────────────────────────────────
+        mask_cn  = df_mo[locdpnm_col].isin(_LOAI_CA_NHAN)
+        mask_tc  = df_mo[locdpnm_col].isin(_LOAI_TO_CHUC)
+
+        df_ca_nhan  = df_mo[mask_cn].copy()
+        df_to_chuc  = df_mo[mask_tc].copy()
+
+        # ── Nhận diện HSSV qua file phát hành thẻ ─────────────────────────
+        hssv_count   = 0
+        hssv_records = []
+        join_col_mo  = None
+        join_warning = None
+
+        if the_file:
+            try:
+                df_the = pd.read_excel(the_file)
+                df_the.columns = df_the.columns.str.strip()
+
+                # Kiểm tra cột bắt buộc của file thẻ
+                missing_the_cols = [c for c in ['ISSUE_TYPE', 'HASFEE_DES']
+                                    if _find_col(df_the.columns, [c]) is None]
+                if missing_the_cols:
+                    join_warning = (
+                        f"File phát hành thẻ thiếu cột: {', '.join(missing_the_cols)}. "
+                        f"Không thể xác định HSSV."
+                    )
+                else:
+                    issue_col  = _find_col(df_the.columns, ['ISSUE_TYPE'])
+                    hasfee_col = _find_col(df_the.columns, ['HASFEE_DES'])
+
+                    # Lọc thẻ HSSV: CSP_New + MIỄN PHÍ PHT
+                    mask_hssv_the = (
+                        (df_the[issue_col].astype(str).str.strip() == 'CSP_New') &
+                        (df_the[hasfee_col].astype(str).str.strip().str.upper() == 'MIỄN PHÍ PHT')
+                    )
+                    df_the_hssv = df_the[mask_hssv_the].copy()
+
+                    # Tìm cột số tài khoản để join
+                    join_col_the = _find_col(df_the.columns, ['acctseq', 'acctno', 'acctcd', 'so_tai_khoan'])
+                    join_col_mo  = _find_col(df_mo.columns,  _POSSIBLE_ACCTNO_COLS)
+
+                    if join_col_the and join_col_mo:
+                        hssv_acct_set = set(df_the_hssv[join_col_the].astype(str).str.strip())
+                        mask_hssv = (
+                            (df_ca_nhan[locdpnm_col] == _LOCDPNM_HSSV) &
+                            (df_ca_nhan[join_col_mo].astype(str).str.strip().isin(hssv_acct_set))
+                        )
+                        df_hssv = df_ca_nhan[mask_hssv].copy()
+                        hssv_count   = len(df_hssv)
+                        hssv_records = df_hssv.head(200).to_dict('records')
+                    else:
+                        missing = []
+                        if not join_col_the: missing.append(f"file thẻ thiếu cột số tài khoản")
+                        if not join_col_mo:  missing.append(f"file mở TK thiếu cột số tài khoản (thử: {', '.join(_POSSIBLE_ACCTNO_COLS)})")
+                        join_warning = "Không thể join HSSV: " + "; ".join(missing)
+
+            except Exception as e:
+                join_warning = f"Lỗi khi xử lý file phát hành thẻ: {e}"
+
+        # ── Thống kê chi tiết theo locdpnm ────────────────────────────────
+        def _breakdown(df):
+            return (
+                df[locdpnm_col]
+                .value_counts()
+                .reset_index()
+                .rename(columns={locdpnm_col: 'loai', 'count': 'so_luong'})
+                .to_dict('records')
+            )
+
+        # ── Tổng hợp kết quả ──────────────────────────────────────────────
+        result = {
+            'tong_mo': len(df_mo),
+            'ca_nhan_count': len(df_ca_nhan),
+            'hssv_count': hssv_count,
+            'to_chuc_count': len(df_to_chuc),
+            'ca_nhan_breakdown': _breakdown(df_ca_nhan),
+            'to_chuc_breakdown': _breakdown(df_to_chuc),
+            'ca_nhan_records': df_ca_nhan.head(500).to_dict('records'),
+            'to_chuc_records': df_to_chuc.head(500).to_dict('records'),
+            'hssv_records': hssv_records,
+            'join_warning': join_warning,
+            'join_col_mo': join_col_mo,
+            'file_columns': df_mo.columns.tolist(),
+            'has_the_file': the_file is not None,
+        }
+
+        request.session['dmtk_result'] = _to_json_safe(result)
+        return redirect('dong_mo_tai_khoan_report')
+
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"Đã xảy ra lỗi: {e}")
+        return redirect('dong_mo_tai_khoan_report')
