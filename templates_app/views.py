@@ -3071,68 +3071,77 @@ def bank_statement_upload(request):
     if request.method == 'POST' and request.FILES.get('statement_file'):
         try:
             from .bank_statement_parser import BankStatementParser
+            from .models import Transaction
             import os
+            import uuid
             from django.conf import settings
 
-            # Lưu file upload
             uploaded_file = request.FILES['statement_file']
-            file_name = uploaded_file.name
+            original_name = uploaded_file.name
+            ext = os.path.splitext(original_name)[1].lower()
 
             # Tạo thư mục upload nếu chưa có
             upload_dir = os.path.join(settings.MEDIA_ROOT, 'bank_statements')
             os.makedirs(upload_dir, exist_ok=True)
 
-            # Lưu file tạm
-            file_path = os.path.join(upload_dir, file_name)
+            # Dùng UUID để tránh trùng tên file giữa các user
+            unique_name = f"{uuid.uuid4().hex}{ext}"
+            file_path = os.path.join(upload_dir, unique_name)
+
             with open(file_path, 'wb+') as destination:
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
 
-            # Parse file
-            parser = BankStatementParser(file_path)
+            try:
+                # Parse file
+                parser = BankStatementParser(file_path)
 
-            # Validate file
-            is_valid, error_msg = parser.validate_file()
-            if not is_valid:
-                messages.error(request, f'File không hợp lệ: {error_msg}')
-                return redirect('bank_statement_upload')
+                is_valid, error_msg = parser.validate_file()
+                if not is_valid:
+                    messages.error(request, f'File không hợp lệ: {error_msg}')
+                    return redirect('bank_statement_upload')
 
-            # Process file
-            transactions_data = parser.process()
-            summary = parser.get_summary()
+                transactions_data = parser.process()
+                summary = parser.get_summary()
 
-            # Tạo BankStatement
-            statement = BankStatement.objects.create(
-                file_name=file_name,
-                total_transactions=summary['total_transactions'],
-                total_debit=summary['total_debit'],
-                total_credit=summary['total_credit'],
-                final_balance=summary['final_balance'],
-                processed=True,
-                uploaded_by=request.user
-            )
-
-            # Lưu các transactions
-            from .models import Transaction
-            for trans_data in transactions_data:
-                Transaction.objects.create(
-                    statement=statement,
-                    stt=trans_data['stt'],
-                    transaction_date=trans_data['ngay_giao_dich'],
-                    debit_amount=trans_data['so_tien_ghi_no'],
-                    credit_amount=trans_data['so_tien_ghi_co'],
-                    balance=trans_data['so_du_sau_gd'],
-                    bank_name=trans_data['ngan_hang'],
-                    account_number=trans_data['so_tai_khoan'],
-                    beneficiary_name=trans_data['ten_nguoi'],
-                    description=trans_data['noi_dung'],
-                    transaction_type=trans_data['ghi_chu'],
-                    raw_trcdnm=trans_data['raw_trcdnm'],
-                    raw_tomgntno=trans_data['raw_tomgntno']
+                # Tạo BankStatement
+                statement = BankStatement.objects.create(
+                    file_name=original_name,
+                    total_transactions=summary['total_transactions'],
+                    total_debit=summary['total_debit'],
+                    total_credit=summary['total_credit'],
+                    final_balance=summary['final_balance'],
+                    processed=True,
+                    uploaded_by=request.user
                 )
 
-            messages.success(request, f'Đã phân tích thành công {summary["total_transactions"]} giao dịch!')
-            return redirect('bank_statement_result', statement_id=statement.id)
+                # Lưu transactions bằng bulk_create (1 query thay vì N queries)
+                Transaction.objects.bulk_create([
+                    Transaction(
+                        statement=statement,
+                        stt=t['stt'],
+                        transaction_date=t['ngay_giao_dich'],
+                        debit_amount=t['so_tien_ghi_no'],
+                        credit_amount=t['so_tien_ghi_co'],
+                        balance=t['so_du_sau_gd'],
+                        bank_name=t['ngan_hang'],
+                        account_number=t['so_tai_khoan'],
+                        beneficiary_name=t['ten_nguoi'],
+                        description=t['noi_dung'],
+                        transaction_type=t['ghi_chu'],
+                        raw_trcdnm=t['raw_trcdnm'],
+                        raw_tomgntno=t['raw_tomgntno'],
+                    )
+                    for t in transactions_data
+                ])
+
+                messages.success(request, f'Đã phân tích thành công {summary["total_transactions"]} giao dịch!')
+                return redirect('bank_statement_result', statement_id=statement.id)
+
+            finally:
+                # Luôn xóa file tạm sau khi xử lý xong (dù thành công hay lỗi)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
 
         except Exception as e:
             messages.error(request, f'Lỗi khi xử lý file: {str(e)}')
@@ -3179,23 +3188,76 @@ def bank_statement_result(request, statement_id):
         total_credit=models.Sum('credit_amount')
     ).order_by('transaction_type')
 
-    # Danh sách các loại giao dịch để filter
+    # Tài khoản nhận tiền nhiều lần (chuyển đi, debit > 0), > 3 lần
+    frequent_recipients = list(
+        statement.transactions.filter(debit_amount__gt=0)
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum('debit_amount'),
+            name=models.Max('beneficiary_name'),
+        )
+        .filter(count__gt=2)
+        .order_by('-count')
+    )
+
+    # Tài khoản chuyển tiền đến nhiều lần (nhận về, credit > 0), > 3 lần
+    frequent_senders = list(
+        statement.transactions.filter(credit_amount__gt=0)
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum('credit_amount'),
+            name=models.Max('beneficiary_name'),
+        )
+        .filter(count__gt=2)
+        .order_by('-count')
+    )
+
+    # Danh sách các loại giao dịch để filter — phải khớp chính xác với classify_transaction()
     filter_options = [
+        "Mở tài khoản",
         "Chuyển khoản nội bộ Agribank",
         "Nhận chuyển khoản nội bộ Agribank",
+        "Nhận chuyển khoản từ ATM",
         "Chuyển khoản liên ngân hàng",
         "Nhận chuyển khoản liên ngân hàng",
+        "Thanh toán qua MCC",
+        "Nhận thanh toán MCC",
         "Rút tiền ATM",
+        "Rút tiền ATM cùng hệ thống",
+        "Phí rút tiền ATM",
+        "Phí rút tiền ATM cùng hệ thống",
+        "Phí chuyển khoản ATM",
+        "Hủy rút tiền ATM cùng hệ thống",
+        "Hoàn phí rút tiền ATM cùng hệ thống",
+        "Rút tiền ATM khác hệ thống",
         "Rút tiền mặt",
-        "Nộp tiền ATM",
+        "Rút tiền mặt cùng hệ thống",
+        "Phí rút tiền mặt cùng hệ thống",
+        "Phí rút tiền ATM khác hệ thống",
+        "Nộp tiền tại quầy",
+        "Nộp tiền qua ATM",
+        "Nộp tiền tại Agribank",
         "Nộp tiền mặt",
         "Thanh toán thẻ",
         "Thanh toán POS",
         "Nạp tiền điện thoại",
-        "Thanh toán tiền điện",
+        "Thanh toán dịch vụ",
         "Thanh toán dịch vụ (VNPT)",
         "Phí dịch vụ",
-        "Trả lãi tiền gửi"
+        "Phí SMS",
+        "Phí bảo an chủ thẻ (ABIC)",
+        "Trả lãi tiền gửi",
+        "Trả lãi tiền gửi hàng tháng",
+        "Trả lãi tiền gửi hằng tháng",
+        "Giải ngân",
+        "Thanh toán qua PaymentHub",
+        "Nhận tiền qua PaymentHub",
+        "Chuyển tiền qua OSB",
+        "Nhận tiền qua OSB",
     ]
 
     context = {
@@ -3204,6 +3266,8 @@ def bank_statement_result(request, statement_id):
         'transaction_types': transaction_types,
         'filter_options': filter_options,
         'selected_type': transaction_type_filter,
+        'frequent_recipients': frequent_recipients,
+        'frequent_senders': frequent_senders,
     }
 
     return render(request, 'templates_app/bank_statement_result.html', context)
@@ -3324,6 +3388,86 @@ def bank_statement_export(request, statement_id):
 
     worksheet2.set_column('A:A', 40)
     worksheet2.set_column('B:D', 15)
+
+    # Sheet 3: Tài khoản giao dịch nhiều lần
+    worksheet3 = workbook.add_worksheet('TK giao dịch nhiều lần')
+
+    header_red = workbook.add_format({
+        'bold': True, 'bg_color': '#C00000', 'font_color': 'white',
+        'align': 'center', 'valign': 'vcenter', 'border': 1
+    })
+    header_green = workbook.add_format({
+        'bold': True, 'bg_color': '#375623', 'font_color': 'white',
+        'align': 'center', 'valign': 'vcenter', 'border': 1
+    })
+
+    # --- Bảng 1: Tài khoản nhận tiền nhiều lần (tiền ra) ---
+    worksheet3.write(0, 0, 'TÀI KHOẢN NHẬN TIỀN NHIỀU LẦN (chuyển ra > 2 lần)', header_red)
+    worksheet3.merge_range(0, 0, 0, 5, 'TÀI KHOẢN NHẬN TIỀN NHIỀU LẦN (chuyển ra > 2 lần)', header_red)
+
+    rec_headers = ['#', 'Ngân hàng', 'Số tài khoản', 'Tên', 'Số lần', 'Tổng tiền ra']
+    for col, h in enumerate(rec_headers):
+        worksheet3.write(1, col, h, header_format)
+
+    frequent_recipients_export = list(
+        statement.transactions.filter(debit_amount__gt=0)
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum('debit_amount'),
+            name=models.Max('beneficiary_name'),
+        )
+        .filter(count__gt=2)
+        .order_by('-count')
+    )
+
+    for i, acc in enumerate(frequent_recipients_export, start=1):
+        row = i + 1
+        worksheet3.write(row, 0, i)
+        worksheet3.write(row, 1, acc['bank_name'] or '')
+        worksheet3.write(row, 2, acc['account_number'])
+        worksheet3.write(row, 3, acc['name'] or '')
+        worksheet3.write(row, 4, acc['count'])
+        worksheet3.write(row, 5, float(acc['total_amount'] or 0), money_format)
+
+    # --- Bảng 2: Tài khoản chuyển tiền đến nhiều lần (tiền vào) ---
+    start_row = len(frequent_recipients_export) + 4
+
+    worksheet3.merge_range(start_row, 0, start_row, 5, 'TÀI KHOẢN CHUYỂN TIỀN ĐẾN NHIỀU LẦN (nhận vào > 2 lần)', header_green)
+
+    send_headers = ['#', 'Ngân hàng', 'Số tài khoản', 'Tên', 'Số lần', 'Tổng tiền vào']
+    for col, h in enumerate(send_headers):
+        worksheet3.write(start_row + 1, col, h, header_format)
+
+    frequent_senders_export = list(
+        statement.transactions.filter(credit_amount__gt=0)
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum('credit_amount'),
+            name=models.Max('beneficiary_name'),
+        )
+        .filter(count__gt=2)
+        .order_by('-count')
+    )
+
+    for i, acc in enumerate(frequent_senders_export, start=1):
+        row = start_row + 1 + i
+        worksheet3.write(row, 0, i)
+        worksheet3.write(row, 1, acc['bank_name'] or '')
+        worksheet3.write(row, 2, acc['account_number'])
+        worksheet3.write(row, 3, acc['name'] or '')
+        worksheet3.write(row, 4, acc['count'])
+        worksheet3.write(row, 5, float(acc['total_amount'] or 0), money_format)
+
+    worksheet3.set_column('A:A', 6)
+    worksheet3.set_column('B:B', 18)
+    worksheet3.set_column('C:C', 20)
+    worksheet3.set_column('D:D', 28)
+    worksheet3.set_column('E:E', 10)
+    worksheet3.set_column('F:F', 18)
 
     workbook.close()
 

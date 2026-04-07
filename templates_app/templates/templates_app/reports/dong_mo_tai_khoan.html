@@ -40,22 +40,41 @@
             <form method="POST" action="{% url 'process_dong_mo_tai_khoan' %}" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold">
                             <i class="bi bi-file-earmark-excel me-1 text-success"></i>
                             File Mở tài khoản <span class="text-danger">*</span>
+                            <a tabindex="0" class="ms-1 text-muted" data-bs-toggle="popover" data-bs-trigger="focus" data-bs-placement="top"
+                               title="Lấy dữ liệu ở đâu?"
+                               data-bs-content="Vào màn hình DPDA 19 → Nhóm báo cáo: Daily transaction Related → Loại báo cáo: Daily open/close → Deposit Group: 200 → Search từ ngày tới ngày.">
+                                <i class="bi bi-question-circle-fill text-info"></i>
+                            </a>
                         </label>
                         <input type="file" name="mo_tk_file" class="form-control" accept=".xlsx,.xls" required>
                         <div class="form-text">Cần có cột <code>locdpnm</code></div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-file-earmark-excel me-1 text-danger"></i>
+                            File Đóng tài khoản
+                            <span class="badge bg-secondary fw-normal">Tùy chọn</span>
+                            <a tabindex="0" class="ms-1 text-muted" data-bs-toggle="popover" data-bs-trigger="focus" data-bs-placement="top"
+                               title="Lấy dữ liệu ở đâu?"
+                               data-bs-content="Vào màn hình DPDA 19 → Nhóm báo cáo: Daily transaction Related → Loại báo cáo: Daily open/close → Deposit Group: 200 → Search từ ngày tới ngày.">
+                                <i class="bi bi-question-circle-fill text-info"></i>
+                            </a>
+                        </label>
+                        <input type="file" name="dong_tk_file" class="form-control" accept=".xlsx,.xls">
+                        <div class="form-text">Cột <code>tellernm</code>: <code>7202DP</code> = Hệ thống tự đóng; <code>GRA...</code> = KH đóng tại quầy</div>
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold">
                             <i class="bi bi-credit-card me-1 text-primary"></i>
                             File Phát hành thẻ
-                            <span class="badge bg-secondary fw-normal">Tùy chọn – dùng để xác định HSSV</span>
+                            <span class="badge bg-secondary fw-normal">Tùy chọn – xác định HSSV</span>
                         </label>
                         <input type="file" name="the_file" class="form-control" accept=".xlsx,.xls">
-                        <div class="form-text">Cần có cột <code>ISSUE_TYPE</code>, <code>HASFEE_DES</code>, <code>acctseq</code></div>
+                        <div class="form-text">Cần cột <code>ISSUE_TYPE</code>, <code>HASFEE_DES</code>, <code>ACCOUNT</code></div>
                     </div>
                 </div>
                 <div class="mt-3">
@@ -113,9 +132,22 @@
         <div class="col-6 col-md-3">
             <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #0dcaf0 !important;">
                 <div class="card-body text-center py-3">
-                    <div class="stat-number" style="color:#0dcaf0;">{{ result.hssv_count }}</div>
+                    <div class="stat-number" style="color:#0dcaf0;">{{ result.the_mien_phi_count }}</div>
                     <div class="text-muted small">
-                        Trong đó: HSSV
+                        Thẻ miễn phí
+                        {% if not result.has_the_file %}
+                        <br><span class="badge bg-warning text-dark" style="font-size:0.65rem;">Cần file thẻ</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #6f42c1 !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number" style="color:#6f42c1;">{{ result.hssv_count }}</div>
+                    <div class="text-muted small">
+                        Trong đó: HSSV (&lt;18 tuổi)
                         {% if not result.has_the_file %}
                         <br><span class="badge bg-warning text-dark" style="font-size:0.65rem;">Cần file thẻ</span>
                         {% endif %}
@@ -133,6 +165,35 @@
         </div>
     </div>
 
+    {% if result.has_dong_tk_file %}
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #dc3545 !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number text-danger">{{ result.dong_tk_count }}</div>
+                    <div class="text-muted small">Tổng tài khoản đóng</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #fd7e14 !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number" style="color:#fd7e14;">{{ result.dong_he_thong_count }}</div>
+                    <div class="text-muted small">Hệ thống tự đóng</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #e83e8c !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number" style="color:#e83e8c;">{{ result.dong_tai_quay_count }}</div>
+                    <div class="text-muted small">KH đóng tại quầy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Tabs chi tiết -->
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white">
@@ -144,9 +205,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-tmp">
+                        <i class="bi bi-credit-card me-1"></i>
+                        Thẻ miễn phí <span class="badge badge-hssv ms-1">{{ result.the_mien_phi_count }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" data-bs-toggle="tab" href="#tab-hssv">
                         <i class="bi bi-mortarboard me-1"></i>
-                        HSSV <span class="badge badge-hssv ms-1">{{ result.hssv_count }}</span>
+                        HSSV <span class="badge ms-1" style="background:#6f42c1;">{{ result.hssv_count }}</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -155,6 +222,14 @@
                         Tổ chức <span class="badge bg-success ms-1">{{ result.to_chuc_count }}</span>
                     </a>
                 </li>
+                {% if result.has_dong_tk_file %}
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-dong">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Đóng TK <span class="badge bg-danger ms-1">{{ result.dong_tk_count }}</span>
+                    </a>
+                </li>
+                {% endif %}
             </ul>
         </div>
         <div class="card-body tab-content">
@@ -197,16 +272,16 @@
                             <table class="table table-sm table-striped table-hover">
                                 <thead class="table-light sticky-top">
                                     <tr>
-                                        {% for col in result.file_columns|slice:":8" %}
-                                        <th>{{ col }}</th>
+                                        {% for label in result.view_col_labels %}
+                                        <th>{{ label }}</th>
                                         {% endfor %}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for row in result.ca_nhan_records %}
                                     <tr>
-                                        {% for col in result.file_columns|slice:":8" %}
-                                        <td class="small">{{ row|default_if_none:"" }}</td>
+                                        {% for val in row %}
+                                        <td class="small">{{ val }}</td>
                                         {% endfor %}
                                     </tr>
                                     {% endfor %}
@@ -217,44 +292,99 @@
                 </div>
             </div>
 
-            <!-- Tab HSSV -->
+            <!-- Tab Thẻ miễn phí -->
+            <div class="tab-pane fade" id="tab-tmp">
+                {% if not result.has_the_file %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Vui lòng tải lên <strong>file phát hành thẻ</strong> để xác định thẻ miễn phí.
+                </div>
+                {% elif result.the_mien_phi_count == 0 %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-search me-2"></i>
+                    Không tìm thấy thẻ miễn phí nào (CSP_New + MIỄN PHÍ PHT).
+                </div>
+                {% else %}
+                <p class="mb-2 text-muted small">
+                    Điều kiện: <code>ISSUE_TYPE=CSP_New</code> &amp; <code>HASFEE_DES=MIỄN PHÍ PHT</code>
+                </p>
+                <div class="table-responsive" style="max-height:500px; overflow-y:auto;">
+                    <table class="table table-sm table-striped table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>#</th><th>Số tài khoản</th><th>Họ tên</th>
+                                <th>Ngày sinh</th><th>Tuổi</th>
+                                <th>Ngày mở thẻ</th><th>User</th><th>Phòng giao dịch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in result.the_mien_phi_records %}
+                            <tr>
+                                <td class="text-muted small">{{ forloop.counter }}</td>
+                                <td><code>{{ row.so_tai_khoan }}</code></td>
+                                <td>{{ row.ho_ten }}</td>
+                                <td class="small">{{ row.ngay_sinh }}</td>
+                                <td class="small fw-bold">{{ row.tuoi }}</td>
+                                <td class="small">{{ row.ngay_mo_the }}</td>
+                                <td class="small text-muted">{{ row.cuser }}</td>
+                                <td>
+                                    {% if row.pgd == 'PGD Láng Tròn' %}<span class="badge bg-primary">{{ row.pgd }}</span>
+                                    {% elif row.pgd == 'PGD Giá Rai' %}<span class="badge bg-success">{{ row.pgd }}</span>
+                                    {% elif row.pgd == 'Hội sở Giá Rai' %}<span class="badge bg-warning text-dark">{{ row.pgd }}</span>
+                                    {% else %}<span class="badge bg-secondary">{{ row.pgd }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab HSSV (tuổi < 18) -->
             <div class="tab-pane fade" id="tab-hssv">
                 {% if not result.has_the_file %}
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle me-2"></i>
-                    Vui lòng tải lên <strong>file phát hành thẻ</strong> để xác định HSSV
-                    (ISSUE_TYPE = CSP_New và HASFEE_DES = MIỄN PHÍ PHT).
+                    Vui lòng tải lên <strong>file phát hành thẻ</strong> để xác định HSSV.
                 </div>
                 {% elif result.hssv_count == 0 %}
                 <div class="alert alert-warning">
                     <i class="bi bi-search me-2"></i>
-                    Không tìm thấy tài khoản HSSV nào (CSP_New + MIỄN PHÍ PHT).
+                    Không tìm thấy HSSV nào (CSP_New + MIỄN PHÍ PHT + tuổi &lt; 18).
                 </div>
                 {% else %}
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <p class="mb-0 text-muted small">
-                        Điều kiện: <code>locdpnm = 'Tiền gửi thanh toán cá nhân'</code>
-                        + thẻ <code>ISSUE_TYPE=CSP_New</code> & <code>HASFEE_DES=MIỄN PHÍ PHT</code>
-                    </p>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="toggleTable('tbl-hssv')">
-                        <i class="bi bi-eye me-1"></i> Xem/Ẩn danh sách
-                    </button>
-                </div>
-                <div id="tbl-hssv" style="display:none; max-height:400px; overflow-y:auto;">
-                    <table class="table table-sm table-striped table-hover">
+                <p class="mb-2 text-muted small">
+                    Điều kiện: <code>ISSUE_TYPE=CSP_New</code> &amp; <code>HASFEE_DES=MIỄN PHÍ PHT</code>
+                    &amp; <strong>tuổi &lt; 18</strong> (học sinh lớp 10–12)
+                </p>
+                <div class="table-responsive" style="max-height:500px; overflow-y:auto;">
+                    <table class="table table-sm table-striped table-hover align-middle">
                         <thead class="table-light sticky-top">
                             <tr>
-                                {% for col in result.file_columns|slice:":8" %}
-                                <th>{{ col }}</th>
-                                {% endfor %}
+                                <th>#</th><th>Số tài khoản</th><th>Họ tên</th>
+                                <th>Ngày sinh</th><th>Tuổi</th>
+                                <th>Ngày mở thẻ</th><th>User</th><th>Phòng giao dịch</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in result.hssv_records %}
                             <tr>
-                                {% for col in result.file_columns|slice:":8" %}
-                                <td class="small">{{ row|default_if_none:"" }}</td>
-                                {% endfor %}
+                                <td class="text-muted small">{{ forloop.counter }}</td>
+                                <td><code>{{ row.so_tai_khoan }}</code></td>
+                                <td>{{ row.ho_ten }}</td>
+                                <td class="small">{{ row.ngay_sinh }}</td>
+                                <td class="small fw-bold text-purple">{{ row.tuoi }}</td>
+                                <td class="small">{{ row.ngay_mo_the }}</td>
+                                <td class="small text-muted">{{ row.cuser }}</td>
+                                <td>
+                                    {% if row.pgd == 'PGD Láng Tròn' %}<span class="badge bg-primary">{{ row.pgd }}</span>
+                                    {% elif row.pgd == 'PGD Giá Rai' %}<span class="badge bg-success">{{ row.pgd }}</span>
+                                    {% elif row.pgd == 'Hội sở Giá Rai' %}<span class="badge bg-warning text-dark">{{ row.pgd }}</span>
+                                    {% else %}<span class="badge bg-secondary">{{ row.pgd }}</span>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -301,16 +431,16 @@
                             <table class="table table-sm table-striped table-hover">
                                 <thead class="table-light sticky-top">
                                     <tr>
-                                        {% for col in result.file_columns|slice:":8" %}
-                                        <th>{{ col }}</th>
+                                        {% for label in result.view_col_labels %}
+                                        <th>{{ label }}</th>
                                         {% endfor %}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for row in result.to_chuc_records %}
                                     <tr>
-                                        {% for col in result.file_columns|slice:":8" %}
-                                        <td class="small">{{ row|default_if_none:"" }}</td>
+                                        {% for val in row %}
+                                        <td class="small">{{ val }}</td>
                                         {% endfor %}
                                     </tr>
                                     {% endfor %}
@@ -320,6 +450,70 @@
                     </div>
                 </div>
             </div>
+
+            {% if result.has_dong_tk_file %}
+            <!-- Tab Đóng tài khoản -->
+            <div class="tab-pane fade" id="tab-dong">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="card text-center border-danger">
+                            <div class="card-body py-2">
+                                <div class="fs-4 fw-bold text-danger">{{ result.dong_tk_count }}</div>
+                                <div class="text-muted small">Tổng đóng</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center" style="border-color:#fd7e14;">
+                            <div class="card-body py-2">
+                                <div class="fs-4 fw-bold" style="color:#fd7e14;">{{ result.dong_he_thong_count }}</div>
+                                <div class="text-muted small">Hệ thống tự đóng <code class="small">(7202DP)</code></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center" style="border-color:#e83e8c;">
+                            <div class="card-body py-2">
+                                <div class="fs-4 fw-bold" style="color:#e83e8c;">{{ result.dong_tai_quay_count }}</div>
+                                <div class="text-muted small">KH đóng tại quầy <code class="small">(GRA...)</code></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height:500px; overflow-y:auto;">
+                    <table class="table table-sm table-striped table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>#</th>
+                                {% for label in result.dong_col_labels %}
+                                <th>{{ label }}</th>
+                                {% endfor %}
+                                <th>Loại đóng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in result.dong_tk_records %}
+                            <tr>
+                                <td class="text-muted small">{{ forloop.counter }}</td>
+                                {% for val in row.vals %}
+                                <td class="small">{{ val }}</td>
+                                {% endfor %}
+                                <td>
+                                    {% if row.loai_dong == 'Hệ thống tự đóng' %}
+                                    <span class="badge" style="background:#fd7e14;">{{ row.loai_dong }}</span>
+                                    {% elif row.loai_dong == 'KH đóng tại quầy' %}
+                                    <span class="badge" style="background:#e83e8c;">{{ row.loai_dong }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ row.loai_dong }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
 
         </div>
     </div>
@@ -334,5 +528,11 @@ function toggleTable(id) {
     const el = document.getElementById(id);
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
+// Khởi tạo popover Bootstrap
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
+        new bootstrap.Popover(el);
+    });
+});
 </script>
 {% endblock %}

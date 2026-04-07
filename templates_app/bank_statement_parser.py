@@ -148,8 +148,21 @@ class BankStatementParser:
             else:
                 return False, "File phải có định dạng .xls hoặc .xlsx"
 
-            # Kiểm tra các cột bắt buộc
-            missing_cols = [col for col in self.REQUIRED_COLUMNS if col not in self.df.columns]
+            # Chuẩn hoá tên cột (strip whitespace, lowercase để so sánh)
+            self.df.columns = self.df.columns.str.strip()
+            col_lower_map = {c.lower(): c for c in self.df.columns}
+            # Rename về lowercase nếu cần
+            rename_map = {}
+            missing_cols = []
+            for req in self.REQUIRED_COLUMNS:
+                if req in self.df.columns:
+                    pass  # Đã đúng
+                elif req.lower() in col_lower_map:
+                    rename_map[col_lower_map[req.lower()]] = req
+                else:
+                    missing_cols.append(req)
+            if rename_map:
+                self.df.rename(columns=rename_map, inplace=True)
             if missing_cols:
                 return False, f"File thiếu các cột bắt buộc: {', '.join(missing_cols)}"
 
@@ -188,7 +201,7 @@ class BankStatementParser:
         bin_code_str = str(bin_code).strip()
         return self.BIN_CODE_MAPPING.get(bin_code_str, 'MCC')
 
-    def parse_beneficiary_info(self, rem, tomgntno, acctccyamt, toacctno='', lclbrnm=''):
+    def parse_beneficiary_info(self, rem, tomgntno, acctccyamt, toacctno='', lclbrnm='', thrref=''):
         """
         Parse thông tin người thụ hưởng từ nội dung giao dịch
 
@@ -198,6 +211,7 @@ class BankStatementParser:
             acctccyamt: Số tiền (âm/dương)
             toacctno: Tài khoản người nhận (cho giao dịch nội bộ Agribank)
             lclbrnm: Tên chi nhánh địa phương (Local Branch Name)
+            thrref: Mã ngân hàng đối ứng (VBA = Agribank, VCB = Vietcombank, ...)
 
         Returns:
             dict: {'bank_name': str, 'account_number': str, 'beneficiary_name': str}
@@ -206,6 +220,31 @@ class BankStatementParser:
         bank_name = ""
         account_number = ""
         beneficiary_name = ""
+
+        tomgntno_str = str(tomgntno).strip()
+        toacctno_str = str(toacctno).strip()
+
+        # Priority -1: thrref xác định ngân hàng đối ứng trực tiếp
+        # VBA = Agribank nội bộ; các mã khác tra BANK_CODE_MAPPING
+        if thrref and thrref not in ('', 'nan'):
+            thrref_upper = thrref.upper()
+            if thrref_upper == 'VBA':
+                bank_name = 'Agribank'
+                # Số TK đối ứng: nhận tiền lấy từ tomgntno, gửi tiền lấy từ toacctno
+                if acctccyamt > 0 and tomgntno_str and tomgntno_str.isdigit():
+                    account_number = tomgntno_str
+                elif acctccyamt < 0 and toacctno_str and toacctno_str.isdigit():
+                    account_number = toacctno_str
+                return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+            else:
+                mapped = self.BANK_CODE_MAPPING.get(thrref_upper)
+                if mapped:
+                    bank_name = mapped
+                    if acctccyamt > 0 and tomgntno_str and tomgntno_str.isdigit():
+                        account_number = tomgntno_str
+                    elif acctccyamt < 0 and toacctno_str and toacctno_str.isdigit():
+                        account_number = toacctno_str
+                    return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Priority 0: Check lclbrnm để xác định bank_name
         # Nếu lclbrnm có "Agribank" → bank_name = "Agribank" + chi tiết chi nhánh
@@ -224,50 +263,34 @@ class BankStatementParser:
                 bank_name = lclbrnm.strip() if lclbrnm else "Agribank"
 
         # Pattern 0: Nộp tiền tại Agribank
-        # Format: "TÊN NGƯỜI NỘP nộp tiền :" hoặc "TÊN nộp tiền", "NOP TIEN"
+        # Format: "Phạm Ngọc Đặng nộp tiền :", "TRUONG HONG DIEM  nộp tiền :", "nguyễn thị cẩm hường nộp tiền :"
         rem_lower = rem.lower()
         if 'nop tien' in rem_lower or 'nộp tiền' in rem_lower:
             bank_name = "Agribank"
-            # Parse tên người nộp tiền (ở trước cụm "nộp tiền")
-            # Tìm vị trí của "nộp tiền" hoặc "nop tien"
-            nop_tien_patterns = [
-                (r'([A-Z\s]+)\s*nộp tiền\s*:?', 'nộp tiền'),
-                (r'([A-Z\s]+)\s*Nộp tiền\s*:?', 'Nộp tiền'),
-                (r'([A-Z\s]+)\s*nop tien\s*:?', 'nop tien'),
-                (r'([A-Z\s]+)\s*NOP TIEN\s*:?', 'NOP TIEN'),
-            ]
-            for pattern, keyword in nop_tien_patterns:
-                match = re.search(pattern, rem, re.IGNORECASE)
-                if match:
-                    name_part = match.group(1).strip()
-                    # Làm sạch tên (bỏ các ký tự đặc biệt)
-                    name_words = name_part.split()
-                    clean_words = [w for w in name_words if w and len(w) > 1]
-                    if clean_words:
-                        beneficiary_name = ' '.join(clean_words[:5])
-                    break
+            # Lấy phần text trước "nộp tiền" / "nop tien"
+            match = re.search(r'^(.+?)\s*(?:nộp tiền|nop tien)\s*:?', rem, re.IGNORECASE)
+            if match:
+                name_part = match.group(1).strip()
+                name_words = name_part.split()
+                clean_words = [w for w in name_words if w and len(w) > 1]
+                if clean_words:
+                    beneficiary_name = ' '.join(clean_words[:5])
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Pattern 1: Chuyển khoản nội bộ Agribank
-        # Format: MB(mã_giao_dịch)(nội dung)
-        pattern1 = re.search(r'MB\((\d+)\)\((.*?)\)', rem)
+        # Format MB(mã_giao_dịch)(nội dung) hoặc SMS(mã_giao_dịch)(nội dung)
+        pattern1 = re.search(r'(?:MB|SMS)\((\d+)\)\(([^)]*)\)?', rem)
         if pattern1:
             bank_name = "Agribank"
-            # Số tài khoản phụ thuộc vào loại giao dịch:
-            # - Nhận tiền (amount > 0): Lấy từ cột tomgntno (tài khoản người gửi)
-            # - Chuyển tiền (amount < 0): Lấy từ cột toacctno (tài khoản người nhận)
             if acctccyamt > 0 and tomgntno:
                 account_number = str(tomgntno)
             elif acctccyamt < 0 and toacctno:
                 account_number = str(toacctno)
-            # Để trống tên người nhận khi không chắc chắn
             beneficiary_name = ""
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Pattern 1.5: Chuyển khoản nội bộ/liên ngân hàng (không có MB pattern)
         # Ưu tiên check rem có mã ngân hàng không
-        tomgntno_str = str(tomgntno).strip()
-        toacctno_str = str(toacctno).strip()
 
         # Kiểm tra rem có phải mã ngân hàng không
         is_bank_code_in_rem = False
@@ -345,11 +368,45 @@ class BankStatementParser:
 
                 return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
+        # Pattern 2.3: IBFT + tên người trong rem (nhận tiền qua BankNet/NAPAS)
+        # VD: "902724-IBFT Son chuyen tien", "003976-IBFT TO KIM THOA chuyen tien"
+        # VD: "IBFT NGUYEN HOANG NAM chuyen tien"
+        if 'IBFT' in rem.upper():
+            pattern_ibft_name = re.search(
+                r'IBFT\s+([A-Za-z][A-Za-z\s]+?)(?:\s+(?:chuyen|ck|ct|gui|tra|nop|thanh|toan)|$)',
+                rem,
+                re.IGNORECASE
+            )
+            if pattern_ibft_name:
+                raw_name = pattern_ibft_name.group(1).strip()
+                # Khi nhận tiền (amount > 0): tên sau IBFT là người gửi → hiển thị làm beneficiary
+                bname = raw_name if acctccyamt > 0 else ''
+                return {'bank_name': '', 'account_number': '', 'beneficiary_name': bname}
+
+        # Pattern 2.4: BankNet IBFT format - [trace]-[BankName][account][name] [desc]
+        # VD: 897749-Vietcombank1037050854NGUYEN CONG DANH chuyen khoan s dat chuyen
+        pattern_banknet = re.search(
+            r'(?:\d+-)?([A-Za-z]+)(\d{8,20})([A-Z][A-Z\s]+?)(?:\s+(?:chuyen|ck|ct|gui|tra|nop|thanh|toan|s\s|so\s)|$)',
+            rem,
+            re.IGNORECASE
+        )
+        if pattern_banknet:
+            raw_bank = pattern_banknet.group(1).strip()
+            acct = pattern_banknet.group(2).strip()
+            raw_name = pattern_banknet.group(3).strip()
+            bank = self.get_bank_name_from_code(raw_bank)
+            if not bank:
+                bank = raw_bank.capitalize()
+            # Tên trong rem là chủ TK (người gửi) → chỉ hiển thị khi nhận tiền vào
+            bname = raw_name if acctccyamt > 0 else ''
+            return {'bank_name': bank, 'account_number': acct, 'beneficiary_name': bname}
+
         # Pattern 2.5: MBVCB/IBVCB - Chuyển khoản Vietcombank format đặc biệt
-        # Format 1: MBVCB.5667288555.032551.931922.CT tu 1988944725 NGUYEN DINH TRUONG toi 7202205158872 Phan Giang Nam tai AGRIBANK
-        # Format 2: 969816-MBVCB.3250279254.057991.PHAM LE NGOC TRAN chuyen tien.CT tu 0891000651394 PHAM LE NGOC TRAN toi 7202205158872 PHAN GIANG NAM Ngan hang...
+        # Format mới: MBVCB.5667288555.032551.931922.CT tu 1988944725 NGUYEN DINH TRUONG toi 7202205158872 Phan Giang Nam tai AGRIBANK
+        # Format mới: 969816-MBVCB.3250279254.057991.PHAM LE NGOC TRAN chuyen tien.CT tu 0891000651394 PHAM LE NGOC TRAN toi 7202205158872 PHAN GIANG NAM Ngan hang...
+        # Format cũ: 971906-MBVCB191049425.Chi Thu gui.CT tu 0511000450997 LAM HAI VI toi 7202205112842 NGUYEN CONG DANH NNO PT
         # MBVCB = Mobile Banking VCB, IBVCB = Internet Banking VCB
-        if 'VCB.' in rem and ('CT tu' in rem or 'CT TU' in rem.upper()):
+        if 'VCB' in rem.upper() and ('CT tu' in rem or 'CT TU' in rem.upper()):
             # Try Pattern 1 (with "tai" keyword)
             pattern_vcb_v1 = re.search(
                 r'(?:\d+-)?(?:MB|IB)VCB\.[^.]+\.[^.]+\.[^.]+\.CT tu\s+(\d+)\s+([A-Z\s]+?)\s+toi\s+(\d+)\s+([A-Z\s]+?)\s+tai\s+([A-Z\s]+)',
@@ -387,6 +444,20 @@ class BankStatementParser:
 
                 return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
+            # Format cũ: 971906-MBVCB191049425.Chi Thu gui.CT tu 0511000450997 LAM HAI VI toi 7202205112842 ...
+            # MBVCB tiếp liền với số tham chiếu (không có dấu chấm giữa VCB và số)
+            pattern_vcb_old = re.search(
+                r'(?:\d+-)?(?:MB|IB)VCB\d+\..*?\.+CT\s+tu\s+(\d+)\s+([A-Z][A-Z\s]+?)\s+toi\s+(\d+)\s+([A-Z][A-Z\s]+?)(?:\s+NNO|\s+AGRIBANK|\s+Nong|$)',
+                rem,
+                re.IGNORECASE
+            )
+            if pattern_vcb_old:
+                bank_name = "Vietcombank"
+                account_number = pattern_vcb_old.group(1)   # Số TK người chuyển
+                sender_name = pattern_vcb_old.group(2).strip()
+                beneficiary_name = sender_name
+                return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
+
         # Pattern 3: Ngân hàng khác với format chuẩn
         # Format 1: BANK_CODE;số_tài_khoản;nội_dung (VD: STB;070055505932;ck, Vietinbank;102006240267;...)
         # Format 2: mã-BANK_CODE;số_tài_khoản;nội_dung (VD: 337133-BIDV;78810000156950;nam, 907666-MB;871888999;...)
@@ -403,75 +474,21 @@ class BankStatementParser:
             # Tra cứu tên ngân hàng
             bank_name = self.get_bank_name_from_code(bank_code)
 
-            # Parse tên người từ content
-            words = content.split()
-            name_parts = []
-            for word in words:
-                if word and (word.isupper() or word[0].isupper()):
-                    # Bỏ qua các từ khóa
-                    if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'ck', 'ct', 'fcc']:
-                        name_parts.append(word)
-                    else:
-                        break
-            if name_parts:
-                beneficiary_name = ' '.join(name_parts[:4])
+            # Chỉ parse tên người khi là giao dịch nhận tiền (acctccyamt > 0)
+            # Khi chuyển tiền đi (acctccyamt < 0), tên trong rem là tên người gửi (chủ TK), không phải người thụ hưởng
+            if acctccyamt > 0:
+                words = content.split()
+                name_parts = []
+                for word in words:
+                    if word and (word.isupper() or word[0].isupper()):
+                        # Bỏ qua các từ khóa
+                        if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'ck', 'ct', 'fcc']:
+                            name_parts.append(word)
+                        else:
+                            break
+                if name_parts:
+                    beneficiary_name = ' '.join(name_parts[:4])
 
-            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
-
-        # Pattern 3: Vietcombank (legacy patterns - giữ lại để backward compatible)
-        # Format 1: mã-VCB;số_tài_khoản;nội_dung
-        pattern2_1 = re.search(r'\d+-VCB;(\d{10,20});(.*)', rem)
-        if pattern2_1:
-            bank_name = "Vietcombank"
-            account_number = pattern2_1.group(1)
-            content = pattern2_1.group(2)
-            # Parse tên từ content
-            words = content.split()
-            name_parts = []
-            for word in words:
-                if word and (word.isupper() or word[0].isupper()):
-                    if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'vcb', 'ct']:
-                        name_parts.append(word)
-                    else:
-                        break
-            if name_parts:
-                beneficiary_name = ' '.join(name_parts[:4])
-            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
-
-        # Format 2: Vietcombank:số_tài_khoản:nội_dung
-        pattern2_2 = re.search(r'Vietcombank:(\d{10,20}):(.*)', rem)
-        if pattern2_2:
-            bank_name = "Vietcombank"
-            account_number = pattern2_2.group(1)
-            content = pattern2_2.group(2)
-            words = content.split()
-            name_parts = []
-            for word in words:
-                if word and (word.isupper() or word[0].isupper()):
-                    if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'vcb', 'ct']:
-                        name_parts.append(word)
-                    else:
-                        break
-            if name_parts:
-                beneficiary_name = ' '.join(name_parts[:4])
-            return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
-
-        # Format 3: mã-Vietcombanksố_tài_khoảnnội_dung (viết liền)
-        pattern2_3 = re.search(r'\d+-Vietcombank(\d{10,20})(.*)', rem)
-        if pattern2_3:
-            bank_name = "Vietcombank"
-            account_number = pattern2_3.group(1)
-            content = pattern2_3.group(2)
-            words = content.split()
-            name_parts = []
-            for word in words:
-                if word and (word.isupper() or word[0].isupper()):
-                    if word.lower() not in ['chuyen', 'khoan', 'chuyển', 'khoản', 'vcb', 'ct']:
-                        name_parts.append(word)
-                    else:
-                        break
-            if name_parts:
-                beneficiary_name = ' '.join(name_parts[:4])
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Pattern 4: IBFT (liên ngân hàng)
@@ -506,7 +523,22 @@ class BankStatementParser:
 
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
-        # Không parse được
+        # Fallback: rem là văn bản tự do, parse tên từ các từ VIẾT HOA liên tiếp đầu chuỗi
+        # VD: "HUYNH THI THU MAI TRA TIEN CUA SAN BAY." → "HUYNH THI THU MAI"
+        if rem and rem.strip():
+            words = rem.strip().split()
+            name_parts = []
+            _stop = {'CHUYEN', 'TIEN', 'CT', 'CK', 'GD', 'TRA', 'GUI', 'MUA', 'BAN', 'THANH', 'TOAN', 'NHAN', 'NAP', 'RUT', 'PHI', 'LAI', 'TOPUP'}
+            for word in words:
+                clean_word = word.rstrip('.,;:')
+                if clean_word and clean_word.isupper() and len(clean_word) >= 2 and clean_word.isalpha() and clean_word not in _stop:
+                    name_parts.append(clean_word)
+                else:
+                    break
+            if len(name_parts) >= 2:  # Ít nhất 2 từ mới coi là tên người
+                beneficiary_name = ' '.join(name_parts[:5])
+                return {'bank_name': 'Agribank', 'account_number': '', 'beneficiary_name': beneficiary_name}
+
         return {'bank_name': '', 'account_number': '', 'beneficiary_name': ''}
 
     def classify_transaction(self, row):
@@ -519,98 +551,177 @@ class BankStatementParser:
         Returns:
             str: Loại giao dịch
         """
-        rem = str(row.get('rem', ''))
-        trcdnm = str(row.get('trcdnm', ''))
-        amount = row.get('acctccyamt', 0)
+        rem     = str(row.get('rem', ''))
+        trcdnm  = str(row.get('trcdnm', ''))
+        trcd    = str(row.get('trcd', '')).strip()
+        amount  = row.get('acctccyamt', 0)
+        thrref  = str(row.get('thrref', '')).strip()
 
-        # Lấy số tiền tuyệt đối để check phí rút tiền
-        abs_amount = abs(amount)
-
-        rem_lower = rem.lower()
+        abs_amount   = abs(amount)
+        rem_lower    = rem.lower()
         trcdnm_lower = trcdnm.lower()
 
-        # Lấy thông tin bổ sung
-        tomgntno = str(row.get('tomgntno', '')).strip()
-        toacctno = str(row.get('toacctno', '')).strip()
-        husrid = str(row.get('husrid', '')).strip()
-        lclbrnm = str(row.get('lclbrnm', '')).strip()  # Local branch name
+        husrid  = str(row.get('husrid', '')).strip()
+        lclbrnm = str(row.get('lclbrnm', '')).strip()
+        ourref  = str(row.get('ourref', '')).strip()
 
-        # Giải ngân: Nội dung có chứa '7202LDS'
+        # ── Ưu tiên cao nhất: dựa vào trcd (mã loại giao dịch) ───────────
+        # W000: Mở tài khoản
+        if trcd == 'W000':
+            return "Mở tài khoản"
+
+        # Giải ngân
         if '7202LDS' in rem:
             return "Giải ngân"
 
-        # Chuyển khoản nội bộ Agribank - Pattern 1: MB(xxx)(yyy)
-        if 'MB(' in rem:
+        # Nạp tiền điện thoại / mua thẻ - rem chứa "Topup"
+        if 'topup' in rem_lower and amount < 0:
+            return "Nạp tiền điện thoại"
+
+        # Chuyển khoản nội bộ Agribank - Pattern MB(xxx)(yyy) hoặc SMS(xxx)(yyy)
+        if 'MB(' in rem or 'SMS(' in rem:
+            return "Nhận chuyển khoản nội bộ Agribank" if amount > 0 else "Chuyển khoản nội bộ Agribank"
+
+        # Lãi tiền gửi: trcdnm chứa "lãi tiền gửi" và rem trống
+        if ('lãi tiền gửi' in trcdnm_lower or 'lai tien gui' in trcdnm_lower) and (not rem or rem.strip() in ('', 'nan')):
+            return "Trả lãi tiền gửi hàng tháng"
+
+        # trcd C204: Rút tiền bằng thẻ 24/24 (ATM)
+        # fndtpcd=101 → tiền mặt thực rút; fndtpcd=198 → phí dịch vụ kèm theo
+        if trcd == 'C204' and amount < 0:
+            fndtpcd = str(row.get('fndtpcd', '')).strip()
+            if fndtpcd == '198':
+                return "Phí rút tiền ATM"
+            return "Rút tiền ATM"
+
+        # trcd W100: Nộp tiền mặt tại quầy ngân hàng
+        if trcd == 'W100' and amount > 0:
+            return "Nộp tiền tại quầy"
+
+        # trcd W200: Rút tiền TG KKH tại quầy
+        if trcd == 'W200' and amount < 0:
+            return "Rút tiền mặt"
+
+        # trcd X204: Withdrawal BankNet ATM (rút tiền tại ATM ngân hàng khác qua BankNet/NAPAS)
+        # fndtpcd=101 → tiền thực rút; fndtpcd=198 → phí dịch vụ
+        if trcd == 'X204' and amount < 0:
+            fndtpcd = str(row.get('fndtpcd', '')).strip()
+            if fndtpcd == '198':
+                return "Phí rút tiền ATM khác hệ thống"
+            return "Rút tiền ATM khác hệ thống"
+
+        # trcd X202: Giao dịch qua thẻ tại ATM Agribank (Rút tiền ATM cùng hệ thống)
+        # fndtpcd=101 → tiền thực rút/chuyển; fndtpcd=198 → phí dịch vụ kèm theo
+        if trcd == 'X202' and amount < 0:
+            fndtpcd = str(row.get('fndtpcd', '')).strip()
+            if fndtpcd == '198':
+                if 'rút tiền' in trcdnm_lower or 'rut tien' in trcdnm_lower:
+                    return "Phí rút tiền ATM cùng hệ thống"
+                return "Phí chuyển khoản ATM"
+            if 'rút tiền' in trcdnm_lower or 'rut tien' in trcdnm_lower:
+                return "Rút tiền ATM cùng hệ thống"
+            return "Chuyển khoản nội bộ Agribank"
+
+        # trcd X207: Hủy rút tiền ATM cùng hệ thống (đảo bút toán X202)
+        if trcd == 'X207':
+            fndtpcd = str(row.get('fndtpcd', '')).strip()
+            if fndtpcd == '198':
+                return "Hoàn phí rút tiền ATM cùng hệ thống"
+            return "Hủy rút tiền ATM cùng hệ thống"
+
+        # ourref dạng [số]ITL[số] → chuyển khoản nội bộ Agribank qua hệ thống ITL (khác chi nhánh)
+        # Bao quát cả các giao dịch có thrref=OTT và các dạng thrref khác
+        if re.search(r'\d+ITL\d+', ourref, re.IGNORECASE):
             if amount > 0:
                 return "Nhận chuyển khoản nội bộ Agribank"
             else:
                 return "Chuyển khoản nội bộ Agribank"
 
-        # Chuyển khoản nội bộ Agribank - Pattern 2: Xác định dựa trên lclbrnm/rem/husrid
-        # Priority 0: Check lclbrnm (Local Branch Name) - indicator mạnh nhất
-        # Priority 1: Check rem có mã ngân hàng không
-        # Priority 2: Check husrid có format 8 ký tự (mã chi nhánh + tên GDV)
+        # trcdnm chứa "Rút tiền" → ưu tiên phân loại trước khi vào logic nội bộ/liên NH
+        # Tránh trường hợp bị nhầm thành chuyển khoản do husrid/lclbrnm Agribank
+        if amount < 0 and ('rút tiền' in trcdnm_lower or 'rut tien' in trcdnm_lower):
+            if 'từ thẻ rút tiền mặt' in trcdnm_lower or 'thẻ 24/24' in trcdnm_lower or 'bằng thẻ' in trcdnm_lower:
+                # Phân biệt phí và tiền thực rút
+                if abs_amount in (1100, 1650):
+                    return "Phí rút tiền mặt cùng hệ thống"
+                if abs_amount == 3300:
+                    return "Phí rút tiền ATM"
+                return "Rút tiền ATM"
+            return "Rút tiền mặt"
+
+        # trcd X101 + rem ATM Fund Transfer = nhận chuyển khoản từ ATM Agribank nội bộ
+        if trcd == 'X101' and amount > 0 and 'atm fund transfer' in rem_lower:
+            return "Nhận chuyển khoản từ ATM"
+
+        # trcd X101 + thrref=VBA = nhận chuyển khoản nội bộ qua ATM
+        if trcd == 'X101' and amount > 0 and thrref.upper() == 'VBA':
+            return "Nhận chuyển khoản từ ATM"
+
+        # ── Xác định nguồn gốc giao dịch ─────────────────────────────────
         is_internal_agribank = False
         is_interbank = False
 
-        # Priority 0: Check lclbrnm có "Agribank" không
-        # Nếu lclbrnm chứa "Agribank" → Giao dịch tại chi nhánh Agribank hoặc ATM Agribank
-        if lclbrnm and ('agribank' in lclbrnm.lower() or 'agri' in lclbrnm.lower()):
+        # Priority 0a: thrref = VBA → Agribank nội bộ
+        if thrref.upper() == 'VBA':
             is_internal_agribank = True
 
-        # Priority 1: Check rem có mã ngân hàng không (nếu chưa xác định từ lclbrnm)
-        if not is_internal_agribank and rem and len(rem.strip()) <= 10:  # rem ngắn có thể là mã ngân hàng
-            rem_upper = rem.strip().upper()
-            # Check xem rem có trong BANK_CODE_MAPPING không
-            if rem_upper in self.BANK_CODE_MAPPING or rem_upper in ['AGRIBANK', 'AGRI']:
-                bank_from_rem = self.BANK_CODE_MAPPING.get(rem_upper, rem_upper)
-                if bank_from_rem == 'Agribank' or rem_upper in ['AGRIBANK', 'AGRI']:
-                    is_internal_agribank = True
-                else:
-                    is_interbank = True
+        # Priority 0b: lclbrnm chứa "Agribank"
+        elif lclbrnm and ('agribank' in lclbrnm.lower() or 'agri' in lclbrnm.lower()):
+            is_internal_agribank = True
 
-        # Priority 2: Check husrid (nếu chưa xác định được từ rem)
+        # Priority 0c: thrref là mã ngân hàng khác (không phải VBA)
+        elif thrref and thrref.upper() in self.BANK_CODE_MAPPING and thrref.upper() != 'VBA':
+            is_interbank = True
+
+        # Priority 0d: thrref chứa BANKNET hoặc IBFT → giao dịch liên ngân hàng qua BankNet/NAPAS
+        elif thrref and ('BANKNET' in thrref.upper() or 'IBFT' in thrref.upper()):
+            is_interbank = True
+
+        # Priority 1: rem ngắn chứa mã ngân hàng
         if not is_internal_agribank and not is_interbank:
-            # Check husrid: 8 ký tự (3 chữ cái mã chi nhánh + 5 ký tự tên GDV)
-            # VD: GRATNNHI, GRATKIEN, GRALTHUC, GRANSINH, HOBXXXXX
-            if husrid and len(husrid) == 8 and husrid[:3].isalpha() and husrid[3:].isalpha():
-                # Kiểm tra mã chi nhánh phổ biến (GRA, HOB, HAN, SGN, v.v.)
-                branch_codes = ['GRA', 'HOB', 'HAN', 'SGN', 'DNA', 'CTO', 'BTR', 'BDG', 'HUE', 'VTU', 'QNI', 'KHA', 'DLK', 'BIN', 'PTH', 'GLA', 'NTR', 'BTE', 'KGI', 'BLU', 'CMU', 'VLO', 'LAI', 'YEN']
-                if husrid[:3].upper() in branch_codes or True:  # Accept any 3-letter prefix for flexibility
-                    is_internal_agribank = True
+            if rem and len(rem.strip()) <= 10:
+                rem_upper = rem.strip().upper()
+                if rem_upper in self.BANK_CODE_MAPPING or rem_upper in ['AGRIBANK', 'AGRI']:
+                    bank_from_rem = self.BANK_CODE_MAPPING.get(rem_upper, rem_upper)
+                    if bank_from_rem == 'Agribank' or rem_upper in ['AGRIBANK', 'AGRI']:
+                        is_internal_agribank = True
+                    else:
+                        is_interbank = True
 
-        # Nếu là giao dịch nội bộ Agribank
+        # Priority 2: husrid format Agribank
+        if not is_internal_agribank and not is_interbank:
+            # Format GDV: 8 ký tự toàn chữ cái (GRATNNHI, GRATKIEN...)
+            branch_codes = ['GRA', 'HOB', 'HAN', 'SGN', 'DNA', 'CTO', 'BTR', 'BDG', 'HUE',
+                            'VTU', 'QNI', 'KHA', 'DLK', 'BIN', 'PTH', 'GLA', 'NTR', 'BTE',
+                            'KGI', 'BLU', 'CMU', 'VLO', 'LAI', 'YEN']
+            if husrid and len(husrid) == 8 and husrid.isalpha() and husrid[:3].upper() in branch_codes:
+                is_internal_agribank = True
+            # Format ATM: 4 chữ số mã CN + "ATM" + số hiệu (VD: 6480ATM02, 6460ATM01)
+            elif husrid and re.match(r'^\d{4}ATM\d+$', husrid, re.IGNORECASE):
+                is_internal_agribank = True
+
+        # Nếu là giao dịch nội bộ Agribank — chỉ phân loại chuyển khoản ở đây;
+        # rút tiền/nộp tiền để các check phía dưới xử lý chính xác hơn
         if is_internal_agribank:
-            # Kiểm tra có phải rút tiền không (ưu tiên check trước)
-            if amount < 0 and ('rut' in rem_lower or 'rút' in rem_lower or
-                               'rut tien' in trcdnm_lower or 'rút tiền' in trcdnm_lower):
-                # Sẽ xử lý ở phần rút tiền bên dưới
-                pass
-            # Kiểm tra có phải nộp tiền không (ưu tiên check trước cho giao dịch tiền vào)
-            elif amount > 0 and ('nop tien' in rem_lower or 'nộp tiền' in rem_lower or
-                                 'nop tm' in rem.upper() or 'deposit' in trcdnm_lower):
-                # Sẽ xử lý ở phần nộp tiền bên dưới
-                pass
-            # Kiểm tra chuyển khoản
-            # Chấp nhận nếu:
-            # 1. Có từ khóa CK/chuyển khoản
-            # 2. rem rỗng hoặc chỉ là CK/CT
-            # 3. rem có nội dung (có thể là tên người) nhưng không phải các giao dịch đặc biệt khác
-            elif ('ck' in rem_lower or 'chuyen khoan' in rem_lower or 'chuyển khoản' in rem_lower or
-                  'chuyen tien' in rem_lower or 'chuyển tiền' in rem_lower or
-                  rem.strip() == '' or rem.strip().upper() in ['CK', 'CT']):
+            _is_withdrawal = amount < 0 and (
+                'rut' in rem_lower or 'rút' in rem_lower or
+                'rut tien' in trcdnm_lower or 'rút tiền' in trcdnm_lower or
+                '7202atm' in rem_lower or 'rut tm' in rem.upper() or
+                'withdrawal' in trcdnm_lower
+            )
+            _is_deposit = amount > 0 and (
+                'nop tien' in rem_lower or 'nộp tiền' in rem_lower or
+                'nop tm' in rem.upper() or 'deposit' in trcdnm_lower
+            )
+            _is_fee_or_service = any(k in rem_lower for k in ['atm', 'pos', 'mcc', 'phi', 'lai', 'vnpt', 'ma_gd'])
+
+            if not _is_withdrawal and not _is_deposit and not _is_fee_or_service:
+                # Không phải rút/nộp/phí → chuyển khoản nội bộ
                 if amount > 0:
                     return "Nhận chuyển khoản nội bộ Agribank"
                 else:
                     return "Chuyển khoản nội bộ Agribank"
-            # Nếu rem chứa tên người (chữ cái) và không có từ khóa đặc biệt khác
-            # thì cũng coi là chuyển khoản nội bộ
-            elif rem.strip() and not any(keyword in rem_lower for keyword in
-                                        ['atm', 'pos', 'mcc', 'phi', 'lai', 'vnpt', 'ma_gd']):
-                if amount > 0:
-                    return "Nhận chuyển khoản nội bộ Agribank"
-                else:
-                    return "Chuyển khoản nội bộ Agribank"
+            # Nếu là rút/nộp/phí → tiếp tục xuống để xử lý đúng loại
 
         # MCC transactions (merchant/payment)
         if ';MCC;' in rem and re.search(r'\d{6}$', rem):  # Check for BIN code at end
@@ -724,6 +835,10 @@ class BankStatementParser:
             return "Thanh toán dịch vụ"
         if 'VNPT' in rem.upper():
             return "Thanh toán dịch vụ (VNPT)"
+        if 'PHI SMS' in rem.upper() or 'PHISMS' in rem.upper():
+            return "Phí SMS"
+        if 'ABIC' in rem.upper():
+            return "Phí bảo an chủ thẻ (ABIC)"
 
         # Lãi tiền gửi - Kiểm tra không có nội dung và trcdnm là "Lãi tiền gửi"
         if (not rem or rem.strip() == '' or rem == 'nan') and 'lãi tiền gửi' in trcdnm_lower.strip():
@@ -794,16 +909,23 @@ class BankStatementParser:
             raise ValueError("File chưa được validate. Gọi validate_file() trước.")
 
         self.processed_data = []
+        stt_counter = 0
 
         for idx, row in self.df.iterrows():
-            # Bỏ qua các dòng không có dữ liệu quan trọng
-            if pd.isna(row.get('trdt')) or pd.isna(row.get('acctccyamt')):
+            # Bỏ qua dòng header lặp lại giữa file (trdt = 'trdt')
+            trdt_val = row.get('trdt')
+            if str(trdt_val).strip().lower() == 'trdt':
                 continue
 
-            stt = idx + 1
+            # Bỏ qua các dòng không có dữ liệu quan trọng
+            if pd.isna(trdt_val) or pd.isna(row.get('acctccyamt')):
+                continue
+
+            stt_counter += 1
+            stt = stt_counter
 
             # Parse ngày giao dịch
-            transaction_date = self.parse_date(row.get('trdt'))
+            transaction_date = self.parse_date(trdt_val)
             if not transaction_date:
                 continue
 
@@ -818,26 +940,35 @@ class BankStatementParser:
             # Nội dung gốc
             description = str(row.get('rem', ''))
 
-            # Parse thông tin người thụ hưởng
+            # Các trường bổ sung
             tomgntno = row.get('tomgntno', '')
             toacctno = row.get('toacctno', '')
-            lclbrnm = row.get('lclbrnm', '')
+            lclbrnm  = str(row.get('lclbrnm', ''))
+            thrref   = str(row.get('thrref', '')).strip()
+            husrid   = str(row.get('husrid', '')).strip()
+
+            # Parse thông tin người thụ hưởng
             beneficiary_info = self.parse_beneficiary_info(
                 description,
                 tomgntno,
                 acctccyamt,
                 toacctno,
-                lclbrnm
+                lclbrnm,
+                thrref,
             )
 
-            # Kiểm tra các loại giao dịch đặc biệt dựa vào husrid
-            if not beneficiary_info['bank_name'] or beneficiary_info['bank_name'] == '':
-                husrid = str(row.get('husrid', ''))
-                if husrid and len(husrid) >= 7:
-                    if husrid[:7] == '7202API':
-                        beneficiary_info['bank_name'] = 'PaymentHub'
-                    elif husrid[:7] == '7202OSB':
-                        beneficiary_info['bank_name'] = 'OSB'
+            # Fallback: xác định ngân hàng từ husrid đặc biệt
+            if not beneficiary_info['bank_name']:
+                if husrid.startswith('7202API'):
+                    beneficiary_info['bank_name'] = 'PaymentHub'
+                elif husrid.startswith('7202OSB'):
+                    beneficiary_info['bank_name'] = 'OSB'
+                # ATM nội bộ Agribank: husrid = 4chữsố + ATM + số (VD: 6360ATM05)
+                elif re.match(r'^\d{4}ATM\d+$', husrid, re.IGNORECASE):
+                    beneficiary_info['bank_name'] = 'Agribank'
+                    tomgntno_str = str(tomgntno).strip()
+                    if not beneficiary_info['account_number'] and tomgntno_str and tomgntno_str.isdigit():
+                        beneficiary_info['account_number'] = tomgntno_str
 
             # Phân loại giao dịch
             transaction_type = self.classify_transaction(row)

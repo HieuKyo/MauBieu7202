@@ -1150,7 +1150,7 @@ _LOAI_TO_CHUC = [
 _LOCDPNM_HSSV = 'Tiền gửi thanh toán cá nhân'
 
 # Các tên cột số tài khoản có thể có trong file mở TK (theo thứ tự ưu tiên)
-_POSSIBLE_ACCTNO_COLS = ['acctno', 'acctcd', 'acctseq', 'so_tai_khoan', 'account_no']
+_POSSIBLE_ACCTNO_COLS = ['idxacno', 'acctno', 'acctcd', 'acctseq', 'so_tai_khoan', 'account_no']
 
 
 def _find_col(df_cols, candidates):
@@ -1165,7 +1165,9 @@ def _find_col(df_cols, candidates):
 @login_required
 def dong_mo_tai_khoan_report_view(request):
     """Giao diện báo cáo Đóng/Mở tài khoản"""
-    if 'dmtk_result' in request.session:
+    # Xóa session cũ nếu sai format
+    old = request.session.get('dmtk_result')
+    if old and 'has_dong_tk_file' not in old:
         del request.session['dmtk_result']
     return render(request, 'templates_app/reports/dong_mo_tai_khoan.html')
 
@@ -1175,8 +1177,9 @@ def dong_mo_tai_khoan_report_view(request):
 def process_dong_mo_tai_khoan_report(request):
     """Xử lý báo cáo Đóng/Mở tài khoản"""
     try:
-        mo_tk_file  = request.FILES.get('mo_tk_file')
-        the_file    = request.FILES.get('the_file')   # tùy chọn
+        mo_tk_file   = request.FILES.get('mo_tk_file')
+        dong_tk_file = request.FILES.get('dong_tk_file')  # tùy chọn
+        the_file     = request.FILES.get('the_file')      # tùy chọn
 
         if not mo_tk_file:
             messages.error(request, "Vui lòng tải lên file Mở tài khoản.")
@@ -1209,11 +1212,13 @@ def process_dong_mo_tai_khoan_report(request):
         df_ca_nhan  = df_mo[mask_cn].copy()
         df_to_chuc  = df_mo[mask_tc].copy()
 
-        # ── Nhận diện HSSV qua file phát hành thẻ ─────────────────────────
-        hssv_count   = 0
-        hssv_records = []
-        join_col_mo  = None
-        join_warning = None
+        # ── Nhận diện Thẻ miễn phí và HSSV qua file phát hành thẻ ──────────
+        the_mien_phi_count   = 0
+        the_mien_phi_records = []
+        hssv_count           = 0
+        hssv_records         = []
+        join_col_mo          = None
+        join_warning         = None
 
         if the_file:
             try:
@@ -1240,26 +1245,200 @@ def process_dong_mo_tai_khoan_report(request):
                     df_the_hssv = df_the[mask_hssv_the].copy()
 
                     # Tìm cột số tài khoản để join
-                    join_col_the = _find_col(df_the.columns, ['acctseq', 'acctno', 'acctcd', 'so_tai_khoan'])
+                    join_col_the = _find_col(df_the.columns, ['ACCOUNT', 'idxacno', 'acctseq', 'acctno', 'acctcd', 'so_tai_khoan'])
                     join_col_mo  = _find_col(df_mo.columns,  _POSSIBLE_ACCTNO_COLS)
 
+                    # Mapping CUSER → Phòng giao dịch
+                    _CUSER_PGD_MAP = {
+                        '7202canhsh':   'PGD Láng Tròn',
+                        '7202cthaotn':  'PGD Láng Tròn',
+                        '7202cthuclt':  'PGD Giá Rai',
+                        '7202cthaotlt': 'PGD Giá Rai',
+                        '7202chieutt':  'Hội sở Giá Rai',
+                        '7202csinhnt':  'Hội sở Giá Rai',
+                        '7202cchica':   'Hội sở Giá Rai',
+                        '7202cnhitn':   'Hội sở Giá Rai',
+                    }
+
                     if join_col_the and join_col_mo:
-                        hssv_acct_set = set(df_the_hssv[join_col_the].astype(str).str.strip())
-                        mask_hssv = (
-                            (df_ca_nhan[locdpnm_col] == _LOCDPNM_HSSV) &
-                            (df_ca_nhan[join_col_mo].astype(str).str.strip().isin(hssv_acct_set))
-                        )
-                        df_hssv = df_ca_nhan[mask_hssv].copy()
-                        hssv_count   = len(df_hssv)
-                        hssv_records = df_hssv.head(200).to_dict('records')
+                        # Chuẩn hóa key join — chuyển về string, bỏ khoảng trắng, bỏ .0 cuối (nếu số)
+                        def _norm_acct(s):
+                            s = str(s).strip()
+                            if s.endswith('.0'):
+                                s = s[:-2]
+                            return s
+
+                        df_the_hssv = df_the_hssv.copy()
+                        df_the_hssv['_key'] = df_the_hssv[join_col_the].apply(_norm_acct)
+
+                        # Cột thông tin bổ sung từ file thẻ
+                        custviename_col  = _find_col(df_the.columns, ['CUSTVIENAME'])
+                        cdate_col        = _find_col(df_the.columns, ['CDATE'])
+                        cuser_col        = _find_col(df_the.columns, ['CUSER'])
+                        birthdate_col    = _find_col(df_the.columns, ['CUSTBIRTHDATE'])
+
+                        # ── Thẻ miễn phí: toàn bộ CSP_New + MIỄN PHÍ PHT ──
+                        tmp_acct_set = set(df_the_hssv['_key'])
+                        mask_tmp = df_mo[join_col_mo].apply(_norm_acct).isin(tmp_acct_set)
+                        df_tmp = df_mo[mask_tmp].copy()
+                        df_tmp['_key'] = df_tmp[join_col_mo].apply(_norm_acct)
+                        the_lookup_all = df_the_hssv.set_index('_key')
+
+                        def _get_info(acct, lookup):
+                            if acct not in lookup.index:
+                                return {'ho_ten': '', 'ngay_mo_the': '', 'cuser': '', 'pgd': '', 'ngay_sinh': '', 'tuoi': ''}
+                            row = lookup.loc[acct]
+                            if isinstance(row, pd.DataFrame):
+                                row = row.iloc[0]
+                            cuser_val = str(row[cuser_col]).strip() if cuser_col else ''
+                            # Tính tuổi
+                            ngay_sinh_str = ''
+                            tuoi_str = ''
+                            if birthdate_col:
+                                raw_bd = row[birthdate_col]
+                                try:
+                                    import datetime
+                                    if pd.isna(raw_bd):
+                                        pass
+                                    else:
+                                        bd = pd.to_datetime(raw_bd, dayfirst=True, errors='coerce')
+                                        if pd.notna(bd):
+                                            today = datetime.date.today()
+                                            tuoi = today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
+                                            ngay_sinh_str = bd.strftime('%d/%m/%Y')
+                                            tuoi_str = str(tuoi)
+                                except Exception:
+                                    pass
+                            return {
+                                'ho_ten':      str(row[custviename_col]).strip() if custviename_col else '',
+                                'ngay_mo_the': str(row[cdate_col]).strip()       if cdate_col       else '',
+                                'cuser':       cuser_val,
+                                'pgd':         _CUSER_PGD_MAP.get(cuser_val.lower(), cuser_val),
+                                'ngay_sinh':   ngay_sinh_str,
+                                'tuoi':        tuoi_str,
+                            }
+
+                        def _build_records(df_joined, lookup):
+                            records = []
+                            for _, row in df_joined.head(500).iterrows():
+                                acct = str(row[join_col_mo]).strip()
+                                if acct.endswith('.0'):
+                                    acct = acct[:-2]
+                                info = _get_info(acct, lookup)
+                                records.append({
+                                    'so_tai_khoan': acct,
+                                    'ho_ten':       info['ho_ten'],
+                                    'ngay_mo_the':  info['ngay_mo_the'],
+                                    'ngay_sinh':    info['ngay_sinh'],
+                                    'tuoi':         info['tuoi'],
+                                    'cuser':        info['cuser'],
+                                    'pgd':          info['pgd'],
+                                })
+                            return records
+
+                        the_mien_phi_count   = len(df_tmp)
+                        the_mien_phi_records = _build_records(df_tmp, the_lookup_all)
+
+                        # ── HSSV: thêm điều kiện tuổi < 18 ──────────────────
+                        if birthdate_col:
+                            import datetime
+                            today = datetime.date.today()
+
+                            def _is_under_18(acct):
+                                if acct not in the_lookup_all.index:
+                                    return False
+                                row = the_lookup_all.loc[acct]
+                                if isinstance(row, pd.DataFrame):
+                                    row = row.iloc[0]
+                                raw_bd = row[birthdate_col]
+                                try:
+                                    if pd.isna(raw_bd):
+                                        return False
+                                    bd = pd.to_datetime(raw_bd, dayfirst=True, errors='coerce')
+                                    if pd.isna(bd):
+                                        return False
+                                    tuoi = today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
+                                    return tuoi < 18
+                                except Exception:
+                                    return False
+
+                            mask_hssv = df_tmp['_key'].apply(_is_under_18)
+                            df_hssv_new = df_tmp[mask_hssv].copy()
+                            hssv_count   = len(df_hssv_new)
+                            hssv_records = _build_records(df_hssv_new, the_lookup_all)
+                        else:
+                            join_warning = "File thẻ thiếu cột CUSTBIRTHDATE — không thể lọc HSSV theo tuổi."
+
+                        if the_mien_phi_count == 0:
+                            join_warning = (
+                                f"[Debug] Thẻ lọc được: {len(df_the_hssv)} | "
+                                f"Cột join thẻ: '{join_col_the}' | Cột join mở TK: '{join_col_mo}' | "
+                                f"Mẫu TK thẻ: {list(tmp_acct_set)[:3]} | "
+                                f"Mẫu TK mở TK: {[_norm_acct(v) for v in df_mo[join_col_mo].head(3).tolist()]}"
+                            )
                     else:
                         missing = []
-                        if not join_col_the: missing.append(f"file thẻ thiếu cột số tài khoản")
+                        if not join_col_the: missing.append("file thẻ thiếu cột số tài khoản")
                         if not join_col_mo:  missing.append(f"file mở TK thiếu cột số tài khoản (thử: {', '.join(_POSSIBLE_ACCTNO_COLS)})")
-                        join_warning = "Không thể join HSSV: " + "; ".join(missing)
+                        join_warning = "Không thể join: " + "; ".join(missing)
 
             except Exception as e:
                 join_warning = f"Lỗi khi xử lý file phát hành thẻ: {e}"
+
+        # ── Xử lý file Đóng tài khoản ─────────────────────────────────────
+        dong_tk_count       = 0
+        dong_he_thong_count = 0
+        dong_tai_quay_count = 0
+        dong_tk_records     = []
+        dong_col_labels     = []
+
+        if dong_tk_file:
+            try:
+                df_dong = pd.read_excel(dong_tk_file)
+                df_dong.columns = df_dong.columns.str.strip()
+
+                teller_col_dong = _find_col(df_dong.columns, ['tellernm', 'teller', 'teller_name'])
+                _DONG_WANT_COLS   = ['idxacno', 'custnm', 'locdpnm', 'clsdt', 'tellernm']
+                _DONG_WANT_LABELS = ['Số tài khoản', 'Họ tên', 'Loại sản phẩm', 'Ngày đóng', 'Teller']
+
+                dong_actual_cols = []
+                for col_key, col_label in zip(_DONG_WANT_COLS, _DONG_WANT_LABELS):
+                    actual = _find_col(df_dong.columns, [col_key])
+                    if actual:
+                        dong_actual_cols.append((actual, col_label))
+                dong_col_labels = [lbl for _, lbl in dong_actual_cols]
+
+                def _loai_dong(teller_val):
+                    t = str(teller_val).strip().upper()
+                    if t == '7202DP':
+                        return 'Hệ thống tự đóng'
+                    elif t.startswith('GRA'):
+                        return 'KH đóng tại quầy'
+                    return str(teller_val).strip()
+
+                def _norm_val(v):
+                    if v is None:
+                        return ''
+                    try:
+                        import math
+                        if isinstance(v, float) and math.isnan(v):
+                            return ''
+                    except Exception:
+                        pass
+                    return str(v)
+
+                dong_tk_count = len(df_dong)
+                if teller_col_dong:
+                    dong_he_thong_count = int((df_dong[teller_col_dong].astype(str).str.strip().str.upper() == '7202DP').sum())
+                    dong_tai_quay_count = int(df_dong[teller_col_dong].astype(str).str.strip().str.upper().str.startswith('GRA').sum())
+
+                for _, row in df_dong.head(500).iterrows():
+                    vals = [_norm_val(row[col]) for col, _ in dong_actual_cols]
+                    loai = _loai_dong(row[teller_col_dong]) if teller_col_dong else ''
+                    dong_tk_records.append({'vals': vals, 'loai_dong': loai})
+
+            except Exception as e:
+                messages.warning(request, f"Lỗi đọc file Đóng tài khoản: {e}")
 
         # ── Thống kê chi tiết theo locdpnm ────────────────────────────────
         def _breakdown(df):
@@ -1271,21 +1450,49 @@ def process_dong_mo_tai_khoan_report(request):
                 .to_dict('records')
             )
 
+        # ── Cột hiển thị bảng chi tiết (list of lists để template iterate) ─
+        _WANT_COLS   = ['idxacno', 'custnm', 'locdpnm', 'opndt', 'curbal', 'onofftp', 'tellernm']
+        _WANT_LABELS = ['Số tài khoản', 'Họ tên', 'Loại sản phẩm', 'Ngày mở', 'Số dư hiện tại', 'Đơn vị', 'Teller']
+
+        actual_view_cols = []
+        view_col_labels  = []
+        for col_key, col_label in zip(_WANT_COLS, _WANT_LABELS):
+            actual = _find_col(df_mo.columns, [col_key])
+            if actual:
+                actual_view_cols.append(actual)
+                view_col_labels.append(col_label)
+
+        def _to_list_records(df, limit=500):
+            rows = []
+            for _, row in df.head(limit).iterrows():
+                rows.append([
+                    '' if (row[c] is None or (hasattr(row[c], '__class__') and str(type(row[c])) == "<class 'float'>" and str(row[c]) == 'nan')) else str(row[c])
+                    for c in actual_view_cols
+                ])
+            return rows
+
         # ── Tổng hợp kết quả ──────────────────────────────────────────────
         result = {
             'tong_mo': len(df_mo),
             'ca_nhan_count': len(df_ca_nhan),
+            'the_mien_phi_count': the_mien_phi_count,
             'hssv_count': hssv_count,
             'to_chuc_count': len(df_to_chuc),
             'ca_nhan_breakdown': _breakdown(df_ca_nhan),
             'to_chuc_breakdown': _breakdown(df_to_chuc),
-            'ca_nhan_records': df_ca_nhan.head(500).to_dict('records'),
-            'to_chuc_records': df_to_chuc.head(500).to_dict('records'),
+            'ca_nhan_records': _to_list_records(df_ca_nhan),
+            'to_chuc_records': _to_list_records(df_to_chuc),
+            'view_col_labels': view_col_labels,
+            'the_mien_phi_records': the_mien_phi_records,
             'hssv_records': hssv_records,
             'join_warning': join_warning,
-            'join_col_mo': join_col_mo,
-            'file_columns': df_mo.columns.tolist(),
             'has_the_file': the_file is not None,
+            'has_dong_tk_file': dong_tk_file is not None,
+            'dong_tk_count': dong_tk_count,
+            'dong_he_thong_count': dong_he_thong_count,
+            'dong_tai_quay_count': dong_tai_quay_count,
+            'dong_tk_records': dong_tk_records,
+            'dong_col_labels': dong_col_labels,
         }
 
         request.session['dmtk_result'] = _to_json_safe(result)
