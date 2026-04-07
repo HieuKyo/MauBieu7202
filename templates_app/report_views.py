@@ -243,10 +243,6 @@ def process_phat_hanh_the_report(request):
 
         df = pd.read_excel(data_file)
 
-        # Debug: Kiểm tra columns
-        print(f"DEBUG: Columns in file: {df.columns.tolist()}")
-        print(f"DEBUG: Total rows: {len(df)}")
-
         if 'acctseq' in df.columns:
             df['acctseq'] = df['acctseq'].astype(str)
 
@@ -263,17 +259,12 @@ def process_phat_hanh_the_report(request):
         mask = (df['dlvrydt_datetime'] >= start_date) & (df['dlvrydt_datetime'] <= end_date)
         filtered_df = df.loc[mask].copy()
 
-        print(f"DEBUG: Filtered rows (by date): {len(filtered_df)}")
-
         if filtered_df.empty:
             messages.warning(request, "Không có dữ liệu phát hành thẻ trong khoảng thời gian đã chọn.")
             return redirect('phat_hanh_the_report')
 
         pgd_user_map = pht_config.get('pgd_user_map', {})
-        print(f"DEBUG: PGD user map: {pgd_user_map}")
-
         user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
-        print(f"DEBUG: User to PGD map: {user_to_pgd_map}")
 
         # Kiểm tra cột dlvryusrid tồn tại
         if 'dlvryusrid' not in filtered_df.columns:
@@ -283,14 +274,12 @@ def process_phat_hanh_the_report(request):
         filtered_df['PGD'] = filtered_df['dlvryusrid'].map(user_to_pgd_map)
         final_df = filtered_df.dropna(subset=['PGD'])
 
-        print(f"DEBUG: Final rows (after PGD mapping): {len(final_df)}")
-        print(f"DEBUG: Unique users in data: {filtered_df['dlvryusrid'].unique().tolist()}")
-
         if final_df.empty:
             messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình. Users trong file: {filtered_df['dlvryusrid'].unique().tolist()}")
             return redirect('phat_hanh_the_report')
 
         # Tạo Excel với nhiều sheet
+        sheets_created = 0
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             for pgd_name in pgd_user_map.keys():
@@ -304,7 +293,6 @@ def process_phat_hanh_the_report(request):
                     required_cols = ['custnm', 'acctseq', 'cdtpcdnm', 'dlvryusrid']
                     missing_cols = [col for col in required_cols if col not in pgd_df_to_output.columns]
                     if missing_cols:
-                        print(f"WARNING: Missing columns for PGD {pgd_name}: {missing_cols}")
                         continue
 
                     output_cols = ['custnm', 'acctseq', 'cdtpcdnm', 'dlvryusrid', 'dlvrydt_str']
@@ -316,8 +304,7 @@ def process_phat_hanh_the_report(request):
                         'dlvrydt_str': 'Ngày phát hành'
                     })
 
-                    print(f"DEBUG: Creating sheet for {pgd_name} with {len(pgd_df_final)} rows")
-
+                    sheets_created += 1
                     pgd_df_final.to_excel(writer, sheet_name=pgd_name, index=False, startrow=3)
 
                     worksheet = writer.sheets[pgd_name]
@@ -393,11 +380,9 @@ def process_phat_hanh_the_report(request):
                         worksheet.sheet_properties.pageSetUpPr.fitToPage = True
 
         # Kiểm tra xem có sheet nào được tạo không
-        if not writer.sheets:
+        if sheets_created == 0:
             messages.warning(request, "Không có dữ liệu nào để tạo báo cáo. Vui lòng kiểm tra lại file và cấu hình.")
             return redirect('phat_hanh_the_report')
-
-        print(f"DEBUG: Total sheets created: {len(writer.sheets)}")
 
         # Lưu dữ liệu vào session để sử dụng cho print preview
         pgd_data_for_session = {}

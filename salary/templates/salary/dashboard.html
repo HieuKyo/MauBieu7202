@@ -185,7 +185,7 @@
                                 <td><a href="{% url 'salary:processing_detail' history.id %}">{{ history.filename }}</a></td>
                                 <td>{{ history.get_transaction_type_display }}</td>
                                 <td>{{ history.total_records }}</td>
-                                <td>{{ history.total_amount|intcomma }} VNĐ</td>
+                                <td>{{ history.total_amount|default:0|intcomma }} VNĐ</td>
                                 <td>
                                     {% if history.status == 'SUCCESS' %}
                                     <span class="badge bg-success">Thành công</span>

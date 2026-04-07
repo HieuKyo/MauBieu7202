@@ -309,8 +309,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Keyboard shortcut Ctrl+P
     document.addEventListener('keydown', function(e) {
         if (e.ctrlKey && e.key === 'p') {
-            if (!printBtn.disabled) {
-                e.preventDefault();
+            e.preventDefault();
+            if (printBtn.disabled) {
+                // Chưa xem trước - tự động tạo preview rồi in
+                previewBtn.click();
+                setTimeout(function() { window.print(); }, 100);
+            } else {
                 window.print();
             }
         }
