@@ -598,17 +598,16 @@ class BankStatementParser:
         # Ưu tiên cao để tránh bị nhầm thành "Rút tiền mặt" do trcdnm
         if rem and amount < 0:
             rem_upper = rem.upper()
-            if 'PHI SMS' in rem_upper or 'PHISMS' in rem_upper:
-                return "Phí SMS"
-            if 'ABIC' in rem_upper:
-                return "Phí bảo an chủ thẻ (ABIC)"
-            if 'E-MOBILE BANKING' in rem_upper or 'EMOBILE' in rem_upper:
-                return "Phí dịch vụ"
-            if 'THU PHI THUONG NIEN' in rem_upper or 'PHI THUONG NIEN' in rem_upper:
-                return "Phí dịch vụ"
-            if 'PHI DICH VU' in rem_upper or 'PHI QUAN LY' in rem_upper:
-                return "Phí dịch vụ"
-            if 'PHI THU THEO LO' in rem_upper:
+            _FEE_KEYWORDS = [
+                'PHI SMS', 'PHISMS',
+                'THU PHI QUAN LY TAI KHOAN', 'PHI QUAN LY TAI KHOAN',
+                'THU PHI THUONG NIEN', 'PHI THUONG NIEN',
+                'PHI DICH VU E-MOBILE BANKING', 'E-MOBILE BANKING', 'EMOBILE BANKING',
+                'ANNUAL FEE',
+                'PHI DICH VU', 'PHI QUAN LY',
+                'PHI THU THEO LO',
+            ]
+            if any(k in rem_upper for k in _FEE_KEYWORDS) or 'ABIC' in rem_upper:
                 return "Phí dịch vụ"
 
         # trcd C204: Rút tiền bằng thẻ 24/24 (ATM)
@@ -664,7 +663,13 @@ class BankStatementParser:
 
         # trcdnm chứa "Rút tiền" → ưu tiên phân loại trước khi vào logic nội bộ/liên NH
         # Tránh trường hợp bị nhầm thành chuyển khoản do husrid/lclbrnm Agribank
-        if amount < 0 and ('rút tiền' in trcdnm_lower or 'rut tien' in trcdnm_lower):
+        # NGOẠI LỆ: rem chứa pattern liên ngân hàng rõ ràng → không dùng trcdnm
+        _rem_is_interbank = bool(
+            re.search(r'[A-Za-z]{2,15};\d{6,20};', rem) or
+            re.search(r'[A-Za-z]+:\d{6,20}:', rem) or
+            'VCB.' in rem or 'MBVCB' in rem or 'IBVCB' in rem
+        )
+        if amount < 0 and ('rút tiền' in trcdnm_lower or 'rut tien' in trcdnm_lower) and not _rem_is_interbank:
             if 'từ thẻ rút tiền mặt' in trcdnm_lower or 'thẻ 24/24' in trcdnm_lower or 'bằng thẻ' in trcdnm_lower:
                 # Phân biệt phí và tiền thực rút
                 if abs_amount in (1100, 1650):
@@ -760,14 +765,14 @@ class BankStatementParser:
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
-                return "Chuyển khoản liên ngân hàng"
+                return "Chuyển khoản đi khác ngân hàng"
 
         # Vietcombank legacy format với dấu hai chấm (Vietcombank:số_tk:nội_dung)
         if 'Vietcombank:' in rem or 'vietcombank:' in rem_lower:
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
-                return "Chuyển khoản liên ngân hàng"
+                return "Chuyển khoản đi khác ngân hàng"
 
         # Chuyển khoản ngân hàng khác (STB, BIDV, TCB, VCB, Vietinbank, MB, KLB, etc.)
         # Pattern: [mã]-[BANK_CODE];số_tk;nội_dung hoặc [BANK_CODE];số_tk;nội_dung
@@ -776,21 +781,21 @@ class BankStatementParser:
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
-                return "Chuyển khoản liên ngân hàng"
+                return "Chuyển khoản đi khác ngân hàng"
 
         # IBFT - Kiểm tra cả trong rem và trcdnm
         if 'IBFT' in rem or 'IBFT' in trcdnm or 'ibft' in trcdnm_lower:
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
-                return "Chuyển khoản liên ngân hàng"
+                return "Chuyển khoản đi khác ngân hàng"
 
         # Interbank transfers (đã xác định từ rem ở trên)
         if is_interbank:
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
-                return "Chuyển khoản liên ngân hàng"
+                return "Chuyển khoản đi khác ngân hàng"
 
         # Rút tiền với phí cụ thể
         # 1,100 đồng: Rút tiền mặt cùng hệ thống (từ thẻ rút tiền mặt)
@@ -996,7 +1001,7 @@ class BankStatementParser:
 
             # Các loại phí nội bộ Agribank → bank_name = Agribank
             _FEE_TYPES = {
-                'Phí SMS', 'Phí bảo an chủ thẻ (ABIC)', 'Phí dịch vụ',
+                'Phí dịch vụ',
                 'Phí rút tiền ATM', 'Phí rút tiền ATM cùng hệ thống',
                 'Phí rút tiền ATM khác hệ thống', 'Phí chuyển khoản ATM',
                 'Phí rút tiền mặt cùng hệ thống',

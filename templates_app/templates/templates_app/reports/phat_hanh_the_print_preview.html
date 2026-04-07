@@ -43,11 +43,14 @@
             padding: 0.5in;
             page-break-after: always;
             break-after: page;
+            page-break-inside: avoid;
+            break-inside: avoid;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
         .envelope-label:last-child {
             page-break-after: avoid;
@@ -66,7 +69,7 @@
         width: 191mm;
         height: 98mm;
         max-width: 191mm;
-        border: 2px dashed #333;
+        border: none;
         padding: 15mm;
         margin: 20px auto;
         text-align: center;

@@ -3198,7 +3198,7 @@ def bank_statement_result(request, statement_id):
             total_amount=models.Sum('debit_amount'),
             name=models.Max('beneficiary_name'),
         )
-        .filter(count__gt=2)
+        .filter(count__gt=1)
         .order_by('-count')
     )
 
@@ -3212,7 +3212,7 @@ def bank_statement_result(request, statement_id):
             total_amount=models.Sum('credit_amount'),
             name=models.Max('beneficiary_name'),
         )
-        .filter(count__gt=2)
+        .filter(count__gt=1)
         .order_by('-count')
     )
 
@@ -3222,7 +3222,7 @@ def bank_statement_result(request, statement_id):
         "Chuyển khoản nội bộ Agribank",
         "Nhận chuyển khoản nội bộ Agribank",
         "Nhận chuyển khoản từ ATM",
-        "Chuyển khoản liên ngân hàng",
+        "Chuyển khoản đi khác ngân hàng",
         "Nhận chuyển khoản liên ngân hàng",
         "Thanh toán qua MCC",
         "Nhận thanh toán MCC",
@@ -3248,8 +3248,6 @@ def bank_statement_result(request, statement_id):
         "Thanh toán dịch vụ",
         "Thanh toán dịch vụ (VNPT)",
         "Phí dịch vụ",
-        "Phí SMS",
-        "Phí bảo an chủ thẻ (ABIC)",
         "Trả lãi tiền gửi",
         "Trả lãi tiền gửi hàng tháng",
         "Trả lãi tiền gửi hằng tháng",
@@ -3402,8 +3400,8 @@ def bank_statement_export(request, statement_id):
     })
 
     # --- Bảng 1: Tài khoản nhận tiền nhiều lần (tiền ra) ---
-    worksheet3.write(0, 0, 'TÀI KHOẢN NHẬN TIỀN NHIỀU LẦN (chuyển ra > 2 lần)', header_red)
-    worksheet3.merge_range(0, 0, 0, 5, 'TÀI KHOẢN NHẬN TIỀN NHIỀU LẦN (chuyển ra > 2 lần)', header_red)
+    worksheet3.write(0, 0, 'TÀI KHOẢN NHẬN TIỀN NHIỀU LẦN (chuyển ra >= 2 lần)', header_red)
+    worksheet3.merge_range(0, 0, 0, 5, 'TÀI KHOẢN NHẬN TIỀN NHIỀU LẦN (chuyển ra >= 2 lần)', header_red)
 
     rec_headers = ['#', 'Ngân hàng', 'Số tài khoản', 'Tên', 'Số lần', 'Tổng tiền ra']
     for col, h in enumerate(rec_headers):
@@ -3418,7 +3416,7 @@ def bank_statement_export(request, statement_id):
             total_amount=models.Sum('debit_amount'),
             name=models.Max('beneficiary_name'),
         )
-        .filter(count__gt=2)
+        .filter(count__gt=1)
         .order_by('-count')
     )
 
@@ -3434,7 +3432,7 @@ def bank_statement_export(request, statement_id):
     # --- Bảng 2: Tài khoản chuyển tiền đến nhiều lần (tiền vào) ---
     start_row = len(frequent_recipients_export) + 4
 
-    worksheet3.merge_range(start_row, 0, start_row, 5, 'TÀI KHOẢN CHUYỂN TIỀN ĐẾN NHIỀU LẦN (nhận vào > 2 lần)', header_green)
+    worksheet3.merge_range(start_row, 0, start_row, 5, 'TÀI KHOẢN CHUYỂN TIỀN ĐẾN NHIỀU LẦN (nhận vào >= 2 lần)', header_green)
 
     send_headers = ['#', 'Ngân hàng', 'Số tài khoản', 'Tên', 'Số lần', 'Tổng tiền vào']
     for col, h in enumerate(send_headers):
@@ -3449,7 +3447,7 @@ def bank_statement_export(request, statement_id):
             total_amount=models.Sum('credit_amount'),
             name=models.Max('beneficiary_name'),
         )
-        .filter(count__gt=2)
+        .filter(count__gt=1)
         .order_by('-count')
     )
 
