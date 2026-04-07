@@ -45,15 +45,8 @@ def dashboard(request):
     # Lấy thống kê
     stats = SalaryStatisticsService.get_statistics(start_date=start_date, end_date=end_date)
 
-    # Lịch sử xử lý gần đây (theo filter nếu có)
-    recent_histories = ProcessingHistory.objects.all()
-    if start_date and end_date:
-        recent_histories = recent_histories.filter(processed_at__gte=start_date, processed_at__lte=end_date)
-    recent_histories = recent_histories[:10]
-
     context = {
         'stats': stats,
-        'recent_histories': recent_histories,
         'filter_month': filter_month,
         'filter_year': filter_year,
         'years_range': years_range,
