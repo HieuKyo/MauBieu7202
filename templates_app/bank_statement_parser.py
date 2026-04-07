@@ -286,7 +286,15 @@ class BankStatementParser:
                 account_number = str(tomgntno)
             elif acctccyamt < 0 and toacctno:
                 account_number = str(toacctno)
-            beneficiary_name = ""
+            # Parse tên từ nội dung trong ngoặc thứ hai
+            content = pattern1.group(2).strip()
+            _stop = {'chuyen', 'khoan', 'ck', 'ct', 'gui', 'tien', 'nhan', 'thanh', 'toan'}
+            name_parts = []
+            for word in content.split():
+                if word.lower() in _stop:
+                    break
+                name_parts.append(word)
+            beneficiary_name = ' '.join(name_parts[:5]) if name_parts else ''
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Pattern 1.5: Chuyển khoản nội bộ/liên ngân hàng (không có MB pattern)
@@ -586,6 +594,23 @@ class BankStatementParser:
         if ('lãi tiền gửi' in trcdnm_lower or 'lai tien gui' in trcdnm_lower) and (not rem or rem.strip() in ('', 'nan')):
             return "Trả lãi tiền gửi hàng tháng"
 
+        # ── Phí dịch vụ — kiểm tra rem sớm, trước các check trcdnm ─────────
+        # Ưu tiên cao để tránh bị nhầm thành "Rút tiền mặt" do trcdnm
+        if rem and amount < 0:
+            rem_upper = rem.upper()
+            if 'PHI SMS' in rem_upper or 'PHISMS' in rem_upper:
+                return "Phí SMS"
+            if 'ABIC' in rem_upper:
+                return "Phí bảo an chủ thẻ (ABIC)"
+            if 'E-MOBILE BANKING' in rem_upper or 'EMOBILE' in rem_upper:
+                return "Phí dịch vụ"
+            if 'THU PHI THUONG NIEN' in rem_upper or 'PHI THUONG NIEN' in rem_upper:
+                return "Phí dịch vụ"
+            if 'PHI DICH VU' in rem_upper or 'PHI QUAN LY' in rem_upper:
+                return "Phí dịch vụ"
+            if 'PHI THU THEO LO' in rem_upper:
+                return "Phí dịch vụ"
+
         # trcd C204: Rút tiền bằng thẻ 24/24 (ATM)
         # fndtpcd=101 → tiền mặt thực rút; fndtpcd=198 → phí dịch vụ kèm theo
         if trcd == 'C204' and amount < 0:
@@ -835,10 +860,6 @@ class BankStatementParser:
             return "Thanh toán dịch vụ"
         if 'VNPT' in rem.upper():
             return "Thanh toán dịch vụ (VNPT)"
-        if 'PHI SMS' in rem.upper() or 'PHISMS' in rem.upper():
-            return "Phí SMS"
-        if 'ABIC' in rem.upper():
-            return "Phí bảo an chủ thẻ (ABIC)"
 
         # Lãi tiền gửi - Kiểm tra không có nội dung và trcdnm là "Lãi tiền gửi"
         if (not rem or rem.strip() == '' or rem == 'nan') and 'lãi tiền gửi' in trcdnm_lower.strip():
@@ -972,6 +993,17 @@ class BankStatementParser:
 
             # Phân loại giao dịch
             transaction_type = self.classify_transaction(row)
+
+            # Các loại phí nội bộ Agribank → bank_name = Agribank
+            _FEE_TYPES = {
+                'Phí SMS', 'Phí bảo an chủ thẻ (ABIC)', 'Phí dịch vụ',
+                'Phí rút tiền ATM', 'Phí rút tiền ATM cùng hệ thống',
+                'Phí rút tiền ATM khác hệ thống', 'Phí chuyển khoản ATM',
+                'Phí rút tiền mặt cùng hệ thống',
+                'Hoàn phí rút tiền ATM cùng hệ thống',
+            }
+            if transaction_type in _FEE_TYPES and not beneficiary_info['bank_name']:
+                beneficiary_info['bank_name'] = 'Agribank'
 
             # Tạo dict cho giao dịch
             transaction = {
