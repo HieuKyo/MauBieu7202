@@ -226,9 +226,9 @@ def process_phat_hanh_the_report(request):
             # Cấu hình mặc định
             pht_config = {
                 'pgd_user_map': {
-                    "PGD Phường 1": ["GRALTHUC", "GRATTHAO"],
-                    "PGD Láng Tròn": ["GRANTHAO", "GRASHANH"],
-                    "Hội Sở": ["GRATNNHI", "GRANSINH", "GRATHIEU", "GRACACHI", "Yến Mi"]
+                    "PGD Phường 1": ["7202cthuclt", "7202CTHAOTLT"],
+                    "PGD Láng Tròn": ["7202canhsh", "7202CTHAOTN"],
+                    "Hội Sở": ["7202chieutt", "7202CSINHNT", "7202cnhitn", "7202CCHICA"]
                 }
             }
             messages.info(request, "Sử dụng cấu hình mặc định vì chưa có cấu hình trong database.")
@@ -243,20 +243,21 @@ def process_phat_hanh_the_report(request):
 
         df = pd.read_excel(data_file)
 
-        if 'acctseq' in df.columns:
-            df['acctseq'] = df['acctseq'].astype(str)
+        if 'ACCOUNT' in df.columns:
+            df['ACCOUNT'] = df['ACCOUNT'].astype(str)
 
-        # Kiểm tra cột dlvrydt tồn tại
-        if 'dlvrydt' not in df.columns:
-            messages.error(request, "File không có cột 'dlvrydt' (Ngày phát hành). Vui lòng kiểm tra lại file Excel.")
+        # Kiểm tra cột CDATE tồn tại
+        if 'CDATE' not in df.columns:
+            messages.error(request, "File không có cột 'CDATE' (Ngày phát hành). Vui lòng kiểm tra lại file Excel.")
             return redirect('phat_hanh_the_report')
 
-        df['dlvrydt_datetime'] = pd.to_datetime(df['dlvrydt'], format='%d/%m/%Y', errors='coerce').dt.normalize()
+        # CDATE có dạng "dd/mm/yyyy HH:MM:SS", lấy 10 ký tự đầu
+        df['cdate_datetime'] = pd.to_datetime(df['CDATE'].astype(str).str[:10], format='%d/%m/%Y', errors='coerce').dt.normalize()
 
         start_date = pd.to_datetime(start_date_str)
         end_date = pd.to_datetime(end_date_str)
 
-        mask = (df['dlvrydt_datetime'] >= start_date) & (df['dlvrydt_datetime'] <= end_date)
+        mask = (df['cdate_datetime'] >= start_date) & (df['cdate_datetime'] <= end_date)
         filtered_df = df.loc[mask].copy()
 
         if filtered_df.empty:
@@ -266,16 +267,16 @@ def process_phat_hanh_the_report(request):
         pgd_user_map = pht_config.get('pgd_user_map', {})
         user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
 
-        # Kiểm tra cột dlvryusrid tồn tại
-        if 'dlvryusrid' not in filtered_df.columns:
-            messages.error(request, "File không có cột 'dlvryusrid' (User phát hành). Vui lòng kiểm tra lại file Excel.")
+        # Kiểm tra cột CUSER tồn tại
+        if 'CUSER' not in filtered_df.columns:
+            messages.error(request, "File không có cột 'CUSER' (GDV phát hành). Vui lòng kiểm tra lại file Excel.")
             return redirect('phat_hanh_the_report')
 
-        filtered_df['PGD'] = filtered_df['dlvryusrid'].map(user_to_pgd_map)
+        filtered_df['PGD'] = filtered_df['CUSER'].map(user_to_pgd_map)
         final_df = filtered_df.dropna(subset=['PGD'])
 
         if final_df.empty:
-            messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình. Users trong file: {filtered_df['dlvryusrid'].unique().tolist()}")
+            messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình. Users trong file: {filtered_df['CUSER'].unique().tolist()}")
             return redirect('phat_hanh_the_report')
 
         # Tạo Excel với nhiều sheet
@@ -287,21 +288,21 @@ def process_phat_hanh_the_report(request):
 
                 if not pgd_df.empty:
                     pgd_df_to_output = pgd_df.copy()
-                    pgd_df_to_output['dlvrydt_str'] = pgd_df_to_output['dlvrydt_datetime'].dt.strftime('%d/%m/%Y')
+                    pgd_df_to_output['cdate_str'] = pgd_df_to_output['cdate_datetime'].dt.strftime('%d/%m/%Y')
 
                     # Kiểm tra các cột cần thiết
-                    required_cols = ['custnm', 'acctseq', 'cdtpcdnm', 'dlvryusrid']
+                    required_cols = ['CUSTVIENAME', 'ACCOUNT', 'CARDTYPE', 'CUSER']
                     missing_cols = [col for col in required_cols if col not in pgd_df_to_output.columns]
                     if missing_cols:
                         continue
 
-                    output_cols = ['custnm', 'acctseq', 'cdtpcdnm', 'dlvryusrid', 'dlvrydt_str']
+                    output_cols = ['CUSTVIENAME', 'ACCOUNT', 'CARDTYPE', 'CUSER', 'cdate_str']
                     pgd_df_final = pgd_df_to_output[output_cols].rename(columns={
-                        'custnm': 'Họ tên',
-                        'acctseq': 'Số tài khoản',
-                        'cdtpcdnm': 'Loại thẻ',
-                        'dlvryusrid': 'User phát hành',
-                        'dlvrydt_str': 'Ngày phát hành'
+                        'CUSTVIENAME': 'Họ tên',
+                        'ACCOUNT': 'Số tài khoản',
+                        'CARDTYPE': 'Loại thẻ',
+                        'CUSER': 'GDV phát hành',
+                        'cdate_str': 'Ngày phát hành'
                     })
 
                     sheets_created += 1
@@ -340,9 +341,7 @@ def process_phat_hanh_the_report(request):
 
                     for row_idx in range(start_data_row, end_data_row + 1):
                         loai_the_cell = worksheet[f'C{row_idx}']
-                        apply_highlight = False
-                        if loai_the_cell.value != "(97040509)- The PLUS SUCCESS":
-                            apply_highlight = True
+                        apply_highlight = loai_the_cell.value != "PSuccess"
 
                         for col_idx in range(1, len(pgd_df_final.columns) + 1):
                             cell = worksheet.cell(row=row_idx, column=col_idx)
@@ -404,7 +403,6 @@ def process_phat_hanh_the_report(request):
         )
         response['Content-Disposition'] = f'attachment; filename="BaoCao_PhatHanhThe_{start_date_str}_den_{end_date_str}.xlsx"'
 
-        print("DEBUG: Returning file response")
         return response
 
     except Exception as e:
@@ -425,9 +423,9 @@ def process_phat_hanh_the_for_print(request):
         except (ReportConfiguration.DoesNotExist, Exception):
             pht_config = {
                 'pgd_user_map': {
-                    "PGD Phường 1": ["GRALTHUC", "GRATTHAO"],
-                    "PGD Láng Tròn": ["GRANTHAO", "GRASHANH"],
-                    "Hội Sở": ["GRATNNHI", "GRANSINH", "GRATHIEU", "GRACACHI", "Yến Mi"]
+                    "PGD Phường 1": ["7202cthuclt", "7202CTHAOTLT"],
+                    "PGD Láng Tròn": ["7202canhsh", "7202CTHAOTN"],
+                    "Hội Sở": ["7202chieutt", "7202CSINHNT", "7202cnhitn", "7202CCHICA"]
                 }
             }
 
@@ -441,19 +439,19 @@ def process_phat_hanh_the_for_print(request):
 
         df = pd.read_excel(data_file)
 
-        if 'acctseq' in df.columns:
-            df['acctseq'] = df['acctseq'].astype(str)
+        if 'ACCOUNT' in df.columns:
+            df['ACCOUNT'] = df['ACCOUNT'].astype(str)
 
-        if 'dlvrydt' not in df.columns:
-            messages.error(request, "File không có cột 'dlvrydt'. Vui lòng kiểm tra lại file Excel.")
+        if 'CDATE' not in df.columns:
+            messages.error(request, "File không có cột 'CDATE'. Vui lòng kiểm tra lại file Excel.")
             return redirect('phat_hanh_the_report')
 
-        df['dlvrydt_datetime'] = pd.to_datetime(df['dlvrydt'], format='%d/%m/%Y', errors='coerce').dt.normalize()
+        df['cdate_datetime'] = pd.to_datetime(df['CDATE'].astype(str).str[:10], format='%d/%m/%Y', errors='coerce').dt.normalize()
 
         start_date = pd.to_datetime(start_date_str)
         end_date = pd.to_datetime(end_date_str)
 
-        mask = (df['dlvrydt_datetime'] >= start_date) & (df['dlvrydt_datetime'] <= end_date)
+        mask = (df['cdate_datetime'] >= start_date) & (df['cdate_datetime'] <= end_date)
         filtered_df = df.loc[mask].copy()
 
         if filtered_df.empty:
@@ -463,11 +461,11 @@ def process_phat_hanh_the_for_print(request):
         pgd_user_map = pht_config.get('pgd_user_map', {})
         user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
 
-        if 'dlvryusrid' not in filtered_df.columns:
-            messages.error(request, "File không có cột 'dlvryusrid'. Vui lòng kiểm tra lại file Excel.")
+        if 'CUSER' not in filtered_df.columns:
+            messages.error(request, "File không có cột 'CUSER'. Vui lòng kiểm tra lại file Excel.")
             return redirect('phat_hanh_the_report')
 
-        filtered_df['PGD'] = filtered_df['dlvryusrid'].map(user_to_pgd_map)
+        filtered_df['PGD'] = filtered_df['CUSER'].map(user_to_pgd_map)
         final_df = filtered_df.dropna(subset=['PGD'])
 
         if final_df.empty:
