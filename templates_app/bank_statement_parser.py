@@ -466,13 +466,23 @@ class BankStatementParser:
                 beneficiary_name = sender_name
                 return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
+        # Pattern 2.6: BankName:account:content (dấu hai chấm, VD: Vietcombank:1028442818:NGUYEN TRIET DAM chuyen khoan)
+        pattern_colon = re.search(r'([A-Za-z]{3,20}):([A-Za-z0-9]{4,25}):(.*)', rem, re.IGNORECASE)
+        if pattern_colon:
+            raw_bank = pattern_colon.group(1).strip()
+            acct = pattern_colon.group(2).strip()
+            bank = self.get_bank_name_from_code(raw_bank)
+            if not bank or bank == raw_bank:
+                bank = raw_bank.capitalize()
+            return {'bank_name': bank, 'account_number': acct, 'beneficiary_name': ''}
+
         # Pattern 3: Ngân hàng khác với format chuẩn
         # Format 1: BANK_CODE;số_tài_khoản;nội_dung (VD: STB;070055505932;ck, Vietinbank;102006240267;...)
         # Format 2: mã-BANK_CODE;số_tài_khoản;nội_dung (VD: 337133-BIDV;78810000156950;nam, 907666-MB;871888999;...)
         # LƯU Ý: Pattern này có thể nhầm MCC là bank code, nên MCC pattern phải check trước!
         # Cho phép cả chữ hoa và thường: [A-Za-z]
-        # Số tài khoản từ 6-20 số để bắt được các TK ngắn của MB, KLB
-        pattern2_general = re.search(r'(?:(\d+)-)?([A-Za-z]{2,15});(\d{6,20});(.*)', rem, re.IGNORECASE)
+        # Số/mã TK từ 4-25 ký tự (chữ+số) để bắt được TK ngắn (OCB 5 số) và TK alphanumeric (VPB ZLP...)
+        pattern2_general = re.search(r'(?:(\d+)-)?([A-Za-z]{2,15});([A-Za-z0-9]{4,25});(.*)', rem, re.IGNORECASE)
         if pattern2_general:
             transaction_code = pattern2_general.group(1)  # Có thể None
             bank_code = pattern2_general.group(2)
@@ -610,6 +620,14 @@ class BankStatementParser:
             if any(k in rem_upper for k in _FEE_KEYWORDS) or 'ABIC' in rem_upper:
                 return "Phí dịch vụ"
 
+        # ── Thanh toán hóa đơn — ưu tiên trước tất cả check trcd ──────────────
+        # MA_GD: là mã thanh toán hóa đơn hệ thống Agribank (điện, nước, viễn thông...)
+        if 'MA_GD:' in rem.upper():
+            return "Thanh toán hóa đơn"
+        # MAP(số)(nội dung) — hệ thống thanh toán hóa đơn qua SMS/Mobile Banking
+        if re.search(r'MAP\(\d+\)', rem, re.IGNORECASE):
+            return "Thanh toán hóa đơn"
+
         # trcd C204: Rút tiền bằng thẻ 24/24 (ATM)
         # fndtpcd=101 → tiền mặt thực rút; fndtpcd=198 → phí dịch vụ kèm theo
         if trcd == 'C204' and amount < 0:
@@ -653,9 +671,9 @@ class BankStatementParser:
                 return "Hoàn phí rút tiền ATM cùng hệ thống"
             return "Hủy rút tiền ATM cùng hệ thống"
 
-        # ourref dạng [số]ITL[số] → chuyển khoản nội bộ Agribank qua hệ thống ITL (khác chi nhánh)
-        # Bao quát cả các giao dịch có thrref=OTT và các dạng thrref khác
-        if re.search(r'\d+ITL\d+', ourref, re.IGNORECASE):
+        # tomgntno hoặc ourref dạng [số]ITL[số] → nội bộ Agribank khác chi nhánh
+        _itl_field = str(row.get('tomgntno', '')).strip() or str(row.get('ourref', '')).strip()
+        if re.search(r'\d+ITL\d+', _itl_field, re.IGNORECASE):
             if amount > 0:
                 return "Nhận chuyển khoản nội bộ Agribank"
             else:
@@ -665,8 +683,8 @@ class BankStatementParser:
         # Tránh trường hợp bị nhầm thành chuyển khoản do husrid/lclbrnm Agribank
         # NGOẠI LỆ: rem chứa pattern liên ngân hàng rõ ràng → không dùng trcdnm
         _rem_is_interbank = bool(
-            re.search(r'[A-Za-z]{2,15};\d{6,20};', rem) or
-            re.search(r'[A-Za-z]+:\d{6,20}:', rem) or
+            re.search(r'[A-Za-z]{2,15};[A-Za-z0-9]{4,25};', rem) or
+            re.search(r'[A-Za-z]+:[A-Za-z0-9]{4,25}:', rem) or
             'VCB.' in rem or 'MBVCB' in rem or 'IBVCB' in rem
         )
         if amount < 0 and ('rút tiền' in trcdnm_lower or 'rut tien' in trcdnm_lower) and not _rem_is_interbank:
@@ -776,8 +794,8 @@ class BankStatementParser:
 
         # Chuyển khoản ngân hàng khác (STB, BIDV, TCB, VCB, Vietinbank, MB, KLB, etc.)
         # Pattern: [mã]-[BANK_CODE];số_tk;nội_dung hoặc [BANK_CODE];số_tk;nội_dung
-        # Cho phép cả chữ hoa và thường, số TK từ 6-20 số
-        if re.search(r'(?:\d+-)?[A-Za-z]{2,15};\d{6,20};', rem, re.IGNORECASE):
+        # TK từ 4-25 ký tự (chữ+số): bắt TK ngắn (OCB 5 số) và TK alphanumeric (VPB ZLP...)
+        if re.search(r'(?:\d+-)?[A-Za-z]{2,15};[A-Za-z0-9]{4,25};', rem, re.IGNORECASE):
             if amount > 0:
                 return "Nhận chuyển khoản liên ngân hàng"
             else:
@@ -813,8 +831,6 @@ class BankStatementParser:
         # Rút tiền tổng quát
         if 'Withdrawal BankNet ATM' in trcdnm or 'withdrawal banknet atm' in trcdnm_lower:
             return "Rút tiền ATM khác hệ thống"
-        if 'rút tiền' in trcdnm_lower and ('từ thẻ rút tiền mặt' in trcdnm_lower or 'rut tien mat' in trcdnm_lower):
-            return "Rút tiền mặt cùng hệ thống"
         # Rút tiền ATM với mã 7202ATM trong nội dung
         if '7202ATM' in rem:
             return "Rút tiền ATM"
@@ -851,27 +867,14 @@ class BankStatementParser:
         # Nạp tiền điện thoại - đổi thành Thanh toán dịch vụ
         if re.search(r'\d{9,11}@\d{9,11}', rem):
             return "Thanh toán dịch vụ"
-        # MA_GD: (Mã giao dịch) - Thanh toán dịch vụ
-        if 'MA_GD:' in rem.upper() or 'ma_gd:' in rem_lower:
-            return "Thanh toán dịch vụ"
         # C/C Transfer TO - Thanh toán dịch vụ
         if 'C/C Transfer TO' in rem or 'c/c transfer to' in rem_lower:
-            return "Thanh toán dịch vụ"
-        # MAP(số giao dịch) - Thanh toán dịch vụ
-        if re.search(r'MAP\(\d+\)', rem, re.IGNORECASE):
-            return "Thanh toán dịch vụ"
-        # Thanh toán tiền điện (case-insensitive) - đổi thành "Thanh toán dịch vụ"
-        if 'ma_gd' in rem_lower and 'pb' in rem_lower:
             return "Thanh toán dịch vụ"
         if 'VNPT' in rem.upper():
             return "Thanh toán dịch vụ (VNPT)"
 
-        # Lãi tiền gửi - Kiểm tra không có nội dung và trcdnm là "Lãi tiền gửi"
-        if (not rem or rem.strip() == '' or rem == 'nan') and 'lãi tiền gửi' in trcdnm_lower.strip():
-            return "Trả lãi tiền gửi hằng tháng"
-
         # Phí và lãi (tổng quát)
-        if 'PHI THU THEO LO' in trcdnm.upper() or 'PHI' in rem.upper():
+        if 'PHI THU THEO LO' in trcdnm.upper():
             return "Phí dịch vụ"
         if 'LAI TIEN GUI' in trcdnm.upper() or ('LAI' in rem.upper() and 'GUI' in rem.upper()):
             return "Trả lãi tiền gửi"
@@ -924,9 +927,46 @@ class BankStatementParser:
 
         return None
 
-    def process(self):
+    @staticmethod
+    def parse_itl_file(file_path):
+        """
+        Parse file FXIR64 (Lấy số liệu ITL - Search Customer Number).
+        Trả về dict {trref: ordcust} để tra cứu tên người chuyển cho giao dịch ITL.
+
+        Args:
+            file_path: Đường dẫn đến file FXIR64 (.xlsx / .xls / .txt tab-separated)
+
+        Returns:
+            dict: {mã_ITL: tên_người_chuyển}  VD: {'7202ITL161013516': 'Lê Thị Hơn'}
+        """
+        try:
+            ext = str(file_path).lower()
+            if ext.endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(file_path, dtype=str)
+            else:
+                # Tab-separated text export từ hệ thống Agribank
+                df = pd.read_csv(file_path, sep='\t', dtype=str, encoding='utf-8-sig')
+
+            df.columns = [str(c).strip().lower() for c in df.columns]
+
+            mapping = {}
+            for _, row in df.iterrows():
+                trref = str(row.get('trref', '')).strip()
+                ordcust = str(row.get('ordcust', '')).strip()
+                if trref and ordcust and ordcust.lower() != 'nan':
+                    mapping[trref] = ordcust
+            return mapping
+        except Exception:
+            return {}
+
+    def process(self, itl_mapping=None):
         """
         Xử lý toàn bộ file và trả về dữ liệu đã parse
+
+        Args:
+            itl_mapping: dict {trref: ordcust} từ file FXIR64 (tùy chọn).
+                         Nếu cung cấp, tên người chuyển của giao dịch ITL sẽ được
+                         lấy từ cột ordcust thay vì parse từ rem.
 
         Returns:
             list: Danh sách dict chứa thông tin các giao dịch đã parse
@@ -972,6 +1012,7 @@ class BankStatementParser:
             lclbrnm  = str(row.get('lclbrnm', ''))
             thrref   = str(row.get('thrref', '')).strip()
             husrid   = str(row.get('husrid', '')).strip()
+            ourref   = str(row.get('ourref', '')).strip()
 
             # Parse thông tin người thụ hưởng
             beneficiary_info = self.parse_beneficiary_info(
@@ -1006,9 +1047,31 @@ class BankStatementParser:
                 'Phí rút tiền ATM khác hệ thống', 'Phí chuyển khoản ATM',
                 'Phí rút tiền mặt cùng hệ thống',
                 'Hoàn phí rút tiền ATM cùng hệ thống',
+                'Trả lãi tiền gửi hàng tháng', 'Trả lãi tiền gửi hằng tháng', 'Trả lãi tiền gửi',
+                'Mở tài khoản', 'Nạp tiền điện thoại',
+                'Rút tiền mặt', 'Nộp tiền tại quầy',
+                'Thanh toán tiền điện', 'Thanh toán hóa đơn',
             }
             if transaction_type in _FEE_TYPES and not beneficiary_info['bank_name']:
                 beneficiary_info['bank_name'] = 'Agribank'
+
+            # Giao dịch ITL (nội bộ Agribank khác chi nhánh) → bank=Agribank, account=mã ITL
+            # Kiểm tra tomgntno trước, fallback sang ourref
+            _itl_val = str(row.get('tomgntno', '')).strip()
+            if not re.search(r'\d+ITL\d+', _itl_val, re.IGNORECASE):
+                _itl_val = str(row.get('ourref', '')).strip()
+            if re.search(r'\d+ITL\d+', _itl_val, re.IGNORECASE):
+                beneficiary_info['bank_name'] = 'Agribank'
+                beneficiary_info['account_number'] = _itl_val
+                # Lấy tên người chuyển từ file FXIR64 nếu có (chỉ cho GD nhận tiền)
+                if itl_mapping and acctccyamt > 0:
+                    sender_name = itl_mapping.get(_itl_val, '')
+                    if sender_name:
+                        beneficiary_info['beneficiary_name'] = sender_name
+
+            # Giao dịch tiền ra (< 0): tên trong rem là chủ TK người gửi, không phải người thụ hưởng
+            if acctccyamt < 0:
+                beneficiary_info['beneficiary_name'] = ''
 
             # Tạo dict cho giao dịch
             transaction = {
