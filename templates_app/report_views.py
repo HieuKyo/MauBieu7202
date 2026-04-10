@@ -784,11 +784,29 @@ def atm_transaction_report(request):
     selected_period = request.GET.get('period', '')
     selected_atm = request.GET.get('atm', '')
     selected_branch = request.GET.get('branch', '')
-    period_type = request.GET.get('period_type', 'month')  # month hoặc 6months
+    period_type = request.GET.get('period_type', 'month')  # month, 6months, quarter, year
     tx_type_filter = request.GET.get('tx_type', '')  # deposit, withdrawal, transfer, other
 
     # Lấy danh sách các kỳ báo cáo có sẵn
     available_periods = ATMReportUpload.objects.all().order_by('-report_period')
+
+    # Tổng hợp danh sách năm và quý từ dữ liệu có sẵn
+    from django.db.models.functions import TruncYear, TruncQuarter
+    available_years = (
+        ATMReportUpload.objects.annotate(nam=TruncYear('report_period'))
+        .values('nam').distinct().order_by('-nam')
+    )
+    available_quarters = (
+        ATMReportUpload.objects.annotate(quy=TruncQuarter('report_period'))
+        .values('quy').distinct().order_by('-quy')
+    )
+    available_quarters_list = []
+    for row in available_quarters:
+        m = row['quy'].month
+        available_quarters_list.append({
+            'value': row['quy'].strftime('%Y-%m-%d'),
+            'label': f"Q{(m-1)//3+1}/{row['quy'].year}",
+        })
 
     # Lấy danh sách ATM và chi nhánh để làm filter
     all_atms = ATMTransactionReport.objects.values('atm_no').distinct().order_by('atm_no')
@@ -803,12 +821,28 @@ def atm_transaction_report(request):
             period_date = datetime.strptime(selected_period, '%Y-%m-%d').date()
 
             if period_type == '6months':
-                # Lấy 6 tháng gần nhất tính từ tháng được chọn
                 start_date = period_date - relativedelta(months=5)
                 queryset = queryset.filter(
                     report_period__gte=start_date,
                     report_period__lte=period_date
                 )
+            elif period_type == 'quarter':
+                # Lấy toàn bộ quý chứa tháng được chọn
+                q_month = ((period_date.month - 1) // 3) * 3 + 1
+                import datetime as dt
+                q_start = period_date.replace(month=q_month, day=1)
+                q_end_month = q_month + 2
+                q_end_year = period_date.year + (1 if q_end_month > 12 else 0)
+                q_end_month = q_end_month if q_end_month <= 12 else q_end_month - 12
+                import calendar
+                q_end = dt.date(q_end_year, q_end_month, calendar.monthrange(q_end_year, q_end_month)[1])
+                queryset = queryset.filter(
+                    report_period__gte=q_start,
+                    report_period__lte=q_end
+                )
+            elif period_type == 'year':
+                # Lấy toàn bộ năm của tháng được chọn
+                queryset = queryset.filter(report_period__year=period_date.year)
             else:
                 # Chỉ lấy tháng được chọn
                 queryset = queryset.filter(report_period=period_date)
@@ -983,6 +1017,8 @@ def atm_transaction_report(request):
 
     context = {
         'available_periods': available_periods,
+        'available_years': available_years,
+        'available_quarters': available_quarters_list,
         'all_atms': all_atms,
         'all_branches': all_branches,
         'selected_period': selected_period,
@@ -1148,11 +1184,69 @@ def _find_col(df_cols, candidates):
 @login_required
 def dong_mo_tai_khoan_report_view(request):
     """Giao diện báo cáo Đóng/Mở tài khoản"""
+    from .models import DongMoTaiKhoanHistory
+    from django.db.models import Sum
+    from django.db.models.functions import TruncYear, TruncQuarter, TruncMonth
+
     # Xóa session cũ nếu sai format
     old = request.session.get('dmtk_result')
     if old and 'has_dong_tk_file' not in old:
         del request.session['dmtk_result']
-    return render(request, 'templates_app/reports/dong_mo_tai_khoan.html')
+
+    # Lịch sử theo tháng
+    history_monthly = list(
+        DongMoTaiKhoanHistory.objects.order_by('-report_month').values(
+            'report_month', 'tong_mo', 'ca_nhan_count', 'to_chuc_count',
+            'the_mien_phi_count', 'hssv_count',
+            'dong_tk_count', 'dong_he_thong_count', 'dong_tai_quay_count'
+        )
+    )
+
+    # Tổng hợp theo quý
+    history_quarterly = list(
+        DongMoTaiKhoanHistory.objects
+        .annotate(quy=TruncQuarter('report_month'))
+        .values('quy')
+        .annotate(
+            tong_mo=Sum('tong_mo'),
+            ca_nhan_count=Sum('ca_nhan_count'),
+            to_chuc_count=Sum('to_chuc_count'),
+            the_mien_phi_count=Sum('the_mien_phi_count'),
+            hssv_count=Sum('hssv_count'),
+            dong_tk_count=Sum('dong_tk_count'),
+            dong_he_thong_count=Sum('dong_he_thong_count'),
+            dong_tai_quay_count=Sum('dong_tai_quay_count'),
+        )
+        .order_by('-quy')
+    )
+    # Tính số quý từ tháng đầu quý
+    for row in history_quarterly:
+        m = row['quy'].month
+        row['quy_label'] = f"Q{(m-1)//3+1}/{row['quy'].year}"
+
+    # Tổng hợp theo năm
+    history_yearly = list(
+        DongMoTaiKhoanHistory.objects
+        .annotate(nam=TruncYear('report_month'))
+        .values('nam')
+        .annotate(
+            tong_mo=Sum('tong_mo'),
+            ca_nhan_count=Sum('ca_nhan_count'),
+            to_chuc_count=Sum('to_chuc_count'),
+            the_mien_phi_count=Sum('the_mien_phi_count'),
+            hssv_count=Sum('hssv_count'),
+            dong_tk_count=Sum('dong_tk_count'),
+            dong_he_thong_count=Sum('dong_he_thong_count'),
+            dong_tai_quay_count=Sum('dong_tai_quay_count'),
+        )
+        .order_by('-nam')
+    )
+
+    return render(request, 'templates_app/reports/dong_mo_tai_khoan.html', {
+        'history_monthly': history_monthly,
+        'history_quarterly': history_quarterly,
+        'history_yearly': history_yearly,
+    })
 
 
 @login_required
@@ -1479,6 +1573,31 @@ def process_dong_mo_tai_khoan_report(request):
         }
 
         request.session['dmtk_result'] = _to_json_safe(result)
+
+        # Lưu lịch sử nếu có chọn kỳ báo cáo
+        report_month_str = request.POST.get('report_month', '').strip()
+        if report_month_str:
+            try:
+                from .models import DongMoTaiKhoanHistory
+                import datetime
+                report_month = datetime.date.fromisoformat(report_month_str).replace(day=1)
+                DongMoTaiKhoanHistory.objects.update_or_create(
+                    report_month=report_month,
+                    defaults={
+                        'tong_mo': result['tong_mo'],
+                        'ca_nhan_count': result['ca_nhan_count'],
+                        'to_chuc_count': result['to_chuc_count'],
+                        'the_mien_phi_count': result['the_mien_phi_count'],
+                        'hssv_count': result['hssv_count'],
+                        'dong_tk_count': result['dong_tk_count'],
+                        'dong_he_thong_count': result['dong_he_thong_count'],
+                        'dong_tai_quay_count': result['dong_tai_quay_count'],
+                    }
+                )
+                messages.success(request, f"Đã lưu thống kê kỳ {report_month.strftime('%m/%Y')} vào lịch sử.")
+            except Exception as e:
+                messages.warning(request, f"Không thể lưu lịch sử: {e}")
+
         return redirect('dong_mo_tai_khoan_report')
 
     except Exception as e:

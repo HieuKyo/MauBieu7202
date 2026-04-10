@@ -2858,6 +2858,32 @@ class ReportConfiguration(models.Model):
         return self.get_report_type_display()
 
 
+# ===== DONG/MO TAI KHOAN HISTORY =====
+
+class DongMoTaiKhoanHistory(models.Model):
+    """Lưu lịch sử thống kê Đóng/Mở tài khoản theo từng kỳ"""
+    report_month = models.DateField(verbose_name="Kỳ báo cáo")  # Ngày đầu tháng
+    tong_mo = models.IntegerField(default=0, verbose_name="Tổng mở TK")
+    ca_nhan_count = models.IntegerField(default=0, verbose_name="Cá nhân")
+    to_chuc_count = models.IntegerField(default=0, verbose_name="Tổ chức")
+    the_mien_phi_count = models.IntegerField(default=0, verbose_name="Thẻ miễn phí")
+    hssv_count = models.IntegerField(default=0, verbose_name="HSSV")
+    dong_tk_count = models.IntegerField(default=0, verbose_name="Đóng TK")
+    dong_he_thong_count = models.IntegerField(default=0, verbose_name="Hệ thống tự đóng")
+    dong_tai_quay_count = models.IntegerField(default=0, verbose_name="Đóng tại quầy")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Lịch sử Đóng/Mở tài khoản"
+        verbose_name_plural = "Lịch sử Đóng/Mở tài khoản"
+        ordering = ['-report_month']
+        unique_together = ['report_month']
+
+    def __str__(self):
+        return f"ĐMTK {self.report_month.strftime('%m/%Y')}"
+
+
 # ===== ATM TRANSACTION REPORT MODELS =====
 
 class ATMReportUpload(models.Model):

@@ -77,10 +77,22 @@
                         <div class="form-text">Cần cột <code>ISSUE_TYPE</code>, <code>HASFEE_DES</code>, <code>ACCOUNT</code></div>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-calculator me-1"></i> Tạo báo cáo
-                    </button>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-calendar-month me-1 text-primary"></i>
+                            Kỳ báo cáo
+                            <span class="badge bg-secondary fw-normal">Tùy chọn – lưu lịch sử</span>
+                        </label>
+                        <input type="month" name="report_month" class="form-control"
+                               value="{{ request.POST.report_month }}">
+                        <div class="form-text">Chọn tháng để lưu vào thống kê lịch sử</div>
+                    </div>
+                    <div class="col-md-8 d-flex align-items-end">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-calculator me-1"></i> Tạo báo cáo
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -520,6 +532,156 @@
 
     {% endif %}
     {% endwith %}
+
+    <!-- ===== THỐNG KÊ LỊCH SỬ ===== -->
+    {% if history_monthly or history_quarterly or history_yearly %}
+    <div class="card shadow-sm border-0 mt-4">
+        <div class="card-header fw-semibold" style="background:linear-gradient(90deg,#1a6e3c,#145c32);color:#fff;">
+            <i class="bi bi-graph-up me-2"></i>Thống kê lịch sử Đóng/Mở tài khoản
+        </div>
+        <div class="card-body">
+            <ul class="nav nav-tabs mb-3" id="historyTab">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-thang">
+                        <i class="bi bi-calendar-month me-1"></i>Theo tháng
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-quy">
+                        <i class="bi bi-calendar3-range me-1"></i>Theo quý
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-nam">
+                        <i class="bi bi-calendar-year me-1"></i>Theo năm
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Tab tháng -->
+                <div class="tab-pane fade show active" id="tab-thang">
+                {% if history_monthly %}
+                <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Kỳ</th>
+                            <th>Mở TK</th>
+                            <th>Cá nhân</th>
+                            <th>Tổ chức</th>
+                            <th>Thẻ MP</th>
+                            <th>HSSV</th>
+                            <th>Đóng TK</th>
+                            <th>HT tự đóng</th>
+                            <th>Đóng tại quầy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in history_monthly %}
+                        <tr>
+                            <td class="fw-semibold">{{ row.report_month|date:"m/Y" }}</td>
+                            <td class="text-secondary fw-bold">{{ row.tong_mo }}</td>
+                            <td class="text-primary">{{ row.ca_nhan_count }}</td>
+                            <td class="text-info">{{ row.to_chuc_count }}</td>
+                            <td class="text-success">{{ row.the_mien_phi_count }}</td>
+                            <td>{{ row.hssv_count }}</td>
+                            <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
+                            <td class="text-warning">{{ row.dong_he_thong_count }}</td>
+                            <td>{{ row.dong_tai_quay_count }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Chưa có dữ liệu lịch sử theo tháng.</p>
+                {% endif %}
+                </div>
+
+                <!-- Tab quý -->
+                <div class="tab-pane fade" id="tab-quy">
+                {% if history_quarterly %}
+                <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Quý</th>
+                            <th>Mở TK</th>
+                            <th>Cá nhân</th>
+                            <th>Tổ chức</th>
+                            <th>Thẻ MP</th>
+                            <th>HSSV</th>
+                            <th>Đóng TK</th>
+                            <th>HT tự đóng</th>
+                            <th>Đóng tại quầy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in history_quarterly %}
+                        <tr>
+                            <td class="fw-semibold">{{ row.quy_label }}</td>
+                            <td class="text-secondary fw-bold">{{ row.tong_mo }}</td>
+                            <td class="text-primary">{{ row.ca_nhan_count }}</td>
+                            <td class="text-info">{{ row.to_chuc_count }}</td>
+                            <td class="text-success">{{ row.the_mien_phi_count }}</td>
+                            <td>{{ row.hssv_count }}</td>
+                            <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
+                            <td class="text-warning">{{ row.dong_he_thong_count }}</td>
+                            <td>{{ row.dong_tai_quay_count }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Chưa có dữ liệu lịch sử theo quý.</p>
+                {% endif %}
+                </div>
+
+                <!-- Tab năm -->
+                <div class="tab-pane fade" id="tab-nam">
+                {% if history_yearly %}
+                <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Năm</th>
+                            <th>Mở TK</th>
+                            <th>Cá nhân</th>
+                            <th>Tổ chức</th>
+                            <th>Thẻ MP</th>
+                            <th>HSSV</th>
+                            <th>Đóng TK</th>
+                            <th>HT tự đóng</th>
+                            <th>Đóng tại quầy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in history_yearly %}
+                        <tr>
+                            <td class="fw-semibold">{{ row.nam|date:"Y" }}</td>
+                            <td class="text-secondary fw-bold">{{ row.tong_mo }}</td>
+                            <td class="text-primary">{{ row.ca_nhan_count }}</td>
+                            <td class="text-info">{{ row.to_chuc_count }}</td>
+                            <td class="text-success">{{ row.the_mien_phi_count }}</td>
+                            <td>{{ row.hssv_count }}</td>
+                            <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
+                            <td class="text-warning">{{ row.dong_he_thong_count }}</td>
+                            <td>{{ row.dong_tai_quay_count }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Chưa có dữ liệu lịch sử theo năm.</p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
 </div>
 
