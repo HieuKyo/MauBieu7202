@@ -215,194 +215,36 @@ def phat_hanh_the_report_view(request):
 
 @login_required
 @require_http_methods(["POST"])
+@login_required
+@require_http_methods(["POST"])
 def process_phat_hanh_the_report(request):
-    """Xử lý báo cáo Phát hành thẻ"""
+    """Xử lý báo cáo Phát hành thẻ (ATM + Visa gộp chung)"""
     try:
-        # Lấy cấu hình từ database
-        try:
-            config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
-            pht_config = config_obj.config_data
-        except (ReportConfiguration.DoesNotExist, Exception):
-            # Cấu hình mặc định
-            pht_config = {
-                'pgd_user_map': {
-                    "PGD Phường 1": ["7202cthuclt", "7202CTHAOTLT"],
-                    "PGD Láng Tròn": ["7202canhsh", "7202CTHAOTN"],
-                    "Hội Sở": ["7202chieutt", "7202CSINHNT", "7202cnhitn", "7202CCHICA"]
-                }
-            }
-            messages.info(request, "Sử dụng cấu hình mặc định vì chưa có cấu hình trong database.")
+        combined_df, pgd_user_map, err = _collect_phat_hanh_the_data(request)
+        if err:
+            messages.warning(request, err)
+            return redirect('phat_hanh_the_report')
 
-        data_file = request.FILES.get('data_file')
         start_date_str = request.POST.get('start_date')
         end_date_str = request.POST.get('end_date')
 
-        if not all([data_file, start_date_str, end_date_str]):
-            messages.error(request, "Vui lòng cung cấp đủ file và khoảng thời gian.")
-            return redirect('phat_hanh_the_report')
-
-        df = pd.read_excel(data_file)
-
-        if 'ACCOUNT' in df.columns:
-            df['ACCOUNT'] = df['ACCOUNT'].astype(str)
-
-        # Kiểm tra cột CDATE tồn tại
-        if 'CDATE' not in df.columns:
-            messages.error(request, "File không có cột 'CDATE' (Ngày phát hành). Vui lòng kiểm tra lại file Excel.")
-            return redirect('phat_hanh_the_report')
-
-        # CDATE có dạng "dd/mm/yyyy HH:MM:SS", lấy 10 ký tự đầu
-        df['cdate_datetime'] = pd.to_datetime(df['CDATE'].astype(str).str[:10], format='%d/%m/%Y', errors='coerce').dt.normalize()
-
-        start_date = pd.to_datetime(start_date_str)
-        end_date = pd.to_datetime(end_date_str)
-
-        mask = (df['cdate_datetime'] >= start_date) & (df['cdate_datetime'] <= end_date)
-        filtered_df = df.loc[mask].copy()
-
-        if filtered_df.empty:
-            messages.warning(request, "Không có dữ liệu phát hành thẻ trong khoảng thời gian đã chọn.")
-            return redirect('phat_hanh_the_report')
-
-        pgd_user_map = pht_config.get('pgd_user_map', {})
-        user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
-
-        # Kiểm tra cột CUSER tồn tại
-        if 'CUSER' not in filtered_df.columns:
-            messages.error(request, "File không có cột 'CUSER' (GDV phát hành). Vui lòng kiểm tra lại file Excel.")
-            return redirect('phat_hanh_the_report')
-
-        filtered_df['PGD'] = filtered_df['CUSER'].map(user_to_pgd_map)
-        final_df = filtered_df.dropna(subset=['PGD'])
-
-        if final_df.empty:
-            messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình. Users trong file: {filtered_df['CUSER'].unique().tolist()}")
-            return redirect('phat_hanh_the_report')
-
-        # Tạo Excel với nhiều sheet
-        sheets_created = 0
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            for pgd_name in pgd_user_map.keys():
-                pgd_df = final_df[final_df['PGD'] == pgd_name]
-
-                if not pgd_df.empty:
-                    pgd_df_to_output = pgd_df.copy()
-                    pgd_df_to_output['cdate_str'] = pgd_df_to_output['cdate_datetime'].dt.strftime('%d/%m/%Y')
-
-                    # Kiểm tra các cột cần thiết
-                    required_cols = ['CUSTVIENAME', 'ACCOUNT', 'CARDTYPE', 'CUSER']
-                    missing_cols = [col for col in required_cols if col not in pgd_df_to_output.columns]
-                    if missing_cols:
-                        continue
-
-                    output_cols = ['CUSTVIENAME', 'ACCOUNT', 'CARDTYPE', 'CUSER', 'cdate_str']
-                    pgd_df_final = pgd_df_to_output[output_cols].rename(columns={
-                        'CUSTVIENAME': 'Họ tên',
-                        'ACCOUNT': 'Số tài khoản',
-                        'CARDTYPE': 'Loại thẻ',
-                        'CUSER': 'GDV phát hành',
-                        'cdate_str': 'Ngày phát hành'
-                    })
-
-                    sheets_created += 1
-                    pgd_df_final.to_excel(writer, sheet_name=pgd_name, index=False, startrow=3)
-
-                    worksheet = writer.sheets[pgd_name]
-
-                    title = f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}"
-                    date_range_str = f"Từ ngày {pd.to_datetime(start_date_str).strftime('%d/%m/%Y')} đến ngày {pd.to_datetime(end_date_str).strftime('%d/%m/%Y')}"
-
-                    worksheet['A1'] = title
-                    worksheet.merge_cells('A1:E1')
-                    worksheet['A1'].font = Font(bold=True, size=14)
-                    worksheet['A1'].alignment = Alignment(horizontal='center')
-
-                    worksheet['A2'] = date_range_str
-                    worksheet.merge_cells('A2:E2')
-                    worksheet['A2'].font = Font(italic=True, size=11)
-                    worksheet['A2'].alignment = Alignment(horizontal='center')
-
-                    thin_border = Border(
-                        left=Side(style='thin'),
-                        right=Side(style='thin'),
-                        top=Side(style='thin'),
-                        bottom=Side(style='thin')
-                    )
-
-                    highlight_fill = PatternFill(
-                        start_color="FFFFE0",
-                        end_color="FFFFE0",
-                        fill_type="solid"
-                    )
-
-                    start_data_row = 5
-                    end_data_row = start_data_row + len(pgd_df_final) - 1
-
-                    for row_idx in range(start_data_row, end_data_row + 1):
-                        loai_the_cell = worksheet[f'C{row_idx}']
-                        apply_highlight = loai_the_cell.value != "PSuccess"
-
-                        for col_idx in range(1, len(pgd_df_final.columns) + 1):
-                            cell = worksheet.cell(row=row_idx, column=col_idx)
-                            cell.border = thin_border
-                            if apply_highlight:
-                                cell.fill = highlight_fill
-
-                    for cell in worksheet[4]:
-                        cell.border = thin_border
-
-                    for col_idx in range(1, len(pgd_df_final.columns) + 1):
-                        column_letter = get_column_letter(col_idx)
-                        max_length = 0
-                        for cell in worksheet[column_letter]:
-                            if cell.row < 4:
-                                continue
-                            try:
-                                if cell.value:
-                                    cell_length = len(str(cell.value))
-                                    if cell_length > max_length:
-                                        max_length = cell_length
-                            except:
-                                pass
-                        adjusted_width = min((max_length + 2), 60)
-                        worksheet.column_dimensions[column_letter].width = adjusted_width
-
-                    # Fit sheet on one page when printing
-                    worksheet.page_setup.fitToPage = True
-                    worksheet.page_setup.fitToWidth = 1
-                    worksheet.page_setup.fitToHeight = 0  # 0 = không giới hạn chiều cao, co dãn theo chiều rộng
-                    if worksheet.sheet_properties.pageSetUpPr is None:
-                        from openpyxl.worksheet.properties import PageSetupProperties
-                        worksheet.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
-                    else:
-                        worksheet.sheet_properties.pageSetUpPr.fitToPage = True
-
-        # Kiểm tra xem có sheet nào được tạo không
+        output, sheets_created = _build_phat_hanh_the_excel(
+            combined_df, pgd_user_map, start_date_str, end_date_str
+        )
         if sheets_created == 0:
-            messages.warning(request, "Không có dữ liệu nào để tạo báo cáo. Vui lòng kiểm tra lại file và cấu hình.")
+            messages.warning(request, "Không có dữ liệu nào để tạo báo cáo.")
             return redirect('phat_hanh_the_report')
 
-        # Lưu dữ liệu vào session để sử dụng cho print preview
-        pgd_data_for_session = {}
-        for pgd_name in pgd_user_map.keys():
-            pgd_df = final_df[final_df['PGD'] == pgd_name]
-            if not pgd_df.empty:
-                pgd_data_for_session[pgd_name] = len(pgd_df)
-
-        request.session['phat_hanh_the_data'] = {
-            'pgd_list': pgd_data_for_session,
-            'start_date': pd.to_datetime(start_date_str).strftime('%d/%m/%Y'),
-            'end_date': pd.to_datetime(end_date_str).strftime('%d/%m/%Y'),
-        }
+        _save_phat_hanh_the_session(request, combined_df, pgd_user_map, start_date_str, end_date_str)
 
         output.seek(0)
         response = HttpResponse(
             output.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = f'attachment; filename="BaoCao_PhatHanhThe_{start_date_str}_den_{end_date_str}.xlsx"'
-
+        response['Content-Disposition'] = (
+            f'attachment; filename="BaoCao_PhatHanhThe_{start_date_str}_den_{end_date_str}.xlsx"'
+        )
         return response
 
     except Exception as e:
@@ -414,83 +256,290 @@ def process_phat_hanh_the_report(request):
 @login_required
 @require_http_methods(["POST"])
 def process_phat_hanh_the_for_print(request):
-    """Xử lý báo cáo Phát hành thẻ và chuyển tới trang in preview"""
+    """Xử lý báo cáo Phát hành thẻ (ATM + Visa) và chuyển tới trang in"""
     try:
-        # Lấy cấu hình từ database
-        try:
-            config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
-            pht_config = config_obj.config_data
-        except (ReportConfiguration.DoesNotExist, Exception):
-            pht_config = {
-                'pgd_user_map': {
-                    "PGD Phường 1": ["7202cthuclt", "7202CTHAOTLT"],
-                    "PGD Láng Tròn": ["7202canhsh", "7202CTHAOTN"],
-                    "Hội Sở": ["7202chieutt", "7202CSINHNT", "7202cnhitn", "7202CCHICA"]
-                }
-            }
+        combined_df, pgd_user_map, err = _collect_phat_hanh_the_data(request)
+        if err:
+            messages.warning(request, err)
+            return redirect('phat_hanh_the_report')
 
-        data_file = request.FILES.get('data_file')
         start_date_str = request.POST.get('start_date')
         end_date_str = request.POST.get('end_date')
-
-        if not all([data_file, start_date_str, end_date_str]):
-            messages.error(request, "Vui lòng cung cấp đủ file và khoảng thời gian.")
-            return redirect('phat_hanh_the_report')
-
-        df = pd.read_excel(data_file)
-
-        if 'ACCOUNT' in df.columns:
-            df['ACCOUNT'] = df['ACCOUNT'].astype(str)
-
-        if 'CDATE' not in df.columns:
-            messages.error(request, "File không có cột 'CDATE'. Vui lòng kiểm tra lại file Excel.")
-            return redirect('phat_hanh_the_report')
-
-        df['cdate_datetime'] = pd.to_datetime(df['CDATE'].astype(str).str[:10], format='%d/%m/%Y', errors='coerce').dt.normalize()
-
-        start_date = pd.to_datetime(start_date_str)
-        end_date = pd.to_datetime(end_date_str)
-
-        mask = (df['cdate_datetime'] >= start_date) & (df['cdate_datetime'] <= end_date)
-        filtered_df = df.loc[mask].copy()
-
-        if filtered_df.empty:
-            messages.warning(request, "Không có dữ liệu phát hành thẻ trong khoảng thời gian đã chọn.")
-            return redirect('phat_hanh_the_report')
-
-        pgd_user_map = pht_config.get('pgd_user_map', {})
-        user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
-
-        if 'CUSER' not in filtered_df.columns:
-            messages.error(request, "File không có cột 'CUSER'. Vui lòng kiểm tra lại file Excel.")
-            return redirect('phat_hanh_the_report')
-
-        filtered_df['PGD'] = filtered_df['CUSER'].map(user_to_pgd_map)
-        final_df = filtered_df.dropna(subset=['PGD'])
-
-        if final_df.empty:
-            messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình.")
-            return redirect('phat_hanh_the_report')
-
-        # Lưu dữ liệu vào session
-        pgd_data_for_session = {}
-        for pgd_name in pgd_user_map.keys():
-            pgd_df = final_df[final_df['PGD'] == pgd_name]
-            if not pgd_df.empty:
-                pgd_data_for_session[pgd_name] = len(pgd_df)
-
-        request.session['phat_hanh_the_data'] = {
-            'pgd_list': pgd_data_for_session,
-            'start_date': pd.to_datetime(start_date_str).strftime('%d/%m/%Y'),
-            'end_date': pd.to_datetime(end_date_str).strftime('%d/%m/%Y'),
-        }
-
+        _save_phat_hanh_the_session(request, combined_df, pgd_user_map, start_date_str, end_date_str)
         return redirect('phat_hanh_the_print_preview')
 
     except Exception as e:
         traceback.print_exc()
         messages.error(request, f"Đã xảy ra lỗi: {e}")
         return redirect('phat_hanh_the_report')
+
+
+# ── Helpers dùng chung cho phát hành thẻ ──────────────────────────────────────
+
+def _get_atm_pgd_config():
+    """Cấu hình PGD cho thẻ ATM (user ID mới)"""
+    try:
+        config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
+        return config_obj.config_data.get('pgd_user_map', {})
+    except Exception:
+        return {
+            "PGD Phường 1": ["7202cthuclt", "7202CTHAOTLT"],
+            "PGD Láng Tròn": ["7202canhsh", "7202CTHAOTN"],
+            "Hội Sở": ["7202chieutt", "7202CSINHNT", "7202cnhitn", "7202CCHICA"],
+        }
+
+
+def _get_visa_pgd_config():
+    """Cấu hình PGD cho thẻ Visa (user ID cũ)"""
+    try:
+        config_obj = ReportConfiguration.objects.get(report_type='visa_card', is_active=True)
+        return config_obj.config_data.get('pgd_user_map', {})
+    except Exception:
+        return {
+            "PGD Phường 1": ["GRALTHUC", "GRATTHAO"],
+            "PGD Láng Tròn": ["GRANTHAO", "GRASHANH"],
+            "Hội Sở": ["GRATNNHI", "GRANSINH", "GRATHIEU", "GRACACHI"],
+        }
+
+
+def _read_atm_normalized(data_file, start_date_str, end_date_str, pgd_user_map):
+    """
+    Đọc file ATM (cấu trúc mới), lọc theo ngày và PGD.
+    Trả về DataFrame chuẩn hóa với cột:
+      Họ tên | Số tài khoản | Loại thẻ | GDV phát hành | Ngày phát hành | PGD
+    Hoặc None nếu không có dữ liệu / lỗi cột.
+    """
+    df = pd.read_excel(data_file)
+    df.columns = df.columns.str.strip()
+
+    for col in ['CDATE', 'CUSER', 'CUSTVIENAME', 'ACCOUNT', 'CARDTYPE']:
+        if col not in df.columns:
+            return None, f"File ATM không có cột '{col}'."
+
+    df['ACCOUNT'] = df['ACCOUNT'].astype(str)
+    df['_date'] = pd.to_datetime(df['CDATE'].astype(str).str[:10], format='%d/%m/%Y', errors='coerce').dt.normalize()
+
+    start_dt = pd.to_datetime(start_date_str)
+    end_dt   = pd.to_datetime(end_date_str)
+    df = df[(df['_date'] >= start_dt) & (df['_date'] <= end_dt)].copy()
+
+    user_map = {u: pgd for pgd, users in pgd_user_map.items() for u in users}
+    df['PGD'] = df['CUSER'].map(user_map)
+    df = df.dropna(subset=['PGD'])
+
+    if df.empty:
+        return None, None  # không lỗi, chỉ không có dữ liệu
+
+    result = pd.DataFrame({
+        'Họ tên':          df['CUSTVIENAME'].values,
+        'Số tài khoản':    df['ACCOUNT'].values,
+        'Loại thẻ':        df['CARDTYPE'].values,
+        'GDV phát hành':   df['CUSER'].values,
+        'Ngày phát hành':  df['_date'].dt.strftime('%d/%m/%Y').values,
+        'PGD':             df['PGD'].values,
+    })
+    return result, None
+
+
+def _read_visa_normalized(visa_file, start_date_str, end_date_str, pgd_user_map):
+    """
+    Đọc file Visa (cấu trúc cũ, có thể có header lặp), lọc theo ngày và PGD.
+    Trả về DataFrame chuẩn hóa cùng cột như _read_atm_normalized.
+    """
+    df = pd.read_excel(visa_file)
+    df.columns = df.columns.str.strip()
+
+    # Loại bỏ các dòng header trùng lặp
+    if 'custnm' in df.columns:
+        df = df[df['custnm'] != 'custnm'].copy()
+
+    for col in ['dlvrydt', 'dlvryusrid', 'custnm', 'cdtpcdnm', 'acctseq']:
+        if col not in df.columns:
+            return None, f"File Visa không có cột '{col}'."
+
+    df['acctseq'] = df['acctseq'].astype(str)
+    df['_date'] = pd.to_datetime(df['dlvrydt'], format='%d/%m/%Y', errors='coerce').dt.normalize()
+
+    start_dt = pd.to_datetime(start_date_str)
+    end_dt   = pd.to_datetime(end_date_str)
+    df = df[(df['_date'] >= start_dt) & (df['_date'] <= end_dt)].copy()
+
+    user_map = {u: pgd for pgd, users in pgd_user_map.items() for u in users}
+    df['PGD'] = df['dlvryusrid'].map(user_map)
+    df = df.dropna(subset=['PGD'])
+
+    if df.empty:
+        return None, None
+
+    result = pd.DataFrame({
+        'Họ tên':          df['custnm'].values,
+        'Số tài khoản':    df['acctseq'].values,
+        'Loại thẻ':        df['cdtpcdnm'].values,
+        'GDV phát hành':   df['dlvryusrid'].values,
+        'Ngày phát hành':  df['_date'].dt.strftime('%d/%m/%Y').values,
+        'PGD':             df['PGD'].values,
+    })
+    return result, None
+
+
+def _collect_phat_hanh_the_data(request):
+    """
+    Đọc file ATM (bắt buộc) và file Visa (tùy chọn) từ request,
+    gộp lại thành 1 DataFrame chuẩn hóa.
+    Trả về (combined_df, pgd_user_map, error_msg).
+    """
+    data_file    = request.FILES.get('data_file')
+    visa_file    = request.FILES.get('visa_file')
+    start_date_str = request.POST.get('start_date', '')
+    end_date_str   = request.POST.get('end_date', '')
+
+    if not start_date_str or not end_date_str:
+        return None, None, "Vui lòng cung cấp khoảng thời gian."
+    if not data_file and not visa_file:
+        return None, None, "Vui lòng tải lên ít nhất một file dữ liệu."
+
+    atm_pgd_map  = _get_atm_pgd_config()
+    visa_pgd_map = _get_visa_pgd_config()
+
+    # PGD master list — lấy từ ATM config (thứ tự sheet)
+    pgd_user_map = atm_pgd_map
+
+    frames = []
+    warnings = []
+
+    if data_file:
+        atm_df, err = _read_atm_normalized(data_file, start_date_str, end_date_str, atm_pgd_map)
+        if err:
+            warnings.append(f"File ATM: {err}")
+        elif atm_df is not None:
+            frames.append(atm_df)
+
+    if visa_file:
+        visa_df, err = _read_visa_normalized(visa_file, start_date_str, end_date_str, visa_pgd_map)
+        if err:
+            warnings.append(f"File Visa: {err}")
+        elif visa_df is not None:
+            frames.append(visa_df)
+
+    if warnings:
+        # Chỉ là cảnh báo, không ngăn xử lý
+        pass
+
+    if not frames:
+        msg = "Không có dữ liệu trong khoảng thời gian đã chọn."
+        if warnings:
+            msg += " (" + "; ".join(warnings) + ")"
+        return None, None, msg
+
+    combined_df = pd.concat(frames, ignore_index=True)
+    return combined_df, pgd_user_map, "; ".join(warnings) if warnings else None
+
+
+def _build_phat_hanh_the_excel(combined_df, pgd_user_map, start_date_str, end_date_str):
+    """Tạo Excel nhiều sheet từ DataFrame đã chuẩn hóa"""
+    output = io.BytesIO()
+    sheets_created = 0
+
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    highlight_fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        for pgd_name in pgd_user_map.keys():
+            pgd_df = combined_df[combined_df['PGD'] == pgd_name]
+            if pgd_df.empty:
+                continue
+
+            output_cols = ['Họ tên', 'Số tài khoản', 'Loại thẻ', 'GDV phát hành', 'Ngày phát hành']
+            pgd_df_final = (
+                pgd_df[output_cols]
+                .assign(_sort_date=pd.to_datetime(pgd_df['Ngày phát hành'], format='%d/%m/%Y', errors='coerce'))
+                .sort_values('_sort_date')
+                .drop(columns=['_sort_date'])
+                .reset_index(drop=True)
+            )
+
+            sheets_created += 1
+            pgd_df_final.to_excel(writer, sheet_name=pgd_name, index=False, startrow=3)
+            ws = writer.sheets[pgd_name]
+
+            title = f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}"
+            date_range_str = (
+                f"Từ ngày {pd.to_datetime(start_date_str).strftime('%d/%m/%Y')} "
+                f"đến ngày {pd.to_datetime(end_date_str).strftime('%d/%m/%Y')}"
+            )
+
+            ws['A1'] = title
+            ws.merge_cells('A1:E1')
+            ws['A1'].font = Font(bold=True, size=14)
+            ws['A1'].alignment = Alignment(horizontal='center')
+
+            ws['A2'] = date_range_str
+            ws.merge_cells('A2:E2')
+            ws['A2'].font = Font(italic=True, size=11)
+            ws['A2'].alignment = Alignment(horizontal='center')
+
+            # Border + highlight cho dữ liệu
+            for row_idx in range(5, 5 + len(pgd_df_final)):
+                loai_the = ws[f'C{row_idx}'].value or ''
+                apply_highlight = loai_the not in ('PSuccess', '(486283)-Visa Gold Debit')
+                for col_idx in range(1, 6):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    cell.border = thin_border
+                    if apply_highlight:
+                        cell.fill = highlight_fill
+
+            for cell in ws[4]:
+                cell.border = thin_border
+
+            # Auto-fit cột
+            for col_idx in range(1, 6):
+                col_letter = get_column_letter(col_idx)
+                max_len = max(
+                    (len(str(c.value)) for c in ws[col_letter] if c.row >= 4 and c.value),
+                    default=10
+                )
+                ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
+
+            ws.page_setup.fitToPage = True
+            ws.page_setup.fitToWidth = 1
+            ws.page_setup.fitToHeight = 0
+            from openpyxl.worksheet.properties import PageSetupProperties
+            if ws.sheet_properties.pageSetUpPr is None:
+                ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+            else:
+                ws.sheet_properties.pageSetUpPr.fitToPage = True
+
+    return output, sheets_created
+
+
+def _save_phat_hanh_the_session(request, combined_df, pgd_user_map, start_date_str, end_date_str):
+    """Lưu thông tin PGD và số lượng thẻ vào session để dùng cho print preview"""
+    pgd_counts = {
+        pgd: len(combined_df[combined_df['PGD'] == pgd])
+        for pgd in pgd_user_map.keys()
+        if not combined_df[combined_df['PGD'] == pgd].empty
+    }
+    request.session['phat_hanh_the_data'] = {
+        'pgd_list': pgd_counts,
+        'start_date': pd.to_datetime(start_date_str).strftime('%d/%m/%Y'),
+        'end_date':   pd.to_datetime(end_date_str).strftime('%d/%m/%Y'),
+    }
+
+
+# Giữ lại stub để URL không bị lỗi (2 URL cũ vẫn trỏ vào đây)
+@login_required
+@require_http_methods(["POST"])
+def process_visa_card_report(request):
+    return redirect('phat_hanh_the_report')
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_visa_card_for_print(request):
+    return redirect('phat_hanh_the_report')
 
 
 @login_required

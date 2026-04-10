@@ -9,51 +9,91 @@
             <h2 class="text-center mb-3" style="color: var(--agri-red);">
                 <i class="bi bi-credit-card-2-front"></i> BÁO CÁO PHÁT HÀNH THẺ
             </h2>
-            <p class="text-center text-muted">Thống kê phát hành thẻ theo PGD trong khoảng thời gian</p>
+            <p class="text-center text-muted">Thống kê phát hành thẻ ATM và Visa theo PGD</p>
         </div>
     </div>
 
+    {% if messages %}
+    <div class="row justify-content-center mb-3">
+        <div class="col-md-10">
+            {% for msg in messages %}
+            <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-9">
             <div class="card shadow">
+                <div class="card-header fw-semibold text-white"
+                     style="background:linear-gradient(90deg,#AE1C3F,#8a1230);">
+                    <i class="bi bi-upload me-2"></i>Tải lên dữ liệu phát hành thẻ
+                </div>
                 <div class="card-body">
-                    <form method="post" action="{% url 'process_phat_hanh_the' %}" enctype="multipart/form-data">
+                    <form method="post" action="{% url 'process_phat_hanh_the' %}"
+                          enctype="multipart/form-data">
                         {% csrf_token %}
 
-                        <div class="mb-3">
-                            <label for="data_file" class="form-label">
-                                <i class="bi bi-file-earmark-excel"></i> File dữ liệu phát hành thẻ
-                            </label>
-                            <input type="file" class="form-control" id="data_file" name="data_file"
-                                   accept=".xlsx,.xls" required>
-                            <div class="form-text">Chọn file Excel chứa dữ liệu phát hành thẻ</div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="start_date" class="form-label">
+                        <!-- Khoảng thời gian -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
                                     <i class="bi bi-calendar"></i> Từ ngày
                                 </label>
-                                <input type="date" class="form-control" id="start_date" name="start_date" required>
+                                <input type="date" class="form-control" name="start_date" required>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="end_date" class="form-label">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
                                     <i class="bi bi-calendar"></i> Đến ngày
                                 </label>
-                                <input type="date" class="form-control" id="end_date" name="end_date" required>
+                                <input type="date" class="form-control" name="end_date" required>
                             </div>
                         </div>
 
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i>
-                            <strong>Lưu ý:</strong> File Excel cần có các cột: CUSTVIENAME, ACCOUNT, CARDTYPE, CUSER, CDATE
+                        <hr class="my-3">
+
+                        <!-- File ATM -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-file-earmark-excel text-primary me-1"></i>
+                                File thẻ ATM
+                                <span class="badge bg-secondary fw-normal ms-1">Tùy chọn</span>
+                            </label>
+                            <input type="file" class="form-control" name="data_file" accept=".xlsx,.xls">
+                            <div class="form-text">
+                                Cột cần có: <code>CUSTVIENAME, ACCOUNT, CARDTYPE, CUSER, CDATE</code>
+                            </div>
                         </div>
 
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" name="action" value="download">
+                        <!-- File Visa -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-credit-card text-info me-1"></i>
+                                File thẻ Visa
+                                <span class="badge bg-secondary fw-normal ms-1">Tùy chọn</span>
+                            </label>
+                            <input type="file" class="form-control" name="visa_file" accept=".xlsx,.xls">
+                            <div class="form-text">
+                                Cột cần có: <code>custnm, acctseq, cdtpcdnm, dlvryusrid, dlvrydt</code>
+                                — hỗ trợ file có header lặp lại ở giữa
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info py-2 small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Có thể tải 1 hoặc cả 2 file. Dữ liệu sẽ được <strong>gộp chung</strong>
+                            theo PGD vào một file Excel và một bộ nhãn bao thư.
+                        </div>
+
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="bi bi-file-earmark-excel"></i> Xử lý và tải Excel
                             </button>
-                            <button type="submit" class="btn btn-success btn-lg" name="action" value="print"
+                            <button type="submit" class="btn btn-success btn-lg"
                                     formaction="{% url 'process_phat_hanh_the_for_print' %}">
                                 <i class="bi bi-printer"></i> Xử lý và in nhãn bao thư
                             </button>
