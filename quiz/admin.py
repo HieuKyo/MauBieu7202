@@ -50,8 +50,16 @@ class QuestionAdmin(admin.ModelAdmin):
                 try:
                     df = pd.read_excel(file, header=None)
 
+                    # Lấy tất cả câu hỏi đã tồn tại trong kỳ thi (theo normalized text)
+                    existing_normalized = set(
+                        Question.objects.filter(quiz__exam=quiz.exam)
+                        .values_list('search_text_normalized', flat=True)
+                    )
+
                     questions_to_create = []
                     temp_choice_data = []
+                    skipped_duplicate = 0
+                    seen_in_file = set()
 
                     for index, row in df.iterrows():
                         question_text = row.get(1)
@@ -66,13 +74,21 @@ class QuestionAdmin(admin.ModelAdmin):
                             continue
 
                         text = str(question_text)
+                        normalized = unidecode(text.lower())
+
+                        # Bỏ qua nếu đã tồn tại trong kỳ thi hoặc trùng trong file
+                        if normalized in existing_normalized or normalized in seen_in_file:
+                            skipped_duplicate += 1
+                            continue
+
+                        seen_in_file.add(normalized)
                         question = Question(
                             quiz=quiz,
                             text=text,
                             order=order_int,
                             explanation=str(row.get(7, '')) if pd.notna(row.get(7, '')) else '',
                             search_acronym=_generate_acronym(text),
-                            search_text_normalized=unidecode(text.lower()),
+                            search_text_normalized=normalized,
                         )
                         questions_to_create.append(question)
 
@@ -97,17 +113,17 @@ class QuestionAdmin(admin.ModelAdmin):
                                     Choice(
                                         question=question,
                                         text=str(choice_text),
-                                        is_correct=(i == correct_index)
+                                        is_correct=(i == correct_index),
+                                        search_text_normalized=unidecode(str(choice_text).lower()),
                                     )
                                 )
 
                     Choice.objects.bulk_create(choices_to_create)
 
-                    self.message_user(
-                        request,
-                        f"Import thành công {len(created_questions)} câu hỏi vào đề thi '{quiz.title}'.",
-                        messages.SUCCESS
-                    )
+                    msg = f"Import thành công {len(created_questions)} câu hỏi vào đề thi '{quiz.title}'."
+                    if skipped_duplicate:
+                        msg += f" Đã bỏ qua {skipped_duplicate} câu hỏi trùng."
+                    self.message_user(request, msg, messages.SUCCESS)
                     return redirect("..")
 
                 except Exception as e:

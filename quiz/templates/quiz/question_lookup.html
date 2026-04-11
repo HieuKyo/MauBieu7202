@@ -27,6 +27,7 @@
         border-color: #AE1C3F;
         box-shadow: none;
     }
+
 </style>
 {% endblock %}
 
@@ -52,7 +53,7 @@
         <div class="card-body">
             <form method="POST" action="{% url 'question_lookup' exam_id=exam.id %}">
                 {% csrf_token %}
-                <div class="input-group mb-4">
+                <div class="input-group mb-3">
                     <span class="input-group-text bg-white border-end-0">
                         <i class="bi bi-search text-muted"></i>
                     </span>
@@ -61,7 +62,7 @@
                            name="query"
                            id="search-query-input"
                            value="{{ query }}"
-                           placeholder="Nhập từ viết tắt (tnqs...) hoặc nội dung câu hỏi..."
+                           placeholder="Nhập nội dung câu hỏi hoặc câu trả lời (có thể không dấu)..."
                            autofocus>
                     {% if query %}
                     <a href="{% url 'question_lookup' exam_id=exam.id %}"
@@ -135,7 +136,7 @@
                         <p class="mt-2 text-danger">
                             Không tìm thấy câu hỏi nào khớp với <strong>"{{ query }}"</strong>.
                         </p>
-                        <p class="text-muted small">Thử tìm bằng từ viết tắt (vd: "nq08") hoặc nội dung đầy đủ hơn.</p>
+                        <p class="text-muted small">Thử nhập nội dung đầy đủ hơn.</p>
                     </div>
                 {% endif %}
             {% else %}

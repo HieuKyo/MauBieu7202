@@ -67,6 +67,12 @@ class Choice(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices', verbose_name="Câu hỏi")
     text = models.TextField("Nội dung lựa chọn")
     is_correct = models.BooleanField("Là đáp án đúng", default=False)
+    search_text_normalized = models.TextField(
+        blank=True,
+        editable=False,
+        db_index=True,
+        verbose_name="Nội dung chuẩn hóa"
+    )
 
     class Meta:
         verbose_name = "Lựa chọn"
@@ -74,6 +80,10 @@ class Choice(models.Model):
 
     def __str__(self):
         return self.text[:80]
+
+    def save(self, *args, **kwargs):
+        self.search_text_normalized = unidecode(self.text.lower()) if self.text else ""
+        super().save(*args, **kwargs)
 
 
 def _generate_acronym(text):

@@ -159,8 +159,8 @@ def question_lookup(request, exam_id):
             search_term = unidecode(query.lower())
             questions = Question.objects.filter(
                 Q(quiz__exam_id=exam_id) & (
-                    Q(search_acronym__istartswith=search_term) |
-                    Q(search_text_normalized__icontains=search_term)
+                    Q(search_text_normalized__icontains=search_term) |
+                    Q(choices__search_text_normalized__icontains=search_term)
                 )
             ).prefetch_related('choices').distinct()
 
