@@ -157,6 +157,7 @@
                             <th>Username</th>
                             <th>Phòng ban</th>
                             <th>Chức vụ</th>
+                            <th>Chương trình</th>
                             <th>Mã CTS</th>
                             <th>CTS đến ngày</th>
                             <th>Trạng thái</th>
@@ -175,6 +176,15 @@
                             <td>{{ emp.user.username }}</td>
                             <td>{{ emp.get_department_display|default:"-" }}</td>
                             <td>{{ emp.get_position_display|default:"-" }}</td>
+                            <td>
+                                {% with apps=emp.app_permissions.all %}
+                                {% if apps %}
+                                    <span class="badge bg-info text-dark" title="{% for a in apps %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">{{ apps|length }} chương trình</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                                {% endwith %}
+                            </td>
                             <td>{{ emp.certificate_code|default:"-" }}</td>
                             <td>{{ emp.certificate_end_date|date:"d/m/Y"|default:"-" }}</td>
                             <td>
@@ -197,7 +207,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Không có nhân viên nào phù hợp với bộ lọc</td>
+                            <td colspan="9" class="text-center text-muted">Không có nhân viên nào phù hợp với bộ lọc</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -352,6 +362,47 @@
                                     <option value="TONG_HOP_VIEN">Tổng hợp viên</option>
                                 </select>
                             </div>
+                        </div>
+                    </div>
+
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-pc-display"></i> Thông tin hệ thống</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Tài khoản IPCAS</label>
+                                <input type="text" class="form-control" name="ipcas_user" placeholder="VD: nguyenvana">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Địa chỉ MAC</label>
+                                <input type="text" class="form-control" name="mac_address" placeholder="XX:XX:XX:XX:XX:XX">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Địa chỉ IP</label>
+                                <input type="text" class="form-control" name="ip_address" placeholder="192.168.1.100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="mt-4 mb-2 text-primary"><i class="bi bi-grid-3x3-gap"></i> Chương trình được cấp phép</h6>
+                    <div class="mb-3">
+                        <div class="row g-2" id="add-app-permissions">
+                            {% for app in app_programs %}
+                            <div class="col-md-4">
+                                <div class="form-check border rounded p-2">
+                                    <input class="form-check-input" type="checkbox" name="app_permissions" value="{{ app.id }}" id="add_app_{{ app.id }}">
+                                    <label class="form-check-label w-100" for="add_app_{{ app.id }}">
+                                        <strong>{{ app.name }}</strong>
+                                        {% if app.url %}<br><small class="text-muted"><i class="bi bi-link-45deg"></i> {{ app.url }}</small>{% endif %}
+                                    </label>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12"><small class="text-muted">Chưa có chương trình nào. Thêm tại <a href="/admin/templates_app/appprogram/" target="_blank">Admin</a>.</small></div>
+                            {% endfor %}
                         </div>
                     </div>
 
@@ -535,6 +586,47 @@
                         </div>
                     </div>
 
+                    <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-pc-display"></i> Thông tin hệ thống</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Tài khoản IPCAS</label>
+                                <input type="text" class="form-control" id="edit_ipcas_user" name="ipcas_user">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Địa chỉ MAC</label>
+                                <input type="text" class="form-control" id="edit_mac_address" name="mac_address" placeholder="XX:XX:XX:XX:XX:XX">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Địa chỉ IP</label>
+                                <input type="text" class="form-control" id="edit_ip_address" name="ip_address" placeholder="192.168.1.100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="mt-4 mb-2 text-primary"><i class="bi bi-grid-3x3-gap"></i> Chương trình được cấp phép</h6>
+                    <div class="mb-3">
+                        <div class="row g-2" id="edit-app-permissions">
+                            {% for app in app_programs %}
+                            <div class="col-md-4">
+                                <div class="form-check border rounded p-2">
+                                    <input class="form-check-input edit-app-checkbox" type="checkbox" name="app_permissions" value="{{ app.id }}" id="edit_app_{{ app.id }}">
+                                    <label class="form-check-label w-100" for="edit_app_{{ app.id }}">
+                                        <strong>{{ app.name }}</strong>
+                                        {% if app.url %}<br><small class="text-muted"><i class="bi bi-link-45deg"></i> {{ app.url }}</small>{% endif %}
+                                    </label>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12"><small class="text-muted">Chưa có chương trình nào.</small></div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
                     <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-shield-check"></i> Chứng thư số</h6>
                     <div class="row">
                         <div class="col-md-4">
@@ -615,8 +707,13 @@ const employeeData = {
         days_left: {% if emp.days_until_certificate_expiry != None %}{% if emp.days_until_certificate_expiry > 36500 %}999999{% else %}{{ emp.days_until_certificate_expiry }}{% endif %}{% else %}null{% endif %},
         department_display: "{{ emp.get_department_display|default:'-'|escapejs }}",
         position_display: "{{ emp.get_position_display|default:'-'|escapejs }}",
-        branch_display: "{{ emp.get_branch_display|default:'-'|escapejs }}",
-        job_function_display: "{{ emp.get_job_function_display|default:'-'|escapejs }}"
+        branch_display: "{{ emp.branch|default:'-'|escapejs }}",
+        job_function_display: "{{ emp.get_job_function_display|default:'-'|escapejs }}",
+        ipcas_user: "{{ emp.ipcas_user|default:''|escapejs }}",
+        mac_address: "{{ emp.mac_address|default:''|escapejs }}",
+        ip_address: "{{ emp.ip_address|default:''|escapejs }}",
+        app_permissions: [{% for app in emp.app_permissions.all %}{{ app.id }}{% if not forloop.last %},{% endif %}{% endfor %}],
+        app_permissions_display: "{% for app in emp.app_permissions.all %}{{ app.name }}{% if not forloop.last %}, {% endif %}{% endfor %}"
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
 };
@@ -716,8 +813,24 @@ function viewEmployee(employeeId) {
                     <tr><th>Chức vụ:</th><td>${emp.position_display}</td></tr>
                     <tr><th>Nghiệp vụ:</th><td>${emp.job_function_display}</td></tr>
                 </table>
+
+                <h6 class="text-primary mt-3"><i class="bi bi-pc-display"></i> Thông tin hệ thống</h6>
+                <table class="table table-sm">
+                    <tr><th width="40%">Tài khoản IPCAS:</th><td>${emp.ipcas_user || '-'}</td></tr>
+                    <tr><th>Địa chỉ MAC:</th><td>${emp.mac_address || '-'}</td></tr>
+                    <tr><th>Địa chỉ IP:</th><td>${emp.ip_address || '-'}</td></tr>
+                </table>
             </div>
         </div>
+        ${emp.app_permissions_display ? `
+        <div class="row mt-2">
+            <div class="col-12">
+                <h6 class="text-primary"><i class="bi bi-grid-3x3-gap"></i> Chương trình được cấp phép <span class="badge bg-info text-dark">${emp.app_permissions.length}</span></h6>
+                <div class="d-flex flex-wrap gap-2">
+                    ${emp.app_permissions_display.split(', ').map(name => `<span class="badge bg-primary">${name}</span>`).join('')}
+                </div>
+            </div>
+        </div>` : ''}
         <div class="row mt-3">
             <div class="col-12">
                 <h6 class="text-primary"><i class="bi bi-shield-check"></i> Chứng thư số ${statusBadge}</h6>
@@ -756,6 +869,16 @@ function editEmployee(employeeId) {
     document.getElementById('edit_certificate_code').value = emp.certificate_code;
     document.getElementById('edit_certificate_start_date').value = emp.certificate_start_date;
     document.getElementById('edit_certificate_end_date').value = emp.certificate_end_date;
+
+    // System info
+    document.getElementById('edit_ipcas_user').value = emp.ipcas_user || '';
+    document.getElementById('edit_mac_address').value = emp.mac_address || '';
+    document.getElementById('edit_ip_address').value = emp.ip_address || '';
+
+    // App permissions - tick/untick checkboxes
+    document.querySelectorAll('.edit-app-checkbox').forEach(cb => {
+        cb.checked = emp.app_permissions.includes(parseInt(cb.value));
+    });
 
     new bootstrap.Modal(document.getElementById('editEmployeeModal')).show();
 }

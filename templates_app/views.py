@@ -24,7 +24,7 @@ import mammoth
 # Local application imports
 from .forms import DynamicTemplateForm, CustomerForm, BusinessForm, GlobalConfigForm
 from .issueby_mapping import get_issueby_name
-from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, remove_vietnamese_diacritics
+from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, AppProgram, remove_vietnamese_diacritics
 from .utils import render_word_template
 
 
@@ -4133,7 +4133,7 @@ def employee_list(request):
     from .models import UserProfile
     from datetime import date, timedelta
 
-    employees = UserProfile.objects.select_related('user').all()
+    employees = UserProfile.objects.select_related('user').prefetch_related('app_permissions').all()
 
     # Get filter parameters
     filter_department = request.GET.get('department', '')
@@ -4181,7 +4181,8 @@ def employee_list(request):
     # Get unique values for filter dropdowns
     departments = UserProfile.DEPARTMENT_CHOICES
     positions = UserProfile.POSITION_CHOICES
-    branches = UserProfile.BRANCH_CHOICES
+    branches = BranchConfig.objects.filter(is_active=True).order_by('branch_code').values_list('branch_code', 'ten_chi_nhanh')
+    app_programs = AppProgram.objects.filter(is_active=True).order_by('order', 'name')
 
     context = {
         'title': 'Quản lý nhân viên',
@@ -4193,6 +4194,7 @@ def employee_list(request):
         'departments': departments,
         'positions': positions,
         'branches': branches,
+        'app_programs': app_programs,
         'expiring_count': expiring_count,
         'expired_count': expired_count,
     }
@@ -4268,6 +4270,11 @@ def employee_create_manual(request):
         profile.position = request.POST.get('position', '')
         profile.job_function = request.POST.get('job_function', '')
 
+        # System info
+        profile.ipcas_user = request.POST.get('ipcas_user', '')
+        profile.mac_address = request.POST.get('mac_address', '')
+        profile.ip_address = request.POST.get('ip_address') or None
+
         # Digital certificate fields
         profile.certificate_code = request.POST.get('certificate_code', '')
 
@@ -4284,6 +4291,14 @@ def employee_create_manual(request):
                 pass
 
         profile.save()
+
+        # App permissions (M2M - save after profile.save())
+        app_ids = request.POST.getlist('app_permissions')
+        if app_ids:
+            from .models import AppProgram
+            profile.app_permissions.set(AppProgram.objects.filter(id__in=app_ids))
+        else:
+            profile.app_permissions.clear()
 
         return JsonResponse({
             'success': True,
@@ -4340,6 +4355,12 @@ def employee_update_manual(request, employee_id):
         profile.position = request.POST.get('position', profile.position)
         profile.job_function = request.POST.get('job_function', profile.job_function)
 
+        # System info
+        profile.ipcas_user = request.POST.get('ipcas_user', profile.ipcas_user)
+        profile.mac_address = request.POST.get('mac_address', profile.mac_address)
+        ip_val = request.POST.get('ip_address', '')
+        profile.ip_address = ip_val if ip_val else None
+
         # Digital certificate fields
         profile.certificate_code = request.POST.get('certificate_code', profile.certificate_code)
 
@@ -4356,6 +4377,11 @@ def employee_update_manual(request, employee_id):
                 pass
 
         profile.save()
+
+        # App permissions
+        app_ids = request.POST.getlist('app_permissions')
+        from .models import AppProgram
+        profile.app_permissions.set(AppProgram.objects.filter(id__in=app_ids))
 
         return JsonResponse({
             'success': True,

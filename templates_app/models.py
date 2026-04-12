@@ -1861,6 +1861,25 @@ class BeautifulNumber(models.Model):
 # Employee Management Models
 # ====================
 
+class AppProgram(models.Model):
+    """
+    Danh sách chương trình/phần mềm có thể cấp quyền cho nhân viên
+    """
+    name = models.CharField(max_length=200, verbose_name="Tên chương trình")
+    url = models.CharField(max_length=500, blank=True, verbose_name="Đường dẫn / Link")
+    description = models.TextField(blank=True, verbose_name="Mô tả")
+    is_active = models.BooleanField(default=True, verbose_name="Kích hoạt")
+    order = models.PositiveIntegerField(default=0, verbose_name="Thứ tự hiển thị")
+
+    class Meta:
+        verbose_name = "Chương trình"
+        verbose_name_plural = "Danh sách chương trình"
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
 class UserProfile(models.Model):
     """
     Thông tin mở rộng cho User - Quản lý nhân viên
@@ -1956,9 +1975,9 @@ class UserProfile(models.Model):
     )
     branch = models.CharField(
         max_length=50,
-        choices=BRANCH_CHOICES,
         blank=True,
-        verbose_name="Chi nhánh"
+        verbose_name="Chi nhánh",
+        help_text="Mã đơn vị (phải khớp với BranchConfig.branch_code)"
     )
     department = models.CharField(
         max_length=50,
@@ -1977,6 +1996,32 @@ class UserProfile(models.Model):
         choices=POSITION_CHOICES,
         blank=True,
         verbose_name="Chức vụ"
+    )
+
+    # Thông tin hệ thống
+    ipcas_user = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Tài khoản IPCAS"
+    )
+    mac_address = models.CharField(
+        max_length=17,
+        blank=True,
+        verbose_name="Địa chỉ MAC",
+        help_text="Định dạng: XX:XX:XX:XX:XX:XX"
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        verbose_name="Địa chỉ IP"
+    )
+
+    # Chương trình được cấp quyền
+    app_permissions = models.ManyToManyField(
+        'AppProgram',
+        blank=True,
+        verbose_name="Chương trình được cấp phép",
+        related_name='authorized_users'
     )
 
     # Digital Certificate (Chứng thư số) fields

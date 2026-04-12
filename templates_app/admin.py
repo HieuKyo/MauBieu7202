@@ -1,10 +1,11 @@
 from django.contrib import admin
+from django import forms
 from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
 from django.http import HttpResponse
 from .models import (
-    Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig,
+    Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, AppProgram,
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction,
     UserProfile, Course, CourseEnrollment,
@@ -727,9 +728,35 @@ class TransactionAdmin(admin.ModelAdmin):
 # Employee Management Admin
 # ====================
 
+class UserProfileAdminForm(forms.ModelForm):
+    """Form tùy chỉnh để dropdown branch lấy động từ BranchConfig"""
+
+    branch = forms.ChoiceField(
+        label="Chi nhánh",
+        required=False,
+        help_text="Chọn đơn vị (danh sách lấy từ Cấu hình Chi nhánh)"
+    )
+
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lấy danh sách chi nhánh động từ BranchConfig
+        branch_choices = [('', '---------')]
+        branch_choices += list(
+            BranchConfig.objects.filter(is_active=True)
+            .order_by('branch_code')
+            .values_list('branch_code', 'ten_chi_nhanh')
+        )
+        self.fields['branch'].choices = branch_choices
+
+
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
     """Admin cho Hồ sơ nhân viên"""
+    form = UserProfileAdminForm
     list_display = ['employee_code', 'full_name', 'user', 'branch', 'department', 'position', 'phone']
     list_filter = ['branch', 'department', 'position', 'job_function']
     search_fields = ['employee_code', 'full_name', 'user__username', 'phone']
@@ -747,6 +774,12 @@ class UserProfileAdmin(admin.ModelAdmin):
         }),
         ('Thông tin công việc', {
             'fields': ('branch', 'department', 'job_function', 'position')
+        }),
+        ('Thông tin hệ thống', {
+            'fields': ('ipcas_user', 'mac_address', 'ip_address')
+        }),
+        ('Chương trình được cấp phép', {
+            'fields': ('app_permissions',)
         }),
     )
 
@@ -1068,3 +1101,17 @@ class BranchConfigAdmin(admin.ModelAdmin):
         obj.updated_by = request.user
         super().save_model(request, obj, form, change)
 admin.site.register(BranchConfig, BranchConfigAdmin)
+
+
+@admin.register(AppProgram)
+class AppProgramAdmin(admin.ModelAdmin):
+    """Admin cho danh sách chương trình"""
+    list_display = ['name', 'url', 'is_active', 'order', 'user_count']
+    list_editable = ['is_active', 'order']
+    search_fields = ['name', 'url', 'description']
+    list_filter = ['is_active']
+    ordering = ['order', 'name']
+
+    def user_count(self, obj):
+        return obj.authorized_users.count()
+    user_count.short_description = 'Số người dùng'
