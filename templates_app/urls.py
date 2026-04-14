@@ -131,6 +131,7 @@ urlpatterns = [
     path('reports/mail-envelope/save/', report_views.save_mail_envelope, name='save_mail_envelope'),
     path('reports/mail-envelope/report/', report_views.mail_envelope_report_view, name='mail_envelope_report'),
     path('reports/dien-luc/', report_views.dien_luc_report_view, name='dien_luc_report'),
+    path('reports/dien-luc/process/', report_views.process_dien_luc_report, name='process_dien_luc'),
     path('reports/atm-fund-balance/', report_views.atm_fund_balance_view, name='atm_fund_balance'),
 
     # Permission Management
