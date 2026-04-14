@@ -302,6 +302,17 @@ def _get_visa_pgd_config():
         }
 
 
+def _read_excel_safe(file_obj):
+    """Đọc file Excel, tự bỏ qua workbook corruption cho file .xls cũ."""
+    file_bytes = file_obj.read()
+    try:
+        return pd.read_excel(io.BytesIO(file_bytes))
+    except Exception:
+        import xlrd
+        wb = xlrd.open_workbook(file_contents=file_bytes, ignore_workbook_corruption=True)
+        return pd.read_excel(wb)
+
+
 def _read_atm_normalized(data_file, start_date_str, end_date_str, pgd_user_map):
     """
     Đọc file ATM (cấu trúc mới), lọc theo ngày và PGD.
@@ -309,7 +320,7 @@ def _read_atm_normalized(data_file, start_date_str, end_date_str, pgd_user_map):
       Họ tên | Số tài khoản | Loại thẻ | GDV phát hành | Ngày phát hành | PGD
     Hoặc None nếu không có dữ liệu / lỗi cột.
     """
-    df = pd.read_excel(data_file)
+    df = _read_excel_safe(data_file)
     df.columns = df.columns.str.strip()
 
     for col in ['CDATE', 'CUSER', 'CUSTVIENAME', 'ACCOUNT', 'CARDTYPE']:
@@ -346,7 +357,7 @@ def _read_visa_normalized(visa_file, start_date_str, end_date_str, pgd_user_map)
     Đọc file Visa (cấu trúc cũ, có thể có header lặp), lọc theo ngày và PGD.
     Trả về DataFrame chuẩn hóa cùng cột như _read_atm_normalized.
     """
-    df = pd.read_excel(visa_file)
+    df = _read_excel_safe(visa_file)
     df.columns = df.columns.str.strip()
 
     # Loại bỏ các dòng header trùng lặp
@@ -665,15 +676,8 @@ def process_dien_luc_report(request):
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
-        # Đọc file Excel — không dùng dtype=str để giữ nguyên kiểu date và số
-        file_bytes = uploaded_file.read()
-        try:
-            df = pd.read_excel(io.BytesIO(file_bytes))
-        except Exception:
-            # File .xls có corruption nhỏ — thử bỏ qua lỗi workbook
-            import xlrd
-            wb = xlrd.open_workbook(file_contents=file_bytes, ignore_workbook_corruption=True)
-            df = pd.read_excel(wb)
+        # Đọc file Excel — dùng helper tự xử lý corruption cho .xls cũ
+        df = _read_excel_safe(uploaded_file)
 
         # Chuẩn hóa tên cột (strip whitespace)
         df.columns = [c.strip() for c in df.columns]
