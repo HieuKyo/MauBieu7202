@@ -667,7 +667,13 @@ def process_dien_luc_report(request):
 
         # Đọc file Excel — không dùng dtype=str để giữ nguyên kiểu date và số
         file_bytes = uploaded_file.read()
-        df = pd.read_excel(io.BytesIO(file_bytes))
+        try:
+            df = pd.read_excel(io.BytesIO(file_bytes))
+        except Exception:
+            # File .xls có corruption nhỏ — thử bỏ qua lỗi workbook
+            import xlrd
+            wb = xlrd.open_workbook(file_contents=file_bytes, ignore_workbook_corruption=True)
+            df = pd.read_excel(wb)
 
         # Chuẩn hóa tên cột (strip whitespace)
         df.columns = [c.strip() for c in df.columns]
