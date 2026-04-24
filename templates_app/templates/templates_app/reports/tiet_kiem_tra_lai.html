@@ -1,0 +1,224 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Báo cáo KH Tiết kiệm trả lãi qua TKTGTT{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-1" style="color: var(--agri-red);">
+                <i class="bi bi-piggy-bank"></i> BÁO CÁO KHÁCH HÀNG TIẾT KIỆM
+            </h2>
+            <p class="text-center fw-semibold mb-0">TRẢ LÃI QUA TÀI KHOẢN TIỀN GỬI THANH TOÁN</p>
+            <p class="text-center text-muted small">Phân tích từ file TG và file DPDA08</p>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row justify-content-center mb-3">
+        <div class="col-12">
+            {% for msg in messages %}
+            <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+
+        <!-- Form upload -->
+        <div class="col-md-4">
+            <div class="card shadow h-100">
+                <div class="card-header fw-semibold text-white"
+                     style="background:linear-gradient(90deg,#AE1C3F,#8a1230);">
+                    <i class="bi bi-upload me-2"></i>Tải lên dữ liệu
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <form method="post" enctype="multipart/form-data" class="flex-grow-1 d-flex flex-column">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-file-earmark-excel text-success me-1"></i>
+                                File TG (tg........)
+                            </label>
+                            <input type="file" class="form-control" name="tg_file" accept=".xlsx,.xls" required>
+                            <div class="form-text">Hỗ trợ XLS (file gốc) và XLSX</div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-file-earmark-excel text-primary me-1"></i>
+                                File DPDA08
+                            </label>
+                            <input type="file" class="form-control" name="dp_file" accept=".xlsx,.xls" required>
+                            <div class="form-text">Hỗ trợ XLS và XLSX</div>
+                        </div>
+                        <div class="mt-auto d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-calculator"></i> Phân tích số liệu
+                            </button>
+                            <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kết quả -->
+        <div class="col-md-8">
+            {% if result %}
+            <div class="card shadow">
+                <div class="card-header fw-semibold text-white d-flex justify-content-between align-items-center"
+                     style="background:linear-gradient(90deg,#1a6e35,#145a2b);">
+                    <span><i class="bi bi-bar-chart-fill me-2"></i>Kết quả phân tích</span>
+                    <small class="opacity-75">Nhấn vào hàng để xem danh sách chi tiết</small>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Chỉ tiêu</th>
+                                <th class="text-center" style="width:100px;">Số lượng</th>
+                                <th class="text-center" style="width:90px;">Chi tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="tong_kh" label="Tổng số KH có tài khoản (TK tiết kiệm + TK thanh toán)" count=result.tong_kh level=0 style="table-secondary fw-semibold" icon="bi-people-fill" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="tk_tiet_kiem" label="Tổng số TK tiết kiệm (Acctcd 423101 + Month_Term > 0)" count=result.tong_tk_tiet_kiem level=1 style="" icon="bi-archive" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="kh_tiet_kiem" label="Số KH gửi tiết kiệm" count=result.so_kh_tiet_kiem level=0 style="table-light fw-semibold" icon="bi-person-check-fill text-success" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="kh_lanh_lai_dinh_ky" label="Trong đó: KH tiết kiệm lãnh lãi định kỳ" count=result.so_kh_lanh_lai_dinh_ky level=2 style="" icon="bi-calendar-check" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="kh_tietkiem_co_tt" label="KH tiết kiệm có TK tiền gửi thanh toán" count=result.so_kh_tietkiem_co_tt level=0 style="table-secondary fw-semibold" icon="bi-bank text-warning" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="kh_tra_lai_qua_tk" label="KH tiết kiệm có trả lãi qua TK tiền gửi thanh toán" count=result.so_kh_tra_lai_qua_tk level=0 style="table-light fw-semibold" icon="bi-arrow-right-circle-fill text-danger" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="kh_dinh_ky_qua_tk" label="Trong đó: KH trả lãi định kỳ qua TK tiền gửi thanh toán" count=result.so_kh_dinh_ky_qua_tk level=2 style="" icon="bi-arrow-return-right" %}
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="card shadow h-100">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center text-muted py-5">
+                    <i class="bi bi-upload" style="font-size:4rem; opacity:0.3;"></i>
+                    <p class="mt-3 mb-0">Tải lên 2 file để xem kết quả phân tích.</p>
+                    <p class="small">File TG + File DPDA08</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal chi tiết -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(90deg,#AE1C3F,#8a1230); color:#fff;">
+                <h5 class="modal-title" id="modalTitle">Chi tiết</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="modalLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="mt-2 text-muted">Đang tải dữ liệu...</p>
+                </div>
+                <div id="modalContent" class="d-none">
+                    <div class="px-3 pt-3 pb-2 d-flex justify-content-between align-items-center">
+                        <span class="text-muted small" id="modalCount"></span>
+                        <input type="text" class="form-control form-control-sm w-25" id="modalSearch"
+                               placeholder="Tìm kiếm...">
+                    </div>
+                    <div class="table-responsive px-3 pb-3">
+                        <table class="table table-sm table-bordered table-hover mb-0" id="modalTable">
+                            <thead class="table-light sticky-top" id="modalThead"></thead>
+                            <tbody id="modalTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="modalError" class="d-none alert alert-warning m-3"></div>
+            </div>
+            <div class="modal-footer">
+                <a href="#" class="btn btn-success" id="downloadBtn" target="_blank">
+                    <i class="bi bi-file-earmark-excel"></i> Tải Excel (toàn bộ)
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allRows = [];
+
+function openDetail(metricKey) {
+    const detailModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('detailModal'));
+
+    // Reset modal
+    document.getElementById('modalLoading').classList.remove('d-none');
+    document.getElementById('modalContent').classList.add('d-none');
+    document.getElementById('modalError').classList.add('d-none');
+    document.getElementById('modalTitle').textContent = 'Đang tải...';
+    document.getElementById('modalSearch').value = '';
+    document.getElementById('downloadBtn').href = `/reports/tiet-kiem-tra-lai/download/${metricKey}/`;
+    detailModal.show();
+
+    fetch(`/reports/tiet-kiem-tra-lai/detail/${metricKey}/`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('modalLoading').classList.add('d-none');
+                const err = document.getElementById('modalError');
+                err.classList.remove('d-none');
+                err.textContent = data.error;
+                return;
+            }
+
+            document.getElementById('modalTitle').textContent = data.label;
+            document.getElementById('modalCount').textContent =
+                `Hiển thị ${Math.min(data.rows.length, 200)} / ${data.total} dòng`;
+
+            allRows = data.rows;
+            renderTable(allRows, data.headers);
+
+            document.getElementById('modalLoading').classList.add('d-none');
+            document.getElementById('modalContent').classList.remove('d-none');
+        })
+        .catch(() => {
+            document.getElementById('modalLoading').classList.add('d-none');
+            const err = document.getElementById('modalError');
+            err.classList.remove('d-none');
+            err.textContent = 'Lỗi kết nối. Vui lòng thử lại.';
+        });
+}
+
+function renderTable(rows, headers) {
+    const thead = document.getElementById('modalThead');
+    const tbody = document.getElementById('modalTbody');
+    thead.innerHTML = `<tr>${(headers || Object.keys(rows[0] || {})).map(h => `<th>${h}</th>`).join('')}</tr>`;
+    tbody.innerHTML = rows.map((row, i) =>
+        `<tr>${Object.values(row).map(v => `<td>${v ?? ''}</td>`).join('')}</tr>`
+    ).join('');
+}
+
+document.getElementById('modalSearch').addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    const filtered = q
+        ? allRows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q)))
+        : allRows;
+    renderTable(filtered, null);
+    document.getElementById('modalCount').textContent =
+        `Hiển thị ${filtered.length} / ${allRows.length} dòng`;
+});
+</script>
+{% endblock %}

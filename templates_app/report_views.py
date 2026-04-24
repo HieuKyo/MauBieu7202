@@ -302,15 +302,16 @@ def _get_visa_pgd_config():
         }
 
 
-def _read_excel_safe(file_obj):
-    """Đọc file Excel, tự bỏ qua workbook corruption cho file .xls cũ."""
-    file_bytes = file_obj.read()
+def _read_excel_safe(file_obj, **kwargs):
+    """Đọc file Excel, tự bỏ qua workbook corruption cho file .xls cũ.
+    Truyền usecols=... để chỉ đọc cột cần thiết, giảm bộ nhớ cho file lớn."""
+    file_bytes = file_obj.read() if hasattr(file_obj, 'read') else file_obj
     try:
-        return pd.read_excel(io.BytesIO(file_bytes))
+        return pd.read_excel(io.BytesIO(file_bytes), **kwargs)
     except Exception:
         import xlrd
         wb = xlrd.open_workbook(file_contents=file_bytes, ignore_workbook_corruption=True)
-        return pd.read_excel(wb)
+        return pd.read_excel(wb, **kwargs)
 
 
 def _read_atm_normalized(data_file, start_date_str, end_date_str, pgd_user_map):
@@ -648,6 +649,203 @@ def mail_envelope_report_view(request):
     }
 
     return render(request, 'templates_app/reports/mail_envelope_report.html', context)
+
+
+# Nhãn hiển thị cho từng chỉ tiêu
+_TKTL_LABELS = {
+    'tong_kh':              'Tổng KH có tài khoản',
+    'tk_tiet_kiem':         'Danh sách TK tiết kiệm',
+    'kh_tiet_kiem':         'KH gửi tiết kiệm',
+    'kh_lanh_lai_dinh_ky':  'KH tiết kiệm lãnh lãi định kỳ',
+    'kh_tietkiem_co_tt':    'KH tiết kiệm có TK thanh toán',
+    'kh_tra_lai_qua_tk':    'KH trả lãi qua TKTGTT',
+    'kh_dinh_ky_qua_tk':    'KH định kỳ trả lãi qua TKTGTT',
+}
+
+# Chỉ đọc các cột cần thiết để giảm bộ nhớ với file lớn
+_TG_COLS   = ['Acctcd', 'Customer_No', 'Customer_Name', 'DP_TypeName',
+              'Account_Number', 'Month_Term', 'Tr_Office_Name']
+_DPDA08_COLS = ['idxacno', 'custseq', 'custnm', 'termdptp', 'altacctno']
+
+
+def _store_detail(request, key, df, cols_rename):
+    """Lưu DataFrame vào session dưới dạng JSON nén (gzip+base64)."""
+    import gzip, base64
+    df_out = df[list(cols_rename.keys())].rename(columns=cols_rename).copy()
+    raw = df_out.to_json(orient='records', force_ascii=False)
+    compressed = base64.b64encode(gzip.compress(raw.encode('utf-8'))).decode('ascii')
+    request.session[f'tktl_{key}'] = compressed
+
+
+def _load_detail(request, key):
+    """Đọc lại detail từ session, trả về list of dicts hoặc None."""
+    import gzip, base64
+    compressed = request.session.get(f'tktl_{key}')
+    if not compressed:
+        return None
+    raw = gzip.decompress(base64.b64decode(compressed.encode('ascii'))).decode('utf-8')
+    return json.loads(raw)
+
+
+@login_required
+def tiet_kiem_tra_lai_view(request):
+    """Báo cáo KH tiết kiệm trả lãi qua tài khoản tiền gửi thanh toán"""
+    context = {}
+
+    if request.method != 'POST':
+        return render(request, 'templates_app/reports/tiet_kiem_tra_lai.html', context)
+
+    tg_file = request.FILES.get('tg_file')
+    dp_file = request.FILES.get('dp_file')
+
+    if not tg_file or not dp_file:
+        messages.error(request, 'Vui lòng tải lên cả 2 file (TG và DPDA08).')
+        return render(request, 'templates_app/reports/tiet_kiem_tra_lai.html', context)
+
+    try:
+        # Đọc chỉ các cột cần thiết — giảm bộ nhớ đáng kể với file 30MB
+        df_tg = _read_excel_safe(tg_file, usecols=_TG_COLS)
+        df_dp = _read_excel_safe(dp_file, usecols=_DPDA08_COLS)
+
+        df_tg.columns = df_tg.columns.str.strip()
+        df_dp.columns = df_dp.columns.str.strip()
+
+        # Chuẩn hóa cột tg
+        df_tg['_month_term'] = pd.to_numeric(
+            df_tg['Month_Term'].astype(str).str.strip().str.split().str[0],
+            errors='coerce'
+        ).fillna(0)
+        df_tg['_acctcd'] = pd.to_numeric(df_tg['Acctcd'], errors='coerce').fillna(0).astype(int)
+        df_tg['_custno'] = df_tg['Customer_No'].astype(str).str.strip()
+
+        # Chuẩn hóa cột dp
+        df_dp['_termdptp']  = df_dp['termdptp'].astype(str).str.strip()
+        df_dp['_custseq']   = df_dp['custseq'].astype(str).str.strip()
+        df_dp['_altacctno'] = df_dp['altacctno'].astype(str).str.strip()
+        df_dp['_idxacno']   = df_dp['idxacno'].astype(str).str.strip()
+
+        # ── 1. Tổng KH có TK ──────────────────────────────────────────────
+        df_tong_kh = df_tg.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        _store_detail(request, 'tong_kh', df_tong_kh,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 2. TK tiết kiệm: Acctcd 423101 hoặc Month_Term > 0 ───────────
+        is_savings = (df_tg['_acctcd'] == 423101) | (df_tg['_month_term'] > 0)
+        df_savings = df_tg[is_savings].copy()
+        _store_detail(request, 'tk_tiet_kiem', df_savings,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', 'DP_TypeName': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị'})
+
+        # ── 2b. KH tiết kiệm (unique) ─────────────────────────────────────
+        df_kh_tietkiem = df_savings.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        _store_detail(request, 'kh_tiet_kiem', df_kh_tietkiem,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 2c. KH lãnh lãi định kỳ ───────────────────────────────────────
+        df_dinh_ky = df_dp[df_dp['_termdptp'] == 'Trả lãi sau định kỳ']
+        df_dk_unique = df_dinh_ky.drop_duplicates('_custseq')[
+            ['_idxacno', '_custseq', 'custnm', '_termdptp']
+        ]
+        _store_detail(request, 'kh_lanh_lai_dinh_ky', df_dk_unique,
+                      {'_idxacno': 'Số TK TK', '_custseq': 'Mã KH',
+                       'custnm': 'Tên KH', '_termdptp': 'Hình thức'})
+
+        # ── 3. KH tiết kiệm có TK thanh toán ─────────────────────────────
+        savings_custnos = set(df_savings['_custno'].unique())
+        payment_custnos = set(df_tg[~is_savings]['_custno'].unique())
+        both_custnos = savings_custnos & payment_custnos
+        df_co_tt = df_kh_tietkiem[df_kh_tietkiem['_custno'].isin(both_custnos)]
+        _store_detail(request, 'kh_tietkiem_co_tt', df_co_tt,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 4. KH trả lãi qua TK thanh toán ──────────────────────────────
+        has_altacct = (
+            df_dp['_altacctno'].notna() &
+            ~df_dp['_altacctno'].isin(['', 'nan', '0'])
+        )
+        df_qua_tk = df_dp[has_altacct]
+        df_qua_tk_unique = df_qua_tk.drop_duplicates('_custseq')[
+            ['_idxacno', '_custseq', 'custnm', '_altacctno', '_termdptp']
+        ]
+        _store_detail(request, 'kh_tra_lai_qua_tk', df_qua_tk_unique,
+                      {'_idxacno': 'Số TK TK', '_custseq': 'Mã KH',
+                       'custnm': 'Tên KH', '_altacctno': 'TK nhận lãi',
+                       '_termdptp': 'Hình thức'})
+
+        # ── 4a. Trong đó: định kỳ qua TK ─────────────────────────────────
+        df_dk_qua_tk = df_qua_tk[
+            df_qua_tk['_termdptp'].isin(['Thanh toán hàng tháng', 'Trả lãi sau định kỳ'])
+        ]
+        df_dk_qua_tk_unique = df_dk_qua_tk.drop_duplicates('_custseq')[
+            ['_idxacno', '_custseq', 'custnm', '_altacctno', '_termdptp']
+        ]
+        _store_detail(request, 'kh_dinh_ky_qua_tk', df_dk_qua_tk_unique,
+                      {'_idxacno': 'Số TK TK', '_custseq': 'Mã KH',
+                       'custnm': 'Tên KH', '_altacctno': 'TK nhận lãi',
+                       '_termdptp': 'Hình thức'})
+
+        context['result'] = {
+            'tong_kh':              len(df_tong_kh),
+            'tong_tk_tiet_kiem':    len(df_savings),
+            'so_kh_tiet_kiem':      len(df_kh_tietkiem),
+            'so_kh_lanh_lai_dinh_ky': len(df_dk_unique),
+            'so_kh_tietkiem_co_tt': len(df_co_tt),
+            'so_kh_tra_lai_qua_tk': len(df_qua_tk_unique),
+            'so_kh_dinh_ky_qua_tk': len(df_dk_qua_tk_unique),
+        }
+
+    except Exception as e:
+        messages.error(request, f'Lỗi xử lý: {str(e)}')
+        import traceback; traceback.print_exc()
+
+    return render(request, 'templates_app/reports/tiet_kiem_tra_lai.html', context)
+
+
+@login_required
+def tiet_kiem_tra_lai_detail(request, metric_key):
+    """AJAX: trả về JSON preview (200 dòng đầu) cho một chỉ tiêu."""
+    if metric_key not in _TKTL_LABELS:
+        return JsonResponse({'error': 'Chỉ tiêu không hợp lệ.'}, status=400)
+    data = _load_detail(request, metric_key)
+    if data is None:
+        return JsonResponse({'error': 'Chưa có dữ liệu. Vui lòng xử lý lại.'}, status=404)
+    return JsonResponse({
+        'label': _TKTL_LABELS[metric_key],
+        'total': len(data),
+        'rows': data[:200],
+        'headers': list(data[0].keys()) if data else [],
+    })
+
+
+@login_required
+def tiet_kiem_tra_lai_download(request, metric_key):
+    """Download Excel cho một chỉ tiêu."""
+    if metric_key not in _TKTL_LABELS:
+        messages.error(request, 'Chỉ tiêu không hợp lệ.')
+        return redirect('tiet_kiem_tra_lai')
+    data = _load_detail(request, metric_key)
+    if not data:
+        messages.error(request, 'Chưa có dữ liệu. Vui lòng xử lý lại.')
+        return redirect('tiet_kiem_tra_lai')
+
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Danh sách', index=False)
+        ws = writer.sheets['Danh sách']
+        for col in ws.columns:
+            max_len = max((len(str(c.value or '')) for c in col), default=10)
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
+    output.seek(0)
+
+    filename = f'{metric_key}.xlsx'
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required
