@@ -108,6 +108,8 @@ urlpatterns = [
     path('atm/', views.atm_dashboard, name='atm_dashboard'),
     path('atm/replenishment/create/', views.atm_replenishment_create, name='atm_replenishment_create'),
     path('atm/replenishment/list/', views.atm_replenishment_list, name='atm_replenishment_list'),
+    path('atm/replenishment/<int:replenishment_id>/edit/', views.atm_replenishment_edit, name='atm_replenishment_edit'),
+    path('atm/replenishment/<int:replenishment_id>/delete/', views.atm_replenishment_delete, name='atm_replenishment_delete'),
     path('atm/replenishment/<int:replenishment_id>/template/<int:template_id>/', views.atm_load_replenishment_data, name='atm_load_replenishment_data'),
 
     # ATM Discrepancy Management
@@ -115,6 +117,7 @@ urlpatterns = [
     path('atm/discrepancy/create/', views.atm_discrepancy_create, name='atm_discrepancy_create'),
     path('atm/discrepancy/<int:discrepancy_id>/edit/', views.atm_discrepancy_edit, name='atm_discrepancy_edit'),
     path('atm/discrepancy/<int:discrepancy_id>/delete/', views.atm_discrepancy_delete, name='atm_discrepancy_delete'),
+    path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/word/', views.atm_discrepancy_group_word, name='atm_discrepancy_group_word'),
     path('atm/discrepancy/<int:discrepancy_id>/template/<int:template_id>/', views.atm_load_discrepancy_data, name='atm_load_discrepancy_data'),
 
     # Reports Module

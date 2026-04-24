@@ -31,80 +31,177 @@
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 3%;">#</th>
-                                    <th style="width: 7%;">Mã ATM</th>
-                                    <th style="width: 12%;">Họ tên</th>
-                                    <th style="width: 9%;">Số TK</th>
-                                    <th style="width: 10%;">Số thẻ</th>
-                                    <th style="width: 8%;">Số trace</th>
-                                    <th style="width: 8%;">ID GD</th>
-                                    <th style="width: 6%;">Loại</th>
-                                    <th style="width: 10%;" class="text-end">Số tiền</th>
-                                    <th style="width: 10%;">Chu kỳ kiểm quỹ</th>
-                                    <th style="width: 8%;">Trạng thái</th>
-                                    <th style="width: 9%;" class="text-center">Thao tác</th>
+                                    <th style="width:3%">#</th>
+                                    <th style="width:9%">Mã ATM</th>
+                                    <th style="width:17%">Địa chỉ</th>
+                                    <th style="width:11%">Chu kỳ kiểm quỹ</th>
+                                    <th style="width:5%" class="text-center">Số GD</th>
+                                    <th style="width:12%" class="text-end">Tổng thừa (đ)</th>
+                                    <th style="width:12%" class="text-end">Tổng thiếu (đ)</th>
+                                    <th style="width:8%">Trạng thái</th>
+                                    <th style="width:9%">Người tạo</th>
+                                    <th style="width:14%" class="text-center">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for disc in page_obj %}
-                                <tr>
+                                {% for group in page_obj %}
+                                {% with rep=group.representative %}
+                                {# Row chu kỳ #}
+                                <tr class="align-middle">
                                     <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
-                                    <td><strong>{{ disc.atm.machine_id }}</strong></td>
-                                    <td>{{ disc.full_name }}</td>
-                                    <td><code>{{ disc.account_number }}</code></td>
-                                    <td><small>{{ disc.card_number }}</small></td>
-                                    <td><small>{{ disc.trace_number }}</small></td>
-                                    <td><small class="text-muted">{{ disc.transaction_id|truncatechars:12 }}</small></td>
-                                    <td>
-                                        {% if disc.discrepancy_type == 'surplus' %}
-                                        <span class="badge bg-success">Thừa</span>
+                                    <td><strong>{{ rep.atm.machine_id }}</strong></td>
+                                    <td class="small">{{ rep.atm.address|truncatewords:6 }}</td>
+                                    <td class="small">
+                                        {{ group.start|date:"d/m/Y" }}<br>
+                                        <span class="text-muted">→ {{ group.end|date:"d/m/Y" }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if group.count > 1 %}
+                                        <span class="badge bg-primary rounded-pill"
+                                              role="button"
+                                              data-bs-toggle="collapse"
+                                              data-bs-target="#detail-{{ forloop.counter }}"
+                                              title="Xem {{ group.count }} giao dịch">
+                                            {{ group.count }} GD <i class="bi bi-chevron-down" style="font-size:.7rem"></i>
+                                        </span>
                                         {% else %}
-                                        <span class="badge bg-danger">Thiếu</span>
+                                        <span class="badge bg-secondary rounded-pill">1 GD</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <strong>{{ disc.amount|floatformat:0 }}</strong>
+                                        {% if group.total_surplus %}
+                                        <span class="text-success fw-bold">{{ group.total_surplus|floatformat:0 }}</span>
+                                        {% else %}<span class="text-muted">—</span>{% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if group.total_deficit %}
+                                        <span class="text-danger fw-bold">{{ group.total_deficit|floatformat:0 }}</span>
+                                        {% else %}<span class="text-muted">—</span>{% endif %}
                                     </td>
                                     <td>
-                                        <small>{{ disc.audit_cycle_start|date:"d/m/y" }}<br>{{ disc.audit_cycle_end|date:"d/m/y" }}</small>
-                                    </td>
-                                    <td>
-                                        {% if disc.status == 'pending' %}
+                                        {% if rep.status == 'pending' %}
                                         <span class="badge bg-warning text-dark">Chờ xử lý</span>
-                                        {% elif disc.status == 'resolved' %}
+                                        {% elif rep.status == 'resolved' %}
                                         <span class="badge bg-success">Đã xử lý</span>
                                         {% else %}
                                         <span class="badge bg-info">Đã báo cáo</span>
                                         {% endif %}
                                     </td>
+                                    <td class="small">
+                                        {{ rep.created_by.username }}<br>
+                                        <span class="text-muted">{{ rep.created_at|date:"d/m/Y" }}</span>
+                                    </td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
-                                            <a href="{% url 'atm_discrepancy_edit' disc.pk %}" class="btn btn-sm btn-outline-primary" title="Sửa">
+                                            <a href="{% url 'atm_discrepancy_group_word' group.atm_id group.start|date:'Ymd' group.end|date:'Ymd' %}"
+                                               class="btn btn-sm btn-success" title="Tạo báo cáo Word tất cả {{ group.count }} giao dịch">
+                                                <i class="bi bi-file-earmark-word"></i> In mẫu
+                                            </a>
+                                            {% if group.count == 1 %}
+                                            <a href="{% url 'atm_discrepancy_edit' rep.pk %}"
+                                               class="btn btn-sm btn-outline-primary" title="Sửa giao dịch">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Tạo mẫu biểu">
-                                                    <i class="bi bi-file-earmark-text"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    {% for template in templates %}
-                                                    <li>
-                                                        <a class="dropdown-item" href="{% url 'atm_load_discrepancy_data' disc.pk template.id %}">
-                                                            {{ template.category.name }} - {{ template.name }}
-                                                        </a>
-                                                    </li>
-                                                    {% endfor %}
-                                                    {% if not templates %}
-                                                    <li><span class="dropdown-item text-muted">Chưa có mẫu biểu</span></li>
-                                                    {% endif %}
-                                                </ul>
-                                            </div>
-                                            <a href="{% url 'atm_discrepancy_delete' disc.pk %}" class="btn btn-sm btn-outline-danger" title="Xóa">
+                                            <a href="{% url 'atm_discrepancy_delete' rep.pk %}"
+                                               class="btn btn-sm btn-outline-danger" title="Xóa giao dịch">
                                                 <i class="bi bi-trash"></i>
                                             </a>
+                                            {% else %}
+                                            <button class="btn btn-sm btn-outline-secondary"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#detail-{{ forloop.counter }}"
+                                                    title="Xem / sửa từng giao dịch">
+                                                <i class="bi bi-list-ul"></i>
+                                            </button>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
+
+                                {# Bảng chi tiết giao dịch trong chu kỳ (collapse) #}
+                                <tr class="p-0 border-0">
+                                    <td colspan="10" class="p-0 border-top-0">
+                                        <div class="collapse {% if group.count > 1 %}{% endif %}" id="detail-{{ forloop.counter }}">
+                                            <div class="bg-light border-bottom px-4 py-2">
+                                                <div class="small text-muted mb-1 fw-bold">
+                                                    <i class="bi bi-list-ul"></i>
+                                                    Chi tiết {{ group.count }} giao dịch — {{ rep.atm.machine_id }}
+                                                    ({{ group.start|date:"d/m/Y" }} → {{ group.end|date:"d/m/Y" }})
+                                                </div>
+                                                <table class="table table-sm table-bordered mb-0 small bg-white">
+                                                    <thead class="table-secondary">
+                                                        <tr>
+                                                            <th style="width:3%">#</th>
+                                                            <th style="width:16%">Họ tên</th>
+                                                            <th style="width:11%">Số TK</th>
+                                                            <th style="width:13%">Số thẻ</th>
+                                                            <th style="width:10%">Số trace</th>
+                                                            <th style="width:14%">ID giao dịch</th>
+                                                            <th style="width:6%" class="text-center">Loại</th>
+                                                            <th style="width:12%" class="text-end">Số tiền (đ)</th>
+                                                            <th style="width:9%" class="text-center">Thao tác</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for item in group.items %}
+                                                        <tr>
+                                                            <td class="text-center">{{ forloop.counter }}</td>
+                                                            <td>{{ item.full_name }}</td>
+                                                            <td><code>{{ item.account_number }}</code></td>
+                                                            <td>{{ item.card_number }}</td>
+                                                            <td>{{ item.trace_number }}</td>
+                                                            <td class="text-muted small">{{ item.transaction_id }}</td>
+                                                            <td class="text-center">
+                                                                {% if item.discrepancy_type == 'surplus' %}
+                                                                <span class="badge bg-success">Thừa</span>
+                                                                {% else %}
+                                                                <span class="badge bg-danger">Thiếu</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td class="text-end fw-bold">
+                                                                {% if item.discrepancy_type == 'surplus' %}
+                                                                <span class="text-success">{{ item.amount|floatformat:0 }}</span>
+                                                                {% else %}
+                                                                <span class="text-danger">{{ item.amount|floatformat:0 }}</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <div class="btn-group btn-group-sm">
+                                                                    <a href="{% url 'atm_discrepancy_edit' item.pk %}"
+                                                                       class="btn btn-outline-primary py-0 px-1" title="Sửa">
+                                                                        <i class="bi bi-pencil"></i>
+                                                                    </a>
+                                                                    <a href="{% url 'atm_discrepancy_delete' item.pk %}"
+                                                                       class="btn btn-outline-danger py-0 px-1" title="Xóa">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </a>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                    {% if group.count > 1 %}
+                                                    <tfoot class="table-light fw-bold">
+                                                        <tr>
+                                                            <td colspan="7" class="text-end">Tổng cộng:</td>
+                                                            <td class="text-end">
+                                                                {% if group.total_surplus %}
+                                                                <span class="text-success">+{{ group.total_surplus|floatformat:0 }}</span><br>
+                                                                {% endif %}
+                                                                {% if group.total_deficit %}
+                                                                <span class="text-danger">-{{ group.total_deficit|floatformat:0 }}</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td></td>
+                                                        </tr>
+                                                    </tfoot>
+                                                    {% endif %}
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endwith %}
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -115,45 +212,32 @@
                     <div class="card-footer py-2">
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted">
-                                Trang {{ page_obj.number }}/{{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} GD)
+                                Trang {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}
+                                ({{ page_obj.paginator.count }} chu kỳ)
                             </small>
                             <nav aria-label="Page navigation">
                                 <ul class="pagination pagination-sm mb-0">
                                     {% if page_obj.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page=1" title="Trang đầu">
-                                            <i class="bi bi-chevron-bar-left"></i>
-                                        </a>
+                                        <a class="page-link" href="?page=1"><i class="bi bi-chevron-bar-left"></i></a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" title="Trang trước">
-                                            <i class="bi bi-chevron-left"></i>
-                                        </a>
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a>
                                     </li>
                                     {% endif %}
-
                                     {% for num in page_obj.paginator.page_range %}
                                         {% if page_obj.number == num %}
-                                            <li class="page-item active">
-                                                <span class="page-link">{{ num }}</span>
-                                            </li>
+                                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                                         {% elif num > page_obj.number|add:'-2' and num < page_obj.number|add:'2' %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                                            </li>
+                                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
                                         {% endif %}
                                     {% endfor %}
-
                                     {% if page_obj.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" title="Trang sau">
-                                            <i class="bi bi-chevron-right"></i>
-                                        </a>
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" title="Trang cuối">
-                                            <i class="bi bi-chevron-bar-right"></i>
-                                        </a>
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}"><i class="bi bi-chevron-bar-right"></i></a>
                                     </li>
                                     {% endif %}
                                 </ul>

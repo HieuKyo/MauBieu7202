@@ -4904,6 +4904,60 @@ def atm_replenishment_create(request):
 
 
 @login_required
+def atm_replenishment_edit(request, replenishment_id):
+    """Sửa phiếu tiếp quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    replenishment = get_object_or_404(ATMReplenishment, pk=replenishment_id)
+
+    if request.method == 'POST':
+        form = ATMReplenishmentForm(request.POST, instance=replenishment)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Đã cập nhật phiếu tiếp quỹ thành công')
+            return redirect('atm_replenishment_list')
+    else:
+        form = ATMReplenishmentForm(instance=replenishment)
+
+    management_board = {}
+    for position in ['team_leader', 'treasury_head', 'atm_officer']:
+        member = ATMManagementBoard.objects.filter(
+            position=position, is_active=True
+        ).first()
+        management_board[position] = member
+
+    context = {
+        'form': form,
+        'replenishment': replenishment,
+        'management_board': management_board,
+        'is_edit': True,
+    }
+    return render(request, 'templates_app/atm/replenishment_form.html', context)
+
+
+@login_required
+def atm_replenishment_delete(request, replenishment_id):
+    """Xóa phiếu tiếp quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    replenishment = get_object_or_404(ATMReplenishment, pk=replenishment_id)
+
+    if request.method == 'POST':
+        replenishment.delete()
+        messages.success(request, 'Đã xóa phiếu tiếp quỹ thành công')
+        return redirect('atm_replenishment_list')
+
+    context = {
+        'replenishment': replenishment,
+    }
+    return render(request, 'templates_app/atm/replenishment_confirm_delete.html', context)
+
+
+@login_required
 def atm_load_replenishment_data(request, replenishment_id, template_id):
     """Tạo và tải file Word trực tiếp từ phiếu tiếp quỹ"""
     if not request.user.is_superuser:
@@ -4930,6 +4984,15 @@ def atm_load_replenishment_data(request, replenishment_id, template_id):
         # Thêm biến chung (chi nhánh + custom variables)
         branch_config = BranchConfig.get_for_user(request.user)
         data.update(branch_config.get_all_variables())
+
+        # Thêm text_replenishment_date: "Địa danh, ngày dd tháng mm năm yyyy"
+        if replenishment.replenishment_date:
+            d = replenishment.replenishment_date
+            dia_danh = data.get('dia_danh', '')
+            if dia_danh:
+                data['text_replenishment_date'] = f"{dia_danh}, ngày {d.day:02d} tháng {d.month:02d} năm {d.year}"
+            else:
+                data['text_replenishment_date'] = f"ngày {d.day:02d} tháng {d.month:02d} năm {d.year}"
 
         # Render template Word với dữ liệu
         template_path = template.file.path
@@ -4992,62 +5055,163 @@ def atm_replenishment_list(request):
 
 @login_required
 def atm_discrepancy_list(request):
-    """Danh sách giao dịch thừa/thiếu quỹ ATM"""
+    """Danh sách giao dịch thừa/thiếu quỹ ATM (gom nhóm theo ATM + chu kỳ)"""
     if not request.user.is_superuser:
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
-    discrepancies = ATMDiscrepancy.objects.select_related(
-        'atm', 'created_by'
-    ).order_by('-audit_cycle_end', '-created_at')
+    from django.db.models import Count, Min
+    # Lấy các nhóm unique (atm, audit_cycle_start, audit_cycle_end), sắp xếp mới nhất trước
+    cycles = (
+        ATMDiscrepancy.objects
+        .values('atm_id', 'audit_cycle_start', 'audit_cycle_end')
+        .annotate(count=Count('id'), first_created=Min('created_at'))
+        .order_by('-audit_cycle_end', '-first_created')
+    )
+
+    group_rows = []
+    for cycle in cycles:
+        items = list(
+            ATMDiscrepancy.objects.filter(
+                atm_id=cycle['atm_id'],
+                audit_cycle_start=cycle['audit_cycle_start'],
+                audit_cycle_end=cycle['audit_cycle_end'],
+            ).select_related('atm', 'created_by').order_by('id')
+        )
+        if not items:
+            continue
+        rep = items[0]
+        total_surplus = sum(int(d.amount) for d in items if d.discrepancy_type == 'surplus')
+        total_deficit = sum(int(d.amount) for d in items if d.discrepancy_type == 'deficit')
+        # Key dùng cho URL Word: atm_id + start_yyyymmdd + end_yyyymmdd
+        cycle_key = f"{cycle['atm_id']}__{cycle['audit_cycle_start'].strftime('%Y%m%d')}__{cycle['audit_cycle_end'].strftime('%Y%m%d')}"
+        group_rows.append({
+            'cycle_key': cycle_key,
+            'atm_id': cycle['atm_id'],
+            'start': cycle['audit_cycle_start'],
+            'end': cycle['audit_cycle_end'],
+            'representative': rep,
+            'items': items,
+            'count': len(items),
+            'total_surplus': total_surplus,
+            'total_deficit': total_deficit,
+        })
 
     # Pagination
     from django.core.paginator import Paginator
-    paginator = Paginator(discrepancies, 20)  # 20 items per page
+    paginator = Paginator(group_rows, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Lấy danh sách templates (chỉ templates có tên chứa "ATM")
-    if request.user.is_superuser:
-        templates = Template.objects.filter(is_active=True, name__icontains='ATM').select_related('category').order_by('category__order', 'order', 'name')
-    else:
-        user_groups = request.user.groups.all()
-        templates = Template.objects.filter(
-            is_active=True,
-            name__icontains='ATM'
-        ).filter(
-            Q(allowed_groups__isnull=True) | Q(allowed_groups__in=user_groups)
-        ).distinct().select_related('category').order_by('category__order', 'order', 'name')
-
     context = {
         'page_obj': page_obj,
-        'templates': templates,
     }
     return render(request, 'templates_app/atm/discrepancy_list.html', context)
 
 
 @login_required
 def atm_discrepancy_create(request):
-    """Tạo giao dịch thừa/thiếu quỹ ATM mới"""
+    """Tạo giao dịch thừa/thiếu quỹ ATM mới (hỗ trợ nhiều giao dịch trong một chu kỳ)"""
     if not request.user.is_superuser:
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
     if request.method == 'POST':
-        form = ATMDiscrepancyForm(request.POST)
-        if form.is_valid():
-            discrepancy = form.save(commit=False)
-            discrepancy.created_by = request.user
-            discrepancy.save()
-            messages.success(request, 'Đã tạo giao dịch thừa/thiếu quỹ thành công')
-            return redirect('atm_discrepancy_list')
-    else:
-        form = ATMDiscrepancyForm()
+        # Lấy thông tin chung của chu kỳ
+        atm_id = request.POST.get('atm')
+        audit_cycle_start = request.POST.get('audit_cycle_start')
+        audit_cycle_end = request.POST.get('audit_cycle_end')
+        status = request.POST.get('status', 'pending')
+        notes = request.POST.get('notes', '')
 
-    context = {
-        'form': form,
-    }
-    return render(request, 'templates_app/atm/discrepancy_form.html', context)
+        # Lấy danh sách giao dịch (dạng mảng)
+        full_names = request.POST.getlist('full_name[]')
+        account_numbers = request.POST.getlist('account_number[]')
+        card_numbers = request.POST.getlist('card_number[]')
+        trace_numbers = request.POST.getlist('trace_number[]')
+        transaction_ids = request.POST.getlist('transaction_id[]')
+        discrepancy_types = request.POST.getlist('discrepancy_type[]')
+        amounts = request.POST.getlist('amount[]')
+
+        errors = []
+
+        # Validate dữ liệu chung
+        if not atm_id:
+            errors.append('Vui lòng chọn máy ATM.')
+        if not audit_cycle_start:
+            errors.append('Vui lòng nhập ngày bắt đầu chu kỳ.')
+        if not audit_cycle_end:
+            errors.append('Vui lòng nhập ngày kết thúc chu kỳ.')
+        if audit_cycle_start and audit_cycle_end and audit_cycle_end < audit_cycle_start:
+            errors.append('Ngày kết thúc chu kỳ phải sau ngày bắt đầu.')
+        if not full_names or not any(n.strip() for n in full_names):
+            errors.append('Vui lòng nhập ít nhất một giao dịch.')
+
+        if not errors:
+            try:
+                import uuid as uuid_module
+                from django.db import transaction as db_transaction
+                from .models import ATM as ATMModel
+                atm_obj = ATMModel.objects.get(pk=atm_id)
+                batch_group_id = uuid_module.uuid4()
+                saved_count = 0
+                with db_transaction.atomic():
+                    for i in range(len(full_names)):
+                        full_name = full_names[i].strip() if i < len(full_names) else ''
+                        if not full_name:
+                            continue
+                        ATMDiscrepancy.objects.create(
+                            atm=atm_obj,
+                            full_name=full_name,
+                            account_number=account_numbers[i].strip() if i < len(account_numbers) else '',
+                            card_number=card_numbers[i].strip() if i < len(card_numbers) else '',
+                            trace_number=trace_numbers[i].strip() if i < len(trace_numbers) else '',
+                            transaction_id=transaction_ids[i].strip() if i < len(transaction_ids) else '',
+                            discrepancy_type=discrepancy_types[i] if i < len(discrepancy_types) else 'deficit',
+                            amount=amounts[i] if i < len(amounts) else 0,
+                            audit_cycle_start=audit_cycle_start,
+                            audit_cycle_end=audit_cycle_end,
+                            status=status,
+                            notes=notes,
+                            created_by=request.user,
+                            group_id=batch_group_id,
+                        )
+                        saved_count += 1
+                messages.success(request, f'Đã tạo {saved_count} giao dịch thừa/thiếu quỹ thành công')
+                return redirect('atm_discrepancy_list')
+            except Exception as e:
+                errors.append(f'Lỗi khi lưu dữ liệu: {str(e)}')
+
+        import json
+        post_rows = []
+        for i in range(len(full_names)):
+            post_rows.append({
+                'full_name': full_names[i] if i < len(full_names) else '',
+                'account_number': account_numbers[i] if i < len(account_numbers) else '',
+                'card_number': card_numbers[i] if i < len(card_numbers) else '',
+                'trace_number': trace_numbers[i] if i < len(trace_numbers) else '',
+                'transaction_id': transaction_ids[i] if i < len(transaction_ids) else '',
+                'discrepancy_type': discrepancy_types[i] if i < len(discrepancy_types) else 'deficit',
+                'amount': amounts[i] if i < len(amounts) else '',
+            })
+        from .models import ATM as ATMModel
+        context = {
+            'atm_list': ATMModel.objects.filter(is_active=True),
+            'status_choices': ATMDiscrepancy.STATUS_CHOICES,
+            'discrepancy_types': ATMDiscrepancy.DISCREPANCY_TYPES,
+            'errors': errors,
+            'post_data': request.POST,
+            'post_rows_json': json.dumps(post_rows),
+        }
+        return render(request, 'templates_app/atm/discrepancy_create_multi.html', context)
+    else:
+        from .models import ATM as ATMModel
+        context = {
+            'atm_list': ATMModel.objects.filter(is_active=True),
+            'status_choices': ATMDiscrepancy.STATUS_CHOICES,
+            'discrepancy_types': ATMDiscrepancy.DISCREPANCY_TYPES,
+        }
+    return render(request, 'templates_app/atm/discrepancy_create_multi.html', context)
 
 
 @login_required
@@ -5094,6 +5258,219 @@ def atm_discrepancy_delete(request, discrepancy_id):
         'discrepancy': discrepancy,
     }
     return render(request, 'templates_app/atm/discrepancy_confirm_delete.html', context)
+
+
+@login_required
+def atm_discrepancy_group_word(request, atm_id, start_date, end_date):
+    """Tự động tạo file Word cho tất cả giao dịch trong cùng chu kỳ (ATM + start + end)"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    from datetime import datetime as dt
+    try:
+        start_dt = dt.strptime(start_date, '%Y%m%d').date()
+        end_dt = dt.strptime(end_date, '%Y%m%d').date()
+    except ValueError:
+        messages.error(request, 'Ngày không hợp lệ')
+        return redirect('atm_discrepancy_list')
+
+    # atm_id ở đây là machine_id (string PK của ATM)
+    discrepancies = ATMDiscrepancy.objects.filter(
+        atm__machine_id=atm_id,
+        audit_cycle_start=start_dt,
+        audit_cycle_end=end_dt,
+    ).select_related('atm', 'created_by').order_by('id')
+
+    if not discrepancies.exists():
+        messages.error(request, 'Không tìm thấy nhóm giao dịch này')
+        return redirect('atm_discrepancy_list')
+
+    try:
+        from docx import Document
+        from docx.shared import Pt, Cm, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_ALIGN_VERTICAL
+        from io import BytesIO
+
+        first = discrepancies.first()
+        atm = first.atm
+
+        # Lấy thông tin ban quản lý ATM
+        team_leader = ATMManagementBoard.objects.filter(position='team_leader', is_active=True).first()
+        treasury_head = ATMManagementBoard.objects.filter(position='treasury_head', is_active=True).first()
+        atm_officer = ATMManagementBoard.objects.filter(position='atm_officer', is_active=True).first()
+
+        # Lấy thông tin chi nhánh
+        branch_config = BranchConfig.get_for_user(request.user)
+        branch_vars = branch_config.get_all_variables()
+        dia_danh = branch_vars.get('dia_danh', '')
+        ten_don_vi = branch_vars.get('ten_don_vi', '')
+
+        doc = Document()
+
+        # Thiết lập margin
+        for section in doc.sections:
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2)
+
+        def set_font(run, size=11, bold=False):
+            run.font.size = Pt(size)
+            run.font.bold = bold
+            run.font.name = 'Times New Roman'
+
+        def add_paragraph(text='', bold=False, size=11, align=WD_ALIGN_PARAGRAPH.LEFT):
+            p = doc.add_paragraph()
+            p.alignment = align
+            run = p.add_run(text)
+            set_font(run, size, bold)
+            return p
+
+        # Tiêu đề
+        if ten_don_vi:
+            p = add_paragraph(ten_don_vi.upper(), bold=True, size=12, align=WD_ALIGN_PARAGRAPH.CENTER)
+        add_paragraph('', size=10)
+
+        disc_type_display = 'THỪA/THIẾU QUỸ' if discrepancies.filter(discrepancy_type='surplus').exists() and discrepancies.filter(discrepancy_type='deficit').exists() \
+            else ('THỪA QUỸ' if discrepancies.first().discrepancy_type == 'surplus' else 'THIẾU QUỸ')
+        p = add_paragraph(f'BÁO CÁO GIAO DỊCH {disc_type_display} ATM', bold=True, size=14, align=WD_ALIGN_PARAGRAPH.CENTER)
+
+        # Thông tin chung
+        add_paragraph('')
+        p = doc.add_paragraph()
+        p.add_run('Máy ATM: ').bold = True
+        run = p.add_run(f'{atm.machine_id} - {atm.address}')
+        set_font(run)
+
+        p = doc.add_paragraph()
+        r = p.add_run('Chu kỳ kiểm quỹ: ')
+        r.bold = True
+        set_font(r, bold=True)
+        run = p.add_run(f'{first.audit_cycle_start.strftime("%d/%m/%Y")} đến {first.audit_cycle_end.strftime("%d/%m/%Y")}')
+        set_font(run)
+
+        p = doc.add_paragraph()
+        r = p.add_run('Trạng thái: ')
+        r.bold = True
+        set_font(r, bold=True)
+        run = p.add_run(first.get_status_display())
+        set_font(run)
+
+        if first.notes:
+            p = doc.add_paragraph()
+            r = p.add_run('Ghi chú: ')
+            r.bold = True
+            set_font(r, bold=True)
+            run = p.add_run(first.notes)
+            set_font(run)
+
+        add_paragraph('')
+
+        # Bảng danh sách giao dịch
+        headers = ['STT', 'Họ tên', 'Số TK', 'Số thẻ', 'Số trace', 'ID giao dịch', 'Loại', 'Số tiền (đ)']
+        table = doc.add_table(rows=1, cols=len(headers))
+        table.style = 'Table Grid'
+
+        # Header row
+        hdr_cells = table.rows[0].cells
+        for i, h in enumerate(headers):
+            hdr_cells[i].text = h
+            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            hdr_cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+            hdr_cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+            hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        total_surplus = 0
+        total_deficit = 0
+        for idx, disc in enumerate(discrepancies, 1):
+            row_cells = table.add_row().cells
+            type_str = 'Thừa' if disc.discrepancy_type == 'surplus' else 'Thiếu'
+            amt = int(disc.amount)
+            if disc.discrepancy_type == 'surplus':
+                total_surplus += amt
+            else:
+                total_deficit += amt
+            values = [
+                str(idx),
+                disc.full_name,
+                disc.account_number,
+                disc.card_number,
+                disc.trace_number,
+                disc.transaction_id,
+                type_str,
+                f"{amt:,}",
+            ]
+            for i, val in enumerate(values):
+                row_cells[i].text = val
+                row_cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+                row_cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+                if i in (0, 6, 7):
+                    row_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Dòng tổng cộng
+        total_row = table.add_row().cells
+        total_row[0].merge(total_row[5])
+        total_row[0].text = 'Tổng cộng'
+        total_row[0].paragraphs[0].runs[0].bold = True
+        total_row[0].paragraphs[0].runs[0].font.size = Pt(10)
+        total_row[0].paragraphs[0].runs[0].font.name = 'Times New Roman'
+        total_row[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        total_row[6].text = f"Thừa: {total_surplus:,}\nThiếu: {total_deficit:,}"
+        total_row[6].paragraphs[0].runs[0].font.size = Pt(10)
+        total_row[6].paragraphs[0].runs[0].font.name = 'Times New Roman'
+
+        add_paragraph('')
+
+        # Chữ ký
+        sig_table = doc.add_table(rows=2, cols=3)
+        sig_positions = [
+            ('TRƯỞNG BAN', team_leader),
+            ('TRƯỞNG PHÒNG KTNQ', treasury_head),
+            ('CÁN BỘ PHỤ TRÁCH ATM', atm_officer),
+        ]
+        for col_idx, (title, member) in enumerate(sig_positions):
+            cell = sig_table.rows[0].cells[col_idx]
+            p = cell.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            r = p.add_run(title)
+            r.bold = True
+            r.font.size = Pt(11)
+            r.font.name = 'Times New Roman'
+
+            cell2 = sig_table.rows[1].cells[col_idx]
+            p2 = cell2.paragraphs[0]
+            p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            name_text = member.full_name if member else '...........................'
+            run2 = p2.add_run(name_text)
+            run2.font.size = Pt(11)
+            run2.font.name = 'Times New Roman'
+
+        # Ngày ký
+        add_paragraph('')
+        if dia_danh:
+            date_str = f"{dia_danh}, ngày {first.audit_cycle_end.day:02d} tháng {first.audit_cycle_end.month:02d} năm {first.audit_cycle_end.year}"
+        else:
+            date_str = f"Ngày {first.audit_cycle_end.day:02d} tháng {first.audit_cycle_end.month:02d} năm {first.audit_cycle_end.year}"
+        add_paragraph(date_str, align=WD_ALIGN_PARAGRAPH.RIGHT)
+
+        output = BytesIO()
+        doc.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        disc_type_fn = 'ThuaThieu' if disc_type_display == 'THỪA/THIẾU QUỸ' else ('Thua' if 'THỪA' in disc_type_display else 'Thieu')
+        filename = f"BaoCao_{disc_type_fn}_ATM_{atm.machine_id}_{first.audit_cycle_end.strftime('%Y%m%d')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('atm_discrepancy_list')
 
 
 @login_required

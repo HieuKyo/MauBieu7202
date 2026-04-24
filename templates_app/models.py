@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import Group, User
 from django.core.validators import FileExtensionValidator
 import unicodedata
+import uuid
 from .storage import HybridTemplateStorage
 
 
@@ -2330,7 +2331,6 @@ class ATMManagementBoard(models.Model):
     position = models.CharField(
         max_length=50,
         choices=POSITION_CHOICES,
-        unique=True,
         verbose_name="Chức vụ"
     )
     full_name = models.CharField(
@@ -2690,6 +2690,12 @@ class ATMDiscrepancy(models.Model):
         verbose_name="Trạng thái"
     )
     notes = models.TextField(blank=True, verbose_name="Ghi chú")
+
+    group_id = models.UUIDField(
+        default=uuid.uuid4,
+        db_index=True,
+        verbose_name="Mã nhóm chu kỳ"
+    )
 
     created_by = models.ForeignKey(
         User,

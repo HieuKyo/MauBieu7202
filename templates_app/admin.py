@@ -869,10 +869,28 @@ class ATMAdmin(admin.ModelAdmin):
 @admin.register(ATMManagementBoard)
 class ATMManagementBoardAdmin(admin.ModelAdmin):
     """Admin cho Ban quản lý ATM"""
-    list_display = ['position', 'full_name', 'title', 'is_active']
+    list_display = ['get_position_display', 'full_name', 'title', 'is_active', 'updated_at']
     list_filter = ['position', 'is_active']
     list_editable = ['is_active']
-    ordering = ['position']
+    ordering = ['position', 'full_name']
+
+    def save_model(self, request, obj, form, change):
+        # Nếu đang kích hoạt người này, tắt các người khác cùng vị trí
+        if obj.is_active:
+            ATMManagementBoard.objects.filter(
+                position=obj.position, is_active=True
+            ).exclude(pk=obj.pk).update(is_active=False)
+        super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in instances:
+            if obj.is_active:
+                ATMManagementBoard.objects.filter(
+                    position=obj.position, is_active=True
+                ).exclude(pk=obj.pk).update(is_active=False)
+            obj.save()
+        formset.save_m2m()
 
     fieldsets = (
         ('Thông tin chức vụ', {
