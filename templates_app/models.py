@@ -2922,6 +2922,13 @@ class DongMoTaiKhoanHistory(models.Model):
     dong_tk_count = models.IntegerField(default=0, verbose_name="Đóng TK")
     dong_he_thong_count = models.IntegerField(default=0, verbose_name="Hệ thống tự đóng")
     dong_tai_quay_count = models.IntegerField(default=0, verbose_name="Đóng tại quầy")
+    # Phân loại đóng TK theo loại khách hàng
+    dong_ca_nhan_count = models.IntegerField(default=0, verbose_name="Đóng TK - Cá nhân")
+    dong_ca_nhan_tu_dong = models.IntegerField(default=0, verbose_name="Đóng TK - Cá nhân tự động")
+    dong_ca_nhan_tai_quay = models.IntegerField(default=0, verbose_name="Đóng TK - Cá nhân tại quầy")
+    dong_to_chuc_count = models.IntegerField(default=0, verbose_name="Đóng TK - Tổ chức")
+    dong_to_chuc_tu_dong = models.IntegerField(default=0, verbose_name="Đóng TK - Tổ chức tự động")
+    dong_to_chuc_tai_quay = models.IntegerField(default=0, verbose_name="Đóng TK - Tổ chức tại quầy")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

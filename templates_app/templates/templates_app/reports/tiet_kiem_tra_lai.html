@@ -1,15 +1,15 @@
 {% extends 'templates_app/base.html' %}
 
-{% block title %}Báo cáo KH Tiết kiệm trả lãi qua TKTGTT{% endblock %}
+{% block title %}Báo cáo Khách hàng, Tiết kiệm{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="row mb-4">
         <div class="col-12">
             <h2 class="text-center mb-1" style="color: var(--agri-red);">
-                <i class="bi bi-piggy-bank"></i> BÁO CÁO KHÁCH HÀNG TIẾT KIỆM
+                <i class="bi bi-piggy-bank"></i> BÁO CÁO KHÁCH HÀNG, TIẾT KIỆM
             </h2>
-            <p class="text-center fw-semibold mb-0">TRẢ LÃI QUA TÀI KHOẢN TIỀN GỬI THANH TOÁN</p>
+            <p class="text-center fw-semibold mb-0">PHÂN TÍCH KHÁCH HÀNG VÀ TIẾT KIỆM</p>
             <p class="text-center text-muted small">Phân tích từ file TG và file DPDA08</p>
         </div>
     </div>
@@ -101,6 +101,24 @@
                             {% include "templates_app/reports/_tktl_row.html" with metric="kh_tra_lai_qua_tk" label="KH tiết kiệm có trả lãi qua TK tiền gửi thanh toán" count=result.so_kh_tra_lai_qua_tk level=0 style="table-light fw-semibold" icon="bi-arrow-right-circle-fill text-danger" %}
 
                             {% include "templates_app/reports/_tktl_row.html" with metric="kh_dinh_ky_qua_tk" label="Trong đó: KH trả lãi định kỳ qua TK tiền gửi thanh toán" count=result.so_kh_dinh_ky_qua_tk level=2 style="" icon="bi-arrow-return-right" %}
+
+                            <tr class="table-dark">
+                                <td colspan="3" class="fw-bold text-center py-2">
+                                    <i class="bi bi-info-circle me-2"></i>CHỈ TIÊU MỚI - PHÂN TÍCH KHÁCH HÀNG
+                                </td>
+                            </tr>
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="kh_15_tuoi_co_tk" label="Tổng số KH trên 15 tuổi có tài khoản" count=result.so_kh_15_tuoi_co_tk level=0 style="table-primary fw-semibold" icon="bi-person-badge-fill" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="kh_15_tuoi_hoatdong" label="Tổng số KH trên 15 tuổi có tài khoản đang hoạt động" count=result.so_kh_15_tuoi_hoatdong level=1 style="" icon="bi-person-check2-fill" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="tk_tt_ca_nhan" label="Tổng số TK thanh toán - Khách hàng cá nhân" count=result.so_tk_tt_ca_nhan level=0 style="table-success fw-semibold" icon="bi-person-fill" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="tk_tt_to_chuc" label="Tổng số TK thanh toán - Khách hàng tổ chức" count=result.so_tk_tt_to_chuc level=0 style="table-info fw-semibold" icon="bi-building-fill" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="tk_tt_ca_nhan_hoatdong" label="TK thanh toán đang hoạt động - Khách hàng cá nhân" count=result.so_tk_tt_ca_nhan_hoatdong level=1 style="" icon="bi-person-check-fill" %}
+
+                            {% include "templates_app/reports/_tktl_row.html" with metric="tk_tt_to_chuc_hoatdong" label="TK thanh toán đang hoạt động - Khách hàng tổ chức" count=result.so_tk_tt_to_chuc_hoatdong level=1 style="" icon="bi-building-check" %}
 
                         </tbody>
                     </table>

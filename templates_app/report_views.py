@@ -660,11 +660,17 @@ _TKTL_LABELS = {
     'kh_tietkiem_co_tt':    'KH tiết kiệm có TK thanh toán',
     'kh_tra_lai_qua_tk':    'KH trả lãi qua TKTGTT',
     'kh_dinh_ky_qua_tk':    'KH định kỳ trả lãi qua TKTGTT',
+    'kh_15_tuoi_co_tk':     'KH trên 15 tuổi có tài khoản',
+    'kh_15_tuoi_hoatdong':  'KH trên 15 tuổi có tài khoản đang hoạt động',
+    'tk_tt_ca_nhan':        'TK thanh toán - Khách hàng cá nhân',
+    'tk_tt_to_chuc':        'TK thanh toán - Khách hàng tổ chức',
+    'tk_tt_ca_nhan_hoatdong': 'TK thanh toán đang hoạt động - Khách hàng cá nhân',
+    'tk_tt_to_chuc_hoatdong': 'TK thanh toán đang hoạt động - Khách hàng tổ chức',
 }
 
 # Chỉ đọc các cột cần thiết để giảm bộ nhớ với file lớn
-_TG_COLS   = ['Acctcd', 'Customer_No', 'Customer_Name', 'DP_TypeName',
-              'Account_Number', 'Month_Term', 'Tr_Office_Name']
+_TG_COLS   = ['Acctcd', 'Customer_No', 'Customer_Name', 'Cust_Name', 'DP_TypeName',
+              'Account_Number', 'Month_Term', 'Tr_Office_Name', 'acc_st']
 _DPDA08_COLS = ['idxacno', 'custseq', 'custnm', 'termdptp', 'altacctno']
 
 
@@ -717,6 +723,9 @@ def tiet_kiem_tra_lai_view(request):
         ).fillna(0)
         df_tg['_acctcd'] = pd.to_numeric(df_tg['Acctcd'], errors='coerce').fillna(0).astype(int)
         df_tg['_custno'] = df_tg['Customer_No'].astype(str).str.strip()
+        df_tg['_cust_name'] = df_tg['Cust_Name'].astype(str).str.strip()
+        df_tg['_acc_st'] = df_tg['acc_st'].astype(str).str.strip()
+        df_tg['_dp_type_name'] = df_tg['DP_TypeName'].astype(str).str.strip()
 
         # Chuẩn hóa cột dp
         df_dp['_termdptp']  = df_dp['termdptp'].astype(str).str.strip()
@@ -785,6 +794,77 @@ def tiet_kiem_tra_lai_view(request):
                        'custnm': 'Tên KH', '_altacctno': 'TK nhận lãi',
                        '_termdptp': 'Hình thức'})
 
+        # ── 5. Tổng số khách hàng trên 15 tuổi có tài khoản ─────────────────
+        # Lọc: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)" ở DP_TypeName
+        df_kh_15_tuoi = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (df_tg['_cust_name'] == 'Cá Nhân') &
+            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)']))
+        ].copy()
+        df_kh_15_tuoi_unique = df_kh_15_tuoi.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        _store_detail(request, 'kh_15_tuoi_co_tk', df_kh_15_tuoi_unique,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 6. Tổng số khách hàng trên 15 tuổi có tài khoản đang hoạt động ─────
+        # Lọc: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)" ở DP_TypeName, acc_st = "Normal"
+        df_kh_15_tuoi_hoatdong = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (df_tg['_cust_name'] == 'Cá Nhân') &
+            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)'])) &
+            (df_tg['_acc_st'] == 'Normal')
+        ].copy()
+        df_kh_15_tuoi_hoatdong_unique = df_kh_15_tuoi_hoatdong.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        _store_detail(request, 'kh_15_tuoi_hoatdong', df_kh_15_tuoi_hoatdong_unique,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 7. Tổng số lượng tài khoản thanh toán ─────────────────────────────
+        # Khách hàng cá nhân: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)"
+        df_tk_tt_ca_nhan = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (df_tg['_cust_name'] == 'Cá Nhân') &
+            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)']))
+        ].copy()
+        _store_detail(request, 'tk_tt_ca_nhan', df_tk_tt_ca_nhan,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị'})
+
+        # Khách hàng tổ chức: Month_Term = 0, Bỏ Cust_Name = "Cá Nhân", "Hộ gia đình", Bỏ "TG TK KHONG KY HAN" và "(Blanks)"
+        df_tk_tt_to_chuc = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (~df_tg['_cust_name'].isin(['Cá Nhân', 'Hộ gia đình'])) &
+            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)']))
+        ].copy()
+        _store_detail(request, 'tk_tt_to_chuc', df_tk_tt_to_chuc,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị', '_cust_name': 'Loại KH'})
+
+        # ── 8. Tổng số lượng tài khoản thanh toán đang hoạt động ───────────────
+        # Khách hàng cá nhân: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)", acc_st = "Normal"
+        df_tk_tt_ca_nhan_hoatdong = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (df_tg['_cust_name'] == 'Cá Nhân') &
+            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)'])) &
+            (df_tg['_acc_st'] == 'Normal')
+        ].copy()
+        _store_detail(request, 'tk_tt_ca_nhan_hoatdong', df_tk_tt_ca_nhan_hoatdong,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị'})
+
+        # Khách hàng tổ chức: Month_Term = 0, Bỏ Cust_Name = "Cá Nhân", "Hộ gia đình", Bỏ "TG TK KHONG KY HAN" và "(Blanks)", acc_st = "Normal"
+        df_tk_tt_to_chuc_hoatdong = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (~df_tg['_cust_name'].isin(['Cá Nhân', 'Hộ gia đình'])) &
+            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)'])) &
+            (df_tg['_acc_st'] == 'Normal')
+        ].copy()
+        _store_detail(request, 'tk_tt_to_chuc_hoatdong', df_tk_tt_to_chuc_hoatdong,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị', '_cust_name': 'Loại KH'})
+
         context['result'] = {
             'tong_kh':              len(df_tong_kh),
             'tong_tk_tiet_kiem':    len(df_savings),
@@ -793,6 +873,12 @@ def tiet_kiem_tra_lai_view(request):
             'so_kh_tietkiem_co_tt': len(df_co_tt),
             'so_kh_tra_lai_qua_tk': len(df_qua_tk_unique),
             'so_kh_dinh_ky_qua_tk': len(df_dk_qua_tk_unique),
+            'so_kh_15_tuoi_co_tk': len(df_kh_15_tuoi_unique),
+            'so_kh_15_tuoi_hoatdong': len(df_kh_15_tuoi_hoatdong_unique),
+            'so_tk_tt_ca_nhan': len(df_tk_tt_ca_nhan),
+            'so_tk_tt_to_chuc': len(df_tk_tt_to_chuc),
+            'so_tk_tt_ca_nhan_hoatdong': len(df_tk_tt_ca_nhan_hoatdong),
+            'so_tk_tt_to_chuc_hoatdong': len(df_tk_tt_to_chuc_hoatdong),
         }
 
     except Exception as e:
@@ -1710,7 +1796,8 @@ def dong_mo_tai_khoan_report_view(request):
         DongMoTaiKhoanHistory.objects.order_by('-report_month').values(
             'report_month', 'tong_mo', 'ca_nhan_count', 'to_chuc_count',
             'the_mien_phi_count', 'hssv_count',
-            'dong_tk_count', 'dong_he_thong_count', 'dong_tai_quay_count'
+            'dong_tk_count', 'dong_he_thong_count', 'dong_tai_quay_count',
+            'dong_ca_nhan_count', 'dong_to_chuc_count'
         )
     )
 
@@ -1728,6 +1815,8 @@ def dong_mo_tai_khoan_report_view(request):
             dong_tk_count=Sum('dong_tk_count'),
             dong_he_thong_count=Sum('dong_he_thong_count'),
             dong_tai_quay_count=Sum('dong_tai_quay_count'),
+            dong_ca_nhan_count=Sum('dong_ca_nhan_count'),
+            dong_to_chuc_count=Sum('dong_to_chuc_count'),
         )
         .order_by('-quy')
     )
@@ -1750,6 +1839,8 @@ def dong_mo_tai_khoan_report_view(request):
             dong_tk_count=Sum('dong_tk_count'),
             dong_he_thong_count=Sum('dong_he_thong_count'),
             dong_tai_quay_count=Sum('dong_tai_quay_count'),
+            dong_ca_nhan_count=Sum('dong_ca_nhan_count'),
+            dong_to_chuc_count=Sum('dong_to_chuc_count'),
         )
         .order_by('-nam')
     )
@@ -1981,12 +2072,22 @@ def process_dong_mo_tai_khoan_report(request):
         dong_tk_records     = []
         dong_col_labels     = []
 
+        # Phân loại theo loại khách hàng
+        dong_ca_nhan_count           = 0
+        dong_ca_nhan_tu_dong         = 0
+        dong_ca_nhan_tai_quay        = 0
+        dong_to_chuc_count           = 0
+        dong_to_chuc_tu_dong         = 0
+        dong_to_chuc_tai_quay        = 0
+
         if dong_tk_file:
             try:
                 df_dong = pd.read_excel(dong_tk_file)
                 df_dong.columns = df_dong.columns.str.strip()
 
                 teller_col_dong = _find_col(df_dong.columns, ['tellernm', 'teller', 'teller_name'])
+                locdpnm_col_dong = _find_col(df_dong.columns, ['locdpnm', 'loai_sp', 'loai_tk', 'product_name'])
+
                 _DONG_WANT_COLS   = ['idxacno', 'custnm', 'locdpnm', 'clsdt', 'tellernm']
                 _DONG_WANT_LABELS = ['Số tài khoản', 'Họ tên', 'Loại sản phẩm', 'Ngày đóng', 'Teller']
 
@@ -2017,6 +2118,27 @@ def process_dong_mo_tai_khoan_report(request):
                     return str(v)
 
                 dong_tk_count = len(df_dong)
+
+                # Phân loại theo loại khách hàng
+                if locdpnm_col_dong:
+                    df_dong['_locdpnm'] = df_dong[locdpnm_col_dong].astype(str).str.strip()
+
+                    # Lọc khách hàng cá nhân
+                    df_dong_ca_nhan = df_dong[df_dong['_locdpnm'].isin(_LOAI_CA_NHAN)].copy()
+                    dong_ca_nhan_count = len(df_dong_ca_nhan)
+
+                    if teller_col_dong:
+                        dong_ca_nhan_tu_dong = int((df_dong_ca_nhan[teller_col_dong].astype(str).str.strip().str.upper() == '7202DP').sum())
+                        dong_ca_nhan_tai_quay = int(df_dong_ca_nhan[teller_col_dong].astype(str).str.strip().str.upper().str.startswith('GRA').sum())
+
+                    # Lọc khách hàng tổ chức
+                    df_dong_to_chuc = df_dong[df_dong['_locdpnm'].isin(_LOAI_TO_CHUC)].copy()
+                    dong_to_chuc_count = len(df_dong_to_chuc)
+
+                    if teller_col_dong:
+                        dong_to_chuc_tu_dong = int((df_dong_to_chuc[teller_col_dong].astype(str).str.strip().str.upper() == '7202DP').sum())
+                        dong_to_chuc_tai_quay = int(df_dong_to_chuc[teller_col_dong].astype(str).str.strip().str.upper().str.startswith('GRA').sum())
+
                 if teller_col_dong:
                     dong_he_thong_count = int((df_dong[teller_col_dong].astype(str).str.strip().str.upper() == '7202DP').sum())
                     dong_tai_quay_count = int(df_dong[teller_col_dong].astype(str).str.strip().str.upper().str.startswith('GRA').sum())
@@ -2082,6 +2204,13 @@ def process_dong_mo_tai_khoan_report(request):
             'dong_tai_quay_count': dong_tai_quay_count,
             'dong_tk_records': dong_tk_records,
             'dong_col_labels': dong_col_labels,
+            # Phân loại đóng TK theo loại khách hàng
+            'dong_ca_nhan_count': dong_ca_nhan_count,
+            'dong_ca_nhan_tu_dong': dong_ca_nhan_tu_dong,
+            'dong_ca_nhan_tai_quay': dong_ca_nhan_tai_quay,
+            'dong_to_chuc_count': dong_to_chuc_count,
+            'dong_to_chuc_tu_dong': dong_to_chuc_tu_dong,
+            'dong_to_chuc_tai_quay': dong_to_chuc_tai_quay,
         }
 
         request.session['dmtk_result'] = _to_json_safe(result)
@@ -2104,6 +2233,12 @@ def process_dong_mo_tai_khoan_report(request):
                         'dong_tk_count': result['dong_tk_count'],
                         'dong_he_thong_count': result['dong_he_thong_count'],
                         'dong_tai_quay_count': result['dong_tai_quay_count'],
+                        'dong_ca_nhan_count': result['dong_ca_nhan_count'],
+                        'dong_ca_nhan_tu_dong': result['dong_ca_nhan_tu_dong'],
+                        'dong_ca_nhan_tai_quay': result['dong_ca_nhan_tai_quay'],
+                        'dong_to_chuc_count': result['dong_to_chuc_count'],
+                        'dong_to_chuc_tu_dong': result['dong_to_chuc_tu_dong'],
+                        'dong_to_chuc_tai_quay': result['dong_to_chuc_tai_quay'],
                     }
                 )
                 messages.success(request, f"Đã lưu thống kê kỳ {report_month.strftime('%m/%Y')} vào lịch sử.")

@@ -466,7 +466,8 @@
             {% if result.has_dong_tk_file %}
             <!-- Tab Đóng tài khoản -->
             <div class="tab-pane fade" id="tab-dong">
-                <div class="row g-3 mb-3">
+                <!-- Tổng quan -->
+                <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <div class="card text-center border-danger">
                             <div class="card-body py-2">
@@ -492,6 +493,73 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Phân loại theo loại khách hàng -->
+                <div class="row g-3 mb-4">
+                    <!-- Khách hàng cá nhân -->
+                    <div class="col-md-6">
+                        <div class="card border-primary">
+                            <div class="card-header fw-semibold text-white" style="background:linear-gradient(90deg,#0d6efd,#0a58ca);">
+                                <i class="bi bi-person-fill me-2"></i>Khách hàng cá nhân
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold text-primary">{{ result.dong_ca_nhan_count }}</div>
+                                            <div class="text-muted small">Tổng</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold" style="color:#fd7e14;">{{ result.dong_ca_nhan_tu_dong }}</div>
+                                            <div class="text-muted small">Tự động</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold" style="color:#e83e8c;">{{ result.dong_ca_nhan_tai_quay }}</div>
+                                            <div class="text-muted small">Tại quầy</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Khách hàng tổ chức -->
+                    <div class="col-md-6">
+                        <div class="card border-info">
+                            <div class="card-header fw-semibold text-white" style="background:linear-gradient(90deg,#0dcaf0,#0aa2c0);">
+                                <i class="bi bi-building-fill me-2"></i>Khách hàng tổ chức
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold text-info">{{ result.dong_to_chuc_count }}</div>
+                                            <div class="text-muted small">Tổng</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold" style="color:#fd7e14;">{{ result.dong_to_chuc_tu_dong }}</div>
+                                            <div class="text-muted small">Tự động</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold" style="color:#e83e8c;">{{ result.dong_to_chuc_tai_quay }}</div>
+                                            <div class="text-muted small">Tại quầy</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bảng chi tiết -->
                 <div class="table-responsive" style="max-height:500px; overflow-y:auto;">
                     <table class="table table-sm table-striped table-hover align-middle">
                         <thead class="table-light sticky-top">
@@ -575,6 +643,8 @@
                             <th>Đóng TK</th>
                             <th>HT tự đóng</th>
                             <th>Đóng tại quầy</th>
+                            <th>Đóng CN</th>
+                            <th>Đóng TC</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -589,6 +659,8 @@
                             <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
                             <td class="text-warning">{{ row.dong_he_thong_count }}</td>
                             <td>{{ row.dong_tai_quay_count }}</td>
+                            <td class="text-primary">{{ row.dong_ca_nhan_count|default:0 }}</td>
+                            <td class="text-info">{{ row.dong_to_chuc_count|default:0 }}</td>
                         </tr>
                     {% endfor %}
                     </tbody>
@@ -615,6 +687,8 @@
                             <th>Đóng TK</th>
                             <th>HT tự đóng</th>
                             <th>Đóng tại quầy</th>
+                            <th>Đóng CN</th>
+                            <th>Đóng TC</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -629,6 +703,8 @@
                             <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
                             <td class="text-warning">{{ row.dong_he_thong_count }}</td>
                             <td>{{ row.dong_tai_quay_count }}</td>
+                            <td class="text-primary">{{ row.dong_ca_nhan_count|default:0 }}</td>
+                            <td class="text-info">{{ row.dong_to_chuc_count|default:0 }}</td>
                         </tr>
                     {% endfor %}
                     </tbody>
@@ -655,6 +731,8 @@
                             <th>Đóng TK</th>
                             <th>HT tự đóng</th>
                             <th>Đóng tại quầy</th>
+                            <th>Đóng CN</th>
+                            <th>Đóng TC</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -669,6 +747,8 @@
                             <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
                             <td class="text-warning">{{ row.dong_he_thong_count }}</td>
                             <td>{{ row.dong_tai_quay_count }}</td>
+                            <td class="text-primary">{{ row.dong_ca_nhan_count|default:0 }}</td>
+                            <td class="text-info">{{ row.dong_to_chuc_count|default:0 }}</td>
                         </tr>
                     {% endfor %}
                     </tbody>
