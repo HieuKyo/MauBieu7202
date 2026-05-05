@@ -727,6 +727,17 @@ def tiet_kiem_tra_lai_view(request):
         df_tg['_acc_st'] = df_tg['acc_st'].astype(str).str.strip()
         df_tg['_dp_type_name'] = df_tg['DP_TypeName'].astype(str).str.strip()
 
+        # Debug: Hiển thị các giá trị unique của các cột quan trọng
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"=== DEBUG TG FILE ===")
+        logger.info(f"Total rows in TG: {len(df_tg)}")
+        logger.info(f"Unique Cust_Name values: {df_tg['_cust_name'].unique()[:20]}")
+        logger.info(f"Unique acc_st values: {df_tg['_acc_st'].unique()}")
+        logger.info(f"Unique DP_TypeName values: {df_tg['_dp_type_name'].unique()[:20]}")
+        logger.info(f"Month_Term = 0 count: {(df_tg['_month_term'] == 0).sum()}")
+        logger.info(f"=====================")
+
         # Chuẩn hóa cột dp
         df_dp['_termdptp']  = df_dp['termdptp'].astype(str).str.strip()
         df_dp['_custseq']   = df_dp['custseq'].astype(str).str.strip()
@@ -798,10 +809,12 @@ def tiet_kiem_tra_lai_view(request):
         # Lọc: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)" ở DP_TypeName
         df_kh_15_tuoi = df_tg[
             (df_tg['_month_term'] == 0) &
-            (df_tg['_cust_name'] == 'Cá Nhân') &
-            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)']))
+            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
         ].copy()
+        logger.info(f"DEBUG: KH 15+ tuổi có TK - Before dedup: {len(df_kh_15_tuoi)} rows")
         df_kh_15_tuoi_unique = df_kh_15_tuoi.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        logger.info(f"DEBUG: KH 15+ tuổi có TK - After dedup: {len(df_kh_15_tuoi_unique)} unique customers")
         _store_detail(request, 'kh_15_tuoi_co_tk', df_kh_15_tuoi_unique,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
 
@@ -809,11 +822,13 @@ def tiet_kiem_tra_lai_view(request):
         # Lọc: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)" ở DP_TypeName, acc_st = "Normal"
         df_kh_15_tuoi_hoatdong = df_tg[
             (df_tg['_month_term'] == 0) &
-            (df_tg['_cust_name'] == 'Cá Nhân') &
-            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)'])) &
-            (df_tg['_acc_st'] == 'Normal')
+            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
+            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
         ].copy()
+        logger.info(f"DEBUG: KH 15+ tuổi hoạt động - Before dedup: {len(df_kh_15_tuoi_hoatdong)} rows")
         df_kh_15_tuoi_hoatdong_unique = df_kh_15_tuoi_hoatdong.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        logger.info(f"DEBUG: KH 15+ tuổi hoạt động - After dedup: {len(df_kh_15_tuoi_hoatdong_unique)} unique customers")
         _store_detail(request, 'kh_15_tuoi_hoatdong', df_kh_15_tuoi_hoatdong_unique,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
 
@@ -821,9 +836,10 @@ def tiet_kiem_tra_lai_view(request):
         # Khách hàng cá nhân: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)"
         df_tk_tt_ca_nhan = df_tg[
             (df_tg['_month_term'] == 0) &
-            (df_tg['_cust_name'] == 'Cá Nhân') &
-            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)']))
+            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
         ].copy()
+        logger.info(f"DEBUG: TK thanh toán cá nhân: {len(df_tk_tt_ca_nhan)} accounts")
         _store_detail(request, 'tk_tt_ca_nhan', df_tk_tt_ca_nhan,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
                        'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
@@ -832,9 +848,10 @@ def tiet_kiem_tra_lai_view(request):
         # Khách hàng tổ chức: Month_Term = 0, Bỏ Cust_Name = "Cá Nhân", "Hộ gia đình", Bỏ "TG TK KHONG KY HAN" và "(Blanks)"
         df_tk_tt_to_chuc = df_tg[
             (df_tg['_month_term'] == 0) &
-            (~df_tg['_cust_name'].isin(['Cá Nhân', 'Hộ gia đình'])) &
-            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)']))
+            (~df_tg['_cust_name'].str.strip().str.lower().isin(['cá nhân', 'hộ gia đình'])) &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
         ].copy()
+        logger.info(f"DEBUG: TK thanh toán tổ chức: {len(df_tk_tt_to_chuc)} accounts")
         _store_detail(request, 'tk_tt_to_chuc', df_tk_tt_to_chuc,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
                        'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
@@ -844,10 +861,11 @@ def tiet_kiem_tra_lai_view(request):
         # Khách hàng cá nhân: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)", acc_st = "Normal"
         df_tk_tt_ca_nhan_hoatdong = df_tg[
             (df_tg['_month_term'] == 0) &
-            (df_tg['_cust_name'] == 'Cá Nhân') &
-            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)'])) &
-            (df_tg['_acc_st'] == 'Normal')
+            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
+            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
         ].copy()
+        logger.info(f"DEBUG: TK thanh toán cá nhân hoạt động: {len(df_tk_tt_ca_nhan_hoatdong)} accounts")
         _store_detail(request, 'tk_tt_ca_nhan_hoatdong', df_tk_tt_ca_nhan_hoatdong,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
                        'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
@@ -856,10 +874,11 @@ def tiet_kiem_tra_lai_view(request):
         # Khách hàng tổ chức: Month_Term = 0, Bỏ Cust_Name = "Cá Nhân", "Hộ gia đình", Bỏ "TG TK KHONG KY HAN" và "(Blanks)", acc_st = "Normal"
         df_tk_tt_to_chuc_hoatdong = df_tg[
             (df_tg['_month_term'] == 0) &
-            (~df_tg['_cust_name'].isin(['Cá Nhân', 'Hộ gia đình'])) &
-            (~df_tg['_dp_type_name'].isin(['TG TK KHONG KY HAN', '(Blanks)'])) &
-            (df_tg['_acc_st'] == 'Normal')
+            (~df_tg['_cust_name'].str.strip().str.lower().isin(['cá nhân', 'hộ gia đình'])) &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
+            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
         ].copy()
+        logger.info(f"DEBUG: TK thanh toán tổ chức hoạt động: {len(df_tk_tt_to_chuc_hoatdong)} accounts")
         _store_detail(request, 'tk_tt_to_chuc_hoatdong', df_tk_tt_to_chuc_hoatdong,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
                        'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
