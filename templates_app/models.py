@@ -478,7 +478,7 @@ class Customer(models.Model):
     def clean(self):
         """Validate customer data"""
         from django.core.exceptions import ValidationError
-        from datetime import datetime, date
+        from datetime import date
         from dateutil.relativedelta import relativedelta
 
         errors = {}
@@ -700,8 +700,8 @@ class Customer(models.Model):
         nghe_nghiep_cong_chuc = checkbox(self.nghe_nghiep == 'Công chức viên chức')
         nghe_nghiep_nong_dan = checkbox(self.nghe_nghiep == 'Nông dân')
         nghe_nghiep_giao_vien_bac_si = checkbox(self.nghe_nghiep == 'Giáo viên/Bác Sĩ')
-        nghe_nghiep_giao_vien = checkbox(self.nghe_nghiep == 'Giáo viên')  # FIX: Thêm riêng lẻ
-        nghe_nghiep_bac_si = checkbox(self.nghe_nghiep == 'Bác sĩ')  # FIX: Thêm riêng lẻ
+        _nghe_nghiep_giao_vien = checkbox(self.nghe_nghiep == 'Giáo viên')  # FIX: Thêm riêng lẻ
+        _nghe_nghiep_bac_si = checkbox(self.nghe_nghiep == 'Bác sĩ')  # FIX: Thêm riêng lẻ
         nghe_nghiep_cong_nhan = checkbox(self.nghe_nghiep == 'Công nhân')
         nghe_nghiep_kinh_doanh = checkbox(self.nghe_nghiep == 'Kinh doanh tự do')
         nghe_nghiep_hoc_sinh_sinh_vien = checkbox(self.nghe_nghiep == 'Học sinh/Sinh viên')
@@ -725,7 +725,7 @@ class Customer(models.Model):
         pl_trungbinh = checkbox(self.ket_qua_phan_loai_kh == 'Trung bình')
         pl_thap = checkbox(self.ket_qua_phan_loai_kh == 'Thấp')
 
-        from datetime import datetime, date
+        from datetime import datetime
 
         # Auto-generate ten_tieng_anh from ho_ten (remove diacritics and uppercase)
         ten_tieng_anh = remove_vietnamese_diacritics(self.ho_ten or '')
@@ -1203,8 +1203,6 @@ class Business(models.Model):
         Dùng để auto-fill form và render template
         """
         from datetime import datetime
-        import re
-        import unicodedata
 
         EMPTY_VALUE = '...........................'
 
@@ -1662,7 +1660,7 @@ class BranchConfig(models.Model):
 
                 if branch_config:
                     return branch_config
-        except Exception as e:
+        except Exception:
             # Log error nếu cần
             pass
 

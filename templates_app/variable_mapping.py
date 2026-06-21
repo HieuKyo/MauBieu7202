@@ -9,7 +9,6 @@ Cách sử dụng:
 """
 
 from datetime import date
-from django.utils import timezone
 
 
 # ============================================
@@ -398,8 +397,6 @@ def generate_auto_variables():
     Returns:
         dict: Dictionary chứa các biến tự động với giá trị hiện tại
     """
-    from datetime import date
-    import locale
 
     today = date.today()
 
@@ -412,8 +409,6 @@ def generate_auto_variables():
     ngay_thang_nam_text = f"ngày {day:02d} tháng {month:02d} năm {year}"
 
     # Tiếng Anh
-    month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-                   'July', 'August', 'September', 'October', 'November', 'December']
     date_month_year = f"Date {day:02d} Month {month:02d} Year {year}"
 
     return {

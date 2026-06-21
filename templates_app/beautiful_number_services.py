@@ -47,12 +47,14 @@ def apply_vat(amount):
 
 def is_pure_repeat(s):
     """Kiểm tra lặp thuần túy (VD: '777')"""
-    if not s: return False
+    if not s:
+        return False
     return len(set(s)) == 1
 
 def is_sanh_tien(s):
     """Kiểm tra sảnh tiến liền kề (VD: '2345', '678')"""
-    if not s or len(s) < 2: return False
+    if not s or len(s) < 2:
+        return False
     for i in range(len(s) - 1):
         if int(s[i+1]) != int(s[i]) + 1:
             return False
@@ -60,20 +62,25 @@ def is_sanh_tien(s):
 
 def is_sanh_lap(s):
     """Kiểm tra sảnh lặp tăng dần (VD: '223344', '55667788')"""
-    if not s or len(s) % 2 != 0 or len(s) < 4: return False
+    if not s or len(s) % 2 != 0 or len(s) < 4:
+        return False
     # Kiểm tra cặp đầu tiên
-    if s[0] != s[1]: return False
+    if s[0] != s[1]:
+        return False
     # Kiểm tra các cặp tiếp theo
     for i in range(2, len(s), 2):
         # Phải là lặp
-        if s[i] != s[i+1]: return False
+        if s[i] != s[i+1]:
+            return False
         # Phải tăng dần
-        if int(s[i]) != int(s[i-1]) + 1: return False
+        if int(s[i]) != int(s[i-1]) + 1:
+            return False
     return True
 
 def is_lap_kep(s):
     """Kiểm tra lặp kép (VD: '8484', '112112')"""
-    if not s or len(s) % 2 != 0 or len(s) < 4: return False
+    if not s or len(s) % 2 != 0 or len(s) < 4:
+        return False
     half = len(s) // 2
     return s[:half] == s[half:]
 

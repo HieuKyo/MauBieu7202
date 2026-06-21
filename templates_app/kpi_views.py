@@ -4,9 +4,7 @@ KPI Dashboard Views
 Views cho tính năng Quyết Toán KPI tháng - Agribank
 """
 
-import calendar
 from datetime import datetime
-from io import BytesIO
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse

@@ -2,9 +2,7 @@ from django.contrib import admin
 from django.urls import path
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.http import HttpResponseRedirect
 from .models import TaxLocation, TaxSubEntry, TaxPaymentStatement, TaxPaymentItem
-import openpyxl
 import pandas as pd
 
 

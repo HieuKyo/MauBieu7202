@@ -1,5 +1,5 @@
 import json
-from datetime import date, timedelta
+from datetime import date
 
 from django.http import JsonResponse
 from django.shortcuts import render

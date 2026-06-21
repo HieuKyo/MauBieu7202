@@ -1,12 +1,10 @@
 import json
-from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST, require_http_methods
-from django.contrib import messages
+from django.views.decorators.http import require_POST
 from django.db.models import Case, When, Value, IntegerField, Q
 from django.utils import timezone
 

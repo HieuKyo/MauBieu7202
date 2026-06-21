@@ -7,6 +7,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from .models import MailEnvelopeTracking, ReportConfiguration
+import math
 import pandas as pd
 import openpyxl
 import io
@@ -597,7 +598,7 @@ def mail_envelope_tracking_view(request):
         config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
         pgd_user_map = config_obj.config_data.get('pgd_user_map', {})
         all_users = sorted([user for users in pgd_user_map.values() for user in users])
-    except:
+    except Exception:
         all_users = []
 
     return render(request, 'templates_app/reports/mail_envelope_tracking.html', {'all_users': all_users})
@@ -610,7 +611,7 @@ def save_mail_envelope(request):
     try:
         data = json.loads(request.body)
 
-        envelope = MailEnvelopeTracking.objects.create(
+        MailEnvelopeTracking.objects.create(
             envelope_code=data['ma_bithu'],
             receive_date=data['ngay_nhan'],
             receiver=data['nguoi_nhan']
@@ -676,7 +677,8 @@ _DPDA08_COLS = ['idxacno', 'custseq', 'custnm', 'termdptp', 'altacctno']
 
 def _store_detail(request, key, df, cols_rename):
     """Lưu DataFrame vào session dưới dạng JSON nén (gzip+base64)."""
-    import gzip, base64
+    import gzip
+    import base64
     df_out = df[list(cols_rename.keys())].rename(columns=cols_rename).copy()
     raw = df_out.to_json(orient='records', force_ascii=False)
     compressed = base64.b64encode(gzip.compress(raw.encode('utf-8'))).decode('ascii')
@@ -685,7 +687,8 @@ def _store_detail(request, key, df, cols_rename):
 
 def _load_detail(request, key):
     """Đọc lại detail từ session, trả về list of dicts hoặc None."""
-    import gzip, base64
+    import gzip
+    import base64
     compressed = request.session.get(f'tktl_{key}')
     if not compressed:
         return None
@@ -730,13 +733,13 @@ def tiet_kiem_tra_lai_view(request):
         # Debug: Hiển thị các giá trị unique của các cột quan trọng
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"=== DEBUG TG FILE ===")
+        logger.info("=== DEBUG TG FILE ===")
         logger.info(f"Total rows in TG: {len(df_tg)}")
         logger.info(f"Unique Cust_Name values: {df_tg['_cust_name'].unique()[:20]}")
         logger.info(f"Unique acc_st values: {df_tg['_acc_st'].unique()}")
         logger.info(f"Unique DP_TypeName values: {df_tg['_dp_type_name'].unique()[:20]}")
         logger.info(f"Month_Term = 0 count: {(df_tg['_month_term'] == 0).sum()}")
-        logger.info(f"=====================")
+        logger.info("=====================")
 
         # Chuẩn hóa cột dp
         df_dp['_termdptp']  = df_dp['termdptp'].astype(str).str.strip()
@@ -902,7 +905,8 @@ def tiet_kiem_tra_lai_view(request):
 
     except Exception as e:
         messages.error(request, f'Lỗi xử lý: {str(e)}')
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
 
     return render(request, 'templates_app/reports/tiet_kiem_tra_lai.html', context)
 
@@ -1746,8 +1750,6 @@ def atm_transaction_detail(request, atm_no):
 # BÁO CÁO ĐÓNG/MỞ TÀI KHOẢN
 # ─────────────────────────────────────────────────────────────────────────────
 
-import math
-
 def _to_json_safe(obj):
     """Chuyển đổi đệ quy các kiểu dữ liệu pandas/numpy thành kiểu JSON thuần."""
     import numpy as np
@@ -1803,7 +1805,7 @@ def dong_mo_tai_khoan_report_view(request):
     """Giao diện báo cáo Đóng/Mở tài khoản"""
     from .models import DongMoTaiKhoanHistory
     from django.db.models import Sum
-    from django.db.models.functions import TruncYear, TruncQuarter, TruncMonth
+    from django.db.models.functions import TruncYear, TruncQuarter
 
     # Xóa session cũ nếu sai format
     old = request.session.get('dmtk_result')
@@ -2077,8 +2079,10 @@ def process_dong_mo_tai_khoan_report(request):
                             )
                     else:
                         missing = []
-                        if not join_col_the: missing.append("file thẻ thiếu cột số tài khoản")
-                        if not join_col_mo:  missing.append(f"file mở TK thiếu cột số tài khoản (thử: {', '.join(_POSSIBLE_ACCTNO_COLS)})")
+                        if not join_col_the:
+                            missing.append("file thẻ thiếu cột số tài khoản")
+                        if not join_col_mo:
+                            missing.append(f"file mở TK thiếu cột số tài khoản (thử: {', '.join(_POSSIBLE_ACCTNO_COLS)})")
                         join_warning = "Không thể join: " + "; ".join(missing)
 
             except Exception as e:

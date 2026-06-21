@@ -3,9 +3,8 @@ from django import forms
 from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
-from django.http import HttpResponse
 from .models import (
-    Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, AppProgram,
+    Category, Template, Customer, Business, GlobalConfig, BranchConfig, AppProgram,
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction,
     UserProfile, Course, CourseEnrollment,
@@ -13,11 +12,7 @@ from .models import (
     Promotion,
 )
 from .import_helpers import (
-    import_variables_from_csv,
-    import_variables_from_excel,
-    import_templates_bulk,
-    export_variables_to_csv,
-    export_variables_to_excel
+    import_templates_bulk
 )
 
 
@@ -260,7 +255,6 @@ class TemplateAdmin(admin.ModelAdmin):
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         """Override to add variable context to the change form"""
-        from .models import GlobalConfig
 
         # Build variable lists for the sidebar
         # 1. Customer variables
@@ -552,7 +546,6 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
             # Process each number
             created_count = 0
             updated_count = 0
-            skipped_count = 0
             errors = []
 
             for num_str in numbers:

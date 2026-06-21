@@ -1,5 +1,4 @@
 # Standard library imports
-import io
 import json
 import os
 import re
@@ -22,9 +21,9 @@ from django.views.decorators.http import require_http_methods
 import mammoth
 
 # Local application imports
-from .forms import DynamicTemplateForm, CustomerForm, BusinessForm, GlobalConfigForm
+from .forms import DynamicTemplateForm, BusinessForm, GlobalConfigForm, ATMReplenishmentForm, ATMDiscrepancyForm
 from .issueby_mapping import get_issueby_name
-from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, AppProgram, remove_vietnamese_diacritics
+from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, AppProgram, remove_vietnamese_diacritics, ATM, ATMManagementBoard, ATMReplenishment, ATMDiscrepancy
 from .utils import render_word_template
 
 
@@ -1929,7 +1928,7 @@ def generate_document_direct(request, template_id):
                 data['d1'], data['d2'] = date_str[0], date_str[1]
                 data['m1'], data['m2'] = date_str[2], date_str[3]
                 data['y1'], data['y2'], data['y3'], data['y4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 # Invalid date format or type - set to None to avoid errors
                 data['ngay_sinh_obj'] = None
 
@@ -1945,7 +1944,7 @@ def generate_document_direct(request, template_id):
                 data['dcc1'], data['dcc2'] = date_str[0], date_str[1]
                 data['mcc1'], data['mcc2'] = date_str[2], date_str[3]
                 data['ycc1'], data['ycc2'], data['ycc3'], data['ycc4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 # Invalid date format or type - set to None to avoid errors
                 data['ngay_cap_cmnd_obj'] = None
 
@@ -1961,7 +1960,7 @@ def generate_document_direct(request, template_id):
                 data['dhh1'], data['dhh2'] = date_str[0], date_str[1]
                 data['mhh1'], data['mhh2'] = date_str[2], date_str[3]
                 data['yhh1'], data['yhh2'], data['yhh3'], data['yhh4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 # Invalid date format or type - set to None to avoid errors
                 data['ngay_het_han_cmnd_obj'] = None
 
@@ -2071,7 +2070,7 @@ def generate_document_direct(request, template_id):
 
             except Customer.DoesNotExist:
                 pass  # Customer not found, generate document without saving
-            except Exception as e:
+            except Exception:
                 pass  # Failed to update customer, continue with document generation
         else:
             # No customer_id provided - this is a new customer
@@ -2989,7 +2988,6 @@ def beautiful_number_list(request):
     # Pattern search - convert * to regex wildcard
     # Example: "7202***777***" -> matches numbers with 777 in the middle
     if pattern_filter:
-        import re
         # Convert pattern to regex: * matches any single digit
         regex_pattern = ''
         for char in pattern_filter:
@@ -3212,7 +3210,7 @@ def bank_statement_result(request, statement_id):
     """
     Hiển thị kết quả phân tích sao kê
     """
-    from .models import BankStatement, Transaction
+    from .models import BankStatement
     from django.core.paginator import Paginator
 
     statement = get_object_or_404(BankStatement, id=statement_id, uploaded_by=request.user)
@@ -3971,7 +3969,6 @@ def employee_export_excel(request):
     try:
         import openpyxl
         from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-        from openpyxl.utils import get_column_letter
         from django.http import HttpResponse
         from .models import UserProfile
         from datetime import datetime
@@ -4250,7 +4247,7 @@ def employee_create_manual(request):
         if request.POST.get('dob'):
             try:
                 profile.dob = datetime.strptime(request.POST.get('dob'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.gender = request.POST.get('gender', 'Nam')
@@ -4261,7 +4258,7 @@ def employee_create_manual(request):
         if request.POST.get('id_card_date'):
             try:
                 profile.id_card_date = datetime.strptime(request.POST.get('id_card_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.id_card_place = request.POST.get('id_card_place', '')
@@ -4281,13 +4278,13 @@ def employee_create_manual(request):
         if request.POST.get('certificate_start_date'):
             try:
                 profile.certificate_start_date = datetime.strptime(request.POST.get('certificate_start_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         if request.POST.get('certificate_end_date'):
             try:
                 profile.certificate_end_date = datetime.strptime(request.POST.get('certificate_end_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.save()
@@ -4335,7 +4332,7 @@ def employee_update_manual(request, employee_id):
         if request.POST.get('dob'):
             try:
                 profile.dob = datetime.strptime(request.POST.get('dob'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.gender = request.POST.get('gender', profile.gender)
@@ -4346,7 +4343,7 @@ def employee_update_manual(request, employee_id):
         if request.POST.get('id_card_date'):
             try:
                 profile.id_card_date = datetime.strptime(request.POST.get('id_card_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.id_card_place = request.POST.get('id_card_place', profile.id_card_place)
@@ -4367,13 +4364,13 @@ def employee_update_manual(request, employee_id):
         if request.POST.get('certificate_start_date'):
             try:
                 profile.certificate_start_date = datetime.strptime(request.POST.get('certificate_start_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         if request.POST.get('certificate_end_date'):
             try:
                 profile.certificate_end_date = datetime.strptime(request.POST.get('certificate_end_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.save()
@@ -4449,7 +4446,7 @@ def course_dashboard(request):
     - Quản lý (Superuser, Phòng Tổng hợp): Xem tất cả khóa học và tất cả học viên
     - Nhân viên: Chỉ xem khóa học được giao và chỉ thấy bản thân
     """
-    from .models import Course, CourseEnrollment, UserProfile
+    from .models import Course, CourseEnrollment
 
     # Check if user has permission to manage courses (create/edit/delete)
     has_permission = check_elearning_manage_permission(request.user)
@@ -4819,10 +4816,6 @@ def course_toggle_completion(request, enrollment_id):
 # ============================================================================
 # ATM Management Views
 # ============================================================================
-
-from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy
-from .forms import ATMReplenishmentForm, ATMDiscrepancyForm
-
 
 @login_required
 def atm_dashboard(request):
@@ -5288,9 +5281,8 @@ def atm_discrepancy_group_word(request, atm_id, start_date, end_date):
 
     try:
         from docx import Document
-        from docx.shared import Pt, Cm, RGBColor
+        from docx.shared import Pt, Cm
         from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.enum.table import WD_ALIGN_VERTICAL
         from io import BytesIO
 
         first = discrepancies.first()

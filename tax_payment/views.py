@@ -9,7 +9,7 @@ from django.db.models import Q
 from docxtpl import DocxTemplate
 from .utils import doc_so_thanh_chu
 from .models import TaxLocation, TaxSubEntry, TaxPaymentStatement, TaxPaymentItem
-from .utils import number_to_vietnamese_words, format_currency_vnd, date_to_vietnamese_text
+from .utils import number_to_vietnamese_words, date_to_vietnamese_text
 
 
 def tax_payment_create(request):

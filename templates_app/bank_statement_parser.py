@@ -342,9 +342,9 @@ class BankStatementParser:
         if ';MCC;' in rem:  # Quick check trước khi chạy regex phức tạp
             pattern_mcc = re.search(r'(?:1000A\d+ - )?(?:(\d+)-)?([^;]+);MCC;(\d{14});(\d+);(\d{6})', rem)
             if pattern_mcc:
-                trace_or_account = pattern_mcc.group(1)  # Could be trace number or account
+                _trace_or_account = pattern_mcc.group(1)  # Could be trace number or account
                 content_before_mcc = pattern_mcc.group(2)  # Content before MCC
-                datetime_str = pattern_mcc.group(3)  # Transaction datetime
+                _datetime_str = pattern_mcc.group(3)  # Transaction datetime
                 account_from_pattern = pattern_mcc.group(4)  # Account number
                 bin_code = pattern_mcc.group(5)  # BIN code (6 digits)
 
@@ -425,9 +425,9 @@ class BankStatementParser:
                 bank_name = "Vietcombank"
                 account_number = pattern_vcb_v1.group(1)  # Số TK người chuyển
                 sender_name = pattern_vcb_v1.group(2).strip()  # Tên người chuyển
-                receiver_account = pattern_vcb_v1.group(3)  # Số TK người nhận (TK của user)
-                receiver_name = pattern_vcb_v1.group(4).strip()  # Tên người nhận
-                receiver_bank = pattern_vcb_v1.group(5).strip()  # Ngân hàng đích
+                _receiver_account = pattern_vcb_v1.group(3)  # Số TK người nhận (TK của user)
+                _receiver_name = pattern_vcb_v1.group(4).strip()  # Tên người nhận
+                _receiver_bank = pattern_vcb_v1.group(5).strip()  # Ngân hàng đích
 
                 # Beneficiary là người chuyển tiền
                 beneficiary_name = sender_name
@@ -444,8 +444,8 @@ class BankStatementParser:
                 bank_name = "Vietcombank"
                 account_number = pattern_vcb_v2.group(1)  # Số TK người chuyển
                 sender_name = pattern_vcb_v2.group(2).strip()  # Tên người chuyển
-                receiver_account = pattern_vcb_v2.group(3)  # Số TK người nhận (TK của user)
-                receiver_name = pattern_vcb_v2.group(4).strip()  # Tên người nhận
+                _receiver_account = pattern_vcb_v2.group(3)  # Số TK người nhận (TK của user)
+                _receiver_name = pattern_vcb_v2.group(4).strip()  # Tên người nhận
 
                 # Beneficiary là người chuyển tiền
                 beneficiary_name = sender_name
@@ -484,7 +484,7 @@ class BankStatementParser:
         # Số/mã TK từ 4-25 ký tự (chữ+số) để bắt được TK ngắn (OCB 5 số) và TK alphanumeric (VPB ZLP...)
         pattern2_general = re.search(r'(?:(\d+)-)?([A-Za-z]{2,15});([A-Za-z0-9]{4,25});(.*)', rem, re.IGNORECASE)
         if pattern2_general:
-            transaction_code = pattern2_general.group(1)  # Có thể None
+            _transaction_code = pattern2_general.group(1)  # Có thể None
             bank_code = pattern2_general.group(2)
             account_number = pattern2_general.group(3)
             content = pattern2_general.group(4)
@@ -581,7 +581,7 @@ class BankStatementParser:
 
         husrid  = str(row.get('husrid', '')).strip()
         lclbrnm = str(row.get('lclbrnm', '')).strip()
-        ourref  = str(row.get('ourref', '')).strip()
+        _ourref  = str(row.get('ourref', '')).strip()
 
         # ── Ưu tiên cao nhất: dựa vào trcd (mã loại giao dịch) ───────────
         # W000: Mở tài khoản
@@ -922,7 +922,7 @@ class BankStatementParser:
             for fmt in formats:
                 try:
                     return datetime.strptime(date_value, fmt).date()
-                except:
+                except Exception:
                     continue
 
         return None
@@ -1012,7 +1012,7 @@ class BankStatementParser:
             lclbrnm  = str(row.get('lclbrnm', ''))
             thrref   = str(row.get('thrref', '')).strip()
             husrid   = str(row.get('husrid', '')).strip()
-            ourref   = str(row.get('ourref', '')).strip()
+            _ourref   = str(row.get('ourref', '')).strip()
 
             # Parse thông tin người thụ hưởng
             beneficiary_info = self.parse_beneficiary_info(
