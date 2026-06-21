@@ -93,6 +93,11 @@
                                 <i class="bi bi-tools"></i> Tiện ích
                             </a>
                             <ul class="dropdown-menu">
+
+                                <!-- ── TIỆN ÍCH NGÂN HÀNG ── -->
+                                <li><h6 class="dropdown-header text-agribank">
+                                    <i class="bi bi-bank"></i> Tiện ích Ngân hàng
+                                </h6></li>
                                 <li><a class="dropdown-item" href="{% url 'variable_library' %}">
                                     <i class="bi bi-book"></i> Thư viện Biến
                                 </a></li>
@@ -105,13 +110,8 @@
                                 <li><a class="dropdown-item" href="{% url 'area_lookup' %}">
                                     <i class="bi bi-geo-alt"></i> Tra cứu địa bàn hành chính
                                 </a></li>
-                                <li><a class="dropdown-item" href="{% url 'ocr_tool' %}">
-                                    <i class="bi bi-file-earmark-text"></i> Công cụ OCR
-                                    <small class="d-block text-muted ms-4">Trích xuất văn bản từ ảnh/PDF</small>
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'bank_statement_upload' %}">
-                                    <i class="bi bi-file-earmark-spreadsheet"></i> Phân tích Sao kê Ngân hàng
+                                    <i class="bi bi-file-earmark-spreadsheet"></i> Phân tích Sao kê
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'payroll_statistics:statistics' %}">
                                     <i class="bi bi-cash-coin"></i> Thống kê Lương/Thu Hộ
@@ -124,22 +124,26 @@
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'savings_calculator:calculator' %}">
                                     <i class="bi bi-piggy-bank"></i> Tính lãi Tiết kiệm
-                                    <small class="d-block text-muted ms-4">Tính lãi suất tiết kiệm Agribank</small>
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'kpi_dashboard' %}">
                                     <i class="bi bi-graph-up-arrow"></i> Dashboard Tính KPI
-                                    <small class="d-block text-muted ms-4">Tự động hóa tính KPI Giao dịch viên</small>
                                 </a></li>
+                                <li><a class="dropdown-item" href="{% url 'webcam_dashboard' %}">
+                                    <i class="bi bi-camera-video"></i> WebCam - Chụp CCCD
+                                </a></li>
+
                                 <li><hr class="dropdown-divider"></li>
+
+                                <!-- ── TIỆN ÍCH KHÁC ── -->
+                                <li><h6 class="dropdown-header text-agribank">
+                                    <i class="bi bi-grid"></i> Tiện ích Khác
+                                </h6></li>
                                 <li><a class="dropdown-item" href="{% url 'quiz_exam_list' %}">
                                     <i class="bi bi-journal-check"></i> Thi nghiệp vụ
-                                    <small class="d-block text-muted ms-4">Tra cứu câu hỏi thi nghiệp vụ</small>
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'tasks:list' %}">
                                     <i class="bi bi-check2-square"></i> Quản lý Công việc
-                                    <small class="d-block text-muted ms-4">Todo/Task Management</small>
                                 </a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'course_dashboard' %}">
                                     <i class="bi bi-mortarboard"></i> Quản lý Khóa học
                                 </a></li>
@@ -148,17 +152,20 @@
                                     <i class="bi bi-people-fill"></i> Quản lý Nhân viên
                                 </a></li>
                                 {% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'webcam_dashboard' %}">
-                                    <i class="bi bi-camera-video"></i> WebCam - Chụp CCCD
-                                    <small class="d-block text-muted ms-4">Chụp và in hồ sơ khách hàng</small>
+                                <li><a class="dropdown-item" href="{% url 'ocr_tool' %}">
+                                    <i class="bi bi-file-earmark-text"></i> Công cụ OCR
+                                    <small class="d-block text-muted ms-4">Trích xuất văn bản từ ảnh/PDF</small>
                                 </a></li>
+                                <li><a class="dropdown-item" href="{% url 'calculator' %}">
+                                    <i class="bi bi-calculator-fill"></i> Máy tính cầm tay
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'pdf_tools' %}">
+                                    <i class="bi bi-file-earmark-pdf"></i> Công cụ PDF
+                                    <small class="d-block text-muted ms-4">Tách và ghép file PDF</small>
+                                </a></li>
+
                                 {% if user.is_superuser %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'permission_management' %}">
-                                    <i class="bi bi-shield-check"></i> Quản lý Phân quyền
-                                    <small class="d-block text-muted ms-4">Cấp/thu hồi quyền Admin và Nhóm</small>
-                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'branch_config' %}">
                                     <i class="bi bi-gear"></i> Cấu hình hệ thống
                                 </a></li>

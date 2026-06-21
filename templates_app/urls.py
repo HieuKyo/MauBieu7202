@@ -84,6 +84,14 @@ urlpatterns = [
     # OCR Tool
     path('ocr-tool/', views.ocr_tool_view, name='ocr_tool'),
 
+    # Calculator
+    path('calculator/', views.calculator_view, name='calculator'),
+
+    # PDF Tools
+    path('pdf-tools/', views.pdf_tools_view, name='pdf_tools'),
+    path('pdf-tools/split/', views.pdf_split_view, name='pdf_split'),
+    path('pdf-tools/merge/', views.pdf_merge_view, name='pdf_merge'),
+
     # Bank Statement Analyzer
     path('bank-statement/upload/', views.bank_statement_upload, name='bank_statement_upload'),
     path('bank-statement/result/<int:statement_id>/', views.bank_statement_result, name='bank_statement_result'),

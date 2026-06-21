@@ -1,0 +1,396 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Công cụ PDF - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 2px dashed #007934;
+        border-radius: 10px;
+        padding: 2.5rem;
+        text-align: center;
+        background: #f8f9fa;
+        transition: all 0.25s;
+        cursor: pointer;
+    }
+    .upload-area:hover, .upload-area.dragover {
+        background: #e9f5ee;
+        border-color: #005a26;
+    }
+    .upload-icon { font-size: 3rem; color: #007934; }
+    .file-list-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        background: #fff;
+        margin-bottom: 6px;
+    }
+    .file-list-item .remove-btn {
+        margin-left: auto;
+        cursor: pointer;
+        color: #dc3545;
+        border: none;
+        background: none;
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+    .nav-pills .nav-link.active { background-color: #007934; }
+    .nav-pills .nav-link        { color: #007934; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container">
+
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-agribank">
+                <i class="bi bi-file-earmark-pdf"></i> Công cụ PDF
+            </h2>
+            <p class="text-muted">Tách hoặc ghép file PDF ngay trong trình duyệt — không gửi ra ngoài internet</p>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-pills mb-4" id="pdfTabs">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-split-btn" data-tab="split">
+                <i class="bi bi-scissors"></i> Tách PDF
+            </button>
+        </li>
+        <li class="nav-item ms-2">
+            <button class="nav-link" id="tab-merge-btn" data-tab="merge">
+                <i class="bi bi-node-plus"></i> Ghép PDF
+            </button>
+        </li>
+    </ul>
+
+    <!-- ======================== TAB TÁCH ======================== -->
+    <div id="panel-split">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="upload-area" id="splitUploadArea">
+                            <i class="bi bi-file-earmark-arrow-up upload-icon mb-2 d-block"></i>
+                            <h6>Kéo thả hoặc click để chọn file PDF</h6>
+                            <input type="file" id="splitFile" accept=".pdf" class="d-none">
+                            <button type="button" class="btn btn-agribank btn-sm mt-2"
+                                    onclick="document.getElementById('splitFile').click()">
+                                <i class="bi bi-folder2-open"></i> Chọn file
+                            </button>
+                        </div>
+
+                        <div id="splitFileInfo" class="alert alert-info mt-3 d-none">
+                            <i class="bi bi-file-earmark-pdf text-danger"></i>
+                            <strong id="splitFileName"></strong>
+                            <span class="text-muted ms-2" id="splitFileSize"></span>
+                            <span class="badge bg-secondary ms-2" id="splitPageCount"></span>
+                        </div>
+
+                        <!-- Chế độ tách -->
+                        <div id="splitOptions" class="mt-3 d-none">
+                            <label class="form-label fw-semibold">Chế độ tách:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="splitMode"
+                                       id="modeAll" value="all" checked>
+                                <label class="form-check-label" for="modeAll">
+                                    <i class="bi bi-files"></i>
+                                    Tách từng trang thành file riêng (tải về ZIP)
+                                </label>
+                            </div>
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="radio" name="splitMode"
+                                       id="modePages" value="pages">
+                                <label class="form-check-label" for="modePages">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                    Trích các trang cụ thể thành 1 file PDF
+                                </label>
+                            </div>
+
+                            <div id="pageRangeInput" class="mt-3 d-none">
+                                <label class="form-label">
+                                    Số trang cần trích
+                                    <small class="text-muted">(ví dụ: <code>1,3,5-8</code>)</small>
+                                </label>
+                                <input type="text" class="form-control" id="pageRanges"
+                                       placeholder="1,3,5-8">
+                            </div>
+
+                            <div class="text-center mt-4">
+                                <button class="btn btn-success btn-lg px-5" id="splitBtn">
+                                    <i class="bi bi-scissors"></i> Tách PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== TAB GHÉP ======================== -->
+    <div id="panel-merge" class="d-none">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="upload-area" id="mergeUploadArea">
+                            <i class="bi bi-file-earmark-arrow-up upload-icon mb-2 d-block"></i>
+                            <h6>Kéo thả hoặc click để thêm các file PDF</h6>
+                            <p class="text-muted small mb-2">Tối đa 20 file — thứ tự trong danh sách là thứ tự ghép</p>
+                            <input type="file" id="mergeFiles" accept=".pdf" multiple class="d-none">
+                            <button type="button" class="btn btn-agribank btn-sm mt-1"
+                                    onclick="document.getElementById('mergeFiles').click()">
+                                <i class="bi bi-folder2-open"></i> Thêm file
+                            </button>
+                        </div>
+
+                        <!-- Danh sách file đã thêm -->
+                        <div id="mergeFileList" class="mt-3"></div>
+
+                        <div class="text-center mt-3">
+                            <button class="btn btn-success btn-lg px-5" id="mergeBtn" disabled>
+                                <i class="bi bi-node-plus"></i> Ghép PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Alert Modal -->
+<div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center pb-3">
+                <div id="alertIcon" style="font-size:3rem;" class="mb-2"></div>
+                <h5 id="alertTitle"></h5>
+                <p id="alertMessage" class="text-muted mb-0"></p>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pt-0">
+                <button type="button" class="btn btn-agribank" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1"
+     data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-success mb-3" role="status" style="width:3rem;height:3rem;">
+                    <span class="visually-hidden">Đang xử lý...</span>
+                </div>
+                <h6 id="loadingText">Đang xử lý...</h6>
+                <p class="text-muted small mb-0">Vui lòng đợi</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SPLIT_URL = "{% url 'pdf_split' %}";
+const MERGE_URL = "{% url 'pdf_merge' %}";
+const CSRF     = "{{ csrf_token }}";
+
+// ---------- Helpers ----------
+function showAlert(type, title, msg) {
+    const icons = {
+        success: '<i class="bi bi-check-circle text-success"></i>',
+        error:   '<i class="bi bi-x-circle text-danger"></i>',
+        warning: '<i class="bi bi-exclamation-triangle text-warning"></i>',
+    };
+    document.getElementById('alertIcon').innerHTML    = icons[type] || icons.warning;
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertMessage').textContent = msg;
+    new bootstrap.Modal(document.getElementById('alertModal')).show();
+}
+
+function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(1) + ' MB';
+}
+
+function showLoading(text) {
+    document.getElementById('loadingText').textContent = text || 'Đang xử lý...';
+    new bootstrap.Modal(document.getElementById('loadingModal')).show();
+}
+function hideLoading() {
+    bootstrap.Modal.getInstance(document.getElementById('loadingModal'))?.hide();
+}
+
+async function downloadResponse(response, defaultName) {
+    const contentType = response.headers.get('Content-Type') || '';
+    if (contentType.includes('application/json') || response.status >= 400) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Lỗi không xác định');
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match ? match[1] : defaultName;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ---------- Tab switching ----------
+document.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.addEventListener('click', function () {
+        document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const tab = this.dataset.tab;
+        document.getElementById('panel-split').classList.toggle('d-none', tab !== 'split');
+        document.getElementById('panel-merge').classList.toggle('d-none', tab !== 'merge');
+    });
+});
+
+// ============================================================
+//  TÁCH PDF
+// ============================================================
+let splitFileObj = null;
+
+function setupDropzone(areaId, inputId, onFile) {
+    const area = document.getElementById(areaId);
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+    area.addEventListener('drop', e => {
+        e.preventDefault(); area.classList.remove('dragover');
+        if (e.dataTransfer.files.length) onFile(e.dataTransfer.files[0]);
+    });
+    area.addEventListener('click', e => {
+        if (e.target.tagName !== 'BUTTON') document.getElementById(inputId).click();
+    });
+}
+
+setupDropzone('splitUploadArea', 'splitFile', handleSplitFile);
+document.getElementById('splitFile').addEventListener('change', function () {
+    if (this.files[0]) handleSplitFile(this.files[0]);
+});
+
+function handleSplitFile(file) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+        showAlert('error', 'Sai định dạng', 'Chỉ chấp nhận file .pdf'); return;
+    }
+    splitFileObj = file;
+    document.getElementById('splitFileName').textContent = file.name;
+    document.getElementById('splitFileSize').textContent = '(' + formatBytes(file.size) + ')';
+    document.getElementById('splitPageCount').textContent = '';
+    document.getElementById('splitFileInfo').classList.remove('d-none');
+    document.getElementById('splitOptions').classList.remove('d-none');
+}
+
+document.querySelectorAll('[name="splitMode"]').forEach(radio => {
+    radio.addEventListener('change', function () {
+        document.getElementById('pageRangeInput')
+            .classList.toggle('d-none', this.value !== 'pages');
+    });
+});
+
+document.getElementById('splitBtn').addEventListener('click', async function () {
+    if (!splitFileObj) { showAlert('warning', 'Chưa chọn file', ''); return; }
+    const mode = document.querySelector('[name="splitMode"]:checked').value;
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('pdf_file', splitFileObj);
+    fd.append('mode', mode);
+    if (mode === 'pages') {
+        fd.append('page_ranges', document.getElementById('pageRanges').value);
+    }
+    showLoading('Đang tách PDF...');
+    try {
+        const resp = await fetch(SPLIT_URL, { method: 'POST', body: fd });
+        await downloadResponse(resp, 'tach.zip');
+        hideLoading();
+        showAlert('success', 'Hoàn tất!', 'File đã được tải xuống.');
+    } catch (e) {
+        hideLoading();
+        showAlert('error', 'Lỗi!', e.message);
+    }
+});
+
+// ============================================================
+//  GHÉP PDF
+// ============================================================
+let mergeFileList = [];
+
+function renderMergeList() {
+    const container = document.getElementById('mergeFileList');
+    container.innerHTML = '';
+    mergeFileList.forEach((f, i) => {
+        const div = document.createElement('div');
+        div.className = 'file-list-item';
+        div.innerHTML = `
+            <span class="badge bg-secondary">${i + 1}</span>
+            <i class="bi bi-file-earmark-pdf text-danger"></i>
+            <span class="text-truncate" style="max-width:200px;">${f.name}</span>
+            <small class="text-muted">${formatBytes(f.size)}</small>
+            <button class="remove-btn" data-idx="${i}" title="Xóa">×</button>`;
+        container.appendChild(div);
+    });
+    container.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            mergeFileList.splice(+this.dataset.idx, 1);
+            renderMergeList();
+            document.getElementById('mergeBtn').disabled = mergeFileList.length < 2;
+        });
+    });
+    document.getElementById('mergeBtn').disabled = mergeFileList.length < 2;
+}
+
+setupDropzone('mergeUploadArea', 'mergeFiles', function (file) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+        showAlert('error', 'Sai định dạng', file.name + ' không phải PDF'); return;
+    }
+    if (mergeFileList.length >= 20) {
+        showAlert('warning', 'Đã đạt giới hạn', 'Tối đa 20 file mỗi lần ghép.'); return;
+    }
+    mergeFileList.push(file);
+    renderMergeList();
+});
+
+document.getElementById('mergeFiles').addEventListener('change', function () {
+    Array.from(this.files).forEach(f => {
+        if (!f.name.toLowerCase().endsWith('.pdf')) return;
+        if (mergeFileList.length < 20) mergeFileList.push(f);
+    });
+    renderMergeList();
+    this.value = '';
+});
+
+document.getElementById('mergeBtn').addEventListener('click', async function () {
+    if (mergeFileList.length < 2) return;
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    mergeFileList.forEach(f => fd.append('pdf_files', f));
+    showLoading('Đang ghép PDF...');
+    try {
+        const resp = await fetch(MERGE_URL, { method: 'POST', body: fd });
+        await downloadResponse(resp, 'gop_pdf.pdf');
+        hideLoading();
+        showAlert('success', 'Hoàn tất!', 'File PDF đã được ghép và tải xuống.');
+    } catch (e) {
+        hideLoading();
+        showAlert('error', 'Lỗi!', e.message);
+    }
+});
+</script>
+{% endblock %}
