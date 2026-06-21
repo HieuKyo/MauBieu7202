@@ -6119,4 +6119,58 @@ def get_user_permissions_detail(request, user_id):
         }, status=500)
 
 
+
+# ==============================================================================
+# OCR TOOL
+# ==============================================================================
+
+@login_required
+def ocr_tool_view(request):
+    """
+    Công cụ OCR: nhận file ảnh hoặc PDF, trích xuất văn bản,
+    trả về file Word (.docx) có thể chỉnh sửa.
+    POST được gọi bằng fetch (AJAX) — lỗi trả JSON, thành công trả file.
+    """
+    from .ocr_service import MAX_FILE_SIZE_MB, MAX_PDF_PAGES, validate_file, process_file, build_docx
+    ctx = {'max_size': MAX_FILE_SIZE_MB, 'max_pages': MAX_PDF_PAGES}
+
+    if request.method == 'GET':
+        return render(request, 'templates_app/ocr_tool.html', ctx)
+
+    def json_error(msg):
+        return JsonResponse({'error': msg}, status=400)
+
+    uploaded_file = request.FILES.get('ocr_file')
+    if not uploaded_file:
+        return json_error('Vui lòng chọn file trước khi gửi.')
+
+    is_valid, error_msg = validate_file(uploaded_file)
+    if not is_valid:
+        return json_error(error_msg)
+
+    original_name = uploaded_file.name
+    ext = os.path.splitext(original_name)[1].lower()
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_file_path = os.path.join(tmp_dir, f'input{ext}')
+            with open(tmp_file_path, 'wb+') as f:
+                for chunk in uploaded_file.chunks():
+                    f.write(chunk)
+            page_texts = process_file(tmp_file_path, ext)
+        docx_bytes = build_docx(page_texts, original_name)
+    except Exception as e:
+        return json_error(f'Lỗi khi xử lý file: {str(e)}')
+
+    stem = os.path.splitext(original_name)[0]
+    output_filename = f'OCR_{stem}.docx'
+
+    response = HttpResponse(
+        docx_bytes,
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{output_filename}"'
+    return response
+
+
 # ==============================================================================

@@ -81,6 +81,9 @@ urlpatterns = [
     # Area Lookup
     path('area-lookup/', views.area_lookup, name='area_lookup'),
 
+    # OCR Tool
+    path('ocr-tool/', views.ocr_tool_view, name='ocr_tool'),
+
     # Bank Statement Analyzer
     path('bank-statement/upload/', views.bank_statement_upload, name='bank_statement_upload'),
     path('bank-statement/result/<int:statement_id>/', views.bank_statement_result, name='bank_statement_result'),
