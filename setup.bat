@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
 REM =====================================================
 REM Setup Script - Cai dat ung dung MauBieu7202
@@ -49,18 +50,17 @@ REM =====================================================
 echo [2/4] Cai dat dependencies...
 echo.
 
-REM Determine packages folder (support both 'packages' and 'offline_packages')
+REM Xac dinh thu muc chua packages offline
 set PACKAGES_FOLDER=
-if exist "packages" set PACKAGES_FOLDER=packages
 if exist "offline_packages" set PACKAGES_FOLDER=offline_packages
 
 if "%PACKAGES_FOLDER%"=="" (
     echo.
-    echo LOI: Khong tim thay thu muc packages hoac offline_packages
+    echo LOI: Khong tim thay thu muc offline_packages
     echo.
     echo HUONG DAN:
-    echo   - Neu co Internet: Chay download_offline_packages.bat
-    echo   - Hoac copy thu muc 'packages' hoac 'offline_packages' vao day
+    echo   - Tren may co Internet: Chay download_offline_packages.bat
+    echo   - Hoac copy thu muc offline_packages vao cung thu muc nay
     echo.
     pause
     exit /b 1
@@ -89,7 +89,7 @@ if errorlevel 1 (
     echo.
     echo CACH SUA:
     echo   1. Tren may co Internet, chay: download_offline_packages.bat
-    echo   2. Copy lai thu muc offline_packages sang may nay
+    echo   2. Copy lai thu muc offline_packages vao cung thu muc nay
     echo.
     pause
     exit /b 1
@@ -103,11 +103,7 @@ if errorlevel 1 (
     echo CANH BAO: dbfread chua duoc cai dat!
     echo Module nay can thiet cho KPI Dashboard.
     echo.
-    set /p INSTALL_DBFREAD="Ban co muon thu cai dat dbfread tu Internet? [Y/n]: "
-    if /i "!INSTALL_DBFREAD!"=="y" (
-        echo Dang cai dat dbfread tu Internet...
-        pip install dbfread>=2.0.7
-    )
+    echo Kiem tra lai thu muc offline_packages co file dbfread*.whl khong.
 )
 
 echo.
