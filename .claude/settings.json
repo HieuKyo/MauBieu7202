@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"g:/My Drive/MauBieu7202\" && \\\\ *)"
+    ]
+  }
+}
