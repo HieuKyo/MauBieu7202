@@ -2340,6 +2340,16 @@ class ATMManagementBoard(models.Model):
         blank=True,
         verbose_name="Chức danh"
     )
+    decision_number = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Số quyết định"
+    )
+    decision_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày quyết định thành lập"
+    )
     is_active = models.BooleanField(
         default=True,
         verbose_name="Đang hoạt động"
@@ -2632,6 +2642,8 @@ class ATMReplenishment(models.Model):
             'treasury_head_title': treasury_head.title if treasury_head else '',
             'atm_officer_name': atm_officer.full_name if atm_officer else '',
             'atm_officer_title': atm_officer.title if atm_officer else '',
+            'board_decision_number': team_leader.decision_number if team_leader else '',
+            'board_decision_date': team_leader.decision_date.strftime('%d/%m/%Y') if (team_leader and team_leader.decision_date) else '',
 
             # Thông tin người tạo
             'created_by': self.created_by.username,
@@ -2767,6 +2779,7 @@ class ATMDiscrepancy(models.Model):
 
             # Thông tin số tiền
             'disc_type': self.get_discrepancy_type_display(),
+            'disc_type_lower': self.get_discrepancy_type_display().lower(),
             'disc_amount': f"{self.amount:,}",
             'disc_amount_words': self.get_amount_in_words(),
 
@@ -2795,6 +2808,8 @@ class ATMDiscrepancy(models.Model):
             'disc_treasury_head_title': treasury_head.title if treasury_head else '',
             'disc_atm_officer_name': atm_officer.full_name if atm_officer else '',
             'disc_atm_officer_title': atm_officer.title if atm_officer else '',
+            'disc_board_decision_number': team_leader.decision_number if team_leader else '',
+            'disc_board_decision_date': team_leader.decision_date.strftime('%d/%m/%Y') if (team_leader and team_leader.decision_date) else '',
 
             # Thông tin người tạo
             'disc_created_by': self.created_by.username,

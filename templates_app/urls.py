@@ -130,6 +130,7 @@ urlpatterns = [
     path('atm/discrepancy/<int:discrepancy_id>/delete/', views.atm_discrepancy_delete, name='atm_discrepancy_delete'),
     path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/word/', views.atm_discrepancy_group_word, name='atm_discrepancy_group_word'),
     path('atm/discrepancy/<int:discrepancy_id>/template/<int:template_id>/', views.atm_load_discrepancy_data, name='atm_load_discrepancy_data'),
+    path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/template/<int:template_id>/', views.atm_load_discrepancy_cycle_template, name='atm_load_discrepancy_cycle_template'),
 
     # Reports Module
     path('reports/', report_views.report_hub, name='report_hub'),

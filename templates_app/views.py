@@ -1359,6 +1359,8 @@ def variable_library_view(request):
         {'name': 'treasury_head_title', 'description': 'Chức danh Trưởng phòng KTNQ', 'example': 'Trưởng phòng'},
         {'name': 'atm_officer_name', 'description': 'Họ tên Cán bộ phụ trách ATM', 'example': 'Lê Văn E'},
         {'name': 'atm_officer_title', 'description': 'Chức danh Cán bộ phụ trách ATM', 'example': 'Cán bộ'},
+        {'name': 'board_decision_number', 'description': 'Số quyết định thành lập Ban quản lý ATM', 'example': '123/QĐ-NHNo-GR'},
+        {'name': 'board_decision_date', 'description': 'Ngày quyết định thành lập Ban quản lý ATM (dd/mm/yyyy)', 'example': '01/01/2024'},
 
         # Metadata
         {'name': 'created_by', 'description': 'Username người tạo phiếu tiếp quỹ', 'example': 'admin'},
@@ -1419,6 +1421,8 @@ def variable_library_view(request):
         {'name': 'disc_treasury_head_title', 'description': 'Chức danh Trưởng phòng KTNQ', 'example': 'Trưởng phòng'},
         {'name': 'disc_atm_officer_name', 'description': 'Họ tên Cán bộ phụ trách ATM', 'example': 'Lê Văn E'},
         {'name': 'disc_atm_officer_title', 'description': 'Chức danh Cán bộ phụ trách ATM', 'example': 'Cán bộ'},
+        {'name': 'disc_board_decision_number', 'description': 'Số quyết định thành lập Ban quản lý ATM', 'example': '123/QĐ-NHNo-GR'},
+        {'name': 'disc_board_decision_date', 'description': 'Ngày quyết định thành lập Ban quản lý ATM (dd/mm/yyyy)', 'example': '01/01/2024'},
 
         # Metadata
         {'name': 'disc_created_by', 'description': 'Username người tạo giao dịch', 'example': 'admin'},
@@ -5096,8 +5100,20 @@ def atm_discrepancy_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    # Chỉ lấy templates liên quan đến thừa/thiếu quỹ ATM (không lấy tiếp quỹ/pin)
+    atm_templates = Template.objects.filter(
+        is_active=True,
+        category_id=6,
+    ).filter(
+        models.Q(name__icontains='hach toan') |
+        models.Q(name__icontains='Hach toan') |
+        models.Q(name__icontains='THE') |
+        models.Q(name__icontains='hoan tra')
+    ).order_by('order', 'name')
+
     context = {
         'page_obj': page_obj,
+        'atm_templates': atm_templates,
     }
     return render(request, 'templates_app/atm/discrepancy_list.html', context)
 
@@ -5504,6 +5520,143 @@ def atm_load_discrepancy_data(request, discrepancy_id, template_id):
         filename = f"{template.name}_ATM_{discrepancy.atm.machine_id}_{disc_type}_{discrepancy.audit_cycle_end.strftime('%Y%m%d')}.docx"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('atm_discrepancy_list')
+
+
+@login_required
+def atm_load_discrepancy_cycle_template(request, atm_id, start_date, end_date, template_id):
+    """Render Word template cho toàn bộ chu kỳ. Mẫu 04: mỗi GD một trang. Mẫu 03: tất cả KH trên 1 trang."""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    from datetime import datetime as dt
+    from io import BytesIO
+    from copy import deepcopy
+    from docx import Document as DocxDocument
+    from docx.oxml.ns import qn as oxml_qn
+    from docx.oxml import OxmlElement as OxmlEl
+
+    try:
+        start_dt = dt.strptime(start_date, '%Y%m%d').date()
+        end_dt = dt.strptime(end_date, '%Y%m%d').date()
+    except ValueError:
+        messages.error(request, 'Ngày không hợp lệ')
+        return redirect('atm_discrepancy_list')
+
+    discrepancies = list(ATMDiscrepancy.objects.filter(
+        atm__machine_id=atm_id,
+        audit_cycle_start=start_dt,
+        audit_cycle_end=end_dt,
+    ).select_related('atm', 'created_by').order_by('id'))
+
+    if not discrepancies:
+        messages.error(request, 'Không tìm thấy nhóm giao dịch này')
+        return redirect('atm_discrepancy_list')
+
+    template = get_object_or_404(Template, id=template_id, is_active=True)
+    if not template.user_has_access(request.user):
+        raise Http404("Bạn không có quyền truy cập mẫu biểu này")
+
+    branch_config = BranchConfig.get_for_user(request.user)
+
+    # Mẫu 04 dùng multi-page (1 trang/GD), Mẫu 03 dùng single-page (thêm dòng KH)
+    is_multi_page = 'Mau_04' in template.file.name or '04_THE' in template.file.name
+
+    try:
+        if len(discrepancies) == 1:
+            data = discrepancies[0].get_data_dict()
+            data.update(branch_config.get_all_variables())
+            output_stream = render_word_template(template.file.path, data)
+
+        elif is_multi_page:
+            # Render từng GD, ghép thành 1 file với page break
+            rendered_docs = []
+            for disc in discrepancies:
+                data = disc.get_data_dict()
+                data.update(branch_config.get_all_variables())
+                stream = render_word_template(template.file.path, data)
+                rendered_docs.append(DocxDocument(stream))
+
+            combined = rendered_docs[0]
+            for next_doc in rendered_docs[1:]:
+                pg_p = OxmlEl('w:p')
+                pg_r = OxmlEl('w:r')
+                pg_br = OxmlEl('w:br')
+                pg_br.set(oxml_qn('w:type'), 'page')
+                pg_r.append(pg_br)
+                pg_p.append(pg_r)
+
+                body = combined.element.body
+                sect_pr = body.find(oxml_qn('w:sectPr'))
+                if sect_pr is not None:
+                    sect_pr.addprevious(pg_p)
+                else:
+                    body.append(pg_p)
+
+                for elem in next_doc.element.body:
+                    if elem.tag.endswith('}sectPr'):
+                        continue
+                    new_elem = deepcopy(elem)
+                    if sect_pr is not None:
+                        sect_pr.addprevious(new_elem)
+                    else:
+                        body.append(new_elem)
+
+            output_stream = BytesIO()
+            combined.save(output_stream)
+            output_stream.seek(0)
+
+        else:
+            # Mẫu 03: render với GD đầu tiên, chèn thêm dòng KH cho các GD sau
+            data = discrepancies[0].get_data_dict()
+            data.update(branch_config.get_all_variables())
+            stream = render_word_template(template.file.path, data)
+
+            doc = DocxDocument(stream)
+
+            kh_para = None
+            for para in doc.paragraphs:
+                if para.text.strip().startswith('KH:'):
+                    kh_para = para
+                    break
+
+            if kh_para is not None:
+                last_p = kh_para._p
+                for disc in discrepancies[1:]:
+                    kh_text = (
+                        f"KH: {disc.full_name} STK: {disc.account_number},"
+                        f" SO THE: {disc.card_number}, ID: {disc.transaction_id},"
+                        f" TRACE: {disc.trace_number}, Số tiền: {disc.amount:,}đ"
+                    )
+                    new_p = deepcopy(kh_para._p)
+                    runs = new_p.findall(oxml_qn('w:r'))
+                    if runs:
+                        t_el = runs[0].find(oxml_qn('w:t'))
+                        if t_el is None:
+                            t_el = OxmlEl('w:t')
+                            runs[0].append(t_el)
+                        t_el.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+                        t_el.text = kh_text
+                        for r in runs[1:]:
+                            new_p.remove(r)
+                    last_p.addnext(new_p)
+                    last_p = new_p
+
+            output_stream = BytesIO()
+            doc.save(output_stream)
+            output_stream.seek(0)
+
+        response = HttpResponse(
+            output_stream.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        filename = f"{template.name}_ATM_{atm_id}_{end_dt.strftime('%Y%m%d')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
     except Exception as e:

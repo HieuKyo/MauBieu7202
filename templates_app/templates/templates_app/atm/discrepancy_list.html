@@ -93,10 +93,33 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
+                                            {% if atm_templates %}
+                                            <div class="btn-group" role="group">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-success dropdown-toggle"
+                                                        data-bs-toggle="dropdown"
+                                                        aria-expanded="false"
+                                                        title="Chọn mẫu in">
+                                                    <i class="bi bi-file-earmark-word"></i> In mẫu
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    {% for tmpl in atm_templates %}
+                                                    <li>
+                                                        <a class="dropdown-item"
+                                                           href="{% url 'atm_load_discrepancy_cycle_template' group.atm_id group.start|date:'Ymd' group.end|date:'Ymd' tmpl.id %}">
+                                                            <i class="bi bi-file-word text-primary me-1"></i>
+                                                            {{ tmpl.name }}
+                                                        </a>
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            {% else %}
                                             <a href="{% url 'atm_discrepancy_group_word' group.atm_id group.start|date:'Ymd' group.end|date:'Ymd' %}"
-                                               class="btn btn-sm btn-success" title="Tạo báo cáo Word tất cả {{ group.count }} giao dịch">
+                                               class="btn btn-sm btn-success" title="Tạo báo cáo Word">
                                                 <i class="bi bi-file-earmark-word"></i> In mẫu
                                             </a>
+                                            {% endif %}
                                             {% if group.count == 1 %}
                                             <a href="{% url 'atm_discrepancy_edit' rep.pk %}"
                                                class="btn btn-sm btn-outline-primary" title="Sửa giao dịch">

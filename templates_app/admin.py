@@ -862,7 +862,7 @@ class ATMAdmin(admin.ModelAdmin):
 @admin.register(ATMManagementBoard)
 class ATMManagementBoardAdmin(admin.ModelAdmin):
     """Admin cho Ban quản lý ATM"""
-    list_display = ['get_position_display', 'full_name', 'title', 'is_active', 'updated_at']
+    list_display = ['get_position_display', 'full_name', 'title', 'decision_number', 'decision_date', 'is_active', 'updated_at']
     list_filter = ['position', 'is_active']
     list_editable = ['is_active']
     ordering = ['position', 'full_name']
@@ -888,6 +888,9 @@ class ATMManagementBoardAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Thông tin chức vụ', {
             'fields': ('position', 'full_name', 'title')
+        }),
+        ('Thông tin quyết định', {
+            'fields': ('decision_number', 'decision_date')
         }),
         ('Trạng thái', {
             'fields': ('is_active',)
