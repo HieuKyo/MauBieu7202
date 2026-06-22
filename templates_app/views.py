@@ -4817,6 +4817,86 @@ def course_toggle_completion(request, enrollment_id):
         }, status=500)
 
 
+@login_required
+def course_search_by_learner(request):
+    """
+    Tra cứu khóa học theo người học
+    Chỉ Superuser và Phòng Tổng hợp có quyền
+    """
+    from .models import UserProfile, CourseEnrollment
+    from django.db.models import Q
+
+    if not check_elearning_manage_permission(request.user):
+        messages.error(request, 'Bạn không có quyền tra cứu')
+        return redirect('course_dashboard')
+
+    query = request.GET.get('q', '').strip()
+    results = []
+
+    if query:
+        profiles = UserProfile.objects.filter(
+            Q(full_name__icontains=query) | Q(employee_code__icontains=query)
+        ).select_related('user').order_by('full_name')
+
+        for profile in profiles:
+            enrollments = CourseEnrollment.objects.filter(
+                user=profile.user
+            ).select_related('course').order_by('course__start_date')
+            results.append({
+                'profile': profile,
+                'enrollments': enrollments,
+                'total': enrollments.count(),
+                'completed': enrollments.filter(is_completed=True).count(),
+            })
+
+    return render(request, 'templates_app/course_search_learner.html', {
+        'query': query,
+        'results': results,
+    })
+
+
+@login_required
+def course_search_by_department(request):
+    """
+    Tra cứu khóa học theo phòng ban
+    Chỉ Superuser và Phòng Tổng hợp có quyền
+    """
+    from .models import UserProfile, CourseEnrollment, Course
+
+    if not check_elearning_manage_permission(request.user):
+        messages.error(request, 'Bạn không có quyền tra cứu')
+        return redirect('course_dashboard')
+
+    dept_choices = UserProfile.DEPARTMENT_CHOICES
+    selected_dept = request.GET.get('dept', '')
+    courses_data = []
+
+    if selected_dept:
+        dept_user_ids = UserProfile.objects.filter(
+            department=selected_dept
+        ).values_list('user_id', flat=True)
+
+        courses = Course.objects.all().order_by('start_date')
+        for course in courses:
+            enrollments = CourseEnrollment.objects.filter(
+                course=course,
+                user_id__in=dept_user_ids
+            ).select_related('user__profile')
+            if enrollments.exists():
+                courses_data.append({
+                    'course': course,
+                    'enrollments': enrollments,
+                    'total': enrollments.count(),
+                    'completed': enrollments.filter(is_completed=True).count(),
+                })
+
+    return render(request, 'templates_app/course_search_department.html', {
+        'dept_choices': dept_choices,
+        'selected_dept': selected_dept,
+        'courses_data': courses_data,
+    })
+
+
 # ============================================================================
 # ATM Management Views
 # ============================================================================

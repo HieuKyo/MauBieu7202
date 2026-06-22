@@ -114,6 +114,8 @@ urlpatterns = [
     path('elearning/courses/<int:course_id>/add-students/', views.course_add_students, name='course_add_students'),
     path('elearning/courses/<int:course_id>/remove-student/<int:user_id>/', views.course_remove_student, name='course_remove_student'),
     path('elearning/enrollment/<int:enrollment_id>/toggle/', views.course_toggle_completion, name='course_toggle_completion'),
+    path('elearning/search/learner/', views.course_search_by_learner, name='course_search_by_learner'),
+    path('elearning/search/department/', views.course_search_by_department, name='course_search_by_department'),
 
     # ATM Management
     path('atm/', views.atm_dashboard, name='atm_dashboard'),
