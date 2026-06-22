@@ -3608,7 +3608,11 @@ def download_employee_template(request):
         'Nghiệp vụ',
         'Mã chứng thư số',
         'CTS từ ngày',
-        'CTS đến ngày'
+        'CTS đến ngày',
+        'Tài khoản IPCAS',
+        'Địa chỉ MAC',
+        'Địa chỉ IP',
+        'Phần mềm cấp phép'
     ]
 
     # Write headers with styling
@@ -3640,7 +3644,11 @@ def download_employee_template(request):
             'KIEM_SOAT_VIEN',
             'CTS-NV001-2024',
             '01/01/2024',
-            '31/12/2025'
+            '31/12/2025',
+            'nguyenvana_ipcas',
+            'AA:BB:CC:DD:EE:01',
+            '192.168.1.101',
+            'Phần mềm kế toán, Email nội bộ'
         ],
         [
             'tranthib',
@@ -3659,7 +3667,11 @@ def download_employee_template(request):
             'GIAO_DICH_VIEN',
             'CTS-NV002-2024',
             '15/06/2024',
-            '14/06/2025'
+            '14/06/2025',
+            'tranthib_ipcas',
+            'AA:BB:CC:DD:EE:02',
+            '192.168.1.102',
+            'Email nội bộ'
         ],
         [
             'levanc',
@@ -3678,7 +3690,11 @@ def download_employee_template(request):
             'TONG_HOP_VIEN',
             'CTS-NV003-2023',
             '01/07/2023',
-            '30/06/2024'
+            '30/06/2024',
+            '',
+            '',
+            '',
+            ''
         ],
     ]
 
@@ -3688,7 +3704,7 @@ def download_employee_template(request):
             cell.alignment = Alignment(horizontal='left', vertical='center')
 
     # Adjust column widths
-    column_widths = [15, 25, 15, 15, 12, 15, 35, 18, 15, 45, 20, 25, 25, 20, 20, 15, 15]
+    column_widths = [15, 25, 15, 15, 12, 15, 35, 18, 15, 45, 20, 25, 25, 20, 20, 15, 15, 20, 20, 18, 35]
     for col_idx, width in enumerate(column_widths, start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
@@ -3724,7 +3740,14 @@ def download_employee_template(request):
         ['   - CTS từ ngày: Ngày bắt đầu hiệu lực, định dạng dd/mm/yyyy'],
         ['   - CTS đến ngày: Ngày hết hạn hiệu lực, định dạng dd/mm/yyyy'],
         [''],
-        ['6. Lưu ý quan trọng:'],
+        ['6. Thông tin hệ thống (tùy chọn):'],
+        ['   - Tài khoản IPCAS: Tên đăng nhập hệ thống IPCAS (ví dụ: nguyenvana_ipcas)'],
+        ['   - Địa chỉ MAC: Định dạng XX:XX:XX:XX:XX:XX (ví dụ: AA:BB:CC:DD:EE:01)'],
+        ['   - Địa chỉ IP: Địa chỉ IPv4 (ví dụ: 192.168.1.101)'],
+        ['   - Phần mềm cấp phép: Tên các phần mềm cách nhau bằng dấu phẩy (phải khớp đúng tên trong hệ thống)'],
+        ['     Ví dụ: Phần mềm kế toán, Email nội bộ'],
+        [''],
+        ['7. Lưu ý quan trọng:'],
         ['   - Không xóa dòng tiêu đề (dòng đầu tiên)'],
         ['   - Mật khẩu mặc định cho user mới: Csi@123'],
         ['   - Nếu Username đã tồn tại, hệ thống sẽ cập nhật thông tin nhân viên'],
@@ -3895,6 +3918,21 @@ def employee_import_excel(request):
                                 except (ValueError, TypeError):
                                     pass
 
+                    # IPCAS account
+                    ipcas_value = str(data.get('IPCAS User') or data.get('Tài khoản IPCAS') or '').strip()
+                    if ipcas_value:
+                        profile.ipcas_user = ipcas_value
+
+                    # MAC address
+                    mac_value = str(data.get('MAC Address') or data.get('Địa chỉ MAC') or '').strip()
+                    if mac_value:
+                        profile.mac_address = mac_value
+
+                    # IP address
+                    ip_value = str(data.get('IP Address') or data.get('Địa chỉ IP') or '').strip()
+                    if ip_value:
+                        profile.ip_address = ip_value
+
                     # Digital Certificate fields
                     if data.get('Certificate Code') or data.get('Mã chứng thư số'):
                         cert_code = str(data.get('Certificate Code') or data.get('Mã chứng thư số', '')).strip()
@@ -3930,6 +3968,15 @@ def employee_import_excel(request):
                                     pass
 
                     profile.save()
+
+                    # App permissions (M2M) — xử lý sau save()
+                    perm_value = str(data.get('App Permissions') or data.get('Phần mềm cấp phép') or '').strip()
+                    if perm_value:
+                        from .models import AppProgram
+                        program_names = [n.strip() for n in perm_value.split(',') if n.strip()]
+                        programs = AppProgram.objects.filter(name__in=program_names)
+                        profile.app_permissions.set(programs)
+
                     success_count += 1
 
                 except Exception as e:
@@ -3977,6 +4024,8 @@ def employee_export_excel(request):
         from .models import UserProfile
         from datetime import datetime
 
+        branch_display_map = dict(UserProfile.BRANCH_CHOICES)
+
         # Create workbook
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -4002,7 +4051,11 @@ def employee_export_excel(request):
             'Mã CTS',
             'CTS từ ngày',
             'CTS đến ngày',
-            'Trạng thái CTS'
+            'Trạng thái CTS',
+            'Tài khoản IPCAS',
+            'Địa chỉ MAC',
+            'Địa chỉ IP',
+            'Phần mềm cấp phép'
         ]
 
         # Write headers
@@ -4020,18 +4073,18 @@ def employee_export_excel(request):
             cell.alignment = header_alignment
 
         # Get all employees
-        employees = UserProfile.objects.select_related('user').all().order_by('employee_code')
+        employees = UserProfile.objects.select_related('user').prefetch_related('app_permissions').all().order_by('employee_code')
 
         # Write data
         for idx, emp in enumerate(employees, start=2):
             # Determine certificate status
             cert_status = '-'
             if emp.certificate_code:
-                if emp.is_certificate_expired:
+                if emp.is_certificate_expired():
                     cert_status = 'Hết hạn'
-                elif emp.is_certificate_expiring_soon:
-                    cert_status = f'Còn {emp.days_until_certificate_expiry} ngày'
-                elif emp.days_until_certificate_expiry and emp.days_until_certificate_expiry > 36500:
+                elif emp.is_certificate_expiring_soon():
+                    cert_status = f'Còn {emp.days_until_certificate_expiry()} ngày'
+                elif emp.days_until_certificate_expiry() and emp.days_until_certificate_expiry() > 36500:
                     cert_status = 'Vĩnh viễn'
                 else:
                     cert_status = 'Hiệu lực'
@@ -4050,14 +4103,18 @@ def employee_export_excel(request):
                 emp.id_card_number or '',
                 emp.id_card_date.strftime('%d/%m/%Y') if emp.id_card_date else '',
                 emp.id_card_place or '',
-                emp.get_branch_display() or '',
+                branch_display_map.get(emp.branch, emp.branch) or '',
                 emp.get_department_display() or '',
                 emp.get_position_display() or '',
                 emp.get_job_function_display() or '',
                 emp.certificate_code or '',
                 emp.certificate_start_date.strftime('%d/%m/%Y') if emp.certificate_start_date else '',
                 emp.certificate_end_date.strftime('%d/%m/%Y') if emp.certificate_end_date else '',
-                cert_status
+                cert_status,
+                emp.ipcas_user or '',
+                emp.mac_address or '',
+                str(emp.ip_address) if emp.ip_address else '',
+                ', '.join(ap.name for ap in emp.app_permissions.all()),
             ]
             ws.append(row_data)
 
@@ -4081,7 +4138,11 @@ def employee_export_excel(request):
             'P': 15,  # Mã CTS
             'Q': 13,  # CTS từ ngày
             'R': 13,  # CTS đến ngày
-            'S': 15   # Trạng thái CTS
+            'S': 15,  # Trạng thái CTS
+            'T': 20,  # Tài khoản IPCAS
+            'U': 20,  # Địa chỉ MAC
+            'V': 16,  # Địa chỉ IP
+            'W': 35,  # Phần mềm cấp phép
         }
 
         for col, width in column_widths.items():
@@ -4443,6 +4504,19 @@ def check_elearning_manage_permission(user):
     return user.groups.filter(name='Phòng Tổng hợp').exists()
 
 
+def check_elearning_search_permission(user):
+    """
+    Kiểm tra quyền tra cứu e-learning
+    Superuser, Phòng Tổng hợp và Trưởng phòng có quyền
+    """
+    if check_elearning_manage_permission(user):
+        return True
+    try:
+        return user.profile.position == 'TRUONG_PHONG'
+    except Exception:
+        return False
+
+
 @login_required
 def course_dashboard(request):
     """
@@ -4492,6 +4566,7 @@ def course_dashboard(request):
     context = {
         'courses': courses,
         'has_permission': has_permission,
+        'can_search': check_elearning_search_permission(request.user),
     }
     return render(request, 'templates_app/course_dashboard.html', context)
 
@@ -4821,24 +4896,36 @@ def course_toggle_completion(request, enrollment_id):
 def course_search_by_learner(request):
     """
     Tra cứu khóa học theo người học
-    Chỉ Superuser và Phòng Tổng hợp có quyền
+    Superuser và Phòng Tổng hợp: tìm tất cả nhân viên
+    Trưởng phòng: chỉ tìm trong phòng ban của mình
     """
     from .models import UserProfile, CourseEnrollment
     from django.db.models import Q
 
-    if not check_elearning_manage_permission(request.user):
+    if not check_elearning_search_permission(request.user):
         messages.error(request, 'Bạn không có quyền tra cứu')
         return redirect('course_dashboard')
+
+    is_full_manager = check_elearning_manage_permission(request.user)
+    dept_filter = None
+    if not is_full_manager:
+        try:
+            dept_filter = request.user.profile.department
+        except Exception:
+            dept_filter = None
 
     query = request.GET.get('q', '').strip()
     results = []
 
     if query:
-        profiles = UserProfile.objects.filter(
+        profile_qs = UserProfile.objects.filter(
             Q(full_name__icontains=query) | Q(employee_code__icontains=query)
         ).select_related('user').order_by('full_name')
 
-        for profile in profiles:
+        if dept_filter:
+            profile_qs = profile_qs.filter(department=dept_filter)
+
+        for profile in profile_qs:
             enrollments = CourseEnrollment.objects.filter(
                 user=profile.user
             ).select_related('course').order_by('course__start_date')
@@ -4852,6 +4939,8 @@ def course_search_by_learner(request):
     return render(request, 'templates_app/course_search_learner.html', {
         'query': query,
         'results': results,
+        'is_full_manager': is_full_manager,
+        'dept_filter': dept_filter,
     })
 
 
@@ -4859,16 +4948,27 @@ def course_search_by_learner(request):
 def course_search_by_department(request):
     """
     Tra cứu khóa học theo phòng ban
-    Chỉ Superuser và Phòng Tổng hợp có quyền
+    Superuser và Phòng Tổng hợp: chọn bất kỳ phòng ban nào
+    Trưởng phòng: chỉ xem được phòng ban của mình (tự động chọn)
     """
     from .models import UserProfile, CourseEnrollment, Course
 
-    if not check_elearning_manage_permission(request.user):
+    if not check_elearning_search_permission(request.user):
         messages.error(request, 'Bạn không có quyền tra cứu')
         return redirect('course_dashboard')
 
+    is_full_manager = check_elearning_manage_permission(request.user)
     dept_choices = UserProfile.DEPARTMENT_CHOICES
-    selected_dept = request.GET.get('dept', '')
+
+    # Trưởng phòng bị giới hạn ở phòng ban của mình
+    locked_dept = None
+    if not is_full_manager:
+        try:
+            locked_dept = request.user.profile.department
+        except Exception:
+            locked_dept = None
+
+    selected_dept = locked_dept if locked_dept else request.GET.get('dept', '')
     courses_data = []
 
     if selected_dept:
@@ -4894,6 +4994,8 @@ def course_search_by_department(request):
         'dept_choices': dept_choices,
         'selected_dept': selected_dept,
         'courses_data': courses_data,
+        'is_full_manager': is_full_manager,
+        'locked_dept': locked_dept,
     })
 
 

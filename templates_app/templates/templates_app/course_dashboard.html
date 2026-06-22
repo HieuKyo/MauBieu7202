@@ -7,19 +7,21 @@
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-mortarboard"></i> Quản lý Khóa học E-Learning</h2>
-        {% if has_permission %}
         <div class="d-flex gap-2">
+            {% if can_search %}
             <a href="{% url 'course_search_by_learner' %}" class="btn btn-outline-info">
                 <i class="bi bi-person-search"></i> Tra cứu theo người học
             </a>
             <a href="{% url 'course_search_by_department' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-building"></i> Tra cứu theo phòng ban
             </a>
+            {% endif %}
+            {% if has_permission %}
             <a href="{% url 'course_create' %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Tạo khóa học mới
             </a>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 
     {% if messages %}
