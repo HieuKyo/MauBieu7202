@@ -29,6 +29,7 @@ urlpatterns = [
     path("tasks/", include("tasks.urls")),
     path("savings/", include("savings_calculator.urls")),
     path("quiz/", include("quiz.urls")),
+    path("messaging/", include("messaging.urls")),
     path("", include("templates_app.urls")),
 ]
 

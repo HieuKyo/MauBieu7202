@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "tasks",
     "savings_calculator",
     "quiz",
+    "messaging",
 ]
 
 MIDDLEWARE = [
