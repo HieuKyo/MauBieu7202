@@ -6,6 +6,9 @@ REM Mục đích: Cài đặt tất cả dependencies từ offline_packages
 REM          (không cần internet, cho môi trường LAN)
 REM ====================================================================
 
+REM Chuyển về thư mục chứa file .bat này (quan trọng khi double-click)
+cd /d "%~dp0"
+
 echo.
 echo ====================================================================
 echo  CAI DAT OFFLINE PACKAGES - MAUBIEU7202

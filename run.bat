@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 REM =====================================================
 REM Run Script - Khoi dong ung dung MauBieu7202
 REM Mang noi bo Agribank: 10.135.7.108:8888

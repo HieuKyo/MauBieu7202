@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 REM ====================================================================
 REM Script: Download Offline Packages for LAN Installation
 REM ====================================================================
