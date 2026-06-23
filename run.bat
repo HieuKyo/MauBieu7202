@@ -34,15 +34,26 @@ REM =====================================================
 REM Step 2: Check Dependencies
 REM =====================================================
 echo [2/2] Kiem tra dependencies...
+
+REM Kiem tra cac thu vien chinh - neu thieu bat ky cai nao thi cai lai het
+set MISSING=0
 python -c "import waitress" >nul 2>&1
-if errorlevel 1 (
+if errorlevel 1 set MISSING=1
+python -c "import pdfplumber" >nul 2>&1
+if errorlevel 1 set MISSING=1
+python -c "import pypdf" >nul 2>&1
+if errorlevel 1 set MISSING=1
+python -c "import PIL" >nul 2>&1
+if errorlevel 1 set MISSING=1
+
+if "%MISSING%"=="1" (
     echo.
-    echo Waitress chua duoc cai dat. Dang cai dat tu packages...
+    echo Phat hien co thu vien chua duoc cai dat. Dang cai dat...
     if exist "packages" (
         pip install --no-index --find-links=packages -r requirements.txt
     ) else (
         echo LOI: Khong tim thay thu muc packages
-        echo Vui long chay setup.bat truoc
+        echo Vui long copy thu muc packages vao day va chay lai.
         pause
         exit /b 1
     )
@@ -53,6 +64,8 @@ if errorlevel 1 (
         pause
         exit /b 1
     )
+    echo.
+    echo Da cai dat xong.
 )
 echo Dependencies OK
 echo.

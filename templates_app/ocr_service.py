@@ -232,10 +232,12 @@ def _ocr_image_file(image_path):
 _MIN_CHARS_PER_PAGE = 50
 
 
-def _extract_pdf_text_direct(pdf_path):
+def _extract_pdf_text_direct(pdf_path, _diag=None):
     """
     Dùng pdfplumber để đọc text trực tiếp từ PDF có text selectable.
     Tốt hơn nhiều so với OCR cho tài liệu chứa bảng biểu, cột, ký tự đặc biệt.
+
+    _diag: nếu truyền vào list, sẽ thu thập thông báo lỗi để chẩn đoán.
 
     Returns:
         list[str] nếu PDF có text (một phần tử = một trang),
@@ -244,6 +246,8 @@ def _extract_pdf_text_direct(pdf_path):
     try:
         import pdfplumber
     except ImportError:
+        if _diag is not None:
+            _diag.append('pdfplumber chưa được cài đặt')
         return None
 
     texts = []
@@ -251,26 +255,38 @@ def _extract_pdf_text_direct(pdf_path):
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages[:MAX_PDF_PAGES]:
-                # Lọc watermark dạng ký tự xoay nghiêng (upright=False ~ 45°)
-                page_clean = page.filter(
-                    lambda obj: obj.get('object_type') != 'char'
-                    or obj.get('upright', True)
-                )
-                text = page_clean.extract_text(x_tolerance=3, y_tolerance=3) or ''
+                try:
+                    # Lọc watermark dạng ký tự xoay nghiêng (upright=False ~ 45°)
+                    page_clean = page.filter(
+                        lambda obj: obj.get('object_type') != 'char'
+                        or obj.get('upright', True)
+                    )
+                    text = page_clean.extract_text(x_tolerance=3, y_tolerance=3) or ''
+                except Exception as filter_exc:
+                    # filter() không tương thích hoặc lỗi cấu trúc PDF → đọc thẳng không lọc
+                    if _diag is not None:
+                        _diag.append(f'page.filter() lỗi: {filter_exc}')
+                    try:
+                        text = page.extract_text(x_tolerance=3, y_tolerance=3) or ''
+                    except Exception:
+                        text = ''
                 text = text.strip()
                 texts.append(text)
                 if len(text) >= _MIN_CHARS_PER_PAGE:
                     good_pages += 1
-    except Exception:
+    except Exception as exc:
+        if _diag is not None:
+            _diag.append(f'pdfplumber.open() lỗi: {exc}')
         return None
 
-    # Quyết định theo từng trang thay vì trung bình toàn file.
-    # PDF hỗn hợp (trang 1-3 có text, trang 4-8 nhiều watermark/bảng)
-    # vẫn được xử lý trực tiếp nếu ít nhất 1/3 số trang đủ tốt.
-    # Các trang nghèo text sẽ trả về chuỗi rỗng → build_docx ghi chú thích.
     min_good = max(1, len(texts) // 3)
     if good_pages < min_good:
-        return None  # Phần lớn là ảnh scan → fallback OCR
+        if _diag is not None:
+            _diag.append(
+                f'pdfplumber trả về quá ít text: {good_pages}/{len(texts)} trang đủ ký tự '
+                f'(cần ít nhất {min_good})'
+            )
+        return None
 
     return texts
 
@@ -298,7 +314,7 @@ _PDF_DPI_SHORT  = 180 # DPI cho PDF ≤10 trang
 _PDF_DPI_LONG   = 150 # DPI cho PDF dài — đủ chính xác, nhanh hơn
 
 
-def _pdf_to_image_paths(pdf_path, output_dir):
+def _pdf_to_image_paths(pdf_path, output_dir, _diag=None):
     """
     Chuyển từng trang PDF thành ảnh PNG, xử lý theo batch để tránh tràn RAM.
 
@@ -319,6 +335,11 @@ def _pdf_to_image_paths(pdf_path, output_dir):
         )
 
     poppler_path = POPPLER_PATH if os.path.isdir(POPPLER_PATH) else None
+    if _diag is not None:
+        _diag.append(
+            f'Poppler path: "{POPPLER_PATH}" — '
+            + ('tìm thấy' if poppler_path else 'KHÔNG TÌM THẤY, dùng PATH hệ thống')
+        )
 
     # Đếm trang bằng pypdf trước — tránh phụ thuộc vào pdfinfo
     total = _count_pdf_pages(pdf_path)
@@ -331,7 +352,7 @@ def _pdf_to_image_paths(pdf_path, output_dir):
         batch_end = min(batch_start + _PDF_BATCH_SIZE - 1, last_page)
 
         pages = _convert_batch(
-            pdf_path, batch_start, batch_end, dpi, output_dir, poppler_path
+            pdf_path, batch_start, batch_end, dpi, output_dir, poppler_path, _diag
         )
         if pages is None:
             continue  # Batch lỗi → bỏ qua, không crash toàn bộ
@@ -346,7 +367,7 @@ def _pdf_to_image_paths(pdf_path, output_dir):
     return sorted(image_paths)
 
 
-def _convert_batch(pdf_path, first, last, dpi, output_dir, poppler_path):
+def _convert_batch(pdf_path, first, last, dpi, output_dir, poppler_path, _diag=None):
     """
     Chuyển một batch trang PDF sang ảnh.
     Thử pdftocairo trước, fallback sang pdftoppm, trả None nếu cả hai đều lỗi.
@@ -367,18 +388,21 @@ def _convert_batch(pdf_path, first, last, dpi, output_dir, poppler_path):
     # Lần thử 1: dùng pdftocairo (không gọi pdfinfo → tránh PDFPageCountError)
     try:
         return convert_from_path(pdf_path, use_pdftocairo=True, **common)
-    except PDFInfoNotInstalledError:
+    except PDFInfoNotInstalledError as e:
         raise RuntimeError(
             f"Poppler chưa được cài đặt hoặc không tìm thấy tại {POPPLER_PATH}. "
             "Tải tại: https://github.com/oschwartz10612/poppler-windows/releases"
         )
-    except Exception:
-        pass
+    except Exception as e:
+        if _diag is not None:
+            _diag.append(f'pdftocairo trang {first}-{last} lỗi: {type(e).__name__}: {e}')
 
     # Lần thử 2: pdftoppm (mặc định)
     try:
         return convert_from_path(pdf_path, use_pdftocairo=False, **common)
-    except Exception:
+    except Exception as e:
+        if _diag is not None:
+            _diag.append(f'pdftoppm trang {first}-{last} lỗi: {type(e).__name__}: {e}')
         return None
 
 
@@ -397,16 +421,20 @@ def process_file(file_path, ext):
     ext = ext.lower()
 
     if ext == '.pdf':
+        # Thu thập thông tin chẩn đoán để hiển thị khi thất bại
+        diag = []
+
         # Thử trích xuất trực tiếp trước (nhanh hơn, chính xác hơn OCR)
-        direct_texts = _extract_pdf_text_direct(file_path)
+        direct_texts = _extract_pdf_text_direct(file_path, diag)
         if direct_texts is not None:
             return [_join_broken_lines(t) for t in direct_texts]
 
         # Fallback: PDF là ảnh scan → dùng OCR
         with tempfile.TemporaryDirectory() as tmp_img_dir:
-            image_paths = _pdf_to_image_paths(file_path, tmp_img_dir)
+            image_paths = _pdf_to_image_paths(file_path, tmp_img_dir, diag)
             if not image_paths:
-                return ['(Không đọc được trang nào từ file PDF này)']
+                diag_str = ' | '.join(diag) if diag else 'không có thông tin bổ sung'
+                return [f'(Không đọc được trang nào từ file PDF này. Chẩn đoán: {diag_str})']
             texts = [_join_broken_lines(_ocr_image_file(p)) for p in image_paths]
         return texts
 
