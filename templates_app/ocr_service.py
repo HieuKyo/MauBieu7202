@@ -126,17 +126,44 @@ def _join_broken_lines(text):
 # ---------------------------------------------------------------------------
 # 3. Tiền xử lý ảnh để tăng độ chính xác OCR
 # ---------------------------------------------------------------------------
+def _otsu_threshold(img):
+    """
+    Tính ngưỡng Otsu từ histogram ảnh grayscale (pure Python, không cần numpy).
+    Otsu tìm ngưỡng tối ưu phân tách chữ (tối) và nền + watermark (sáng hơn).
+    Trả về giá trị ngưỡng 0-255.
+    """
+    hist = img.histogram()          # 256 bucket, bucket[i] = số pixel có giá trị i
+    total = sum(hist)
+    if total == 0:
+        return 128
+
+    sum_total = sum(i * h for i, h in enumerate(hist))
+    sum_bg = weight_bg = 0
+    best_thresh = best_var = 0
+
+    for t in range(256):
+        weight_bg += hist[t]
+        if weight_bg == 0 or weight_bg == total:
+            continue
+        weight_fg = total - weight_bg
+        sum_bg += t * hist[t]
+        mean_bg = sum_bg / weight_bg
+        mean_fg = (sum_total - sum_bg) / weight_fg
+        var = weight_bg * weight_fg * (mean_bg - mean_fg) ** 2
+        if var > best_var:
+            best_var, best_thresh = var, t
+
+    return best_thresh
+
+
 def _preprocess_image(img):
     """
     Chuẩn hóa ảnh trước khi OCR.
 
-    Xử lý watermark ảnh (bán trong suốt):
-    - Contrast 2.5× (tăng từ 1.8) làm chữ mờ/watermark nhạt biến mất
-    - Nhị phân hóa (binarize) với ngưỡng 155/255:
-        pixel < 155 → đen (chữ thật, đậm)
-        pixel ≥ 155 → trắng (nền, watermark nhạt màu)
-    Watermark in đậm/cùng màu với chữ không thể loại bằng cách này
-    vì không phân biệt được về mặt cường độ pixel.
+    Xử lý watermark:
+    - Ngưỡng Otsu thay vì cố định: tự thích ứng với từng trang (sáng/tối khác nhau).
+    - Đẩy ngưỡng lên thêm +20 để loại watermark tương đối tối (ví dụ: con dấu mờ,
+      chữ stamp xám đậm). Watermark in đậm cùng màu chữ thật không thể loại được.
     """
     img = img.convert('L')
 
@@ -145,11 +172,11 @@ def _preprocess_image(img):
         scale = 1500 / w
         img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
 
-    # Tăng contrast mạnh hơn: watermark mờ nhạt màu (gray) → trắng
     img = ImageEnhance.Contrast(img).enhance(2.5)
 
-    # Nhị phân hóa: loại bỏ watermark bán trong suốt còn sót lại
-    img = img.point(lambda x: 0 if x < 155 else 255)
+    # Ngưỡng Otsu + bias +20 để loại watermark xám còn sót
+    thresh = min(_otsu_threshold(img) + 20, 210)
+    img = img.point(lambda x: 0 if x < thresh else 255)
 
     img = img.filter(ImageFilter.SHARPEN)
 
@@ -179,8 +206,20 @@ def _ocr_image_file(image_path):
     try:
         img = Image.open(image_path)
         img = _preprocess_image(img)
+
+        # Lần 1: PSM 3 — tự động phân tích layout (tốt cho văn bản đa cột)
         text = pytesseract.image_to_string(img, lang=OCR_LANG, config=OCR_CONFIG)
-        return text.strip()
+        text = text.strip()
+
+        # Nếu PSM 3 cho ít ký tự (trang bảng biểu, layout phức tạp) → thử PSM 6
+        # PSM 6: coi toàn bộ trang là một khối văn bản đồng nhất — tốt hơn cho bảng
+        if len(text) < 80:
+            cfg6 = OCR_CONFIG.replace('--psm 3', '--psm 6')
+            text2 = pytesseract.image_to_string(img, lang=OCR_LANG, config=cfg6).strip()
+            if len(text2) > len(text):
+                text = text2
+
+        return text
     finally:
         if img:
             img.close()
@@ -208,25 +247,30 @@ def _extract_pdf_text_direct(pdf_path):
         return None
 
     texts = []
+    good_pages = 0
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages[:MAX_PDF_PAGES]:
-                # Lọc bỏ ký tự bị xoay nghiêng (watermark chéo 45° trong PDF)
-                # Watermark dạng text layer thường có upright=False (xoay ~45°)
+                # Lọc watermark dạng ký tự xoay nghiêng (upright=False ~ 45°)
                 page_clean = page.filter(
                     lambda obj: obj.get('object_type') != 'char'
                     or obj.get('upright', True)
                 )
                 text = page_clean.extract_text(x_tolerance=3, y_tolerance=3) or ''
-                texts.append(text.strip())
+                text = text.strip()
+                texts.append(text)
+                if len(text) >= _MIN_CHARS_PER_PAGE:
+                    good_pages += 1
     except Exception:
         return None
 
-    # Kiểm tra có đủ text không (PDF scan sẽ trả về rỗng)
-    total_chars = sum(len(t) for t in texts)
-    avg = total_chars / max(len(texts), 1)
-    if avg < _MIN_CHARS_PER_PAGE:
-        return None  # Likely scanned — fall back to OCR
+    # Quyết định theo từng trang thay vì trung bình toàn file.
+    # PDF hỗn hợp (trang 1-3 có text, trang 4-8 nhiều watermark/bảng)
+    # vẫn được xử lý trực tiếp nếu ít nhất 1/3 số trang đủ tốt.
+    # Các trang nghèo text sẽ trả về chuỗi rỗng → build_docx ghi chú thích.
+    min_good = max(1, len(texts) // 3)
+    if good_pages < min_good:
+        return None  # Phần lớn là ảnh scan → fallback OCR
 
     return texts
 
