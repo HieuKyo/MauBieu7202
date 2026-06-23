@@ -128,24 +128,29 @@ def _join_broken_lines(text):
 # ---------------------------------------------------------------------------
 def _preprocess_image(img):
     """
-    Chuẩn hóa ảnh trước khi OCR:
-    - Chuyển sang grayscale (ảnh màu làm Tesseract nhầm dấu tiếng Việt)
-    - Tăng độ tương phản để chữ rõ hơn
-    - Tăng kích thước nếu ảnh quá nhỏ (DPI thấp làm mất dấu)
+    Chuẩn hóa ảnh trước khi OCR.
+
+    Xử lý watermark ảnh (bán trong suốt):
+    - Contrast 2.5× (tăng từ 1.8) làm chữ mờ/watermark nhạt biến mất
+    - Nhị phân hóa (binarize) với ngưỡng 155/255:
+        pixel < 155 → đen (chữ thật, đậm)
+        pixel ≥ 155 → trắng (nền, watermark nhạt màu)
+    Watermark in đậm/cùng màu với chữ không thể loại bằng cách này
+    vì không phân biệt được về mặt cường độ pixel.
     """
-    # Chuyển sang grayscale
     img = img.convert('L')
 
-    # Tăng kích thước nếu chiều rộng dưới 1500px (ảnh chụp điện thoại thường nhỏ)
     w, h = img.size
     if w < 1500:
         scale = 1500 / w
         img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
 
-    # Tăng độ tương phản
-    img = ImageEnhance.Contrast(img).enhance(1.8)
+    # Tăng contrast mạnh hơn: watermark mờ nhạt màu (gray) → trắng
+    img = ImageEnhance.Contrast(img).enhance(2.5)
 
-    # Làm sắc nét nhẹ
+    # Nhị phân hóa: loại bỏ watermark bán trong suốt còn sót lại
+    img = img.point(lambda x: 0 if x < 155 else 255)
+
     img = img.filter(ImageFilter.SHARPEN)
 
     return img
@@ -206,8 +211,13 @@ def _extract_pdf_text_direct(pdf_path):
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages[:MAX_PDF_PAGES]:
-                # extract_text giữ khoảng cách giữa các từ theo tọa độ thực
-                text = page.extract_text(x_tolerance=3, y_tolerance=3) or ''
+                # Lọc bỏ ký tự bị xoay nghiêng (watermark chéo 45° trong PDF)
+                # Watermark dạng text layer thường có upright=False (xoay ~45°)
+                page_clean = page.filter(
+                    lambda obj: obj.get('object_type') != 'char'
+                    or obj.get('upright', True)
+                )
+                text = page_clean.extract_text(x_tolerance=3, y_tolerance=3) or ''
                 texts.append(text.strip())
     except Exception:
         return None
@@ -222,19 +232,43 @@ def _extract_pdf_text_direct(pdf_path):
 
 
 # ---------------------------------------------------------------------------
-# 6. Chuyển PDF sang ảnh để OCR (fallback cho PDF scan)
+# 6. Đếm trang PDF bằng pypdf (pure Python, không cần Poppler)
 # ---------------------------------------------------------------------------
+def _count_pdf_pages(pdf_path):
+    """
+    Đếm số trang PDF dùng pypdf (không cần pdfinfo/Poppler).
+    Trả về None nếu không đọc được (PDF lỗi/mã hoá).
+    """
+    try:
+        from pypdf import PdfReader
+        return len(PdfReader(pdf_path).pages)
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# 7. Chuyển PDF sang ảnh để OCR (fallback cho PDF scan)
+# ---------------------------------------------------------------------------
+_PDF_BATCH_SIZE = 5   # Số trang xử lý mỗi lượt — giữ RAM ổn định
+_PDF_DPI_SHORT  = 180 # DPI cho PDF ≤10 trang
+_PDF_DPI_LONG   = 150 # DPI cho PDF dài — đủ chính xác, nhanh hơn
+
+
 def _pdf_to_image_paths(pdf_path, output_dir):
     """
-    Chuyển từng trang PDF thành ảnh PNG riêng biệt trong output_dir.
-    Giải phóng bộ nhớ từng trang ngay sau khi lưu.
+    Chuyển từng trang PDF thành ảnh PNG, xử lý theo batch để tránh tràn RAM.
+
+    Chiến lược fallback khi gặp PDFPageCountError:
+    1. Thử dùng pdftocairo (thay vì pdftoppm mặc định) — ổn định hơn
+       với PDF không chuẩn, password-protect nhẹ, đường dẫn đặc biệt.
+    2. Nếu vẫn lỗi → bỏ qua batch đó, tiếp tục batch tiếp theo.
 
     Returns:
         list[str]: Danh sách đường dẫn ảnh theo thứ tự trang.
     """
     try:
         from pdf2image import convert_from_path
-        from pdf2image.exceptions import PDFInfoNotInstalledError
+        from pdf2image.exceptions import PDFInfoNotInstalledError, PDFPageCountError
     except ImportError:
         raise ImportError(
             "Thư viện pdf2image chưa được cài đặt. Chạy: pip install pdf2image"
@@ -242,35 +276,70 @@ def _pdf_to_image_paths(pdf_path, output_dir):
 
     poppler_path = POPPLER_PATH if os.path.isdir(POPPLER_PATH) else None
 
-    try:
-        pages = convert_from_path(
-            pdf_path,
-            dpi=200,
-            output_folder=output_dir,
-            fmt='png',
-            first_page=1,
-            last_page=MAX_PDF_PAGES,
-            poppler_path=poppler_path,
-        )
-    except PDFInfoNotInstalledError:
-        raise RuntimeError(
-            "Poppler chưa được cài đặt hoặc không tìm thấy. "
-            "Tải tại: https://github.com/oschwartz10612/poppler-windows/releases "
-            f"và giải nén vào {POPPLER_PATH}"
-        )
+    # Đếm trang bằng pypdf trước — tránh phụ thuộc vào pdfinfo
+    total = _count_pdf_pages(pdf_path)
+    last_page = min(total, MAX_PDF_PAGES) if total else MAX_PDF_PAGES
+    dpi = _PDF_DPI_SHORT if last_page <= 10 else _PDF_DPI_LONG
 
     image_paths = []
-    for i, page_img in enumerate(pages):
-        img_path = os.path.join(output_dir, f'page_{i + 1:03d}.png')
-        page_img.save(img_path, 'PNG')
-        page_img.close()
-        image_paths.append(img_path)
 
-    return image_paths
+    for batch_start in range(1, last_page + 1, _PDF_BATCH_SIZE):
+        batch_end = min(batch_start + _PDF_BATCH_SIZE - 1, last_page)
+
+        pages = _convert_batch(
+            pdf_path, batch_start, batch_end, dpi, output_dir, poppler_path
+        )
+        if pages is None:
+            continue  # Batch lỗi → bỏ qua, không crash toàn bộ
+
+        for i, page_img in enumerate(pages):
+            page_num = batch_start + i
+            img_path = os.path.join(output_dir, f'page_{page_num:03d}.png')
+            page_img.save(img_path, 'PNG')
+            page_img.close()
+            image_paths.append(img_path)
+
+    return sorted(image_paths)
+
+
+def _convert_batch(pdf_path, first, last, dpi, output_dir, poppler_path):
+    """
+    Chuyển một batch trang PDF sang ảnh.
+    Thử pdftocairo trước, fallback sang pdftoppm, trả None nếu cả hai đều lỗi.
+    """
+    from pdf2image import convert_from_path
+    from pdf2image.exceptions import PDFInfoNotInstalledError, PDFPageCountError
+
+    common = dict(
+        dpi=dpi,
+        output_folder=output_dir,
+        fmt='png',
+        first_page=first,
+        last_page=last,
+        poppler_path=poppler_path,
+        grayscale=True,  # Tiết kiệm RAM, Tesseract cũng cần grayscale
+    )
+
+    # Lần thử 1: dùng pdftocairo (không gọi pdfinfo → tránh PDFPageCountError)
+    try:
+        return convert_from_path(pdf_path, use_pdftocairo=True, **common)
+    except PDFInfoNotInstalledError:
+        raise RuntimeError(
+            f"Poppler chưa được cài đặt hoặc không tìm thấy tại {POPPLER_PATH}. "
+            "Tải tại: https://github.com/oschwartz10612/poppler-windows/releases"
+        )
+    except Exception:
+        pass
+
+    # Lần thử 2: pdftoppm (mặc định)
+    try:
+        return convert_from_path(pdf_path, use_pdftocairo=False, **common)
+    except Exception:
+        return None
 
 
 # ---------------------------------------------------------------------------
-# 7. Xử lý file chính: ưu tiên text trực tiếp, fallback sang OCR
+# 8. Xử lý file chính: ưu tiên text trực tiếp, fallback sang OCR
 # ---------------------------------------------------------------------------
 def process_file(file_path, ext):
     """
@@ -304,7 +373,7 @@ def process_file(file_path, ext):
 
 
 # ---------------------------------------------------------------------------
-# 7. Tạo file Word từ kết quả OCR
+# 9. Tạo file Word từ kết quả OCR
 # ---------------------------------------------------------------------------
 def build_docx(page_texts, source_filename):
     """

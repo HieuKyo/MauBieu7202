@@ -1,10 +1,8 @@
 @echo off
-setlocal enabledelayedexpansion
 cd /d "%~dp0"
 REM =====================================================
 REM Setup Script - Cai dat ung dung MauBieu7202
 REM Ho tro cai dat OFFLINE (khong can Internet)
-REM Version: 2.0 - Updated for KPI Dashboard
 REM =====================================================
 
 title MauBieu7202 - Setup
@@ -12,17 +10,14 @@ title MauBieu7202 - Setup
 echo.
 echo =====================================================
 echo MauBieu7202 - Cai dat lan dau
-echo Ho tro cai dat OFFLINE (bao gom KPI Dashboard)
+echo Ho tro cai dat OFFLINE
 echo =====================================================
 echo.
 echo Script nay se:
 echo   1. Kiem tra Python
-echo   2. Cai dat dependencies (bao gom dbfread cho KPI)
+echo   2. Cai dat dependencies (tu thu muc packages)
 echo   3. Thiet lap database
 echo   4. Thu thap static files
-echo.
-echo REQUIREMENTS MOI:
-echo   - dbfread ^>= 2.0.7 (cho KPI Dashboard)
 echo.
 pause
 
@@ -50,62 +45,24 @@ REM =====================================================
 echo [2/4] Cai dat dependencies...
 echo.
 
-REM Xac dinh thu muc chua packages offline
-set PACKAGES_FOLDER=
-if exist "offline_packages" set PACKAGES_FOLDER=offline_packages
-
-if "%PACKAGES_FOLDER%"=="" (
+REM Check if packages folder exists
+if not exist "packages" (
     echo.
-    echo LOI: Khong tim thay thu muc offline_packages
-    echo.
-    echo HUONG DAN:
-    echo   - Tren may co Internet: Chay download_offline_packages.bat
-    echo   - Hoac copy thu muc offline_packages vao cung thu muc nay
-    echo.
+    echo LOI: Khong tim thay thu muc packages
+    echo Vui long dam bao thu muc packages ton tai
     pause
     exit /b 1
 )
 
-echo Dang cai dat tu thu muc %PACKAGES_FOLDER% (OFFLINE)...
-echo.
-
-REM Upgrade pip first (from offline cache)
-echo Nang cap pip...
-python -m pip install --upgrade pip --no-index --find-links=%PACKAGES_FOLDER% 2>nul
-
-REM Install all dependencies
-echo Cai dat dependencies tu requirements.txt...
-pip install --no-index --find-links=%PACKAGES_FOLDER% -r requirements.txt
+echo Dang cai dat tu thu muc packages (OFFLINE)...
+pip install --no-index --find-links=packages -r requirements.txt
 if errorlevel 1 (
     echo.
-    echo LOI: Khong the cai dat mot so dependencies
-    echo.
-    echo KIEM TRA:
-    echo   1. Thu muc %PACKAGES_FOLDER% co day du cac file .whl
-    echo   2. File requirements.txt co dung khong
-    echo.
-    echo PACKAGES CAN THIET MOI:
-    echo   - dbfread ^>= 2.0.7 (cho KPI Dashboard)
-    echo.
-    echo CACH SUA:
-    echo   1. Tren may co Internet, chay: download_offline_packages.bat
-    echo   2. Copy lai thu muc offline_packages vao cung thu muc nay
-    echo.
+    echo LOI: Khong the cai dat dependencies
+    echo Kiem tra thu muc packages co day du cac file .whl
     pause
     exit /b 1
 )
-
-echo.
-echo Kiem tra dbfread da duoc cai dat...
-python -c "import dbfread; print('✓ dbfread version:', dbfread.__version__)" 2>nul
-if errorlevel 1 (
-    echo.
-    echo CANH BAO: dbfread chua duoc cai dat!
-    echo Module nay can thiet cho KPI Dashboard.
-    echo.
-    echo Kiem tra lai thu muc offline_packages co file dbfread*.whl khong.
-)
-
 echo.
 echo Dependencies da duoc cai dat thanh cong
 echo.
@@ -116,16 +73,7 @@ REM =====================================================
 echo [3/4] Thiet lap database...
 echo.
 
-echo Dang tao migrations moi...
-python manage.py makemigrations
-if errorlevel 1 (
-    echo.
-    echo CANH BAO: Makemigrations gap van de
-    echo Tiep tuc voi migrations hien co...
-)
-
-echo.
-echo Dang ap dung migrations...
+echo Dang chay migrations...
 python manage.py migrate
 if errorlevel 1 (
     echo.
@@ -187,16 +135,9 @@ echo De truy cap trang admin:
 echo   - URL: http://10.135.7.108:8888/admin
 echo   - Su dung tai khoan admin da tao
 echo.
-echo TINH NANG MOI - KPI DASHBOARD:
-echo   - URL: http://10.135.7.108:8888/kpi-dashboard/
-echo   - Tinh KPI tu dong cho Giao dich vien
-echo   - Ho tro file: Thẻ, SMS, E-Mobile Banking
-echo   - Yeu cau: dbfread (da duoc cai dat)
-echo.
 echo LUU Y:
 echo   - Ung dung co the chay OFFLINE hoan toan
 echo   - Tat ca CSS, icons, thu vien da duoc tich hop san
-echo   - KPI Dashboard ho tro xu ly file DBF (dBase/FoxPro)
 echo.
 pause
 

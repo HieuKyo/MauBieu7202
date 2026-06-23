@@ -17,12 +17,12 @@ echo.
 REM Determine packages folder
 set PACKAGES_FOLDER=
 if exist "packages" set PACKAGES_FOLDER=packages
-if exist "offline_packages" set PACKAGES_FOLDER=offline_packages
+if exist "packages" set PACKAGES_FOLDER=packages
 
 if "%PACKAGES_FOLDER%"=="" (
-    echo [ERROR] Khong tim thay thu muc packages hoac offline_packages!
+    echo [ERROR] Khong tim thay thu muc packages hoac packages!
     echo.
-    echo Vui long chay: download_packages.bat hoac download_offline_packages.bat
+    echo Vui long chay: download_packages.bat hoac download_packages.bat
     echo.
     pause
     exit /b 1

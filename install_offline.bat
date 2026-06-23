@@ -2,7 +2,7 @@
 REM ====================================================================
 REM Script: Install Python Packages from Offline Cache (LAN)
 REM ====================================================================
-REM Mục đích: Cài đặt tất cả dependencies từ offline_packages
+REM Mục đích: Cài đặt tất cả dependencies từ packages
 REM          (không cần internet, cho môi trường LAN)
 REM ====================================================================
 
@@ -33,13 +33,13 @@ echo [INFO] Phat hien Python version:
 python --version
 echo.
 
-REM Kiểm tra thư mục offline_packages
-if not exist "offline_packages" (
-    echo [ERROR] Khong tim thay thu muc "offline_packages"!
+REM Kiểm tra thư mục packages
+if not exist "packages" (
+    echo [ERROR] Khong tim thay thu muc "packages"!
     echo.
     echo HUONG DAN:
-    echo 1. Tren may co internet, chay: download_offline_packages.bat
-    echo 2. Copy thu muc "offline_packages" sang may nay
+    echo 1. Tren may co internet, chay: download_packages.bat
+    echo 2. Copy thu muc "packages" sang may nay
     echo 3. Chay lai script nay
     echo.
     pause
@@ -73,18 +73,18 @@ echo.
 
 REM Nâng cấp pip (từ offline cache nếu có)
 echo [INFO] Nang cap pip...
-python -m pip install --upgrade pip --no-index --find-links=offline_packages
+python -m pip install --upgrade pip --no-index --find-links=packages
 echo.
 
 REM Cài đặt packages từ offline cache
 echo [INFO] Cai dat packages tu offline cache...
 echo.
-pip install --no-index --find-links=offline_packages -r requirements.txt
+pip install --no-index --find-links=packages -r requirements.txt
 
 if errorlevel 1 (
     echo.
     echo [ERROR] Cai dat that bai!
-    echo Vui long kiem tra thu muc offline_packages co day du packages.
+    echo Vui long kiem tra thu muc packages co day du packages.
     pause
     exit /b 1
 )

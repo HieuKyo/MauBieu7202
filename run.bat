@@ -38,10 +38,10 @@ python -c "import waitress" >nul 2>&1
 if errorlevel 1 (
     echo.
     echo Waitress chua duoc cai dat. Dang cai dat tu packages...
-    if exist "offline_packages" (
-        pip install --no-index --find-links=offline_packages -r requirements.txt
+    if exist "packages" (
+        pip install --no-index --find-links=packages -r requirements.txt
     ) else (
-        echo LOI: Khong tim thay thu muc offline_packages
+        echo LOI: Khong tim thay thu muc packages
         echo Vui long chay setup.bat truoc
         pause
         exit /b 1

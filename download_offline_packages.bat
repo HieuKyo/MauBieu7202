@@ -5,7 +5,7 @@ REM Script: Download Offline Packages for LAN Installation
 REM ====================================================================
 REM Mục đích: Download tất cả Python packages để cài đặt offline
 REM Sử dụng: Chạy script này trên máy có internet, sau đó copy
-REM          thư mục offline_packages sang máy LAN
+REM          thư mục packages sang máy LAN
 REM ====================================================================
 
 echo.
@@ -27,17 +27,17 @@ echo [INFO] Phat hien Python version:
 python --version
 echo.
 
-REM Tạo thư mục offline_packages
-if not exist "offline_packages" (
-    echo [INFO] Tao thu muc offline_packages...
-    mkdir offline_packages
+REM Tạo thư mục packages
+if not exist "packages" (
+    echo [INFO] Tao thu muc packages...
+    mkdir packages
 )
 
 echo [INFO] Bat dau download packages...
 echo.
 
 REM Download tất cả packages từ requirements.txt
-pip download -r requirements.txt -d offline_packages
+pip download -r requirements.txt -d packages
 
 if errorlevel 1 (
     echo.
@@ -52,12 +52,12 @@ echo ====================================================================
 echo  DOWNLOAD THANH CONG!
 echo ====================================================================
 echo.
-echo Thu muc: offline_packages
+echo Thu muc: packages
 echo So luong packages:
-dir /b offline_packages | find /c /v ""
+dir /b packages | find /c /v ""
 echo.
 echo HUONG DAN CAI DAT TREN MAY LAN:
-echo 1. Copy thu muc "offline_packages" sang may LAN
+echo 1. Copy thu muc "packages" sang may LAN
 echo 2. Chay script: install_offline.bat
 echo.
 echo ====================================================================

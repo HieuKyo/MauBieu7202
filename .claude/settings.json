@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cd \"g:/My Drive/MauBieu7202\" && \\\\ *)"
+      "Bash(cd \"g:/My Drive/MauBieu7202\" && \\\\ *)",
+      "Bash(git gc *)"
     ]
   }
 }
