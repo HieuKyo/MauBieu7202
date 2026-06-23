@@ -40,7 +40,8 @@ Unidecode>=1.3.6
 
 # OCR Tool
 pytesseract>=0.3.13  # Python wrapper cho Tesseract OCR engine
-pdf2image>=1.17.0    # Chuyển PDF scan thành ảnh (yêu cầu Poppler cài trên máy chủ)
+PyMuPDF>=1.24.0      # Render PDF→ảnh KHÔNG cần Poppler (MuPDF bundled trong wheel)
+pdf2image>=1.17.0    # Fallback render nếu PyMuPDF không có (yêu cầu Poppler)
 pdfplumber>=0.11.0   # Trích xuất text trực tiếp từ PDF có text selectable (ưu tiên dùng)
 
 # PDF Tools (Tách / Ghép PDF)

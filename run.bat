@@ -45,6 +45,8 @@ python -c "import pypdf" >nul 2>&1
 if errorlevel 1 set MISSING=1
 python -c "import PIL" >nul 2>&1
 if errorlevel 1 set MISSING=1
+python -c "import fitz" >nul 2>&1
+if errorlevel 1 set MISSING=1
 
 if "%MISSING%"=="1" (
     echo.

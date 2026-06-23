@@ -262,6 +262,10 @@ def _extract_pdf_text_direct(pdf_path, _diag=None):
                         or obj.get('upright', True)
                     )
                     text = page_clean.extract_text(x_tolerance=3, y_tolerance=3) or ''
+                    # Một số PDF lưu upright=False cho tất cả chars (khác bản pdfplumber) →
+                    # filter xoá hết text thật. Fallback về đọc thẳng nếu kết quả rỗng.
+                    if not text.strip():
+                        text = page.extract_text(x_tolerance=3, y_tolerance=3) or ''
                 except Exception as filter_exc:
                     # filter() không tương thích hoặc lỗi cấu trúc PDF → đọc thẳng không lọc
                     if _diag is not None:
@@ -316,32 +320,80 @@ _PDF_DPI_LONG   = 150 # DPI cho PDF dài — đủ chính xác, nhanh hơn
 
 def _pdf_to_image_paths(pdf_path, output_dir, _diag=None):
     """
-    Chuyển từng trang PDF thành ảnh PNG, xử lý theo batch để tránh tràn RAM.
+    Chuyển từng trang PDF thành ảnh PNG cho OCR.
 
-    Chiến lược fallback khi gặp PDFPageCountError:
-    1. Thử dùng pdftocairo (thay vì pdftoppm mặc định) — ổn định hơn
-       với PDF không chuẩn, password-protect nhẹ, đường dẫn đặc biệt.
-    2. Nếu vẫn lỗi → bỏ qua batch đó, tiếp tục batch tiếp theo.
+    Ưu tiên PyMuPDF (fitz) — không cần cài Poppler, MuPDF bundled trong wheel.
+    Fallback sang pdf2image+Poppler nếu PyMuPDF chưa được cài.
 
     Returns:
         list[str]: Danh sách đường dẫn ảnh theo thứ tự trang.
     """
     try:
+        import fitz  # PyMuPDF
+        return _pdf_to_images_pymupdf(pdf_path, output_dir, _diag)
+    except ImportError:
+        if _diag is not None:
+            _diag.append('PyMuPDF chưa cài, thử pdf2image+Poppler')
+
+    return _pdf_to_images_pdf2image(pdf_path, output_dir, _diag)
+
+
+def _pdf_to_images_pymupdf(pdf_path, output_dir, _diag=None):
+    """
+    Dùng PyMuPDF (fitz) render PDF → ảnh grayscale PNG.
+    Không cần Poppler hay bất kỳ binary ngoài nào.
+    """
+    import fitz
+
+    total = _count_pdf_pages(pdf_path)
+    n_pages = min(total, MAX_PDF_PAGES) if total else MAX_PDF_PAGES
+    dpi = _PDF_DPI_SHORT if n_pages <= 10 else _PDF_DPI_LONG
+    scale = dpi / 72  # fitz dùng 72 dpi làm cơ sở
+
+    image_paths = []
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception as e:
+        if _diag is not None:
+            _diag.append(f'PyMuPDF không mở được PDF: {e}')
+        return []
+
+    try:
+        for i in range(min(len(doc), MAX_PDF_PAGES)):
+            page = doc[i]
+            mat = fitz.Matrix(scale, scale)
+            pix = page.get_pixmap(matrix=mat, colorspace=fitz.csGRAY)
+            img_path = os.path.join(output_dir, f'page_{i + 1:03d}.png')
+            pix.save(img_path)
+            pix = None  # giải phóng bộ nhớ
+            image_paths.append(img_path)
+    except Exception as e:
+        if _diag is not None:
+            _diag.append(f'PyMuPDF render lỗi: {type(e).__name__}: {e}')
+    finally:
+        doc.close()
+
+    return sorted(image_paths)
+
+
+def _pdf_to_images_pdf2image(pdf_path, output_dir, _diag=None):
+    """
+    Fallback dùng pdf2image + Poppler khi PyMuPDF chưa cài.
+    Xử lý theo batch để tránh tràn RAM với PDF dài.
+    """
+    try:
         from pdf2image import convert_from_path
         from pdf2image.exceptions import PDFInfoNotInstalledError, PDFPageCountError
     except ImportError:
-        raise ImportError(
-            "Thư viện pdf2image chưa được cài đặt. Chạy: pip install pdf2image"
-        )
+        raise ImportError("Thư viện pdf2image chưa được cài đặt.")
 
     poppler_path = POPPLER_PATH if os.path.isdir(POPPLER_PATH) else None
     if _diag is not None:
         _diag.append(
-            f'Poppler path: "{POPPLER_PATH}" — '
-            + ('tìm thấy' if poppler_path else 'KHÔNG TÌM THẤY, dùng PATH hệ thống')
+            f'pdf2image | Poppler: "{POPPLER_PATH}" — '
+            + ('tìm thấy' if poppler_path else 'KHÔNG TÌM THẤY')
         )
 
-    # Đếm trang bằng pypdf trước — tránh phụ thuộc vào pdfinfo
     total = _count_pdf_pages(pdf_path)
     last_page = min(total, MAX_PDF_PAGES) if total else MAX_PDF_PAGES
     dpi = _PDF_DPI_SHORT if last_page <= 10 else _PDF_DPI_LONG
@@ -350,15 +402,14 @@ def _pdf_to_image_paths(pdf_path, output_dir, _diag=None):
 
     for batch_start in range(1, last_page + 1, _PDF_BATCH_SIZE):
         batch_end = min(batch_start + _PDF_BATCH_SIZE - 1, last_page)
-
-        pages = _convert_batch(
+        pages = _convert_batch_pdf2image(
             pdf_path, batch_start, batch_end, dpi, output_dir, poppler_path, _diag
         )
         if pages is None:
-            continue  # Batch lỗi → bỏ qua, không crash toàn bộ
+            continue
 
-        for i, page_img in enumerate(pages):
-            page_num = batch_start + i
+        for j, page_img in enumerate(pages):
+            page_num = batch_start + j
             img_path = os.path.join(output_dir, f'page_{page_num:03d}.png')
             page_img.save(img_path, 'PNG')
             page_img.close()
@@ -367,11 +418,8 @@ def _pdf_to_image_paths(pdf_path, output_dir, _diag=None):
     return sorted(image_paths)
 
 
-def _convert_batch(pdf_path, first, last, dpi, output_dir, poppler_path, _diag=None):
-    """
-    Chuyển một batch trang PDF sang ảnh.
-    Thử pdftocairo trước, fallback sang pdftoppm, trả None nếu cả hai đều lỗi.
-    """
+def _convert_batch_pdf2image(pdf_path, first, last, dpi, output_dir, poppler_path, _diag=None):
+    """Chuyển một batch trang qua pdf2image, thử pdftocairo rồi pdftoppm."""
     from pdf2image import convert_from_path
     from pdf2image.exceptions import PDFInfoNotInstalledError, PDFPageCountError
 
@@ -382,27 +430,25 @@ def _convert_batch(pdf_path, first, last, dpi, output_dir, poppler_path, _diag=N
         first_page=first,
         last_page=last,
         poppler_path=poppler_path,
-        grayscale=True,  # Tiết kiệm RAM, Tesseract cũng cần grayscale
+        grayscale=True,
     )
 
-    # Lần thử 1: dùng pdftocairo (không gọi pdfinfo → tránh PDFPageCountError)
     try:
         return convert_from_path(pdf_path, use_pdftocairo=True, **common)
-    except PDFInfoNotInstalledError as e:
+    except PDFInfoNotInstalledError:
         raise RuntimeError(
-            f"Poppler chưa được cài đặt hoặc không tìm thấy tại {POPPLER_PATH}. "
-            "Tải tại: https://github.com/oschwartz10612/poppler-windows/releases"
+            f"Poppler không tìm thấy tại {POPPLER_PATH}. "
+            "Cài PyMuPDF (pip install PyMuPDF) để không cần Poppler."
         )
     except Exception as e:
         if _diag is not None:
-            _diag.append(f'pdftocairo trang {first}-{last} lỗi: {type(e).__name__}: {e}')
+            _diag.append(f'pdftocairo {first}-{last}: {type(e).__name__}: {e}')
 
-    # Lần thử 2: pdftoppm (mặc định)
     try:
         return convert_from_path(pdf_path, use_pdftocairo=False, **common)
     except Exception as e:
         if _diag is not None:
-            _diag.append(f'pdftoppm trang {first}-{last} lỗi: {type(e).__name__}: {e}')
+            _diag.append(f'pdftoppm {first}-{last}: {type(e).__name__}: {e}')
         return None
 
 
