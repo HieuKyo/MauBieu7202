@@ -315,12 +315,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    const _ocrLoadingEl = document.getElementById('loadingModal');
+
+    function hideOcrLoadingThen(callback) {
+        const modal = bootstrap.Modal.getInstance(_ocrLoadingEl);
+        if (!modal || !_ocrLoadingEl.classList.contains('show')) {
+            callback && callback();
+            return;
+        }
+        _ocrLoadingEl.addEventListener('hidden.bs.modal', callback, { once: true });
+        modal.hide();
+    }
+
     // Submit bằng fetch để có thể tắt modal sau khi tải file xong
     document.getElementById('ocrForm').addEventListener('submit', async function (e) {
         e.preventDefault();
+        const submitBtn = this.querySelector('[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
 
-        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
-        loadingModal.show();
+        const modal = bootstrap.Modal.getInstance(_ocrLoadingEl) || new bootstrap.Modal(_ocrLoadingEl);
+        modal.show();
 
         try {
             const response = await fetch(window.location.href, {
@@ -331,7 +345,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const contentType = response.headers.get('Content-Type') || '';
 
             if (contentType.includes('wordprocessingml')) {
-                // Thành công — kích hoạt tải file từ blob
                 const blob = await response.blob();
                 const disposition = response.headers.get('Content-Disposition') || '';
                 const match = disposition.match(/filename="([^"]+)"/);
@@ -346,17 +359,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                loadingModal.hide();
-                showAlert('success', 'Thành công!', 'File Word đã tải xuống. Mở file để chỉnh sửa.');
+                hideOcrLoadingThen(() =>
+                    showAlert('success', 'Thành công!', 'File Word đã tải xuống. Mở file để chỉnh sửa.')
+                );
             } else {
-                // Server trả JSON lỗi
                 const data = await response.json().catch(() => ({}));
-                loadingModal.hide();
-                showAlert('error', 'Lỗi xử lý!', data.error || 'Có lỗi xảy ra, vui lòng thử lại.');
+                hideOcrLoadingThen(() =>
+                    showAlert('error', 'Lỗi xử lý!', data.error || 'Có lỗi xảy ra, vui lòng thử lại.')
+                );
             }
         } catch (err) {
-            loadingModal.hide();
-            showAlert('error', 'Lỗi kết nối!', 'Không thể kết nối máy chủ: ' + err.message);
+            hideOcrLoadingThen(() =>
+                showAlert('error', 'Lỗi kết nối!', 'Không thể kết nối máy chủ: ' + err.message)
+            );
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
         }
     });
 });

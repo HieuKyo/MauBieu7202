@@ -227,12 +227,25 @@ function formatBytes(b) {
     return (b / 1048576).toFixed(1) + ' MB';
 }
 
+const _loadingEl = document.getElementById('loadingModal');
+let   _loadingModal = null;
+
 function showLoading(text) {
     document.getElementById('loadingText').textContent = text || 'Đang xử lý...';
-    new bootstrap.Modal(document.getElementById('loadingModal')).show();
+    _loadingModal = bootstrap.Modal.getInstance(_loadingEl) || new bootstrap.Modal(_loadingEl);
+    _loadingModal.show();
 }
-function hideLoading() {
-    bootstrap.Modal.getInstance(document.getElementById('loadingModal'))?.hide();
+
+// Đợi animation đóng modal (~300ms) xong rồi chạy callback
+// → tránh backdrop chồng nhau làm treo màn hình
+function hideLoadingThen(callback) {
+    const modal = bootstrap.Modal.getInstance(_loadingEl);
+    if (!modal || !_loadingEl.classList.contains('show')) {
+        callback && callback();
+        return;
+    }
+    _loadingEl.addEventListener('hidden.bs.modal', callback, { once: true });
+    modal.hide();
 }
 
 async function downloadResponse(response, defaultName) {
@@ -315,15 +328,17 @@ document.getElementById('splitBtn').addEventListener('click', async function () 
     if (mode === 'pages') {
         fd.append('page_ranges', document.getElementById('pageRanges').value);
     }
+    const splitBtn = this;
+    splitBtn.disabled = true;
     showLoading('Đang tách PDF...');
     try {
         const resp = await fetch(SPLIT_URL, { method: 'POST', body: fd });
         await downloadResponse(resp, 'tach.zip');
-        hideLoading();
-        showAlert('success', 'Hoàn tất!', 'File đã được tải xuống.');
+        hideLoadingThen(() => showAlert('success', 'Hoàn tất!', 'File đã được tải xuống.'));
     } catch (e) {
-        hideLoading();
-        showAlert('error', 'Lỗi!', e.message);
+        hideLoadingThen(() => showAlert('error', 'Lỗi!', e.message));
+    } finally {
+        splitBtn.disabled = false;
     }
 });
 
@@ -381,15 +396,17 @@ document.getElementById('mergeBtn').addEventListener('click', async function () 
     const fd = new FormData();
     fd.append('csrfmiddlewaretoken', CSRF);
     mergeFileList.forEach(f => fd.append('pdf_files', f));
+    const mergeBtn = this;
+    mergeBtn.disabled = true;
     showLoading('Đang ghép PDF...');
     try {
         const resp = await fetch(MERGE_URL, { method: 'POST', body: fd });
         await downloadResponse(resp, 'gop_pdf.pdf');
-        hideLoading();
-        showAlert('success', 'Hoàn tất!', 'File PDF đã được ghép và tải xuống.');
+        hideLoadingThen(() => showAlert('success', 'Hoàn tất!', 'File PDF đã được ghép và tải xuống.'));
     } catch (e) {
-        hideLoading();
-        showAlert('error', 'Lỗi!', e.message);
+        hideLoadingThen(() => showAlert('error', 'Lỗi!', e.message));
+    } finally {
+        mergeBtn.disabled = false;
     }
 });
 </script>
