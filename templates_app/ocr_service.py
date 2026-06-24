@@ -232,6 +232,55 @@ def _ocr_image_file(image_path):
 _MIN_CHARS_PER_PAGE = 50
 
 
+def _extract_pdf_text_pymupdf(pdf_path, _diag=None):
+    """
+    Dùng PyMuPDF (fitz) trích xuất text từ PDF có text selectable.
+    Ưu tiên dùng trước pdfplumber vì không phụ thuộc pdfminer.six,
+    hỗ trợ rộng hơn các PDF encoding lạ / font nhúng.
+
+    Returns:
+        list[str] nếu thành công, None nếu PyMuPDF chưa cài hoặc PDF là ảnh scan.
+    """
+    try:
+        import fitz
+    except ImportError:
+        return None
+
+    texts = []
+    good_pages = 0
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception as e:
+        if _diag is not None:
+            _diag.append(f'PyMuPDF (text) open lỗi: {e}')
+        return None
+
+    try:
+        for i in range(min(len(doc), MAX_PDF_PAGES)):
+            text = doc[i].get_text().strip()
+            texts.append(text)
+            if len(text) >= _MIN_CHARS_PER_PAGE:
+                good_pages += 1
+    except Exception as e:
+        if _diag is not None:
+            _diag.append(f'PyMuPDF (text) extract lỗi: {e}')
+        doc.close()
+        return None
+    finally:
+        doc.close()
+
+    min_good = max(1, len(texts) // 3)
+    if good_pages < min_good:
+        if _diag is not None:
+            _diag.append(
+                f'PyMuPDF (text) quá ít text: {good_pages}/{len(texts)} trang '
+                f'(cần ít nhất {min_good}) → PDF là ảnh scan'
+            )
+        return None
+
+    return texts
+
+
 def _extract_pdf_text_direct(pdf_path, _diag=None):
     """
     Dùng pdfplumber để đọc text trực tiếp từ PDF có text selectable.
@@ -470,8 +519,13 @@ def process_file(file_path, ext):
         # Thu thập thông tin chẩn đoán để hiển thị khi thất bại
         diag = []
 
-        # Thử trích xuất trực tiếp trước (nhanh hơn, chính xác hơn OCR)
-        direct_texts = _extract_pdf_text_direct(file_path, diag)
+        # Bước 1: PyMuPDF text extraction (ưu tiên — không cần pdfminer.six)
+        direct_texts = _extract_pdf_text_pymupdf(file_path, diag)
+
+        # Bước 2: pdfplumber fallback (nếu PyMuPDF chưa cài)
+        if direct_texts is None:
+            direct_texts = _extract_pdf_text_direct(file_path, diag)
+
         if direct_texts is not None:
             return [_join_broken_lines(t) for t in direct_texts]
 
