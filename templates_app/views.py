@@ -5797,6 +5797,12 @@ def atm_load_discrepancy_cycle_template(request, atm_id, start_date, end_date, t
             # Mẫu 03: render với GD đầu tiên, chèn thêm dòng KH cho các GD sau
             data = discrepancies[0].get_data_dict()
             data.update(branch_config.get_all_variables())
+            # Nếu có nhiều GD: ghi đè disc_amount và disc_amount_words bằng TỔNG
+            if len(discrepancies) > 1:
+                from .models import num_to_vietnamese_words
+                total = sum(int(d.amount) for d in discrepancies)
+                data['disc_amount'] = f"{total:,}"
+                data['disc_amount_words'] = num_to_vietnamese_words(total)
             stream = render_word_template(template.file.path, data)
 
             doc = DocxDocument(stream)
