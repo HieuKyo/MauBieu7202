@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(cd \"g:/My Drive/MauBieu7202\" && \\\\ *)",
-      "Bash(git gc *)"
+      "Bash(git gc *)",
+      "Bash(python manage.py makemigrations document_registry)",
+      "Bash(python manage.py migrate document_registry)",
+      "Bash(python manage.py check document_registry)",
+      "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")"
     ]
   }
 }

@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "savings_calculator",
     "quiz",
     "messaging",
+    "document_registry",
 ]
 
 MIDDLEWARE = [
