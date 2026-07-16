@@ -1,0 +1,377 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Đăng ký HĐV{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-person-plus"></i> ĐĂNG KÝ CHỈ TIÊU HUY ĐỘNG VỐN</h2>
+        </div>
+    </div>
+
+    {% include 'templates_app/hdv/_nav.html' with active='dang_ky' %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6><i class="bi bi-funnel"></i> Bộ lọc tìm kiếm</h6>
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Tên KH/Tên KHPN</label>
+                    <input type="text" class="form-control" name="ten_kh" value="{{ filters.ten_kh }}" placeholder="Họ tên khách hàng">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Số điện thoại</label>
+                    <input type="text" class="form-control" name="sdt" value="{{ filters.sdt }}" placeholder="09xxxxxxxx">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">CCCD/GPĐKKD/GCNĐT/Mã số DN/MST</label>
+                    <input type="text" class="form-control" name="cccd" value="{{ filters.cccd }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Mã cán bộ</label>
+                    <input type="text" class="form-control" name="ma_can_bo" value="{{ filters.ma_can_bo }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Ngày ĐK huy động</label>
+                    <input type="text" class="form-control" name="ngay_dk" value="{{ filters.ngay_dk }}" placeholder="dd/mm/yyyy">
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-search"></i> Lọc</button>
+                    <button type="button" class="btn btn-danger flex-grow-1" data-bs-toggle="modal" data-bs-target="#addRegModal">
+                        <i class="bi bi-person-plus"></i> Đăng ký
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Tên KH/Tên KHPN</th>
+                            <th>SĐT</th>
+                            <th>CCCD/GPĐKKD/GCNĐT/Mã số DN/MST</th>
+                            <th>Ngày ĐK huy động</th>
+                            <th>Ngày gửi ĐK</th>
+                            <th class="text-end">Số tiền</th>
+                            <th>Mã CB</th>
+                            <th>Chi nhánh</th>
+                            <th>User ĐK</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg in page_obj %}
+                        <tr>
+                            <td>{{ reg.ten_kh }}</td>
+                            <td>{{ reg.sdt }}</td>
+                            <td>{{ reg.cccd }}</td>
+                            <td>{{ reg.ngay_dk_huy_dong|date:"d/m/Y" }}</td>
+                            <td>{{ reg.ngay_gui_dk|date:"d/m/Y" }}</td>
+                            <td class="text-end">{{ reg.so_tien|intcomma }} đ</td>
+                            <td>{{ reg.ma_can_bo }}</td>
+                            <td><span class="badge text-bg-secondary">{{ reg.chi_nhanh|default:"—" }}</span></td>
+                            <td>{{ reg.user_dk.get_full_name|default:reg.user_dk.username }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="Sửa"
+                                        onclick="openEditModal({{ reg.id }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.sdt|escapejs }}', '{{ reg.cccd|escapejs }}', '{{ reg.ngay_dk_huy_dong|date:'Y-m-d' }}', {{ reg.so_tien }}, '{{ reg.loai_tien|escapejs }}', '{{ reg.ma_can_bo|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.chi_nhanh|escapejs }}')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
+                                        onclick="openDeleteModal({{ reg.id }}, '{{ reg.ten_kh|escapejs }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="10" class="text-center text-muted">Bạn chưa có đăng ký nào</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}&ten_kh={{ filters.ten_kh }}&sdt={{ filters.sdt }}&cccd={{ filters.cccd }}&ma_can_bo={{ filters.ma_can_bo }}&ngay_dk={{ filters.ngay_dk }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Thêm đăng ký -->
+<div class="modal fade" id="addRegModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="addRegForm">
+            <div class="modal-header">
+                <h5 class="modal-title">Đăng ký chỉ tiêu HĐV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addRegError" class="alert alert-danger d-none"></div>
+                <div class="mb-2">
+                    <label class="form-label">Tên KH/Tên KHPN <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="ten_kh" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Số điện thoại</label>
+                    <input type="text" class="form-control" name="sdt">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">CCCD/GPĐKKD/GCNĐT/Mã số DN/MST <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="cccd" required>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Ngày ĐK huy động <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="ngay_dk_huy_dong" required>
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Số tiền <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="numeric" class="form-control money-input" name="so_tien" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-4 mb-2">
+                        <label class="form-label">Loại tiền</label>
+                        <input type="text" class="form-control" name="loai_tien" value="VND">
+                    </div>
+                    <div class="col-4 mb-2">
+                        <label class="form-label">Mã cán bộ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="ma_can_bo" value="{{ ma_cb_default }}" required>
+                    </div>
+                    <div class="col-4 mb-2">
+                        <label class="form-label">Tên cán bộ</label>
+                        <input type="text" class="form-control" name="ten_can_bo" value="{{ ten_cb_default }}">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Chi nhánh</label>
+                    <select class="form-select" name="chi_nhanh">
+                        <option value="">-- Chọn chi nhánh --</option>
+                        {% for code, name in branch_choices %}
+                        <option value="{{ code }}" {% if code == chi_nhanh_default %}selected{% endif %}>{{ code }} - {{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-danger">Đăng ký</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Sửa đăng ký -->
+<div class="modal fade" id="editRegModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="editRegForm">
+            <div class="modal-header">
+                <h5 class="modal-title">Sửa đăng ký HĐV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="editRegError" class="alert alert-danger d-none"></div>
+                <div class="mb-2">
+                    <label class="form-label">Tên KH/Tên KHPN <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="ten_kh" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Số điện thoại</label>
+                    <input type="text" class="form-control" name="sdt">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">CCCD/GPĐKKD/GCNĐT/Mã số DN/MST <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="cccd" required>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Ngày ĐK huy động <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="ngay_dk_huy_dong" required>
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Số tiền <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="numeric" class="form-control money-input" name="so_tien" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-4 mb-2">
+                        <label class="form-label">Loại tiền</label>
+                        <input type="text" class="form-control" name="loai_tien">
+                    </div>
+                    <div class="col-4 mb-2">
+                        <label class="form-label">Mã cán bộ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="ma_can_bo" required>
+                    </div>
+                    <div class="col-4 mb-2">
+                        <label class="form-label">Tên cán bộ</label>
+                        <input type="text" class="form-control" name="ten_can_bo">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Chi nhánh</label>
+                    <select class="form-select" name="chi_nhanh">
+                        <option value="">-- Chọn chi nhánh --</option>
+                        {% for code, name in branch_choices %}
+                        <option value="{{ code }}">{{ code }} - {{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Xóa đăng ký -->
+<div class="modal fade" id="deleteRegModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Xóa đăng ký của <strong id="deleteRegName"></strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteRegBtn">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function csrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function formatMoneyValue(raw) {
+    const digits = String(raw).replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return Number(digits).toLocaleString('en-US');
+}
+
+document.querySelectorAll('.money-input').forEach(function (inp) {
+    inp.addEventListener('input', function () {
+        this.value = formatMoneyValue(this.value);
+    });
+});
+
+function unformattedFormData(form) {
+    const data = new FormData(form);
+    data.set('so_tien', String(data.get('so_tien') || '').replace(/,/g, ''));
+    return data;
+}
+
+document.getElementById('addRegForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const errBox = document.getElementById('addRegError');
+    errBox.classList.add('d-none');
+    fetch('{% url "hdv_registration_create" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+        body: unformattedFormData(this),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                errBox.textContent = data.error || 'Đã xảy ra lỗi';
+                errBox.classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            errBox.textContent = 'Lỗi kết nối máy chủ';
+            errBox.classList.remove('d-none');
+        });
+});
+
+let editRegId = null;
+
+function openEditModal(id, tenKh, sdt, cccd, ngayDk, soTien, loaiTien, maCb, tenCb, chiNhanh) {
+    editRegId = id;
+    const form = document.getElementById('editRegForm');
+    form.elements['ten_kh'].value = tenKh;
+    form.elements['sdt'].value = sdt;
+    form.elements['cccd'].value = cccd;
+    form.elements['ngay_dk_huy_dong'].value = ngayDk;
+    form.elements['so_tien'].value = formatMoneyValue(soTien);
+    form.elements['loai_tien'].value = loaiTien;
+    form.elements['ma_can_bo'].value = maCb;
+    form.elements['ten_can_bo'].value = tenCb;
+    form.elements['chi_nhanh'].value = chiNhanh;
+    document.getElementById('editRegError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('editRegModal')).show();
+}
+
+document.getElementById('editRegForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const errBox = document.getElementById('editRegError');
+    errBox.classList.add('d-none');
+    fetch(`/hdv/dang-ky/${editRegId}/update/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+        body: unformattedFormData(this),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                errBox.textContent = data.error || 'Đã xảy ra lỗi';
+                errBox.classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            errBox.textContent = 'Lỗi kết nối máy chủ';
+            errBox.classList.remove('d-none');
+        });
+});
+
+let deleteRegId = null;
+
+function openDeleteModal(id, tenKh) {
+    deleteRegId = id;
+    document.getElementById('deleteRegName').textContent = tenKh;
+    new bootstrap.Modal(document.getElementById('deleteRegModal')).show();
+}
+
+document.getElementById('confirmDeleteRegBtn').addEventListener('click', function () {
+    fetch(`/hdv/dang-ky/${deleteRegId}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.error || 'Đã xảy ra lỗi');
+            }
+        })
+        .catch(() => alert('Lỗi kết nối máy chủ'));
+});
+</script>
+{% endblock %}

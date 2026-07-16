@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.contrib import admin
 from django import forms
 from django.shortcuts import render, redirect
@@ -585,7 +586,7 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
 
                 # Determine price tier
                 from .views import get_price_tier_from_fee
-                price_tier = get_price_tier_from_fee(analysis['fee_min_vat'])
+                price_tier = get_price_tier_from_fee(analysis['fee_max_vat'] or analysis['fee_min_vat'])
 
                 # Create beautiful number (mark as sold since import list = sold list)
                 try:
@@ -862,35 +863,44 @@ class ATMAdmin(admin.ModelAdmin):
 @admin.register(ATMManagementBoard)
 class ATMManagementBoardAdmin(admin.ModelAdmin):
     """Admin cho Ban quản lý ATM"""
-    list_display = ['get_position_display', 'full_name', 'title', 'decision_number', 'decision_date', 'is_active', 'updated_at']
+    list_display = ['get_position_display', 'full_name', 'title', 'account_number', 'effective_from', 'effective_to', 'is_active', 'updated_at']
     list_filter = ['position', 'is_active']
     list_editable = ['is_active']
     ordering = ['position', 'full_name']
 
-    def save_model(self, request, obj, form, change):
+    def _close_previous_holders(self, obj):
+        """Khi kích hoạt 1 người mới cho 1 vị trí, tự đóng effective_to của người active trước đó (nếu chưa đóng)"""
+        if obj.is_active and obj.effective_from:
+            previous = ATMManagementBoard.objects.filter(
+                position=obj.position, is_active=True, effective_to__isnull=True
+            ).exclude(pk=obj.pk).exclude(effective_from__gte=obj.effective_from)
+            previous.update(effective_to=obj.effective_from - timedelta(days=1))
         # Nếu đang kích hoạt người này, tắt các người khác cùng vị trí
         if obj.is_active:
             ATMManagementBoard.objects.filter(
                 position=obj.position, is_active=True
             ).exclude(pk=obj.pk).update(is_active=False)
+
+    def save_model(self, request, obj, form, change):
+        self._close_previous_holders(obj)
         super().save_model(request, obj, form, change)
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
         for obj in instances:
-            if obj.is_active:
-                ATMManagementBoard.objects.filter(
-                    position=obj.position, is_active=True
-                ).exclude(pk=obj.pk).update(is_active=False)
+            self._close_previous_holders(obj)
             obj.save()
         formset.save_m2m()
 
     fieldsets = (
         ('Thông tin chức vụ', {
-            'fields': ('position', 'full_name', 'title')
+            'fields': ('position', 'full_name', 'title', 'account_number')
         }),
         ('Thông tin quyết định', {
             'fields': ('decision_number', 'decision_date')
+        }),
+        ('Hiệu lực', {
+            'fields': ('effective_from', 'effective_to')
         }),
         ('Trạng thái', {
             'fields': ('is_active',)
@@ -920,7 +930,7 @@ class VehicleAdmin(admin.ModelAdmin):
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     """Admin cho Nhân viên vận chuyển"""
-    list_display = ['person_type', 'full_name', 'id_number', 'id_issue_date', 'is_active']
+    list_display = ['person_type', 'full_name', 'id_number', 'id_issue_date', 'account_number', 'is_active']
     list_filter = ['person_type', 'is_active']
     list_editable = ['is_active']
     search_fields = ['full_name', 'id_number']
@@ -928,7 +938,7 @@ class PersonAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Thông tin cơ bản', {
-            'fields': ('person_type', 'full_name')
+            'fields': ('person_type', 'full_name', 'account_number')
         }),
         ('Giấy tờ tùy thân', {
             'fields': ('id_number', 'id_issue_date', 'id_issue_place')

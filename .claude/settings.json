@@ -7,7 +7,8 @@
       "Bash(python manage.py migrate document_registry)",
       "Bash(python manage.py check document_registry)",
       "Bash(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(python manage.py check)"
     ]
   }
 }

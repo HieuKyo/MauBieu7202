@@ -1,6 +1,7 @@
 import io
 from datetime import date
 from decimal import Decimal
+from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
@@ -382,4 +383,16 @@ def tax_statement_list(request):
     View danh sách các bảng kê đã tạo
     """
     statements = TaxPaymentStatement.objects.all().order_by('-created_at')
-    return render(request, 'tax_payment/statement_list.html', {'statements': statements})
+
+    query = request.GET.get('q', '').strip()
+    if query:
+        statements = statements.filter(ma_so_thue__icontains=query)
+
+    paginator = Paginator(statements, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'tax_payment/statement_list.html', {
+        'statements': page_obj,
+        'page_obj': page_obj,
+        'query': query,
+    })

@@ -1,4 +1,5 @@
 # Standard library imports
+import calendar
 import json
 import os
 import re
@@ -25,6 +26,7 @@ from .forms import DynamicTemplateForm, BusinessForm, GlobalConfigForm, ATMReple
 from .issueby_mapping import get_issueby_name
 from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, AppProgram, remove_vietnamese_diacritics, ATM, ATMManagementBoard, ATMReplenishment, ATMDiscrepancy
 from .utils import render_word_template
+from .atm_travel_claim import ATM_TRIP_CONFIG, MAX_TRIPS_PER_SHEET, build_payment_statement_rows, build_travel_log_groups, get_position_holder
 
 
 # Security helper functions
@@ -2770,10 +2772,13 @@ def beautiful_number_lookup(request):
 
 def get_price_tier_from_fee(fee_vat):
     """
-    Map phí (có VAT) vào price_tier tương ứng
+    Map phí (có VAT) vào price_tier tương ứng.
+    Các ngưỡng (1.1M/3.3M/5.5M/11M/22M) khớp với fee_max_vat của từng bậc trong
+    OFFICIAL_FEE_TABLE — vì vậy PHẢI truyền `fee_max_vat` (không phải fee_min_vat),
+    nếu không 2 bậc liền kề có cùng fee_min sẽ bị gộp nhầm vào 1 tier.
 
     Args:
-        fee_vat: Phí đã bao gồm VAT
+        fee_vat: Phí tối đa (fee_max_vat) đã bao gồm VAT; dùng fee_min_vat nếu fee_max là None
 
     Returns:
         Price tier code (PRICE_500K_1M, PRICE_1M_3M, etc.)
@@ -2891,7 +2896,7 @@ def generate_and_save_beautiful_numbers(count_per_type=50, clear_existing=False)
 
                     # Xác định category và price_tier
                     category = get_category_from_generator_type(gen_type, analysis)
-                    price_tier = get_price_tier_from_fee(analysis['fee_min_vat'])
+                    price_tier = get_price_tier_from_fee(analysis['fee_max_vat'] or analysis['fee_min_vat'])
 
                     # Tạo hoặc cập nhật số trong database
                     beautiful_num, created = BeautifulNumber.objects.get_or_create(
@@ -2962,24 +2967,43 @@ def generate_beautiful_numbers_ajax(request):
 
 
 @login_required
-def beautiful_number_list(request):
+@require_http_methods(["POST"])
+def refresh_beautiful_numbers_ajax(request):
     """
-    Trang danh sách số đẹp có sẵn để khách hàng chọn.
-    Có filter theo giá và loại số đẹp. Có thể in ra.
+    AJAX endpoint để cập nhật lại category/price_tier/fee cho toàn bộ kho số đẹp
+    theo engine tính phí hiện tại (không xóa/thêm số nào).
     """
-    from .models import BeautifulNumber
-    from .beautiful_number_services import analyze_account_number
+    from .beautiful_number_generator import refresh_all_beautiful_numbers
 
-    # Lấy tham số filter từ request
+    try:
+        stats = refresh_all_beautiful_numbers(dry_run=False)
+        return JsonResponse({
+            'success': True,
+            'message': (
+                f'Đã kiểm tra {stats["total"]} số, cập nhật {stats["updated"]} số '
+                f'({stats["changed_fee"]} đổi phí, {stats["changed_tier"]} đổi bậc giá, '
+                f'{stats["changed_category"]} nâng lên Đặc biệt).'
+            ),
+            'stats': stats,
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        }, status=500)
+
+
+def _filter_beautiful_numbers(request):
+    """Áp dụng các filter (category/price/available/pattern) lên BeautifulNumber, trả về (queryset, filters)"""
+    from .models import BeautifulNumber
+
     category_filter = request.GET.get('category', '')
     price_filter = request.GET.get('price', '')
     available_only = request.GET.get('available', 'true') == 'true'
     pattern_filter = request.GET.get('pattern', '').strip()
 
-    # Query base
     numbers_queryset = BeautifulNumber.objects.all()
 
-    # Apply filters
     if available_only:
         numbers_queryset = numbers_queryset.filter(is_available=True)
 
@@ -2992,7 +3016,6 @@ def beautiful_number_list(request):
     # Pattern search - convert * to regex wildcard
     # Example: "7202***777***" -> matches numbers with 777 in the middle
     if pattern_filter:
-        # Convert pattern to regex: * matches any single digit
         regex_pattern = ''
         for char in pattern_filter:
             if char == '*':
@@ -3002,45 +3025,177 @@ def beautiful_number_list(request):
             # Ignore other characters
 
         if regex_pattern:
-            # Use regex filter on account_number
             numbers_queryset = numbers_queryset.filter(account_number__regex=f'^{regex_pattern}$')
 
-    # Order by price and category
     numbers_queryset = numbers_queryset.order_by('price_tier', 'category', 'account_number')
 
-    # IMPORTANT: Convert to list to allow attribute assignment
-    numbers = list(numbers_queryset)
+    filters = {
+        'category_filter': category_filter,
+        'price_filter': price_filter,
+        'available_only': available_only,
+        'pattern_filter': pattern_filter,
+    }
+    return numbers_queryset, filters
 
-    # Get choices for filters
+
+def _enrich_beautiful_numbers(numbers, request):
+    """
+    Gắn fee_min/fee_max (từ analyze_account_number) vào từng số, và nếu có tham số `dob`
+    (ngày sinh khách hàng), tính mệnh + gắn menh_hop_count/menh_ky_count/menh_verdict.
+    Nếu `menh_only=true`, chỉ giữ lại các số hợp mệnh (hop_count > ky_count).
+    Trả về (numbers_đã_lọc, menh_info hoặc None, dob_str, menh_only).
+    """
+    from datetime import datetime
+    from .beautiful_number_services import analyze_account_number
+    from .menh_calculator import calculate_menh, menh_verdict
+
+    dob_str = request.GET.get('dob', '').strip()
+    menh_only = request.GET.get('menh_only', '') == 'true'
+    menh_info = None
+    if dob_str:
+        try:
+            dob = datetime.strptime(dob_str, '%Y-%m-%d').date()
+            menh_info = calculate_menh(dob)
+        except ValueError:
+            dob_str = ''
+
+    result = []
+    for number in numbers:
+        analysis = analyze_account_number(number.account_number)
+        number.fee_min = int(analysis.get('fee_min_vat') or number.fee)
+        fee_max_vat = analysis.get('fee_max_vat')
+        number.fee_max = int(fee_max_vat) if fee_max_vat is not None else None
+
+        if menh_info:
+            suffix = number.account_number[4:]
+            hop_count = sum(1 for c in suffix if int(c) in menh_info['hop_digits'])
+            ky_count = sum(1 for c in suffix if int(c) in menh_info['ky_digits'])
+            number.menh_hop_count = hop_count
+            number.menh_ky_count = ky_count
+            number.menh_verdict = menh_verdict(menh_info['hanh'], hop_count, ky_count)
+            if menh_only and not (hop_count > ky_count):
+                continue
+
+        result.append(number)
+
+    return result, menh_info, dob_str, menh_only
+
+
+def _generate_menh_suggestions(menh_info, target_tier, limit=30):
+    """
+    Sinh danh sách gợi ý số hợp mệnh (chưa chắc có sẵn trong kho) theo mức phí mong muốn.
+    Loại bỏ ứng viên đã tồn tại trong kho và đã bán (is_available=False).
+    """
+    from .beautiful_number_services import analyze_account_number, generate_menh_candidates
+    from .models import BeautifulNumber
+
+    candidates = generate_menh_candidates(menh_info['hop_digits'])
+    full_numbers = ['7202' + c for c in candidates]
+
+    existing = {
+        bn.account_number: bn.is_available
+        for bn in BeautifulNumber.objects.filter(account_number__in=full_numbers)
+    }
+
+    suggestions = []
+    for full in full_numbers:
+        if existing.get(full) is False:
+            continue  # đã bán, không gợi ý
+
+        analysis = analyze_account_number(full)
+        if analysis.get('error'):
+            continue
+
+        tier = get_price_tier_from_fee(analysis['fee_max_vat'] or analysis['fee_min_vat'])
+        if target_tier and tier != target_tier:
+            continue
+
+        suggestions.append({
+            'account_number': full,
+            'description': analysis['description'],
+            'fee_min': analysis['fee_min_vat'],
+            'fee_max': analysis['fee_max_vat'],
+            'price_tier': tier,
+            'in_stock': full in existing,
+        })
+
+    suggestions.sort(key=lambda s: (s['fee_min'], s['fee_max'] or 10 ** 12), reverse=True)
+    return suggestions[:limit]
+
+
+@login_required
+def beautiful_number_list(request):
+    """
+    Trang danh sách số đẹp có sẵn để khách hàng chọn.
+    Có filter theo giá, loại số đẹp, mẫu số, và tư vấn hợp mệnh theo năm sinh. Có thể in ra / xuất CSV.
+    """
+    from .models import BeautifulNumber
+
+    numbers_queryset, filters = _filter_beautiful_numbers(request)
+    numbers, menh_info, dob_str, menh_only = _enrich_beautiful_numbers(list(numbers_queryset), request)
+
     category_choices = BeautifulNumber.CATEGORY_CHOICES
     price_choices = BeautifulNumber.PRICE_TIER_CHOICES
 
-    # Enrich numbers with fee range from analysis
     from collections import defaultdict
     numbers_by_price = defaultdict(list)
-
     for number in numbers:
-        # Phân tích để lấy fee_min và fee_max
-        analysis = analyze_account_number(number.account_number)
-
-        # Attach fee range to number object (works because numbers is a list)
-        number.fee_min = int(analysis.get('fee_min_vat', number.fee))
-        number.fee_max = int(analysis.get('fee_max_vat', number.fee))
-
         numbers_by_price[number.price_tier].append(number)
+
+    suggest_price = request.GET.get('suggest_price', '')
+    suggestions = _generate_menh_suggestions(menh_info, suggest_price) if menh_info else []
 
     context = {
         'numbers': numbers,
         'numbers_by_price': dict(numbers_by_price),
         'category_choices': category_choices,
         'price_choices': price_choices,
-        'selected_category': category_filter,
-        'selected_price': price_filter,
-        'available_only': available_only,
-        'pattern_filter': pattern_filter,
+        'selected_category': filters['category_filter'],
+        'selected_price': filters['price_filter'],
+        'available_only': filters['available_only'],
+        'pattern_filter': filters['pattern_filter'],
+        'menh_info': menh_info,
+        'dob': dob_str,
+        'menh_only': menh_only,
+        'suggestions': suggestions,
+        'suggest_price': suggest_price,
     }
 
     return render(request, 'templates_app/beautiful_number_list.html', context)
+
+
+@login_required
+def beautiful_number_list_export_csv(request):
+    """Xuất CSV danh sách số đẹp đang lọc trên trang beautiful_number_list (giữ nguyên filter hiện tại)"""
+    import csv
+
+    numbers_queryset, _filters = _filter_beautiful_numbers(request)
+    numbers, menh_info, _dob_str, _menh_only = _enrich_beautiful_numbers(list(numbers_queryset), request)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="danh_sach_so_dep.csv"'
+    response.write('﻿')  # BOM để Excel đọc đúng tiếng Việt
+
+    writer = csv.writer(response)
+    header = ['STT', 'Số tài khoản', 'Loại số đẹp', 'Phí tối thiểu (VNĐ)', 'Phí tối đa (VNĐ)', 'Trạng thái']
+    if menh_info:
+        header.append('Mức độ hợp mệnh')
+    writer.writerow(header)
+
+    for idx, number in enumerate(numbers, 1):
+        row = [
+            idx,
+            f'="{number.account_number}"',
+            number.get_category_display(),
+            number.fee_min,
+            number.fee_max if number.fee_max is not None else 'Thỏa thuận',
+            'Còn' if number.is_available else 'Hết',
+        ]
+        if menh_info:
+            row.append(getattr(number, 'menh_verdict', ''))
+        writer.writerow(row)
+
+    return response
 
 
 @login_required
@@ -5661,6 +5816,451 @@ def atm_discrepancy_group_word(request, atm_id, start_date, end_date):
     except Exception as e:
         messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
         return redirect('atm_discrepancy_list')
+
+
+def _parse_travel_claim_dates(request):
+    """Lấy start_date/end_date từ GET, mặc định là tháng hiện tại"""
+    today = date.today()
+    default_start = today.replace(day=1)
+    default_end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
+
+    start_str = request.GET.get('start_date', '')
+    end_str = request.GET.get('end_date', '')
+    try:
+        start_date = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else default_start
+    except ValueError:
+        start_date = default_start
+    try:
+        end_date = datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else default_end
+    except ValueError:
+        end_date = default_end
+
+    return start_date, end_date
+
+
+@login_required
+def atm_travel_claim(request):
+    """Trang xem trước Bảng kê thanh toán + Giấy đi đường Ban quản lý ATM theo khoảng ngày"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    start_date, end_date = _parse_travel_claim_dates(request)
+
+    rows, totals = build_payment_statement_rows(start_date, end_date)
+    sheets = build_travel_log_groups(start_date, end_date)
+
+    sheets_summary = {}
+    for s in sheets:
+        key = (s['machine_id'], s['driver_name'])
+        sheets_summary[key] = sheets_summary.get(key, 0) + 1
+
+    context = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'rows': rows,
+        'totals': totals,
+        'sheets': sheets,
+        'sheets_summary': sheets_summary,
+        'sheet_count': len(sheets),
+        'atm_trip_config': ATM_TRIP_CONFIG,
+    }
+    return render(request, 'templates_app/atm/travel_claim.html', context)
+
+
+@login_required
+def atm_payment_statement_word(request):
+    """Xuất file Word Bảng kê thanh toán công tác phí Ban quản lý ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    start_date, end_date = _parse_travel_claim_dates(request)
+
+    try:
+        from datetime import date as date_cls
+        from docx import Document
+        from docx.shared import Pt, Cm
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from io import BytesIO
+        from .models import num_to_vietnamese_words
+
+        rows, totals = build_payment_statement_rows(start_date, end_date)
+
+        branch_config = BranchConfig.get_for_user(request.user)
+        branch_vars = branch_config.get_all_variables()
+        dia_danh = branch_vars.get('dia_danh', '') or ''
+        ten_chi_nhanh = branch_vars.get('ten_chi_nhanh', '') or ''
+        ten_chi_nhanh_hoa = branch_vars.get('ten_chi_nhanh_hoa', '') or ''
+        HEADER_TABLE_WIDTH = Cm(18.5)
+        LEFT_COL_WIDTH = Cm(8.5)
+        RIGHT_COL_WIDTH = Cm(10)
+
+        declarant = get_position_holder('atm_officer', end_date)
+        declarant_name = declarant.full_name if declarant else ''
+
+        doc = Document()
+        for section in doc.sections:
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2)
+
+        def set_font(run, size=11, bold=False, italic=False, underline=False):
+            run.font.size = Pt(size)
+            run.font.bold = bold
+            run.font.italic = italic
+            run.font.underline = underline
+            run.font.name = 'Times New Roman'
+
+        def add_paragraph(text='', bold=False, size=11, align=WD_ALIGN_PARAGRAPH.LEFT, italic=False,
+                           space_before=0, space_after=0):
+            p = doc.add_paragraph()
+            p.alignment = align
+            p.paragraph_format.space_before = Pt(space_before)
+            p.paragraph_format.space_after = Pt(space_after)
+            run = p.add_run(text)
+            set_font(run, size, bold, italic)
+            return p
+
+        def cell_paragraph(cell, text, bold=False, size=11, underline=False, italic=False,
+                            align=WD_ALIGN_PARAGRAPH.CENTER, first=False):
+            p = cell.paragraphs[0] if first else cell.add_paragraph()
+            p.alignment = align
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after = Pt(0)
+            run = p.add_run(text)
+            set_font(run, size, bold, italic=italic, underline=underline)
+            return p
+
+        # Letterhead 2 cột: tên ngân hàng (trái) / quốc hiệu (phải), rộng 18.5cm
+        header_table = doc.add_table(rows=1, cols=2)
+        header_table.autofit = False
+        header_table.width = HEADER_TABLE_WIDTH
+        left_cell, right_cell = header_table.rows[0].cells
+        left_cell.width = LEFT_COL_WIDTH
+        right_cell.width = RIGHT_COL_WIDTH
+
+        cell_paragraph(left_cell, 'NGÂN HÀNG NÔNG NGHIỆP', size=11, first=True)
+        cell_paragraph(left_cell, 'VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM', size=11)
+        if ten_chi_nhanh_hoa:
+            cell_paragraph(left_cell, f'CHI NHÁNH {ten_chi_nhanh_hoa}', bold=True, size=11)
+
+        cell_paragraph(right_cell, 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', bold=True, size=12, first=True)
+        cell_paragraph(right_cell, 'Độc lập - Tự do - Hạnh phúc', bold=True, size=12, underline=True)
+
+        add_paragraph('BẢNG KÊ THANH TOÁN', bold=True, size=14, align=WD_ALIGN_PARAGRAPH.CENTER, space_before=6, space_after=6)
+
+        atm04_label = ATM_TRIP_CONFIG['7202ATM04']['label']
+        atm06_label = ATM_TRIP_CONFIG['7202ATM06']['label']
+        period_text = (
+            f"từ ngày {start_date.day:02d} tháng {start_date.month:02d} năm {start_date.year} "
+            f"đến ngày {end_date.day:02d} tháng {end_date.month:02d} năm {end_date.year}"
+        )
+        intro = doc.add_paragraph()
+        intro.paragraph_format.first_line_indent = Cm(1)
+        intro.paragraph_format.space_after = Pt(6)
+        r = intro.add_run('Tôi tên: ')
+        set_font(r)
+        r = intro.add_run(declarant_name)
+        set_font(r, bold=True)
+        r = intro.add_run(
+            f", là cán bộ thuộc phòng Kế toán – Ngân quỹ của Agribank Chi nhánh {ten_chi_nhanh}. "
+            f"Nay tôi đề nghị thanh toán tiền phụ cấp trách nhiệm của Ban tiếp quỹ ATM04( {atm04_label} ), "
+            f"ATM06 ( {atm06_label} ) {period_text}. Cụ thể như sau ( Kèm GĐĐ ):"
+        )
+        set_font(r)
+
+        headers = ['TT', 'Họ và tên', 'Chức vụ',
+                   'Số\nchuyến', f'ATM\n( Đặt tại\n{atm06_label} )',
+                   'Số\nchuyến', f'ATM\n( Đặt tại\n{atm04_label} )',
+                   'Số tiền\nTT', 'Tài khoản']
+        table = doc.add_table(rows=1, cols=len(headers))
+        table.style = 'Table Grid'
+        hdr_cells = table.rows[0].cells
+        for i, h in enumerate(headers):
+            hdr_cells[i].text = h
+            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            hdr_cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+            hdr_cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+            hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        for idx, row in enumerate(rows, 1):
+            cells = table.add_row().cells
+            unit_atm06 = ATM_TRIP_CONFIG['7202ATM06']['unit_price']
+            unit_atm04 = ATM_TRIP_CONFIG['7202ATM04']['unit_price']
+            values = [
+                str(idx),
+                row['full_name'],
+                row['position_display'],
+                str(row['trips_atm06']) if row['trips_atm06'] else '',
+                f"{unit_atm06:,}" if row['trips_atm06'] else '',
+                str(row['trips_atm04']) if row['trips_atm04'] else '',
+                f"{unit_atm04:,}" if row['trips_atm04'] else '',
+                f"{row['total']:,}",
+                row['account_number'],
+            ]
+            for i, val in enumerate(values):
+                cells[i].text = val
+                cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+                cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+                if i in (0, 3, 4, 5, 6, 7):
+                    cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        total_row = table.add_row().cells
+        total_row[0].merge(total_row[6])
+        total_row[0].text = 'Tổng cộng'
+        total_row[0].paragraphs[0].runs[0].bold = True
+        total_row[0].paragraphs[0].runs[0].font.size = Pt(10)
+        total_row[0].paragraphs[0].runs[0].font.name = 'Times New Roman'
+        total_row[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        total_row[7].text = f"{totals['total']:,}"
+        total_row[7].paragraphs[0].runs[0].bold = True
+        total_row[7].paragraphs[0].runs[0].font.size = Pt(10)
+        total_row[7].paragraphs[0].runs[0].font.name = 'Times New Roman'
+        total_row[7].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(6)
+        r = p.add_run('Số tiền bằng chữ: ')
+        set_font(r)
+        r = p.add_run(num_to_vietnamese_words(totals['total']) + '.')
+        set_font(r, bold=True, italic=True)
+
+        add_paragraph(
+            f"Đề nghị BGĐ và phòng KTNQ Agribank Chi nhánh {ten_chi_nhanh} thanh toán các khoản tiền nói trên."
+        )
+
+        today = date_cls.today()
+        date_str = f"{dia_danh}, ngày {today.day:02d} tháng {today.month:02d} năm {today.year}" if dia_danh \
+            else f"Ngày {today.day:02d} tháng {today.month:02d} năm {today.year}"
+        add_paragraph(date_str, align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=6)
+
+        sig_table = doc.add_table(rows=2, cols=3)
+        sig_titles = ['DUYỆT CỦA GIÁM ĐỐC', 'TP.KTNQ', 'NGƯỜI THANH TOÁN']
+        for col_idx, title in enumerate(sig_titles):
+            cell_paragraph(sig_table.rows[0].cells[col_idx], title, bold=True, first=True)
+        sig_table.rows[1].height = Cm(2)
+
+        output = BytesIO()
+        doc.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        filename = f"BangKeThanhToan_ATM_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('atm_travel_claim')
+
+
+@login_required
+def atm_travel_log_word(request):
+    """Xuất file .zip chứa các tờ Giấy đi đường (mỗi tờ 1 file .docx riêng)"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    start_date, end_date = _parse_travel_claim_dates(request)
+
+    try:
+        from docx import Document
+        from docx.shared import Pt, Cm
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_ROW_HEIGHT_RULE
+        from io import BytesIO
+        import zipfile
+
+        sheets = build_travel_log_groups(start_date, end_date)
+
+        if not sheets:
+            messages.error(request, 'Không có chuyến tiếp quỹ nào trong khoảng ngày đã chọn')
+            return redirect('atm_travel_claim')
+
+        branch_config = BranchConfig.get_for_user(request.user)
+        branch_vars = branch_config.get_all_variables()
+        dia_danh = branch_vars.get('dia_danh', '') or ''
+        ten_chi_nhanh = branch_vars.get('ten_chi_nhanh', '') or ''
+        ten_chi_nhanh_hoa = branch_vars.get('ten_chi_nhanh_hoa', '') or ''
+        dots = '.' * 24
+        HEADER_TABLE_WIDTH = Cm(18.5)
+        LEFT_COL_WIDTH = Cm(8.5)
+        RIGHT_COL_WIDTH = Cm(10)
+        ROW_HEIGHT = Cm(4.52)
+
+        def set_font(run, size=11, bold=False, italic=False, underline=False):
+            run.font.size = Pt(size)
+            run.font.bold = bold
+            run.font.italic = italic
+            run.font.underline = underline
+            run.font.name = 'Times New Roman'
+
+        def build_sheet_doc(sheet):
+            doc = Document()
+            for section in doc.sections:
+                section.top_margin = Cm(2)
+                section.bottom_margin = Cm(2)
+                section.left_margin = Cm(2.5)
+                section.right_margin = Cm(2)
+
+            def add_paragraph(text='', bold=False, size=11, align=WD_ALIGN_PARAGRAPH.LEFT, italic=False,
+                               space_before=0, space_after=0):
+                p = doc.add_paragraph()
+                p.alignment = align
+                p.paragraph_format.space_before = Pt(space_before)
+                p.paragraph_format.space_after = Pt(space_after)
+                run = p.add_run(text)
+                set_font(run, size, bold, italic)
+                return p
+
+            def cell_paragraph(cell, text, bold=False, size=11, underline=False, italic=False,
+                               align=WD_ALIGN_PARAGRAPH.CENTER, first=False):
+                p = cell.paragraphs[0] if first else cell.add_paragraph()
+                p.alignment = align
+                p.paragraph_format.space_before = Pt(0)
+                p.paragraph_format.space_after = Pt(0)
+                run = p.add_run(text)
+                set_font(run, size, bold, italic=italic, underline=underline)
+                return p
+
+            # Letterhead 2 cột: tên ngân hàng (trái) / quốc hiệu (phải), rộng 18.5cm
+            header_table = doc.add_table(rows=1, cols=2)
+            header_table.autofit = False
+            header_table.width = HEADER_TABLE_WIDTH
+            left_cell, right_cell = header_table.rows[0].cells
+            left_cell.width = LEFT_COL_WIDTH
+            right_cell.width = RIGHT_COL_WIDTH
+
+            cell_paragraph(left_cell, 'NGÂN HÀNG NÔNG NGHIỆP', size=11, first=True)
+            cell_paragraph(left_cell, 'VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM', size=11)
+            if ten_chi_nhanh_hoa:
+                cell_paragraph(left_cell, f'CHI NHÁNH {ten_chi_nhanh_hoa}', bold=True, size=11)
+
+            cell_paragraph(right_cell, 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', bold=True, size=12, first=True)
+            cell_paragraph(right_cell, 'Độc lập - Tự do - Hạnh phúc', bold=True, size=12, underline=True)
+
+            add_paragraph('Số: …./GĐĐ-NHNoGR')
+            add_paragraph('GIẤY ĐI ĐƯỜNG', bold=True, size=14, align=WD_ALIGN_PARAGRAPH.CENTER)
+
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(0)
+            r = p.add_run('Cấp cho Ông (Bà): ')
+            set_font(r)
+            for idx, recipient in enumerate(sheet['recipients']):
+                if idx > 0:
+                    r_sep = p.add_run('; ')
+                    set_font(r_sep)
+                r_name = p.add_run(recipient['name'])
+                set_font(r_name, bold=True)
+                r_role = p.add_run(f" ({recipient['role']})")
+                set_font(r_role)
+
+            add_paragraph(f'Chức vụ, đơn vị công tác: Ban quản lý ATM Agribank chi nhánh {ten_chi_nhanh}')
+            add_paragraph('Theo văn bản cử đi công tác số:')
+
+            first_trip = sheet['trips'][0]
+            last_trip = sheet['trips'][-1]
+            add_paragraph(
+                f"Từ ngày {first_trip.replenishment_date.day:02d} tháng {first_trip.replenishment_date.month:02d} năm {first_trip.replenishment_date.year} "
+                f"đến ngày {last_trip.replenishment_date.day:02d} tháng {last_trip.replenishment_date.month:02d} năm {last_trip.replenishment_date.year}",
+            )
+
+            # Khối "Địa danh, ngày... / GIÁM ĐỐC" canh giữa với nhau, nằm bên phải trang
+            date_str = f"{dia_danh}, Ngày ..... tháng ..... năm {last_trip.replenishment_date.year}" if dia_danh \
+                else f"Ngày ..... tháng ..... năm {last_trip.replenishment_date.year}"
+            sign_date_table = doc.add_table(rows=1, cols=2)
+            sign_date_table.autofit = False
+            sign_date_table.width = HEADER_TABLE_WIDTH
+            blank_cell, sign_cell = sign_date_table.rows[0].cells
+            blank_cell.width = LEFT_COL_WIDTH
+            sign_cell.width = RIGHT_COL_WIDTH
+            cell_paragraph(sign_cell, date_str, italic=True, size=11, first=True)
+            cell_paragraph(sign_cell, 'GIÁM ĐỐC', bold=True, size=11)
+
+            add_paragraph('Tiền ứng trước:')
+            add_paragraph(f'Lương:{dots}đ')
+            add_paragraph(f'Công tác phí:{dots}đ')
+            add_paragraph(f'Cộng:{dots}đ')
+
+            headers = ['Nơi đi, nơi đến', 'Ngày', 'Phương tiện', 'Số ngày\ncông tác', 'Lý do lưu trú', 'Chứng nhận của cơ quan\nnơi đến (ký tên đóng dấu)']
+            table = doc.add_table(rows=1, cols=len(headers))
+            table.style = 'Table Grid'
+            hdr_cells = table.rows[0].cells
+            for i, h in enumerate(headers):
+                hdr_cells[i].text = h
+                hdr_cells[i].paragraphs[0].runs[0].bold = True
+                hdr_cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+                hdr_cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+                hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            noi_di = f"Agribank {ten_chi_nhanh}" if ten_chi_nhanh else 'Agribank'
+            place = ATM_TRIP_CONFIG[sheet['machine_id']]['destination']
+            for row_idx in range(MAX_TRIPS_PER_SHEET):
+                row = table.add_row()
+                row.height = ROW_HEIGHT
+                row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
+                cells = row.cells
+                trip = sheet['trips'][row_idx] if row_idx < len(sheet['trips']) else None
+                if trip:
+                    noi_di_noi_den = f"Nơi đi:{noi_di}.\n\nNơi đến : {place}"
+                    values = [noi_di_noi_den, trip.replenishment_date.strftime('%d/%m/%Y'), '', '', 'Tiếp quỹ ATM', '']
+                else:
+                    values = [f"Nơi đi:{noi_di}.\n\nNơi đến : ", '', '', '', '', '']
+                for i, val in enumerate(values):
+                    cells[i].text = val
+                    cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+                    cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+
+            add_paragraph('Phần thanh toán ( lập bảng kê chi tiết kèm theo nếu cần thiết )', italic=True)
+            add_paragraph(f'1.Tiền chi phí đi lại:{dots}đ')
+            add_paragraph(f'2.Tiền phòng ở:{dots}đ')
+            add_paragraph(f'3.Phụ cấp lưu trú:{dots}đ')
+            add_paragraph(f'4.Phụ cấp trách nhiệm:{dots}đ')
+
+            # Khối "Ngày.../ Duyệt / Số tiền được thanh toán" canh giữa với nhau, nằm bên phải trang
+            payout_table = doc.add_table(rows=1, cols=2)
+            payout_table.autofit = False
+            payout_table.width = HEADER_TABLE_WIDTH
+            blank_cell2, payout_cell = payout_table.rows[0].cells
+            blank_cell2.width = LEFT_COL_WIDTH
+            payout_cell.width = RIGHT_COL_WIDTH
+            cell_paragraph(payout_cell, f"Ngày ..... tháng ..... năm {last_trip.replenishment_date.year}", first=True)
+            cell_paragraph(payout_cell, 'Duyệt')
+            cell_paragraph(payout_cell, 'Số tiền được thanh toán là:' + '.' * 20 + 'đ')
+
+            sig_table = doc.add_table(rows=1, cols=3)
+            sig_titles = ['Người đi công tác', 'Phụ trách bộ phận', 'Kế toán trưởng']
+            for col_idx, title in enumerate(sig_titles):
+                cell_paragraph(sig_table.rows[0].cells[col_idx], title, bold=True, first=True)
+
+            stream = BytesIO()
+            doc.save(stream)
+            stream.seek(0)
+            return stream
+
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for sheet in sheets:
+                stream = build_sheet_doc(sheet)
+                safe_name = remove_vietnamese_diacritics(sheet['driver_name']).replace(' ', '')
+                machine_short = sheet['machine_id'].replace('7202', '')
+                filename = f"GDD_{machine_short}_{safe_name}_to{sheet['sheet_index']}.docx"
+                zf.writestr(filename, stream.read())
+        zip_buffer.seek(0)
+
+        response = HttpResponse(zip_buffer.read(), content_type='application/zip')
+        zip_filename = f"GiayDiDuong_ATM_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.zip"
+        response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Giấy đi đường: {str(e)}")
+        return redirect('atm_travel_claim')
 
 
 @login_required

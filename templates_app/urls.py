@@ -5,6 +5,8 @@ from django.urls import path
 from . import views
 from . import report_views
 from . import kpi_views
+from . import td_views
+from . import hdv_reg_views
 
 urlpatterns = [
     # Authentication
@@ -73,7 +75,9 @@ urlpatterns = [
     # Beautiful Number Fee Lookup
     path('beautiful-number-lookup/', views.beautiful_number_lookup, name='beautiful_number_lookup'),
     path('beautiful-number-list/', views.beautiful_number_list, name='beautiful_number_list'),
+    path('beautiful-number-list/export/', views.beautiful_number_list_export_csv, name='beautiful_number_list_export_csv'),
     path('api/beautiful-numbers/generate/', views.generate_beautiful_numbers_ajax, name='generate_beautiful_numbers'),
+    path('api/beautiful-numbers/refresh/', views.refresh_beautiful_numbers_ajax, name='refresh_beautiful_numbers'),
 
     # Test Address Selector
     path('test-address-selector/', views.test_address_selector, name='test_address_selector'),
@@ -134,6 +138,11 @@ urlpatterns = [
     path('atm/discrepancy/<int:discrepancy_id>/template/<int:template_id>/', views.atm_load_discrepancy_data, name='atm_load_discrepancy_data'),
     path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/template/<int:template_id>/', views.atm_load_discrepancy_cycle_template, name='atm_load_discrepancy_cycle_template'),
 
+    # ATM Travel Claim (Bảng kê thanh toán + Giấy đi đường)
+    path('atm/travel-claim/', views.atm_travel_claim, name='atm_travel_claim'),
+    path('atm/travel-claim/payment-statement/word/', views.atm_payment_statement_word, name='atm_payment_statement_word'),
+    path('atm/travel-claim/travel-log/zip/', views.atm_travel_log_word, name='atm_travel_log_zip'),
+
     # Reports Module
     path('reports/', report_views.report_hub, name='report_hub'),
     path('reports/lai-ton-dong/', report_views.lai_ton_dong_report_view, name='lai_ton_dong_report'),
@@ -153,6 +162,18 @@ urlpatterns = [
     path('reports/dien-luc/', report_views.dien_luc_report_view, name='dien_luc_report'),
     path('reports/dien-luc/process/', report_views.process_dien_luc_report, name='process_dien_luc'),
     path('reports/atm-fund-balance/', report_views.atm_fund_balance_view, name='atm_fund_balance'),
+    path('reports/huy-dong-von/', report_views.huy_dong_von_report_view, name='huy_dong_von_report'),
+    path('reports/huy-dong-von/process/', report_views.process_huy_dong_von_report, name='process_huy_dong_von'),
+
+    # Đăng ký chỉ tiêu Huy động vốn
+    path('hdv/dashboard/', hdv_reg_views.hdv_dashboard_view, name='hdv_dashboard'),
+    path('hdv/bao-cao/', hdv_reg_views.hdv_reports_view, name='hdv_reports'),
+    path('hdv/bao-cao/export/', hdv_reg_views.hdv_reports_export_view, name='hdv_reports_export'),
+    path('hdv/dang-ky/', hdv_reg_views.hdv_registration_list_view, name='hdv_registration_list'),
+    path('hdv/dang-ky/create/', hdv_reg_views.hdv_registration_create_view, name='hdv_registration_create'),
+    path('hdv/dang-ky/<int:pk>/update/', hdv_reg_views.hdv_registration_update_view, name='hdv_registration_update'),
+    path('hdv/dang-ky/<int:pk>/delete/', hdv_reg_views.hdv_registration_delete_view, name='hdv_registration_delete'),
+    path('hdv/import/', hdv_reg_views.hdv_import_upload_view, name='hdv_import_upload'),
 
     # Permission Management
     path('permissions/', views.permission_management_view, name='permission_management'),
@@ -173,5 +194,22 @@ urlpatterns = [
     # Báo cáo Đóng/Mở tài khoản
     path('reports/dong-mo-tai-khoan/', report_views.dong_mo_tai_khoan_report_view, name='dong_mo_tai_khoan_report'),
     path('reports/dong-mo-tai-khoan/process/', report_views.process_dong_mo_tai_khoan_report, name='process_dong_mo_tai_khoan'),
+
+    # Phân tích danh mục tín dụng (MSIT80 offline)
+    path('tin-dung/phan-tich/', td_views.td_upload_view, name='td_analysis'),
+    path('tin-dung/dashboard/', td_views.td_dashboard_view, name='td_dashboard'),
+    path('tin-dung/api/filter/', td_views.td_filter_api, name='td_filter_api'),
+    path('tin-dung/api/so-sanh/', td_views.td_so_sanh_api, name='td_so_sanh_api'),
+    path('tin-dung/api/snapshots/', td_views.td_snapshots_api, name='td_snapshots_api'),
+    path('tin-dung/xuat-word/', td_views.td_export_word_view, name='td_export_word'),
+    path('tin-dung/xuat-excel/', td_views.td_export_excel_view, name='td_export_excel'),
+    path('tin-dung/ftp-config/', td_views.td_ftp_config_view, name='td_ftp_config'),
+    path('tin-dung/ftp-config/<int:pk>/delete/', td_views.td_ftp_delete_view, name='td_ftp_delete'),
+    path('tin-dung/faq/', td_views.td_faq_view, name='td_faq'),
+    path('tin-dung/debug-cols/', td_views.td_debug_cols_view, name='td_debug_cols'),
+    path('tin-dung/so-sanh/', td_views.td_so_sanh_view, name='td_so_sanh'),
+    path('tin-dung/api/so-sanh-records/', td_views.td_so_sanh_records_api, name='td_so_sanh_records_api'),
+    # Backward compat
+    path('tin-dung/xuat-bao-cao/', td_views.td_export_word_view, name='td_export'),
 
 ]

@@ -1,0 +1,140 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Dashboard HĐV{% endblock %}
+
+{% block extra_head %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-speedometer2"></i> DASHBOARD HUY ĐỘNG VỐN</h2>
+        </div>
+    </div>
+
+    {% include 'templates_app/hdv/_nav.html' with active='dashboard' %}
+
+    <div class="row g-3 align-items-stretch mb-4">
+        <div class="col-md-7">
+            <form method="get" class="row g-2 align-items-end h-100">
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Từ ngày</label>
+                    <input type="date" class="form-control" name="tu_ngay" value="{{ tu_ngay }}">
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Đến ngày</label>
+                    <input type="date" class="form-control" name="den_ngay" value="{{ den_ngay }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Xem báo cáo</button>
+                </div>
+            </form>
+        </div>
+        <div class="col-md-5">
+            <form method="post" action="{% url 'hdv_import_upload' %}" enctype="multipart/form-data" class="d-flex gap-2 align-items-end h-100">
+                {% csrf_token %}
+                <div class="flex-grow-1">
+                    <label class="form-label small mb-0">Import file xuất từ hệ thống (IPCAS)</label>
+                    <input type="file" class="form-control" name="import_file" accept=".xlsx,.xls" required>
+                    <div class="form-text">Chỉ tính sổ VND, kỳ hạn ≥ 1 tháng. Upload lại để cập nhật (không nhân đôi số liệu).</div>
+                </div>
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-upload"></i> Import</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100" style="background-color: var(--agri-red); color: #fff;">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-cash-coin"></i> Tổng HĐV (quy đổi VND)</div>
+                    <div class="fs-3 fw-bold">{{ tong_hdv|floatformat:0|intcomma }} đ</div>
+                    <div class="small">{{ tu_ngay }} → {{ den_ngay }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 text-bg-dark">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-people"></i> Tổng số khách hàng</div>
+                    <div class="fs-3 fw-bold">{{ tong_kh }} KH</div>
+                    <div class="small">{{ tu_ngay }} → {{ den_ngay }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="small text-muted"><i class="bi bi-person-badge"></i> Nhân viên phát sinh HĐV</div>
+                    <div class="fs-3 fw-bold">{{ nhan_vien_phat_sinh }}</div>
+                    <div class="small text-muted">cán bộ hoạt động</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6>HĐV huy động quy đổi theo khoảng ngày (tỷ đồng)</h6>
+            <canvas id="chartByDay" height="90"></canvas>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6>Bảng HĐV nhân viên</h6>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nhân viên</th>
+                            <th>Chi nhánh</th>
+                            <th class="text-end">Số KH</th>
+                            <th class="text-end">Tổng HĐV (VND)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in by_employee %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ row.ten_can_bo|default:row.ma_can_bo }}</td>
+                            <td>{{ row.chi_nhanh|default:"—" }}</td>
+                            <td class="text-end">{{ row.so_kh }}</td>
+                            <td class="text-end">{{ row.tong|floatformat:0|intcomma }} đ</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted">Chưa có dữ liệu trong khoảng ngày này</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    new Chart(document.getElementById('chartByDay'), {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels_json|safe }},
+            datasets: [{
+                label: 'Tỷ đồng',
+                data: {{ chart_values_json|safe }},
+                backgroundColor: '#8B1E2D',
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } },
+        },
+    });
+</script>
+{% endblock %}

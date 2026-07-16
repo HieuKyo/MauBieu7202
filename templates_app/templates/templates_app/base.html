@@ -81,10 +81,28 @@
                                 <i class="bi bi-building"></i> Doanh nghiệp
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="showComingSoon('Kế toán Ngân quỹ')">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-graph-up-arrow"></i> Tín dụng
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'td_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{% url 'td_analysis' %}"><i class="bi bi-upload me-2"></i>Upload MSIT80</a></li>
+                                <li><a class="dropdown-item" href="{% url 'td_so_sanh' %}"><i class="bi bi-arrow-left-right me-2"></i>So sánh 2 kỳ</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'td_ftp_config' %}"><i class="bi bi-gear me-2"></i>Cấu hình FTP & NIM</a></li>
+                                <li><a class="dropdown-item" href="{% url 'td_faq' %}"><i class="bi bi-question-circle me-2"></i>Hướng dẫn</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-cash-stack"></i> Kế toán Ngân quỹ
                             </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'hdv_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard HĐV</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hdv_registration_list' %}"><i class="bi bi-person-plus me-2"></i>Đăng ký chỉ tiêu HĐV</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hdv_reports' %}"><i class="bi bi-bar-chart-line me-2"></i>Báo cáo HĐV</a></li>
+                            </ul>
                         </li>
                         {% if user.is_superuser %}
                         <li class="nav-item">
