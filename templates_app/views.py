@@ -4,7 +4,7 @@ import json
 import os
 import re
 import tempfile
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from urllib.parse import urlparse
 
 # Django imports
@@ -16,6 +16,7 @@ from django.db import models
 from django.db.models import Q
 from django.http import HttpResponse, Http404, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 # Third-party imports
@@ -5836,6 +5837,92 @@ def _parse_travel_claim_dates(request):
         end_date = default_end
 
     return start_date, end_date
+
+
+@login_required
+def vehicle_duty_schedule(request):
+    """Trang chọn/lưu lịch trực xe theo tháng (mỗi ngày 1 tài xế trực)"""
+    from .models import Person, VehicleDutySchedule
+
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    today = date.today()
+    try:
+        year = int(request.GET.get('year', today.year))
+    except (ValueError, TypeError):
+        year = today.year
+    try:
+        month = int(request.GET.get('month', today.month))
+    except (ValueError, TypeError):
+        month = today.month
+    try:
+        date(year, month, 1)  # validate kết hợp year/month hợp lệ
+    except ValueError:
+        year, month = today.year, today.month
+
+    drivers = list(Person.objects.filter(person_type='driver', is_active=True).order_by('id'))
+
+    if request.method == 'POST':
+        try:
+            year = int(request.POST.get('year', year))
+            month = int(request.POST.get('month', month))
+        except (ValueError, TypeError):
+            pass
+
+        num_days = calendar.monthrange(year, month)[1]
+        driver_by_id = {d.id: d for d in drivers}
+        for day in range(1, num_days + 1):
+            d = date(year, month, day)
+            driver_id = request.POST.get(f'driver_{d.isoformat()}', '')
+            if driver_id and driver_id.isdigit() and int(driver_id) in driver_by_id:
+                VehicleDutySchedule.objects.update_or_create(
+                    date=d, defaults={'driver_id': int(driver_id)}
+                )
+            else:
+                VehicleDutySchedule.objects.filter(date=d).delete()
+
+        messages.success(request, f'Đã lưu lịch trực xe tháng {month}/{year}.')
+        return redirect(f"{reverse('vehicle_duty_schedule')}?year={year}&month={month}")
+
+    num_days = calendar.monthrange(year, month)[1]
+    existing = {
+        s.date: s.driver_id
+        for s in VehicleDutySchedule.objects.filter(date__year=year, date__month=month)
+    }
+
+    weekday_names = ['Th 2', 'Th 3', 'Th 4', 'Th 5', 'Th 6', 'Th 7', 'CN']
+    days = []
+    for day in range(1, num_days + 1):
+        d = date(year, month, day)
+        if d in existing:
+            selected_driver_id = existing[d]
+        elif drivers:
+            # Mặc định xen kẽ theo ngày trong tháng, chỉ mang tính gợi ý ban đầu
+            selected_driver_id = drivers[(day - 1) % len(drivers)].id
+        else:
+            selected_driver_id = None
+        days.append({
+            'date': d,
+            'weekday': weekday_names[d.weekday()],
+            'selected_driver_id': selected_driver_id,
+        })
+
+    prev_month_date = date(year, month, 1) - timedelta(days=1)
+    next_month_date = date(year, month, num_days) + timedelta(days=1)
+
+    context = {
+        'year': year,
+        'month': month,
+        'days': days,
+        'drivers': drivers,
+        'prev_year': prev_month_date.year,
+        'prev_month': prev_month_date.month,
+        'next_year': next_month_date.year,
+        'next_month': next_month_date.month,
+    }
+    return render(request, 'templates_app/atm/vehicle_duty_schedule.html', context)
 
 
 @login_required

@@ -1,0 +1,97 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Lịch trực xe{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
+                    <li class="breadcrumb-item active">Lịch trực xe</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-calendar-check"></i> Lịch trực xe tháng {{ month }}/{{ year|stringformat:"d" }}</h2>
+            <p class="text-muted mb-0">
+                Mỗi ngày chọn 1 tài xế trực. Tài xế trực ngày nào nếu đi tiếp quỹ ATM ngày đó sẽ
+                <strong>không</strong> được tính thêm tiền thanh toán giấy đi đường (vì đã nhận tiền trực);
+                tài xế khác (không trực) đi tiếp quỹ thay mới được tính tiền.
+            </p>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12 d-flex gap-2">
+            <a href="?year={{ prev_year|stringformat:"d" }}&month={{ prev_month }}" class="btn btn-outline-secondary">
+                <i class="bi bi-chevron-left"></i> Tháng trước
+            </a>
+            <a href="?year={{ next_year|stringformat:"d" }}&month={{ next_month }}" class="btn btn-outline-secondary">
+                Tháng sau <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+
+    {% if not drivers %}
+    <div class="alert alert-warning">Chưa có tài xế nào đang hoạt động (person_type=driver, is_active=True). Vào admin để thêm.</div>
+    {% else %}
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="year" value="{{ year|stringformat:"d" }}">
+        <input type="hidden" name="month" value="{{ month }}">
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 15%;">Ngày</th>
+                                <th style="width: 15%;">Thứ</th>
+                                <th>Tài xế trực</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in days %}
+                            <tr {% if d.weekday == 'CN' %}class="table-danger"{% endif %}>
+                                <td>{{ d.date|date:"d/m/Y" }}</td>
+                                <td>{{ d.weekday }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        {% for drv in drivers %}
+                                        <input type="radio" class="btn-check" autocomplete="off"
+                                               name="driver_{{ d.date|date:'Y-m-d' }}"
+                                               id="drv_{{ d.date|date:'Y-m-d' }}_{{ drv.id }}"
+                                               value="{{ drv.id }}"
+                                               {% if drv.id == d.selected_driver_id %}checked{% endif %}>
+                                        <label class="btn btn-outline-primary" for="drv_{{ d.date|date:'Y-m-d' }}_{{ drv.id }}">
+                                            {{ drv.full_name }}
+                                        </label>
+                                        {% endfor %}
+                                        <input type="radio" class="btn-check" autocomplete="off"
+                                               name="driver_{{ d.date|date:'Y-m-d' }}"
+                                               id="drv_{{ d.date|date:'Y-m-d' }}_none"
+                                               value=""
+                                               {% if not d.selected_driver_id %}checked{% endif %}>
+                                        <label class="btn btn-outline-secondary" for="drv_{{ d.date|date:'Y-m-d' }}_none">
+                                            Không trực
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Lưu lịch trực tháng {{ month }}/{{ year|stringformat:"d" }}
+                </button>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

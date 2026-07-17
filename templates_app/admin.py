@@ -10,6 +10,7 @@ from .models import (
     BankStatement, Transaction,
     UserProfile, Course, CourseEnrollment,
     ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy,
+    VehicleDutySchedule,
     Promotion,
 )
 from .import_helpers import (
@@ -986,6 +987,16 @@ class ATMReplenishmentAdmin(admin.ModelAdmin):
         if not change:  # Chỉ khi tạo mới
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(VehicleDutySchedule)
+class VehicleDutyScheduleAdmin(admin.ModelAdmin):
+    """Admin cho Lịch trực xe"""
+    list_display = ['date', 'driver']
+    list_filter = ['driver']
+    search_fields = ['driver__full_name']
+    ordering = ['-date']
+    date_hierarchy = 'date'
 
 
 @admin.register(ATMDiscrepancy)

@@ -2,7 +2,7 @@
 Tính toán Bảng kê thanh toán công tác phí + Giấy đi đường cho Ban quản lý ATM.
 Chỉ áp dụng cho 2 máy ATM04 (PGD Láng Tròn) và ATM06 (Chi cục Thuế Giá Rai).
 """
-from .models import ATMReplenishment, ATMManagementBoard
+from .models import ATMReplenishment, ATMManagementBoard, VehicleDutySchedule
 
 ATM_TRIP_CONFIG = {
     '7202ATM04': {'label': 'PGD Láng Tròn', 'destination': 'Máy ATM04 (PGD Láng Tròn)', 'unit_price': 50000, 'priority': 1},
@@ -131,6 +131,51 @@ def build_payment_statement_rows(start_date, end_date):
             totals['amount_atm04'] += amount_atm04
             totals['amount_atm06'] += amount_atm06
             totals['total'] += row['total']
+
+    # Tài xế: chỉ tính tiền cho chuyến mà tài xế đi KHÔNG PHẢI là tài xế trực ngày đó
+    # (tài xế trực đã được trả tiền trực rồi, đi tiếp quỹ thêm không cộng dồn)
+    duty_by_date = {
+        s.date: s.driver_id
+        for s in VehicleDutySchedule.objects.filter(date__range=(start_date, end_date))
+    }
+
+    driver_counts = {}
+    for trip in trips:
+        if not trip.driver:
+            continue
+        if duty_by_date.get(trip.replenishment_date) == trip.driver_id:
+            continue  # tài xế trực hôm đó đi tiếp quỹ -> không tính thêm tiền
+
+        counts = driver_counts.setdefault(trip.driver, {'trips_atm04': 0, 'trips_atm06': 0})
+        if trip.atm_id == '7202ATM04':
+            counts['trips_atm04'] += 1
+        elif trip.atm_id == '7202ATM06':
+            counts['trips_atm06'] += 1
+
+    for driver, counts in driver_counts.items():
+        amount_atm04 = counts['trips_atm04'] * ATM_TRIP_CONFIG['7202ATM04']['unit_price']
+        amount_atm06 = counts['trips_atm06'] * ATM_TRIP_CONFIG['7202ATM06']['unit_price']
+        row = {
+            'position': 'driver',
+            'position_display': 'Tài xế',
+            'full_name': driver.full_name,
+            'title': 'Tài xế',
+            'account_number': driver.account_number,
+            'trips_atm04': counts['trips_atm04'],
+            'trips_atm06': counts['trips_atm06'],
+            'amount_atm04': amount_atm04,
+            'amount_atm06': amount_atm06,
+            'total': amount_atm04 + amount_atm06,
+            'term_start': start_date,
+            'term_end': end_date,
+        }
+        rows.append(row)
+
+        totals['trips_atm04'] += counts['trips_atm04']
+        totals['trips_atm06'] += counts['trips_atm06']
+        totals['amount_atm04'] += amount_atm04
+        totals['amount_atm06'] += amount_atm06
+        totals['total'] += row['total']
 
     return rows, totals
 

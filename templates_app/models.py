@@ -2673,6 +2673,27 @@ class ATMReplenishment(models.Model):
         return data
 
 
+class VehicleDutySchedule(models.Model):
+    """Lịch trực xe hàng ngày — mỗi ngày có 1 tài xế trực (đã được trả tiền trực từ cơ quan)"""
+    date = models.DateField(unique=True, verbose_name="Ngày trực")
+    driver = models.ForeignKey(
+        Person,
+        on_delete=models.PROTECT,
+        limit_choices_to={'person_type': 'driver'},
+        verbose_name="Tài xế trực"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Lịch trực xe"
+        verbose_name_plural = "Lịch trực xe"
+        ordering = ['date']
+
+    def __str__(self):
+        return f"{self.date.strftime('%d/%m/%Y')} - {self.driver.full_name}"
+
+
 class ATMDiscrepancy(models.Model):
     """Quản lý các giao dịch thừa/thiếu quỹ ATM"""
 

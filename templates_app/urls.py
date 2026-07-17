@@ -138,6 +138,9 @@ urlpatterns = [
     path('atm/discrepancy/<int:discrepancy_id>/template/<int:template_id>/', views.atm_load_discrepancy_data, name='atm_load_discrepancy_data'),
     path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/template/<int:template_id>/', views.atm_load_discrepancy_cycle_template, name='atm_load_discrepancy_cycle_template'),
 
+    # Lịch trực xe
+    path('atm/vehicle-duty-schedule/', views.vehicle_duty_schedule, name='vehicle_duty_schedule'),
+
     # ATM Travel Claim (Bảng kê thanh toán + Giấy đi đường)
     path('atm/travel-claim/', views.atm_travel_claim, name='atm_travel_claim'),
     path('atm/travel-claim/payment-statement/word/', views.atm_payment_statement_word, name='atm_payment_statement_word'),
