@@ -102,6 +102,10 @@
                                 <li><a class="dropdown-item" href="{% url 'hdv_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard HĐV</a></li>
                                 <li><a class="dropdown-item" href="{% url 'hdv_registration_list' %}"><i class="bi bi-person-plus me-2"></i>Đăng ký chỉ tiêu HĐV</a></li>
                                 <li><a class="dropdown-item" href="{% url 'hdv_reports' %}"><i class="bi bi-bar-chart-line me-2"></i>Báo cáo HĐV</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'cash_statement' %}"><i class="bi bi-printer me-2"></i>Bảng kê tiền mặt</a></li>
+                                <li><a class="dropdown-item" href="{% url 'cash_drawer_history' %}"><i class="bi bi-clock-history me-2"></i>Lịch sử giao dịch quỹ</a></li>
+                                <li><a class="dropdown-item" href="{% url 'cash_print_config' %}"><i class="bi bi-gear me-2"></i>Cấu hình in bảng kê</a></li>
                             </ul>
                         </li>
                         {% if user.is_superuser %}

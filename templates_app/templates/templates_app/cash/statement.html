@@ -1,0 +1,259 @@
+{% extends 'templates_app/base.html' %}
+{% load humanize %}
+
+{% block title %}Bảng kê tiền mặt{% endblock %}
+
+{% block content %}
+{% if print_id and print_pdf_url_name %}
+<iframe src="{% url print_pdf_url_name print_id %}" style="display:none;"></iframe>
+{% endif %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-printer"></i> BẢNG KÊ TIỀN MẶT</h2>
+            <p class="text-muted">Nhập số tờ theo mệnh giá — Thu/Chi cập nhật tồn quỹ và tải file PDF (khổ A5) để in đè lên giấy nộp/rút tiền in sẵn.</p>
+            {% if print_id and print_statement_loai == 'THU' or print_id and print_statement_loai == 'CHI' %}
+            <div class="mt-1">
+                <span class="text-muted small">Tải thêm kiểu khác:</span>
+                {% if print_pdf_url_name == 'cash_statement_full_pdf' %}
+                <a href="{% url 'cash_statement_print_pdf' print_id %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-printer"></i> Bảng kê trắng (không khung)
+                </a>
+                {% else %}
+                <a href="{% url 'cash_statement_full_pdf' print_id %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-file-earmark-text"></i> Bảng kê có khung (Thu/Chi)
+                </a>
+                {% endif %}
+                <a href="{% url 'cash_statement_nop_tien_pdf' print_id %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-printer"></i> Bảng kê trắng (giấy nộp tiền)
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <ul class="nav nav-pills mb-3" id="modeTabs">
+                        <li class="nav-item">
+                            <button type="button" class="nav-link active" data-mode="giao-dich">Giao dịch tiền mặt</button>
+                        </li>
+                        <li class="nav-item">
+                            <button type="button" class="nav-link" data-mode="de-nghi">Đề nghị tiếp quỹ</button>
+                        </li>
+                    </ul>
+
+                    <!-- Form Thu/Chi/Nhập số tiền tiếp quỹ thực nhận -->
+                    <form method="post" action="{% url 'cash_statement_submit' %}" id="statementForm" class="mode-panel" data-mode="giao-dich">
+                        {% csrf_token %}
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Loại bảng kê</label>
+                                <select class="form-select" id="bangKeSelect" required>
+                                    <option value="TRANG">Bảng kê trắng (không khung)</option>
+                                    <option value="THU">Bảng kê Thu (có khung)</option>
+                                    <option value="CHI">Bảng kê Chi (có khung)</option>
+                                    <option value="NHAP_QUY">Nhập số tiền tiếp quỹ (thực nhận)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-none" id="trangGiaoDichWrap">
+                                <label class="form-label">Giao dịch</label>
+                                <select class="form-select" id="trangGiaoDich">
+                                    <option value="THU">Thu</option>
+                                    <option value="CHI">Chi</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Ghi chú</label>
+                                <input type="text" class="form-control" name="ghi_chu" placeholder="Tùy chọn">
+                            </div>
+                            <input type="hidden" name="loai" id="loaiHidden">
+                            <input type="hidden" name="kieu_in" id="kieuInHidden">
+                        </div>
+
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Mệnh giá</th>
+                                    <th style="width:110px;">Số tờ</th>
+                                    <th class="text-end">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for mg in denominations %}
+                                <tr>
+                                    <td>{{ mg|intcomma }} đ</td>
+                                    <td>
+                                        <input type="number" min="0" class="form-control form-control-sm so-to-input"
+                                               name="so_to_{{ mg|stringformat:'d' }}" data-menh-gia="{{ mg|stringformat:'d' }}" value="0">
+                                    </td>
+                                    <td class="text-end thanh-tien" data-menh-gia="{{ mg|stringformat:'d' }}">0 đ</td>
+                                </tr>
+                                {% endfor %}
+                                <tr>
+                                    <td>Khác</td>
+                                    <td colspan="2">
+                                        <input type="number" min="0" class="form-control form-control-sm"
+                                               name="khac_thanh_tien" id="khacThanhTien" value="0" placeholder="Số tiền (không quy đổi mệnh giá)">
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold">
+                                    <td colspan="2">Tổng cộng</td>
+                                    <td class="text-end" id="tongCong">0 đ</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="bi bi-save"></i> Lưu &amp; Tải bảng kê
+                        </button>
+                    </form>
+
+                    <!-- Form Đề nghị tiếp quỹ -->
+                    <form method="post" action="{% url 'cash_de_nghi_submit' %}" class="mode-panel d-none" data-mode="de-nghi">
+                        {% csrf_token %}
+                        <div class="alert alert-info small">
+                            Chỉ cần nhập <strong>tổng số tiền</strong> muốn đề nghị — mệnh giá cụ thể do thủ quỹ chính
+                            quyết định khi xuất quỹ, nên không cần khai báo trước. Sau khi thủ quỹ giao tiền, dùng
+                            tab "Giao dịch tiền mặt" → chọn "Nhập số tiền tiếp quỹ (thực nhận)" để nhập đúng mệnh giá
+                            đã nhận.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tổng số tiền đề nghị</label>
+                            <input type="number" min="1" class="form-control" name="tong_tien_de_nghi" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ghi chú</label>
+                            <input type="text" class="form-control" name="ghi_chu" placeholder="Tùy chọn">
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="bi bi-printer"></i> Lập &amp; In đề nghị tiếp quỹ
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h6><i class="bi bi-wallet2"></i> Tồn quỹ hiện tại (của tôi)</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            {% for row in balance_rows %}
+                            <tr>
+                                <td>{{ row.menh_gia|intcomma }} đ</td>
+                                <td class="text-end">{{ row.so_to }} tờ</td>
+                                <td class="text-end">{{ row.thanh_tien|intcomma }} đ</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="2">Tổng tồn quỹ</td>
+                                <td class="text-end">{{ tong_ton_quy|intcomma }} đ</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <form method="post" action="{% url 'cash_drawer_reset' %}" onsubmit="return confirm('Reset toàn bộ tồn quỹ về 0 (out quỹ về quỹ chính)?');">
+                        {% csrf_token %}
+                        <input type="text" name="ghi_chu" class="form-control form-control-sm mb-2" placeholder="Ghi chú reset (tùy chọn)">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset Counter (out quỹ)
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h6><i class="bi bi-clock-history"></i> 20 giao dịch gần nhất</h6>
+                    <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
+                        <table class="table table-sm">
+                            <thead><tr><th>Thời gian</th><th>Loại</th><th class="text-end">Số tiền</th></tr></thead>
+                            <tbody>
+                                {% for s in history %}
+                                <tr>
+                                    <td>{{ s.created_at|date:"d/m H:i" }}</td>
+                                    <td>{{ s.get_loai_display }}</td>
+                                    <td class="text-end">{{ s.tong_tien|intcomma }} đ</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center text-muted">Chưa có giao dịch nào</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{% url 'cash_drawer_history' %}" class="btn btn-sm btn-outline-primary w-100 mt-2">Xem lịch sử đầy đủ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    #modeTabs .nav-link.active { background-color: var(--agri-red); color: #fff; }
+</style>
+<script>
+    function formatMoney(n) {
+        return n.toLocaleString('en-US') + ' đ';
+    }
+
+    function recalc() {
+        let tong = 0;
+        document.querySelectorAll('.so-to-input').forEach(function (input) {
+            const mg = parseInt(input.dataset.menhGia, 10);
+            const soTo = parseInt(input.value, 10) || 0;
+            const thanhTien = mg * soTo;
+            tong += thanhTien;
+            document.querySelector(`.thanh-tien[data-menh-gia="${mg}"]`).textContent = formatMoney(thanhTien);
+        });
+        tong += parseInt(document.getElementById('khacThanhTien').value, 10) || 0;
+        document.getElementById('tongCong').textContent = formatMoney(tong);
+    }
+
+    document.querySelectorAll('.so-to-input, #khacThanhTien').forEach(function (input) {
+        input.addEventListener('input', recalc);
+    });
+
+    document.querySelectorAll('#modeTabs .nav-link').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('#modeTabs .nav-link').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const mode = this.dataset.mode;
+            document.querySelectorAll('.mode-panel').forEach(function (panel) {
+                panel.classList.toggle('d-none', panel.dataset.mode !== mode);
+            });
+        });
+    });
+
+    function syncBangKe() {
+        const val = document.getElementById('bangKeSelect').value;
+        document.getElementById('trangGiaoDichWrap').classList.toggle('d-none', val !== 'TRANG');
+
+        const loaiHidden = document.getElementById('loaiHidden');
+        const kieuInHidden = document.getElementById('kieuInHidden');
+        if (val === 'TRANG') {
+            loaiHidden.value = document.getElementById('trangGiaoDich').value;
+            kieuInHidden.value = 'trang';
+        } else if (val === 'THU' || val === 'CHI') {
+            loaiHidden.value = val;
+            kieuInHidden.value = 'day_du';
+        } else {
+            loaiHidden.value = 'NHAP_QUY';
+            kieuInHidden.value = 'trang';
+        }
+    }
+    document.getElementById('bangKeSelect').addEventListener('change', syncBangKe);
+    document.getElementById('trangGiaoDich').addEventListener('change', syncBangKe);
+    document.getElementById('statementForm').addEventListener('submit', syncBangKe);
+    syncBangKe();
+</script>
+{% endblock %}

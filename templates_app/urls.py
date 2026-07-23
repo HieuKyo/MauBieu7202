@@ -7,6 +7,7 @@ from . import report_views
 from . import kpi_views
 from . import td_views
 from . import hdv_reg_views
+from . import cash_drawer_views
 
 urlpatterns = [
     # Authentication
@@ -177,6 +178,31 @@ urlpatterns = [
     path('hdv/dang-ky/<int:pk>/update/', hdv_reg_views.hdv_registration_update_view, name='hdv_registration_update'),
     path('hdv/dang-ky/<int:pk>/delete/', hdv_reg_views.hdv_registration_delete_view, name='hdv_registration_delete'),
     path('hdv/import/', hdv_reg_views.hdv_import_upload_view, name='hdv_import_upload'),
+
+    # Bảng kê tiền mặt (Kế toán Ngân quỹ)
+    path('cash/bang-ke/', cash_drawer_views.cash_statement_view, name='cash_statement'),
+    path('cash/bang-ke/submit/', cash_drawer_views.cash_statement_submit_view, name='cash_statement_submit'),
+    path('cash/bang-ke/<int:pk>/pdf/', cash_drawer_views.cash_statement_print_pdf_view, name='cash_statement_print_pdf'),
+    path('cash/bang-ke/<int:pk>/pdf-day-du/', cash_drawer_views.cash_statement_full_pdf_view, name='cash_statement_full_pdf'),
+    path('cash/bang-ke/<int:pk>/pdf-nop-tien/', cash_drawer_views.cash_statement_nop_tien_pdf_view, name='cash_statement_nop_tien_pdf'),
+    path('cash/de-nghi-tiep-quy/submit/', cash_drawer_views.cash_de_nghi_submit_view, name='cash_de_nghi_submit'),
+    path('cash/de-nghi-tiep-quy/<int:pk>/pdf/', cash_drawer_views.cash_de_nghi_pdf_view, name='cash_de_nghi_pdf'),
+    path('cash/reset/', cash_drawer_views.cash_drawer_reset_view, name='cash_drawer_reset'),
+    path('cash/lich-su/', cash_drawer_views.cash_drawer_history_view, name='cash_drawer_history'),
+    path('cash/lich-su/<int:pk>/sua/', cash_drawer_views.cash_statement_edit_view, name='cash_statement_edit'),
+    path('cash/lich-su/<int:pk>/sua/submit/', cash_drawer_views.cash_statement_edit_submit_view, name='cash_statement_edit_submit'),
+    path('cash/lich-su/<int:pk>/xoa/', cash_drawer_views.cash_statement_delete_view, name='cash_statement_delete'),
+    path('cash/cau-hinh-in/', cash_drawer_views.cash_print_config_view, name='cash_print_config'),
+    path('cash/cau-hinh-in/trang/submit/', cash_drawer_views.cash_print_config_trang_submit_view, name='cash_print_config_trang_submit'),
+    path('cash/cau-hinh-in/trang/preview/', cash_drawer_views.cash_print_config_preview_view, name='cash_print_config_preview'),
+    path('cash/cau-hinh-in/nop-tien/submit/', cash_drawer_views.cash_print_config_nop_tien_submit_view, name='cash_print_config_nop_tien_submit'),
+    path('cash/cau-hinh-in/nop-tien/preview/', cash_drawer_views.cash_print_config_nop_tien_preview_view, name='cash_print_config_nop_tien_preview'),
+    path('cash/cau-hinh-in/thu/submit/', cash_drawer_views.cash_print_config_thu_submit_view, name='cash_print_config_thu_submit'),
+    path('cash/cau-hinh-in/thu/preview/', cash_drawer_views.cash_print_config_thu_preview_view, name='cash_print_config_thu_preview'),
+    path('cash/cau-hinh-in/chi/submit/', cash_drawer_views.cash_print_config_chi_submit_view, name='cash_print_config_chi_submit'),
+    path('cash/cau-hinh-in/chi/preview/', cash_drawer_views.cash_print_config_chi_preview_view, name='cash_print_config_chi_preview'),
+    path('cash/cau-hinh-in/de-nghi/submit/', cash_drawer_views.cash_print_config_de_nghi_submit_view, name='cash_print_config_de_nghi_submit'),
+    path('cash/cau-hinh-in/de-nghi/preview/', cash_drawer_views.cash_print_config_de_nghi_preview_view, name='cash_print_config_de_nghi_preview'),
 
     # Permission Management
     path('permissions/', views.permission_management_view, name='permission_management'),

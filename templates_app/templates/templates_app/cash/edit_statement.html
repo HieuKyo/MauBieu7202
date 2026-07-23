@@ -1,0 +1,71 @@
+{% extends 'templates_app/base.html' %}
+{% load humanize %}
+
+{% block title %}Sửa bút toán{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-pencil-square"></i> SỬA BÚT TOÁN</h2>
+            <p class="text-muted">
+                {{ statement.get_loai_display }} — {{ statement.created_at|date:"d/m/Y H:i:s" }}
+            </p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="post" action="{% url 'cash_statement_edit_submit' statement.id %}">
+                {% csrf_token %}
+
+                {% if statement.loai == 'DE_NGHI' %}
+                <div class="mb-3">
+                    <label class="form-label">Tổng số tiền đề nghị</label>
+                    <input type="number" min="1" class="form-control" name="tong_tien_de_nghi"
+                           value="{{ statement.tong_tien|stringformat:'d' }}" required>
+                </div>
+                {% else %}
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Mệnh giá</th>
+                            <th style="width:110px;">Số tờ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in denomination_rows %}
+                        <tr>
+                            <td>{{ row.mg|intcomma }} đ</td>
+                            <td>
+                                <input type="number" min="0" class="form-control form-control-sm"
+                                       name="so_to_{{ row.mg|stringformat:'d' }}"
+                                       value="{{ row.so_to|stringformat:'d' }}">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                            <td>Khác</td>
+                            <td>
+                                <input type="number" min="0" class="form-control form-control-sm"
+                                       name="khac_thanh_tien" value="{{ khac_tien|stringformat:'d' }}">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label class="form-label">Ghi chú</label>
+                    <input type="text" class="form-control" name="ghi_chu" value="{{ statement.ghi_chu }}">
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger flex-grow-1"><i class="bi bi-save"></i> Lưu thay đổi</button>
+                    <a href="{% url 'cash_drawer_history' %}" class="btn btn-secondary flex-grow-1">Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
