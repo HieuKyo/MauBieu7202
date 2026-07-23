@@ -1,0 +1,14 @@
+1045000 -> Một triệu bốn mươi lăm nghìn
+1005 -> Một nghìn năm
+1000000 -> Một triệu
+2000000 -> Hai triệu
+100000 -> Một trăm nghìn
+1100000 -> Một triệu một trăm nghìn
+10000000 -> Mười triệu
+21000 -> Hai mươi mốt nghìn
+1001 -> Một nghìn một
+5000000 -> Năm triệu
+1234567 -> Một triệu hai trăm ba mươi bốn nghìn năm trăm sáu mươi bảy
+100 -> Một trăm
+1000 -> Một nghìn
+500000000 -> Năm trăm triệu
