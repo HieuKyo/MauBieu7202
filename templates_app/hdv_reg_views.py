@@ -21,7 +21,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from .models import BranchConfig, HDVImportRecord, HDVRegistration
+from .models import BranchConfig, HDVImportRecord, HDVRegistration, UserProfile
 from .report_views import _find_col, _hdv_clean_str, _hdv_remove_leading_zeros, _hdv_to_float
 
 
@@ -355,6 +355,7 @@ def hdv_registration_list_view(request):
             'ma_can_bo': ma_can_bo, 'ngay_dk': ngay_dk,
         },
         'branch_choices': _branch_choices(),
+        'ky_han_choices': HDVRegistration.KY_HAN_CHOICES,
         'ma_cb_default': ma_cb_default,
         'ten_cb_default': ten_cb_default,
         'chi_nhanh_default': chi_nhanh_default,
@@ -377,6 +378,7 @@ def _hdv_form_data(request):
         'sdt': request.POST.get('sdt', '').strip(),
         'cccd': request.POST.get('cccd', '').strip(),
         'ngay_dk_huy_dong': ngay,
+        'ky_han': request.POST.get('ky_han', '').strip(),
         'so_tien': so_tien,
         'loai_tien': request.POST.get('loai_tien', 'VND').strip() or 'VND',
         'ma_can_bo': request.POST.get('ma_can_bo', '').strip(),
@@ -422,6 +424,19 @@ def hdv_registration_update_view(request, pk):
         setattr(reg, k, v)
     reg.save()
     return JsonResponse({'success': True, 'message': f'Đã cập nhật đăng ký của {reg.ten_kh}'})
+
+
+@login_required
+def hdv_employee_lookup_view(request):
+    """Tra cứu tên cán bộ theo mã nhân viên (UserProfile.employee_code) để tự động
+    điền Tên cán bộ khi nhập Mã cán bộ."""
+    ma = request.GET.get('ma', '').strip()
+    if not ma:
+        return JsonResponse({'found': False})
+    profile = UserProfile.objects.filter(employee_code__iexact=ma).first()
+    if profile:
+        return JsonResponse({'found': True, 'ten_can_bo': profile.full_name})
+    return JsonResponse({'found': False})
 
 
 @login_required

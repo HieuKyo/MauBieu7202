@@ -3165,13 +3165,30 @@ class TDSnapshot(models.Model):
 class HDVRegistration(models.Model):
     """Cán bộ đăng ký chỉ tiêu huy động vốn cho khách hàng (số tiền mới/tăng thêm)."""
 
+    KY_HAN_CHOICES = [
+        ('KKH', 'Không kỳ hạn'),
+        ('1T', '1 tháng'),
+        ('2T', '2 tháng'),
+        ('3T', '3 tháng'),
+        ('6T', '6 tháng'),
+        ('9T', '9 tháng'),
+        ('12T', '12 tháng'),
+        ('13T', '13 tháng'),
+        ('18T', '18 tháng'),
+        ('24T', '24 tháng'),
+        ('36T', '36 tháng'),
+    ]
+
     ten_kh      = models.CharField(max_length=200, verbose_name="Tên KH/Tên KHPN")
     sdt         = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại")
     cccd        = models.CharField(
         max_length=30, db_index=True,
         verbose_name="CCCD/GPĐKKD/GCNĐT/Mã số DN/MST",
     )
-    ngay_dk_huy_dong = models.DateField(verbose_name="Ngày ĐK huy động", db_index=True)
+    ngay_dk_huy_dong = models.DateField(verbose_name="Ngày dự kiến gửi tiền", db_index=True)
+    ky_han      = models.CharField(
+        max_length=10, blank=True, choices=KY_HAN_CHOICES, verbose_name="Kỳ hạn gửi tiết kiệm",
+    )
     so_tien     = models.BigIntegerField(verbose_name="Số tiền")
     loai_tien   = models.CharField(max_length=10, default='VND', verbose_name="Loại tiền")
     ma_can_bo   = models.CharField(max_length=30, db_index=True, verbose_name="Mã cán bộ")

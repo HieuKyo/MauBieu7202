@@ -180,6 +180,7 @@ urlpatterns = [
     path('hdv/dang-ky/create/', hdv_reg_views.hdv_registration_create_view, name='hdv_registration_create'),
     path('hdv/dang-ky/<int:pk>/update/', hdv_reg_views.hdv_registration_update_view, name='hdv_registration_update'),
     path('hdv/dang-ky/<int:pk>/delete/', hdv_reg_views.hdv_registration_delete_view, name='hdv_registration_delete'),
+    path('hdv/api/can-bo/', hdv_reg_views.hdv_employee_lookup_view, name='hdv_employee_lookup'),
     path('hdv/import/', hdv_reg_views.hdv_import_upload_view, name='hdv_import_upload'),
 
     # Bảng kê tiền mặt (Kế toán Ngân quỹ)

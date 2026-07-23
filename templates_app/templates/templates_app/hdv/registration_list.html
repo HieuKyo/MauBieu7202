@@ -36,7 +36,7 @@
                     <input type="text" class="form-control" name="ma_can_bo" value="{{ filters.ma_can_bo }}">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small mb-0">Ngày ĐK huy động</label>
+                    <label class="form-label small mb-0">Ngày dự kiến gửi tiền</label>
                     <input type="text" class="form-control" name="ngay_dk" value="{{ filters.ngay_dk }}" placeholder="dd/mm/yyyy">
                 </div>
                 <div class="col-md-2 d-flex gap-2">
@@ -58,7 +58,7 @@
                             <th>Tên KH/Tên KHPN</th>
                             <th>SĐT</th>
                             <th>CCCD/GPĐKKD/GCNĐT/Mã số DN/MST</th>
-                            <th>Ngày ĐK huy động</th>
+                            <th>Ngày dự kiến gửi tiền</th>
                             <th>Ngày gửi ĐK</th>
                             <th class="text-end">Số tiền</th>
                             <th>Mã CB</th>
@@ -81,7 +81,7 @@
                             <td>{{ reg.user_dk.get_full_name|default:reg.user_dk.username }}</td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary" title="Sửa"
-                                        onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.sdt|escapejs }}', '{{ reg.cccd|escapejs }}', '{{ reg.ngay_dk_huy_dong|date:'Y-m-d' }}', {{ reg.so_tien|stringformat:'d' }}, '{{ reg.loai_tien|escapejs }}', '{{ reg.ma_can_bo|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.chi_nhanh|escapejs }}')">
+                                        onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.sdt|escapejs }}', '{{ reg.cccd|escapejs }}', '{{ reg.ngay_dk_huy_dong|date:'Y-m-d' }}', '{{ reg.ky_han|escapejs }}', {{ reg.so_tien|stringformat:'d' }}, '{{ reg.loai_tien|escapejs }}', '{{ reg.ma_can_bo|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.chi_nhanh|escapejs }}')">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
@@ -136,26 +136,37 @@
                 </div>
                 <div class="row">
                     <div class="col-6 mb-2">
-                        <label class="form-label">Ngày ĐK huy động <span class="text-danger">*</span></label>
+                        <label class="form-label">Ngày dự kiến gửi tiền <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" name="ngay_dk_huy_dong" required>
                     </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Kỳ hạn gửi tiết kiệm</label>
+                        <select class="form-select" name="ky_han">
+                            <option value="">-- Chọn kỳ hạn --</option>
+                            {% for code, label in ky_han_choices %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
                     <div class="col-6 mb-2">
                         <label class="form-label">Số tiền <span class="text-danger">*</span></label>
                         <input type="text" inputmode="numeric" class="form-control money-input" name="so_tien" required>
                     </div>
-                </div>
-                <div class="row">
-                    <div class="col-4 mb-2">
+                    <div class="col-6 mb-2">
                         <label class="form-label">Loại tiền</label>
                         <input type="text" class="form-control" name="loai_tien" value="VND">
                     </div>
-                    <div class="col-4 mb-2">
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
                         <label class="form-label">Mã cán bộ <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="ma_can_bo" value="{{ ma_cb_default }}" required>
+                        <input type="text" class="form-control ma-can-bo-input" name="ma_can_bo" value="{{ ma_cb_default }}" required>
                     </div>
-                    <div class="col-4 mb-2">
+                    <div class="col-6 mb-2">
                         <label class="form-label">Tên cán bộ</label>
-                        <input type="text" class="form-control" name="ten_can_bo" value="{{ ten_cb_default }}">
+                        <input type="text" class="form-control ten-can-bo-input" name="ten_can_bo" value="{{ ten_cb_default }}">
                     </div>
                 </div>
                 <div class="mb-2">
@@ -200,26 +211,37 @@
                 </div>
                 <div class="row">
                     <div class="col-6 mb-2">
-                        <label class="form-label">Ngày ĐK huy động <span class="text-danger">*</span></label>
+                        <label class="form-label">Ngày dự kiến gửi tiền <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" name="ngay_dk_huy_dong" required>
                     </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label">Kỳ hạn gửi tiết kiệm</label>
+                        <select class="form-select" name="ky_han">
+                            <option value="">-- Chọn kỳ hạn --</option>
+                            {% for code, label in ky_han_choices %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
                     <div class="col-6 mb-2">
                         <label class="form-label">Số tiền <span class="text-danger">*</span></label>
                         <input type="text" inputmode="numeric" class="form-control money-input" name="so_tien" required>
                     </div>
-                </div>
-                <div class="row">
-                    <div class="col-4 mb-2">
+                    <div class="col-6 mb-2">
                         <label class="form-label">Loại tiền</label>
                         <input type="text" class="form-control" name="loai_tien">
                     </div>
-                    <div class="col-4 mb-2">
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
                         <label class="form-label">Mã cán bộ <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="ma_can_bo" required>
+                        <input type="text" class="form-control ma-can-bo-input" name="ma_can_bo" required>
                     </div>
-                    <div class="col-4 mb-2">
+                    <div class="col-6 mb-2">
                         <label class="form-label">Tên cán bộ</label>
-                        <input type="text" class="form-control" name="ten_can_bo">
+                        <input type="text" class="form-control ten-can-bo-input" name="ten_can_bo">
                     </div>
                 </div>
                 <div class="mb-2">
@@ -278,11 +300,37 @@ document.querySelectorAll('.money-input').forEach(function (inp) {
     });
 });
 
+let maCbLookupTimer = null;
+document.querySelectorAll('.ma-can-bo-input').forEach(function (inp) {
+    inp.addEventListener('input', function () {
+        const input = this;
+        const ma = input.value.trim();
+        clearTimeout(maCbLookupTimer);
+        if (!ma) return;
+        maCbLookupTimer = setTimeout(function () {
+            fetch(`{% url 'hdv_employee_lookup' %}?ma=${encodeURIComponent(ma)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.found) {
+                        const form = input.closest('form');
+                        form.querySelector('.ten-can-bo-input').value = data.ten_can_bo;
+                    }
+                })
+                .catch(() => {});
+        }, 300);
+    });
+});
+
 function unformattedFormData(form) {
     const data = new FormData(form);
     data.set('so_tien', String(data.get('so_tien') || '').replace(/,/g, ''));
     return data;
 }
+
+document.getElementById('addRegModal').addEventListener('show.bs.modal', function () {
+    document.getElementById('addRegForm').reset();
+    document.getElementById('addRegError').classList.add('d-none');
+});
 
 document.getElementById('addRegForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -310,13 +358,14 @@ document.getElementById('addRegForm').addEventListener('submit', function (e) {
 
 let editRegId = null;
 
-function openEditModal(id, tenKh, sdt, cccd, ngayDk, soTien, loaiTien, maCb, tenCb, chiNhanh) {
+function openEditModal(id, tenKh, sdt, cccd, ngayDk, kyHan, soTien, loaiTien, maCb, tenCb, chiNhanh) {
     editRegId = id;
     const form = document.getElementById('editRegForm');
     form.elements['ten_kh'].value = tenKh;
     form.elements['sdt'].value = sdt;
     form.elements['cccd'].value = cccd;
     form.elements['ngay_dk_huy_dong'].value = ngayDk;
+    form.elements['ky_han'].value = kyHan;
     form.elements['so_tien'].value = formatMoneyValue(soTien);
     form.elements['loai_tien'].value = loaiTien;
     form.elements['ma_can_bo'].value = maCb;
