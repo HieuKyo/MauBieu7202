@@ -1,0 +1,20 @@
+{% load static %}
+<style>
+    .qr-nav.nav-pills .nav-link.active,
+    .qr-nav.nav-pills .show > .nav-link {
+        background-color: var(--agri-red);
+        color: #fff;
+    }
+</style>
+<ul class="nav nav-pills qr-nav mb-4 gap-2">
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="{% url 'qr_dashboard' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'dang_ky' %}active{% endif %}" href="{% url 'qr_registration_list' %}">
+            <i class="bi bi-qr-code"></i> Đăng ký QR
+        </a>
+    </li>
+</ul>

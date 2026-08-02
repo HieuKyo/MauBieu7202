@@ -2269,6 +2269,41 @@ class Transaction(models.Model):
         return f"{self.stt}. {self.transaction_date.strftime('%d/%m/%Y')} - {self.transaction_type}"
 
 
+class CanDoiUpload(models.Model):
+    """Kết quả đọc file Cân đối tài khoản - số liệu cốt yếu doanh thu phí dịch vụ"""
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày upload")
+    file_name = models.CharField(max_length=255, verbose_name="Tên file")
+    uploaded_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='can_doi_uploads',
+        verbose_name="Người upload"
+    )
+
+    tt_trong_nuoc = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.1 Thanh toán trong nước")
+    tt_quoc_te = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.2 Thanh toán quốc tế")
+    kieu_hoi = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.3 Dịch vụ kiều hối")
+    dich_vu_the = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.4 Dịch vụ thẻ")
+    e_banking = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.5 E-Banking")
+    uy_thac_dai_ly = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.6 Ủy thác và đại lý")
+    bao_lanh = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.7 Bảo lãnh")
+    ngan_quy = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.8 Ngân quỹ")
+    thu_khac = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.9 Thu khác")
+    kd_ngoai_hoi = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.10 Thu ròng từ KD ngoại hối")
+    dieu_tiet_noi_bo = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="III. Điều tiết nội bộ phí dịch vụ")
+    tong_doanh_thu = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="IV. Tổng DT Dịch vụ")
+
+    class Meta:
+        verbose_name = "Đọc Cân đối"
+        verbose_name_plural = "Đọc Cân đối"
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.file_name} - {self.uploaded_at.strftime('%d/%m/%Y %H:%M')}"
+
+
 # ============================================================================
 # ATM Management Models
 # ============================================================================
@@ -3185,6 +3220,7 @@ class HDVRegistration(models.Model):
         max_length=30, db_index=True,
         verbose_name="CCCD/GPĐKKD/GCNĐT/Mã số DN/MST",
     )
+    dia_chi     = models.CharField(max_length=300, blank=True, verbose_name="Địa chỉ")
     ngay_dk_huy_dong = models.DateField(verbose_name="Ngày dự kiến gửi tiền", db_index=True)
     ky_han      = models.CharField(
         max_length=10, blank=True, choices=KY_HAN_CHOICES, verbose_name="Kỳ hạn gửi tiết kiệm",
@@ -3241,6 +3277,34 @@ class HDVImportRecord(models.Model):
 
     def __str__(self):
         return f"{self.ten_kh} - {self.current_balance:,} {self.ccy}"
+
+
+# ---------------------------------------------------------------------------
+# Đăng ký bảng QR (Kế toán Ngân quỹ)
+# ---------------------------------------------------------------------------
+
+class QRRegistration(models.Model):
+    """Đăng ký bảng QR cho khách hàng/cửa hàng — Phòng Kế toán & Ngân quỹ."""
+
+    ten_kh          = models.CharField(max_length=200, verbose_name="Tên khách hàng")
+    so_tai_khoan    = models.CharField(max_length=30, db_index=True, verbose_name="Số tài khoản")
+    ten_cua_hang    = models.CharField(max_length=200, blank=True, verbose_name="Tên cửa hàng (nếu có)")
+    ten_can_bo      = models.CharField(max_length=200, blank=True, verbose_name="Tên cán bộ đăng ký")
+    phong_giao_dich = models.CharField(max_length=200, blank=True, verbose_name="Phòng giao dịch")
+    user_dk         = models.ForeignKey(
+        'auth.User', on_delete=models.CASCADE,
+        related_name='qr_registrations', verbose_name="Người đăng ký",
+    )
+    ngay_dang_ky    = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng ký", db_index=True)
+    updated_at      = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
+
+    class Meta:
+        verbose_name = "Đăng ký bảng QR"
+        verbose_name_plural = "Đăng ký bảng QR"
+        ordering = ['-ngay_dang_ky']
+
+    def __str__(self):
+        return f"{self.ten_kh} - {self.so_tai_khoan}"
 
 
 # ---------------------------------------------------------------------------

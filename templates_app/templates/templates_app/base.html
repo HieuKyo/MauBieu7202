@@ -103,9 +103,14 @@
                                 <li><a class="dropdown-item" href="{% url 'hdv_registration_list' %}"><i class="bi bi-person-plus me-2"></i>Đăng ký chỉ tiêu HĐV</a></li>
                                 <li><a class="dropdown-item" href="{% url 'hdv_reports' %}"><i class="bi bi-bar-chart-line me-2"></i>Báo cáo HĐV</a></li>
                                 <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'qr_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard QR</a></li>
+                                <li><a class="dropdown-item" href="{% url 'qr_registration_list' %}"><i class="bi bi-qr-code me-2"></i>Đăng ký bảng QR</a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'cash_statement' %}"><i class="bi bi-printer me-2"></i>Bảng kê tiền mặt</a></li>
                                 <li><a class="dropdown-item" href="{% url 'cash_drawer_history' %}"><i class="bi bi-clock-history me-2"></i>Lịch sử giao dịch quỹ</a></li>
                                 <li><a class="dropdown-item" href="{% url 'cash_print_config' %}"><i class="bi bi-gear me-2"></i>Cấu hình in bảng kê</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'can_doi_upload' %}"><i class="bi bi-file-earmark-bar-graph me-2"></i>Đọc Cân đối</a></li>
                             </ul>
                         </li>
                         {% if user.is_superuser %}
@@ -151,6 +156,9 @@
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'savings_calculator:calculator' %}">
                                     <i class="bi bi-piggy-bank"></i> Tính lãi Tiết kiệm
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'savings_calculator:bond_calculator' %}">
+                                    <i class="bi bi-graph-up"></i> Tính lãi Trái phiếu
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'kpi_dashboard' %}">
                                     <i class="bi bi-graph-up-arrow"></i> Dashboard Tính KPI
@@ -358,6 +366,48 @@
             to   { opacity:1; transform:scale(1)  translateY(0); }
         }
     </style>
+
+    <!-- Modal popup nhắc nhở công việc/báo cáo chưa hoàn thành -->
+    <div id="taskReminderOverlay"
+         style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+                backdrop-filter:blur(4px); z-index:2000;
+                align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.4);
+                    max-width:520px; width:92%; max-height:80vh;
+                    display:flex; flex-direction:column; overflow:hidden;
+                    animation:popIn .25s ease;">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#AE1C3F,#8a1230); color:#fff;
+                        padding:16px 20px; display:flex; align-items:center; gap:12px;">
+                <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);
+                            display:flex;align-items:center;justify-content:center;font-size:1.3rem; flex-shrink:0;">
+                    <i class="bi bi-alarm-fill"></i>
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:.78rem; opacity:.8;">Nhắc nhở</div>
+                    <div style="font-weight:700; font-size:1.05rem;">Công việc / báo cáo chưa hoàn thành</div>
+                </div>
+            </div>
+            <!-- Body -->
+            <div style="padding:16px 20px; overflow-y:auto; flex:1;">
+                <ul id="taskReminderList" style="list-style:none; padding:0; margin:0;"></ul>
+            </div>
+            <!-- Footer -->
+            <div style="padding:12px 20px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end; background:#f8f9fa;">
+                <a href="{% url 'tasks:list' %}"
+                   style="background:#AE1C3F; color:#fff; border:none;
+                          border-radius:6px; padding:8px 18px; cursor:pointer;
+                          font-size:.9rem; text-decoration:none; display:inline-block;">
+                    <i class="bi bi-list-task"></i> Xem công việc
+                </a>
+                <button id="taskReminderCloseBtn"
+                        style="background:#fff; color:#333; border:1px solid #ccc;
+                               border-radius:6px; padding:8px 18px; cursor:pointer; font-size:.9rem;">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
     {% endif %}
 
     <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
@@ -481,6 +531,59 @@
 
         poll();
         setInterval(poll, 8000);
+    })();
+    </script>
+
+    <script>
+    (function () {
+        const REMINDER_URL = "{% url 'tasks:reminder_api' %}";
+        const STORAGE_KEY = "taskReminderShown_{{ user.username }}_" +
+            new Date().toISOString().slice(0, 10);
+
+        // Đã hiển thị popup nhắc nhở hôm nay rồi thì không hỏi API nữa
+        if (localStorage.getItem(STORAGE_KEY)) return;
+
+        const overlay  = document.getElementById('taskReminderOverlay');
+        const listEl   = document.getElementById('taskReminderList');
+        const closeBtn = document.getElementById('taskReminderCloseBtn');
+
+        closeBtn.addEventListener('click', function () {
+            overlay.style.display = 'none';
+        });
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) overlay.style.display = 'none';
+        });
+
+        function escapeHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        fetch(REMINDER_URL)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                localStorage.setItem(STORAGE_KEY, '1');
+                const items = data.items || [];
+                if (items.length === 0) return;
+
+                listEl.innerHTML = items.map(function (t) {
+                    const statusColor = t.is_overdue ? '#dc3545' : '#fd7e14';
+                    const statusText  = t.is_overdue ? 'Quá hạn' : 'Sắp đến hạn';
+                    return (
+                        '<li style="padding:10px 0; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; gap:10px;">' +
+                            '<div>' +
+                                '<div style="font-weight:600;">' + escapeHtml(t.title) + '</div>' +
+                                '<div style="font-size:.82rem; color:#777;">Hạn chót: ' + t.due_date + '</div>' +
+                            '</div>' +
+                            '<span style="flex-shrink:0; background:' + statusColor + '; color:#fff; border-radius:20px; padding:2px 10px; font-size:.75rem; font-weight:700;">' + statusText + '</span>' +
+                        '</li>'
+                    );
+                }).join('');
+
+                overlay.style.display = 'flex';
+            })
+            .catch(function () {});
     })();
     </script>
     {% endif %}

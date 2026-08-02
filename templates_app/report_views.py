@@ -14,6 +14,7 @@ import io
 import json
 import re
 import traceback
+import unicodedata
 from openpyxl.utils.dataframe import dataframe_to_rows
 from copy import copy
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
@@ -1939,10 +1940,17 @@ def process_dong_mo_tai_khoan_report(request):
                     issue_col  = _find_col(df_the.columns, ['ISSUE_TYPE'])
                     hasfee_col = _find_col(df_the.columns, ['HASFEE_DES'])
 
-                    # Lọc thẻ HSSV: CSP_New + MIỄN PHÍ PHT
+                    def _norm_text(s):
+                        """Chuẩn hóa text để so sánh: gộp dấu Unicode (NFC), bỏ khoảng trắng thừa, hoa hết.
+                        File Excel xuất từ IPCAS có thể lưu tiếng Việt ở dạng NFD (dấu tách rời) khiến
+                        so sánh trực tiếp với chuỗi hardcode NFC luôn sai dù nhìn giống hệt nhau."""
+                        return unicodedata.normalize('NFC', str(s)).strip().upper()
+
+                    # Lọc thẻ HSSV: CSP_New + MIỄN PHÍ PHT (so sánh không phân biệt hoa/thường,
+                    # chuẩn hóa Unicode để tránh lệch do dấu tiếng Việt tách rời)
                     mask_hssv_the = (
-                        (df_the[issue_col].astype(str).str.strip() == 'CSP_New') &
-                        (df_the[hasfee_col].astype(str).str.strip().str.upper() == 'MIỄN PHÍ PHT')
+                        (df_the[issue_col].apply(_norm_text) == 'CSP_NEW') &
+                        (df_the[hasfee_col].apply(_norm_text) == 'MIỄN PHÍ PHT')
                     )
                     df_the_hssv = df_the[mask_hssv_the].copy()
 
@@ -1963,11 +1971,16 @@ def process_dong_mo_tai_khoan_report(request):
                     }
 
                     if join_col_the and join_col_mo:
-                        # Chuẩn hóa key join — chuyển về string, bỏ khoảng trắng, bỏ .0 cuối (nếu số)
+                        # Chuẩn hóa key join: bỏ khoảng trắng/ký tự lạ, bỏ .0 cuối (Excel đọc thành số thực),
+                        # bỏ số 0 ở đầu — vì 2 file có thể lưu số tài khoản khác định dạng
+                        # (VD: file này là số "123456", file kia là text "0123456").
                         def _norm_acct(s):
                             s = str(s).strip()
                             if s.endswith('.0'):
                                 s = s[:-2]
+                            digits = re.sub(r'\D', '', s)
+                            if digits:
+                                return digits.lstrip('0') or '0'
                             return s
 
                         df_the_hssv = df_the_hssv.copy()
@@ -2245,7 +2258,8 @@ def process_dong_mo_tai_khoan_report(request):
             try:
                 from .models import DongMoTaiKhoanHistory
                 import datetime
-                report_month = datetime.date.fromisoformat(report_month_str).replace(day=1)
+                # Input type="month" gửi định dạng "YYYY-MM" (không có ngày), fromisoformat không parse được
+                report_month = datetime.datetime.strptime(report_month_str, '%Y-%m').date().replace(day=1)
                 DongMoTaiKhoanHistory.objects.update_or_create(
                     report_month=report_month,
                     defaults={

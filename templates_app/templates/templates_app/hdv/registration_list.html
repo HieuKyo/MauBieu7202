@@ -46,6 +46,14 @@
                     </button>
                 </div>
             </form>
+            <div class="mt-2 d-flex gap-2">
+                <a href="{% url 'hdv_registration_template_download' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-download"></i> Tải file mẫu
+                </a>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#uploadRegModal">
+                    <i class="bi bi-upload"></i> Upload đăng ký HĐV
+                </button>
+            </div>
         </div>
     </div>
 
@@ -58,6 +66,7 @@
                             <th>Tên KH/Tên KHPN</th>
                             <th>SĐT</th>
                             <th>CCCD/GPĐKKD/GCNĐT/Mã số DN/MST</th>
+                            <th>Địa chỉ</th>
                             <th>Ngày dự kiến gửi tiền</th>
                             <th>Ngày gửi ĐK</th>
                             <th class="text-end">Số tiền</th>
@@ -73,6 +82,7 @@
                             <td>{{ reg.ten_kh }}</td>
                             <td>{{ reg.sdt }}</td>
                             <td>{{ reg.cccd }}</td>
+                            <td>{{ reg.dia_chi }}</td>
                             <td>{{ reg.ngay_dk_huy_dong|date:"d/m/Y" }}</td>
                             <td>{{ reg.ngay_gui_dk|date:"d/m/Y" }}</td>
                             <td class="text-end">{{ reg.so_tien|intcomma }} đ</td>
@@ -81,7 +91,7 @@
                             <td>{{ reg.user_dk.get_full_name|default:reg.user_dk.username }}</td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-outline-primary" title="Sửa"
-                                        onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.sdt|escapejs }}', '{{ reg.cccd|escapejs }}', '{{ reg.ngay_dk_huy_dong|date:'Y-m-d' }}', '{{ reg.ky_han|escapejs }}', {{ reg.so_tien|stringformat:'d' }}, '{{ reg.loai_tien|escapejs }}', '{{ reg.ma_can_bo|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.chi_nhanh|escapejs }}')">
+                                        onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.sdt|escapejs }}', '{{ reg.cccd|escapejs }}', '{{ reg.dia_chi|escapejs }}', '{{ reg.ngay_dk_huy_dong|date:'Y-m-d' }}', '{{ reg.ky_han|escapejs }}', {{ reg.so_tien|stringformat:'d' }}, '{{ reg.loai_tien|escapejs }}', '{{ reg.ma_can_bo|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.chi_nhanh|escapejs }}')">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
@@ -91,7 +101,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="10" class="text-center text-muted">Bạn chưa có đăng ký nào</td></tr>
+                        <tr><td colspan="11" class="text-center text-muted">Bạn chưa có đăng ký nào</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -133,6 +143,10 @@
                 <div class="mb-2">
                     <label class="form-label">CCCD/GPĐKKD/GCNĐT/Mã số DN/MST <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" name="cccd" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Địa chỉ</label>
+                    <input type="text" class="form-control" name="dia_chi">
                 </div>
                 <div class="row">
                     <div class="col-6 mb-2">
@@ -209,6 +223,10 @@
                     <label class="form-label">CCCD/GPĐKKD/GCNĐT/Mã số DN/MST <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" name="cccd" required>
                 </div>
+                <div class="mb-2">
+                    <label class="form-label">Địa chỉ</label>
+                    <input type="text" class="form-control" name="dia_chi">
+                </div>
                 <div class="row">
                     <div class="col-6 mb-2">
                         <label class="form-label">Ngày dự kiến gửi tiền <span class="text-danger">*</span></label>
@@ -257,6 +275,34 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                 <button type="submit" class="btn btn-primary">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Upload đăng ký HĐV hàng loạt -->
+<div class="modal fade" id="uploadRegModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" action="{% url 'hdv_registration_import' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">Upload đăng ký HĐV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    File phải có các cột: Họ tên, CCCD/GPĐKKD/GCNĐT/Mã số DN/MST, Địa chỉ, Số tiền, Kỳ hạn,
+                    Ngày dự kiến gửi tiền. Bấm <a href="{% url 'hdv_registration_template_download' %}">tải file mẫu</a> nếu chưa có.
+                    Mã/Tên cán bộ và Chi nhánh sẽ lấy theo hồ sơ của bạn.
+                </p>
+                <div class="mb-2">
+                    <label class="form-label">Chọn file (.xlsx) <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control" name="import_file" accept=".xlsx,.xls" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-danger">Upload</button>
             </div>
         </form>
     </div>
@@ -358,12 +404,13 @@ document.getElementById('addRegForm').addEventListener('submit', function (e) {
 
 let editRegId = null;
 
-function openEditModal(id, tenKh, sdt, cccd, ngayDk, kyHan, soTien, loaiTien, maCb, tenCb, chiNhanh) {
+function openEditModal(id, tenKh, sdt, cccd, diaChi, ngayDk, kyHan, soTien, loaiTien, maCb, tenCb, chiNhanh) {
     editRegId = id;
     const form = document.getElementById('editRegForm');
     form.elements['ten_kh'].value = tenKh;
     form.elements['sdt'].value = sdt;
     form.elements['cccd'].value = cccd;
+    form.elements['dia_chi'].value = diaChi;
     form.elements['ngay_dk_huy_dong'].value = ngayDk;
     form.elements['ky_han'].value = kyHan;
     form.elements['so_tien'].value = formatMoneyValue(soTien);

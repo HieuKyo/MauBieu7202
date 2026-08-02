@@ -7,7 +7,9 @@ from . import report_views
 from . import kpi_views
 from . import td_views
 from . import hdv_reg_views
+from . import qr_reg_views
 from . import cash_drawer_views
+from . import can_doi_views
 
 urlpatterns = [
     # Authentication
@@ -181,6 +183,17 @@ urlpatterns = [
     path('hdv/dang-ky/<int:pk>/update/', hdv_reg_views.hdv_registration_update_view, name='hdv_registration_update'),
     path('hdv/dang-ky/<int:pk>/delete/', hdv_reg_views.hdv_registration_delete_view, name='hdv_registration_delete'),
     path('hdv/api/can-bo/', hdv_reg_views.hdv_employee_lookup_view, name='hdv_employee_lookup'),
+    path('hdv/dang-ky/mau-tai-ve/', hdv_reg_views.hdv_registration_template_download_view, name='hdv_registration_template_download'),
+    path('hdv/dang-ky/upload/', hdv_reg_views.hdv_registration_import_view, name='hdv_registration_import'),
+
+    # Đăng ký bảng QR
+    path('qr/dashboard/', qr_reg_views.qr_dashboard_view, name='qr_dashboard'),
+    path('qr/dang-ky/', qr_reg_views.qr_registration_list_view, name='qr_registration_list'),
+    path('qr/dang-ky/create/', qr_reg_views.qr_registration_create_view, name='qr_registration_create'),
+    path('qr/dang-ky/<int:pk>/update/', qr_reg_views.qr_registration_update_view, name='qr_registration_update'),
+    path('qr/dang-ky/<int:pk>/delete/', qr_reg_views.qr_registration_delete_view, name='qr_registration_delete'),
+    path('qr/dang-ky/mau-tai-ve/', qr_reg_views.qr_registration_template_download_view, name='qr_registration_template_download'),
+    path('qr/dang-ky/upload/', qr_reg_views.qr_registration_import_view, name='qr_registration_import'),
     path('hdv/import/', hdv_reg_views.hdv_import_upload_view, name='hdv_import_upload'),
 
     # Bảng kê tiền mặt (Kế toán Ngân quỹ)
@@ -207,6 +220,10 @@ urlpatterns = [
     path('cash/cau-hinh-in/chi/preview/', cash_drawer_views.cash_print_config_chi_preview_view, name='cash_print_config_chi_preview'),
     path('cash/cau-hinh-in/de-nghi/submit/', cash_drawer_views.cash_print_config_de_nghi_submit_view, name='cash_print_config_de_nghi_submit'),
     path('cash/cau-hinh-in/de-nghi/preview/', cash_drawer_views.cash_print_config_de_nghi_preview_view, name='cash_print_config_de_nghi_preview'),
+
+    # Đọc Cân đối (Kế toán Ngân quỹ)
+    path('can-doi/upload/', can_doi_views.can_doi_upload, name='can_doi_upload'),
+    path('can-doi/result/<int:upload_id>/', can_doi_views.can_doi_result, name='can_doi_result'),
 
     # Permission Management
     path('permissions/', views.permission_management_view, name='permission_management'),

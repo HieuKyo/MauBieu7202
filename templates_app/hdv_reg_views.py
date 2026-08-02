@@ -377,6 +377,7 @@ def _hdv_form_data(request):
         'ten_kh': request.POST.get('ten_kh', '').strip(),
         'sdt': request.POST.get('sdt', '').strip(),
         'cccd': request.POST.get('cccd', '').strip(),
+        'dia_chi': request.POST.get('dia_chi', '').strip(),
         'ngay_dk_huy_dong': ngay,
         'ky_han': request.POST.get('ky_han', '').strip(),
         'so_tien': so_tien,
@@ -448,6 +449,146 @@ def hdv_registration_delete_view(request, pk):
     ten_kh = reg.ten_kh
     reg.delete()
     return JsonResponse({'success': True, 'message': f'Đã xóa đăng ký của {ten_kh}'})
+
+
+# ---------------------------------------------------------------------------
+# Upload file mẫu đăng ký HĐV hàng loạt
+# ---------------------------------------------------------------------------
+
+HDV_UPLOAD_HEADERS = [
+    'Họ tên', 'CCCD/GPĐKKD/GCNĐT/Mã số DN/MST', 'Địa chỉ',
+    'Số tiền', 'Kỳ hạn', 'Ngày dự kiến gửi tiền',
+]
+
+_KY_HAN_LABEL_TO_CODE = {label.strip().lower(): code for code, label in HDVRegistration.KY_HAN_CHOICES}
+_KY_HAN_CODE_SET = {code for code, _label in HDVRegistration.KY_HAN_CHOICES}
+
+
+def _parse_ky_han(raw):
+    """Nhận cả mã (VD '12T') lẫn nhãn tiếng Việt (VD '12 tháng') từ file upload."""
+    s = _hdv_clean_str(raw).strip()
+    if not s:
+        return ''
+    if s.upper() in _KY_HAN_CODE_SET:
+        return s.upper()
+    return _KY_HAN_LABEL_TO_CODE.get(s.lower(), '')
+
+
+def _parse_upload_date(raw):
+    """Nhận ngày dạng dd/mm/yyyy (chuẩn file mẫu) hoặc ô ngày Excel thực (đã bị
+    pandas ép thành chuỗi 'yyyy-mm-dd hh:mm:ss')."""
+    s = _hdv_clean_str(raw)
+    if not s:
+        return None
+    date_part = s.split(' ')[0]
+    for fmt in ('%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(date_part, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+@login_required
+def hdv_registration_template_download_view(request):
+    """Tải file mẫu (.xlsx) để đăng ký HĐV hàng loạt."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Mau dang ky HDV'
+
+    header_fill = PatternFill('solid', fgColor='8B1E2D')
+    bold_white = Font(bold=True, color='FFFFFF')
+    ws.append(HDV_UPLOAD_HEADERS)
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = bold_white
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    ws.append(['Nguyễn Văn A', '079123456789', '123 Đường ABC, Phường X, TP Cần Thơ',
+                '100000000', '12 tháng', '25/07/2026'])
+
+    col_widths = [24, 26, 36, 16, 14, 20]
+    for col, w in enumerate(col_widths, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    resp['Content-Disposition'] = 'attachment; filename="Mau_Dang_Ky_HDV.xlsx"'
+    return resp
+
+
+@login_required
+@require_http_methods(["POST"])
+def hdv_registration_import_view(request):
+    """Upload file đăng ký HĐV hàng loạt — mỗi dòng tạo 1 bản ghi HDVRegistration
+    gán cho user đang đăng nhập (Mã/Tên cán bộ, Chi nhánh lấy theo hồ sơ user đó)."""
+    uploaded = request.FILES.get('import_file')
+    if not uploaded:
+        messages.error(request, "Vui lòng chọn file để upload.")
+        return redirect('hdv_registration_list')
+
+    try:
+        df = pd.read_excel(uploaded, sheet_name=0, dtype=str)
+    except Exception as e:
+        messages.error(request, f"Không đọc được file: {e}")
+        return redirect('hdv_registration_list')
+
+    required = ['Họ tên', 'CCCD/GPĐKKD/GCNĐT/Mã số DN/MST', 'Số tiền', 'Ngày dự kiến gửi tiền']
+    missing = [c for c in required if _find_col(df.columns, [c]) is None]
+    if missing:
+        messages.error(request, f"File thiếu cột: {', '.join(missing)}")
+        return redirect('hdv_registration_list')
+
+    col_ten_kh = _find_col(df.columns, ['Họ tên'])
+    col_cccd = _find_col(df.columns, ['CCCD/GPĐKKD/GCNĐT/Mã số DN/MST'])
+    col_dia_chi = _find_col(df.columns, ['Địa chỉ'])
+    col_so_tien = _find_col(df.columns, ['Số tiền'])
+    col_ky_han = _find_col(df.columns, ['Kỳ hạn'])
+    col_ngay = _find_col(df.columns, ['Ngày dự kiến gửi tiền'])
+
+    ma_cb_default, ten_cb_default, chi_nhanh_default = _profile_defaults(request.user)
+
+    created, skipped = 0, 0
+    to_create = []
+    for _, row in df.iterrows():
+        ten_kh = _hdv_clean_str(row[col_ten_kh])
+        cccd = _hdv_clean_str(row[col_cccd])
+        ngay = _parse_upload_date(row[col_ngay])
+        so_tien = int(_hdv_to_float(row[col_so_tien]))
+
+        if not ten_kh or not cccd or not ngay or so_tien <= 0:
+            skipped += 1
+            continue
+
+        to_create.append(HDVRegistration(
+            user_dk=request.user,
+            ten_kh=ten_kh,
+            cccd=cccd,
+            dia_chi=_hdv_clean_str(row[col_dia_chi]) if col_dia_chi else '',
+            ngay_dk_huy_dong=ngay,
+            ky_han=_parse_ky_han(row[col_ky_han]) if col_ky_han else '',
+            so_tien=so_tien,
+            ma_can_bo=ma_cb_default,
+            ten_can_bo=ten_cb_default,
+            chi_nhanh=chi_nhanh_default,
+        ))
+        created += 1
+
+    with transaction.atomic():
+        HDVRegistration.objects.bulk_create(to_create)
+
+    messages.success(
+        request,
+        f"Đã upload xong: {created} đăng ký mới, {skipped} dòng bỏ qua "
+        f"(thiếu Họ tên/CCCD/Ngày dự kiến gửi tiền hoặc Số tiền không hợp lệ)."
+    )
+    return redirect('hdv_registration_list')
 
 
 # ---------------------------------------------------------------------------
