@@ -5066,7 +5066,7 @@ def course_print_not_enrolled(request, course_id):
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import ParagraphStyle
 
-    from .models import Course, UserProfile
+    from .models import BranchConfig, Course, UserProfile
     from .cash_drawer_views import FONT_REGULAR, FONT_BOLD
 
     if not check_elearning_manage_permission(request.user):
@@ -5079,6 +5079,11 @@ def course_print_not_enrolled(request, course_id):
     not_enrolled = UserProfile.objects.filter(
         user_id__in=not_completed_user_ids
     ).select_related('user').order_by('department', 'full_name')
+
+    branch_names = dict(BranchConfig.objects.values_list('branch_code', 'ten_chi_nhanh'))
+
+    def _chi_nhanh(profile):
+        return branch_names.get(profile.branch, profile.branch)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -5093,6 +5098,10 @@ def course_print_not_enrolled(request, course_id):
         Paragraph('DANH SÁCH NHÂN VIÊN CHƯA HỌC', title_style),
         Spacer(1, 4 * mm),
         Paragraph(f"Khóa học: {course.name}", info_style),
+    ]
+    if course.description.strip():
+        elements.append(Paragraph(f"Mã khóa học: {course.description.strip()}", info_style))
+    elements += [
         Paragraph(
             f"Thời gian: {course.start_date.strftime('%d/%m/%Y')} — {course.end_date.strftime('%d/%m/%Y')}",
             info_style,
@@ -5101,14 +5110,16 @@ def course_print_not_enrolled(request, course_id):
         Spacer(1, 5 * mm),
     ]
 
-    data = [['#', 'Mã NV', 'Họ và tên', 'Phòng ban', 'Chức vụ']]
+    cell_style = ParagraphStyle('Cell', fontName=FONT_REGULAR, fontSize=9, leading=11)
+
+    data = [['#', 'Mã NV', 'Họ và tên', 'Chi nhánh', 'Chức vụ']]
     for i, profile in enumerate(not_enrolled, start=1):
         data.append([
             str(i), profile.employee_code, profile.full_name,
-            profile.get_department_display(), profile.get_position_display(),
+            Paragraph(_chi_nhanh(profile), cell_style), profile.get_position_display(),
         ])
 
-    table = Table(data, colWidths=[10 * mm, 25 * mm, 55 * mm, 45 * mm, 40 * mm], repeatRows=1)
+    table = Table(data, colWidths=[10 * mm, 25 * mm, 45 * mm, 60 * mm, 35 * mm], repeatRows=1)
     table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
         ('FONTNAME', (0, 1), (-1, -1), FONT_REGULAR),
@@ -5127,6 +5138,7 @@ def course_print_not_enrolled(request, course_id):
     safe_name = ''.join(c if c.isalnum() else '_' for c in unidecode(course.name)).strip('_')
     resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
     resp['Content-Disposition'] = f'inline; filename="ChuaHoc_{safe_name}.pdf"'
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     return resp
 
 
