@@ -1,0 +1,96 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Add chỉ tiêu HĐV{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-plus-square"></i> ADD CHỈ TIÊU HUY ĐỘNG VỐN</h2>
+            <p class="text-muted">Xác nhận đã nhập chỉ tiêu vào hệ thống lõi cho các đăng ký đã duyệt — cùng Phòng giao dịch, không nhất thiết là người đăng ký.</p>
+        </div>
+    </div>
+
+    {% include 'templates_app/hdv/_nav.html' with active='add_chi_tieu' %}
+
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-8">
+            <div class="btn-group" role="group">
+                <a href="?" class="btn btn-sm {% if trang_thai == 'cho_add' %}btn-danger{% else %}btn-outline-secondary{% endif %}">Chờ add</a>
+                <a href="?trang_thai=da_add" class="btn btn-sm {% if trang_thai == 'da_add' %}btn-danger{% else %}btn-outline-secondary{% endif %}">Đã add</a>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'hdv_add_chi_tieu_print' %}" class="btn btn-outline-danger btn-sm" target="_blank">
+                <i class="bi bi-printer"></i> In danh sách tôi đã add hôm nay
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Tên KH/Tên KHPN</th>
+                            <th>Ngày dự kiến gửi tiền</th>
+                            <th class="text-end">Số tiền</th>
+                            <th>Người đăng ký</th>
+                            <th>Add chỉ tiêu</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg in page_obj %}
+                        <tr>
+                            <td>{{ reg.ten_kh }}</td>
+                            <td>{{ reg.ngay_dk_huy_dong|date:"d/m/Y" }}</td>
+                            <td class="text-end">{{ reg.so_tien|intcomma }} đ</td>
+                            <td>{{ reg.user_dk.get_full_name|default:reg.user_dk.username }}</td>
+                            <td>
+                                {% if reg.ngay_add_chi_tieu %}
+                                <span class="badge text-bg-secondary" title="Add bởi {{ reg.nguoi_add_chi_tieu.get_full_name|default:reg.nguoi_add_chi_tieu.username }} lúc {{ reg.ngay_add_chi_tieu|date:'d/m/Y H:i' }}">
+                                    Đã add
+                                </span>
+                                {% else %}
+                                <span class="badge text-bg-light text-dark border">Chưa add</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not reg.ngay_add_chi_tieu %}
+                                <form method="post" action="{% url 'hdv_add_chi_tieu' reg.id %}" class="d-inline"
+                                      onsubmit="return confirm('Xác nhận đã add chỉ tiêu cho {{ reg.ten_kh|escapejs }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-plus-square"></i> Add chỉ tiêu</button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted">Không có đăng ký nào</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}&trang_thai={{ trang_thai }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

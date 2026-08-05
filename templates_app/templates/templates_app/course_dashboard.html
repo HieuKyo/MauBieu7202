@@ -83,6 +83,9 @@
                                     data-course-id="{{ course.id }}" data-course-name="{{ course.name }}">
                                 <i class="bi bi-trash"></i> Xóa
                             </button>
+                            <a href="{% url 'course_print_not_enrolled' course.id %}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                <i class="bi bi-printer"></i> In danh sách chưa học
+                            </a>
                         </div>
                         {% endif %}
                     </div>

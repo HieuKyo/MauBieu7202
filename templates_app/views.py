@@ -4653,11 +4653,14 @@ def employee_delete_manual(request, employee_id):
 def check_elearning_manage_permission(user):
     """
     Kiểm tra quyền quản lý e-learning (tạo/sửa/xóa khóa học)
-    Chỉ Superuser và nhóm "Phòng Tổng hợp" có quyền
+    Chỉ Superuser và cán bộ có hồ sơ Phòng ban = Phòng Tổng hợp có quyền
     """
     if user.is_superuser:
         return True
-    return user.groups.filter(name='Phòng Tổng hợp').exists()
+    try:
+        return user.profile.department == 'TONG_HOP'
+    except Exception:
+        return False
 
 
 def check_elearning_search_permission(user):
@@ -5046,6 +5049,88 @@ def course_toggle_completion(request, enrollment_id):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+@login_required
+def course_print_not_enrolled(request, course_id):
+    """
+    Xuất file PDF danh sách nhân viên chưa học xong 1 khóa học — gồm cả người
+    chưa được ghi danh lẫn người đã ghi danh nhưng chưa đánh dấu hoàn thành.
+    Chỉ Superuser và Phòng Tổng hợp có quyền
+    """
+    import io
+    from unidecode import unidecode
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+
+    from .models import Course, UserProfile
+    from .cash_drawer_views import FONT_REGULAR, FONT_BOLD
+
+    if not check_elearning_manage_permission(request.user):
+        messages.error(request, 'Bạn không có quyền in danh sách này')
+        return redirect('course_dashboard')
+
+    course = get_object_or_404(Course, id=course_id)
+
+    completed_user_ids = course.enrollments.filter(is_completed=True).values_list('user_id', flat=True)
+    enrolled_user_ids = set(course.enrollments.values_list('user_id', flat=True))
+    not_enrolled = UserProfile.objects.exclude(
+        user_id__in=completed_user_ids
+    ).select_related('user').order_by('department', 'full_name')
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        topMargin=15 * mm, bottomMargin=15 * mm, leftMargin=15 * mm, rightMargin=15 * mm,
+    )
+
+    title_style = ParagraphStyle('Title', fontName=FONT_BOLD, fontSize=14, leading=18)
+    info_style = ParagraphStyle('Info', fontName=FONT_REGULAR, fontSize=10, leading=14)
+
+    elements = [
+        Paragraph('DANH SÁCH NHÂN VIÊN CHƯA HỌC', title_style),
+        Spacer(1, 4 * mm),
+        Paragraph(f"Khóa học: {course.name}", info_style),
+        Paragraph(
+            f"Thời gian: {course.start_date.strftime('%d/%m/%Y')} — {course.end_date.strftime('%d/%m/%Y')}",
+            info_style,
+        ),
+        Paragraph(f"Tổng số nhân viên chưa học: {not_enrolled.count()}", info_style),
+        Spacer(1, 5 * mm),
+    ]
+
+    data = [['#', 'Mã NV', 'Họ và tên', 'Phòng ban', 'Chức vụ', 'Trạng thái']]
+    for i, profile in enumerate(not_enrolled, start=1):
+        da_ghi_danh = profile.user_id in enrolled_user_ids
+        data.append([
+            str(i), profile.employee_code, profile.full_name,
+            profile.get_department_display(), profile.get_position_display(),
+            'Chưa hoàn thành' if da_ghi_danh else 'Chưa ghi danh',
+        ])
+
+    table = Table(data, colWidths=[10 * mm, 25 * mm, 45 * mm, 40 * mm, 35 * mm, 30 * mm], repeatRows=1)
+    table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
+        ('FONTNAME', (0, 1), (-1, -1), FONT_REGULAR),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8B1E2D')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')]),
+    ]))
+    elements.append(table)
+
+    doc.build(elements)
+    buf.seek(0)
+
+    safe_name = ''.join(c if c.isalnum() else '_' for c in unidecode(course.name)).strip('_')
+    resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="ChuaHoc_{safe_name}.pdf"'
+    return resp
 
 
 @login_required

@@ -73,6 +73,8 @@
                             <th>Mã CB</th>
                             <th>Chi nhánh</th>
                             <th>User ĐK</th>
+                            <th>Duyệt</th>
+                            <th>Add chỉ tiêu</th>
                             <th>Thao tác</th>
                         </tr>
                     </thead>
@@ -90,6 +92,23 @@
                             <td><span class="badge text-bg-secondary">{{ reg.chi_nhanh|default:"—" }}</span></td>
                             <td>{{ reg.user_dk.get_full_name|default:reg.user_dk.username }}</td>
                             <td>
+                                {% if reg.ngay_duyet %}
+                                <span class="badge text-bg-success" title="{{ reg.nguoi_duyet.get_full_name|default:reg.nguoi_duyet.username }} — {{ reg.ngay_duyet|date:'d/m/Y H:i' }}">Đã duyệt</span>
+                                {% else %}
+                                <span class="badge text-bg-warning">Chờ duyệt</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if reg.ngay_add_chi_tieu %}
+                                <span class="badge text-bg-secondary" title="{{ reg.nguoi_add_chi_tieu.get_full_name|default:reg.nguoi_add_chi_tieu.username }} — {{ reg.ngay_add_chi_tieu|date:'d/m/Y H:i' }}">Đã add</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if reg.ngay_duyet %}
+                                <span class="text-muted small">Đã duyệt — khóa sửa/xóa</span>
+                                {% else %}
                                 <button type="button" class="btn btn-sm btn-outline-primary" title="Sửa"
                                         onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.sdt|escapejs }}', '{{ reg.cccd|escapejs }}', '{{ reg.dia_chi|escapejs }}', '{{ reg.ngay_dk_huy_dong|date:'Y-m-d' }}', '{{ reg.ky_han|escapejs }}', {{ reg.so_tien|stringformat:'d' }}, '{{ reg.loai_tien|escapejs }}', '{{ reg.ma_can_bo|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.chi_nhanh|escapejs }}')">
                                     <i class="bi bi-pencil"></i>
@@ -98,10 +117,11 @@
                                         onclick="openDeleteModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}')">
                                     <i class="bi bi-trash"></i>
                                 </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="11" class="text-center text-muted">Bạn chưa có đăng ký nào</td></tr>
+                        <tr><td colspan="13" class="text-center text-muted">Bạn chưa có đăng ký nào</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

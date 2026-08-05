@@ -3237,6 +3237,21 @@ class HDVRegistration(models.Model):
     ngay_gui_dk = models.DateTimeField(auto_now_add=True, verbose_name="Ngày gửi đăng ký")
     updated_at  = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
 
+    # Phê duyệt (Kiểm soát viên cùng PGD với người đăng ký)
+    nguoi_duyet = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='hdv_da_duyet', verbose_name="Người phê duyệt",
+    )
+    ngay_duyet  = models.DateTimeField(null=True, blank=True, verbose_name="Ngày giờ phê duyệt")
+
+    # Xác nhận đã "Add chỉ tiêu huy động vốn" vào hệ thống lõi (có thể do 1 GDV
+    # khác thực hiện, không nhất thiết là người đăng ký) — chỉ 1 người/1 lần.
+    nguoi_add_chi_tieu = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='hdv_da_add_chi_tieu', verbose_name="Người add chỉ tiêu",
+    )
+    ngay_add_chi_tieu  = models.DateTimeField(null=True, blank=True, verbose_name="Ngày giờ add chỉ tiêu")
+
     class Meta:
         verbose_name = "Đăng ký chỉ tiêu huy động vốn"
         verbose_name_plural = "Đăng ký chỉ tiêu huy động vốn"

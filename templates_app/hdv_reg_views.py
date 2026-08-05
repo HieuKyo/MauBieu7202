@@ -19,6 +19,7 @@ from django.db import transaction
 from django.db.models import Max, Min, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import BranchConfig, HDVImportRecord, HDVRegistration, UserProfile
@@ -74,6 +75,42 @@ def _profile_defaults(user):
     if not profile:
         return '', '', ''
     return profile.employee_code or '', profile.full_name or '', profile.branch or ''
+
+
+def _profile_branch(user):
+    """Mã PGD (UserProfile.branch) của user, hoặc '' nếu chưa có hồ sơ."""
+    profile = getattr(user, 'profile', None)
+    return (profile.branch or '') if profile else ''
+
+
+def _is_kiem_soat_vien(user):
+    profile = getattr(user, 'profile', None)
+    return bool(profile and profile.job_function == 'KIEM_SOAT_VIEN')
+
+
+def _can_approve(user, reg):
+    """KSV chỉ được duyệt đăng ký của GDV cùng PGD (theo UserProfile.branch)."""
+    if not _is_kiem_soat_vien(user):
+        return False
+    branch = _profile_branch(user)
+    return bool(branch) and branch == _profile_branch(reg.user_dk)
+
+
+def _same_pgd_registrations_qs(user):
+    """Tất cả đăng ký của các GDV cùng PGD với user (theo UserProfile.branch)."""
+    branch = _profile_branch(user)
+    if not branch:
+        return HDVRegistration.objects.none()
+    user_ids = UserProfile.objects.filter(branch=branch).values_list('user_id', flat=True)
+    return HDVRegistration.objects.filter(user_dk_id__in=user_ids)
+
+
+def _pgd_status_counts(user):
+    """(số chờ duyệt, số đã duyệt nhưng chưa add) cùng PGD với user — cho Dashboard."""
+    qs = _same_pgd_registrations_qs(user)
+    cho_duyet = qs.filter(ngay_duyet__isnull=True).count()
+    cho_add = qs.filter(ngay_duyet__isnull=False, ngay_add_chi_tieu__isnull=True).count()
+    return cho_duyet, cho_add
 
 
 def _parse_ipcas_date(val):
@@ -207,6 +244,8 @@ def hdv_dashboard_view(request):
     chart_labels = [d.strftime('%d/%m') for d in sorted_days]
     chart_values = [round(data['theo_ngay'][d] / 1e9, 3) for d in sorted_days]
 
+    cho_duyet, cho_add = _pgd_status_counts(request.user)
+
     context = {
         'tu_ngay': tu_ngay.isoformat(),
         'den_ngay': den_ngay.isoformat(),
@@ -216,6 +255,10 @@ def hdv_dashboard_view(request):
         'chart_labels_json': json.dumps(chart_labels),
         'chart_values_json': json.dumps(chart_values),
         'by_employee': data['theo_nhan_vien'],
+        'cho_duyet_pgd': cho_duyet,
+        'cho_add_pgd': cho_add,
+        'hdv_cho_duyet_count': cho_duyet,
+        'hdv_cho_add_count': cho_add,
     }
     return render(request, 'templates_app/hdv/dashboard.html', context)
 
@@ -246,6 +289,8 @@ def hdv_reports_view(request):
         'chart_tong_ty_json': json.dumps(chart_tong_ty),
         'top_nhan_vien': data['theo_nhan_vien'][:10],
         'top_chi_nhanh': data['theo_chi_nhanh'][:10],
+        'hdv_cho_duyet_count': _pgd_status_counts(request.user)[0],
+        'hdv_cho_add_count': _pgd_status_counts(request.user)[1],
     }
     return render(request, 'templates_app/hdv/reports.html', context)
 
@@ -272,6 +317,8 @@ def hdv_reports_export_view(request):
         'Nguồn', 'Tên KH/Tên KHPN', 'CCCD/GPĐKKD/GCNĐT/Mã số DN/MST',
         'Ngày ĐK/mở sổ', 'Số tiền', 'Loại tiền', 'Mã cán bộ', 'Tên cán bộ',
         'Chi nhánh', 'Ghi chú',
+        'Trạng thái duyệt', 'Người duyệt', 'Ngày giờ duyệt',
+        'Người add chỉ tiêu', 'Ngày giờ add chỉ tiêu',
     ]
     ws.append(headers)
     for cell in ws[1]:
@@ -285,6 +332,11 @@ def hdv_reports_export_view(request):
             r.ngay_dk_huy_dong.strftime('%d/%m/%Y'), r.so_tien, r.loai_tien,
             r.ma_can_bo, r.ten_can_bo, r.chi_nhanh,
             f"Người ĐK: {r.user_dk.get_full_name() or r.user_dk.username}",
+            'Đã duyệt' if r.ngay_duyet else 'Chờ duyệt',
+            (r.nguoi_duyet.get_full_name() or r.nguoi_duyet.username) if r.nguoi_duyet else '',
+            timezone.localtime(r.ngay_duyet).strftime('%d/%m/%Y %H:%M') if r.ngay_duyet else '',
+            (r.nguoi_add_chi_tieu.get_full_name() or r.nguoi_add_chi_tieu.username) if r.nguoi_add_chi_tieu else '',
+            timezone.localtime(r.ngay_add_chi_tieu).strftime('%d/%m/%Y %H:%M') if r.ngay_add_chi_tieu else '',
         ])
     for r in imp_qs:
         ws.append([
@@ -293,9 +345,10 @@ def hdv_reports_export_view(request):
             r.current_balance, r.ccy,
             r.employee_number, r.employee_name, r.ma_cn,
             f"Số TK: {r.so_tai_khoan} ({r.account_status})",
+            '', '', '', '', '',
         ])
 
-    col_widths = [16, 24, 22, 14, 16, 8, 12, 20, 10, 26]
+    col_widths = [16, 24, 22, 14, 16, 8, 12, 20, 10, 26, 14, 20, 16, 20, 16]
     for col, w in enumerate(col_widths, 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
 
@@ -359,6 +412,8 @@ def hdv_registration_list_view(request):
         'ma_cb_default': ma_cb_default,
         'ten_cb_default': ten_cb_default,
         'chi_nhanh_default': chi_nhanh_default,
+        'hdv_cho_duyet_count': _pgd_status_counts(request.user)[0],
+        'hdv_cho_add_count': _pgd_status_counts(request.user)[1],
     }
     return render(request, 'templates_app/hdv/registration_list.html', context)
 
@@ -412,6 +467,8 @@ def hdv_registration_update_view(request, pk):
     reg = get_object_or_404(HDVRegistration, pk=pk)
     if reg.user_dk_id != request.user.id and not request.user.is_superuser:
         return JsonResponse({'success': False, 'error': 'Bạn không có quyền sửa bản ghi này'}, status=403)
+    if reg.ngay_duyet and not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Đăng ký đã được phê duyệt, không thể sửa'}, status=400)
 
     data = _hdv_form_data(request)
     if not data['ten_kh'] or not data['cccd']:
@@ -446,9 +503,143 @@ def hdv_registration_delete_view(request, pk):
     reg = get_object_or_404(HDVRegistration, pk=pk)
     if reg.user_dk_id != request.user.id and not request.user.is_superuser:
         return JsonResponse({'success': False, 'error': 'Bạn không có quyền xóa bản ghi này'}, status=403)
+    if reg.ngay_duyet and not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Đăng ký đã được phê duyệt, không thể xóa'}, status=400)
     ten_kh = reg.ten_kh
     reg.delete()
     return JsonResponse({'success': True, 'message': f'Đã xóa đăng ký của {ten_kh}'})
+
+
+# ---------------------------------------------------------------------------
+# Phê duyệt (Kiểm soát viên) — tách riêng khỏi Add chỉ tiêu, 2 nghiệp vụ khác nhau
+# ---------------------------------------------------------------------------
+
+@login_required
+def hdv_approval_list_view(request):
+    """Danh sách đăng ký cùng PGD để Kiểm soát viên phê duyệt."""
+    if not _profile_branch(request.user):
+        messages.error(request, "Tài khoản của bạn chưa gắn hồ sơ nhân viên (Phòng giao dịch), không thể xem danh sách này.")
+        return redirect('hdv_registration_list')
+
+    qs = _same_pgd_registrations_qs(request.user).select_related(
+        'user_dk', 'nguoi_duyet',
+    ).order_by('-ngay_gui_dk')
+
+    trang_thai = request.GET.get('trang_thai', '').strip()
+    if trang_thai == 'da_duyet':
+        qs = qs.filter(ngay_duyet__isnull=False)
+    else:
+        trang_thai = 'cho_duyet'
+        qs = qs.filter(ngay_duyet__isnull=True)
+
+    paginator = Paginator(qs, 30)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'page_obj': page_obj,
+        'trang_thai': trang_thai,
+        'is_ksv': _is_kiem_soat_vien(request.user),
+        'hdv_cho_duyet_count': _pgd_status_counts(request.user)[0],
+        'hdv_cho_add_count': _pgd_status_counts(request.user)[1],
+    }
+    return render(request, 'templates_app/hdv/approval_list.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def hdv_approve_view(request, pk):
+    reg = get_object_or_404(HDVRegistration, pk=pk)
+    if not _can_approve(request.user, reg):
+        messages.error(request, "Bạn không có quyền phê duyệt đăng ký này (phải là Kiểm soát viên cùng Phòng giao dịch).")
+        return redirect('hdv_approval_list')
+    if reg.ngay_duyet:
+        messages.info(request, "Đăng ký này đã được phê duyệt trước đó.")
+        return redirect('hdv_approval_list')
+
+    reg.nguoi_duyet = request.user
+    reg.ngay_duyet = timezone.now()
+    reg.save(update_fields=['nguoi_duyet', 'ngay_duyet'])
+    messages.success(request, f"Đã phê duyệt đăng ký của {reg.ten_kh}.")
+    return redirect('hdv_approval_list')
+
+
+# ---------------------------------------------------------------------------
+# Add chỉ tiêu huy động vốn vào hệ thống lõi — sau khi đã phê duyệt
+# ---------------------------------------------------------------------------
+
+@login_required
+def hdv_add_chi_tieu_list_view(request):
+    """Danh sách đăng ký đã duyệt cùng PGD để bất kỳ GDV nào xác nhận đã
+    'Add chỉ tiêu' vào hệ thống lõi (không nhất thiết là người đăng ký)."""
+    if not _profile_branch(request.user):
+        messages.error(request, "Tài khoản của bạn chưa gắn hồ sơ nhân viên (Phòng giao dịch), không thể xem danh sách này.")
+        return redirect('hdv_registration_list')
+
+    qs = _same_pgd_registrations_qs(request.user).filter(ngay_duyet__isnull=False).select_related(
+        'user_dk', 'nguoi_add_chi_tieu',
+    ).order_by('-ngay_duyet')
+
+    trang_thai = request.GET.get('trang_thai', '').strip()
+    if trang_thai == 'da_add':
+        qs = qs.filter(ngay_add_chi_tieu__isnull=False)
+    else:
+        trang_thai = 'cho_add'
+        qs = qs.filter(ngay_add_chi_tieu__isnull=True)
+
+    paginator = Paginator(qs, 30)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'page_obj': page_obj,
+        'trang_thai': trang_thai,
+        'hdv_cho_duyet_count': _pgd_status_counts(request.user)[0],
+        'hdv_cho_add_count': _pgd_status_counts(request.user)[1],
+    }
+    return render(request, 'templates_app/hdv/add_chi_tieu_list.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def hdv_add_chi_tieu_view(request, pk):
+    """Xác nhận đã Add chỉ tiêu vào hệ thống lõi — chỉ 1 người/1 lần, chỉ sau
+    khi đã được phê duyệt, chỉ GDV cùng PGD mới thấy/thao tác được (kiểm tra
+    qua _same_pgd_registrations_qs khi lấy bản ghi)."""
+    reg = get_object_or_404(_same_pgd_registrations_qs(request.user), pk=pk)
+    if not reg.ngay_duyet:
+        messages.error(request, "Đăng ký chưa được phê duyệt, chưa thể add chỉ tiêu.")
+        return redirect('hdv_add_chi_tieu_list')
+    if reg.ngay_add_chi_tieu:
+        messages.info(request, f"Đăng ký này đã được add chỉ tiêu bởi {reg.nguoi_add_chi_tieu}.")
+        return redirect('hdv_add_chi_tieu_list')
+
+    reg.nguoi_add_chi_tieu = request.user
+    reg.ngay_add_chi_tieu = timezone.now()
+    reg.save(update_fields=['nguoi_add_chi_tieu', 'ngay_add_chi_tieu'])
+    messages.success(request, f"Đã xác nhận add chỉ tiêu cho {reg.ten_kh}.")
+    return redirect('hdv_add_chi_tieu_list')
+
+
+@login_required
+def hdv_add_chi_tieu_print_view(request):
+    """Danh sách các đăng ký mà user hiện tại đã tick 'Add chỉ tiêu' trong 1
+    ngày (mặc định hôm nay) — để in cuối ngày."""
+    ngay_str = request.GET.get('ngay', '').strip()
+    try:
+        ngay = date.fromisoformat(ngay_str) if ngay_str else date.today()
+    except ValueError:
+        ngay = date.today()
+
+    qs = HDVRegistration.objects.filter(
+        nguoi_add_chi_tieu=request.user,
+        ngay_add_chi_tieu__date=ngay,
+    ).order_by('ngay_add_chi_tieu')
+
+    context = {
+        'ngay': ngay.isoformat(),
+        'registrations': qs,
+        'tong_tien': qs.aggregate(t=Sum('so_tien'))['t'] or 0,
+    }
+    return render(request, 'templates_app/hdv/add_chi_tieu_print.html', context)
 
 
 # ---------------------------------------------------------------------------

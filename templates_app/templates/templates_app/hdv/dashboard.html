@@ -77,6 +77,31 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <a href="{% url 'hdv_approval_list' %}" class="text-decoration-none">
+                <div class="card shadow-sm h-100 text-bg-warning">
+                    <div class="card-body">
+                        <div class="small"><i class="bi bi-hourglass-split"></i> Chờ duyệt (PGD của bạn)</div>
+                        <div class="fs-3 fw-bold">{{ cho_duyet_pgd }}</div>
+                        <div class="small">Bấm để xem &amp; duyệt</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a href="{% url 'hdv_add_chi_tieu_list' %}" class="text-decoration-none">
+                <div class="card shadow-sm h-100 text-bg-secondary">
+                    <div class="card-body">
+                        <div class="small"><i class="bi bi-plus-square"></i> Đã duyệt — chờ add chỉ tiêu (PGD của bạn)</div>
+                        <div class="fs-3 fw-bold">{{ cho_add_pgd }}</div>
+                        <div class="small">Bấm để xem &amp; add chỉ tiêu</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h6>HĐV huy động quy đổi theo khoảng ngày (tỷ đồng)</h6>

@@ -121,6 +121,7 @@ urlpatterns = [
     path('elearning/courses/<int:course_id>/add-students/', views.course_add_students, name='course_add_students'),
     path('elearning/courses/<int:course_id>/remove-student/<int:user_id>/', views.course_remove_student, name='course_remove_student'),
     path('elearning/enrollment/<int:enrollment_id>/toggle/', views.course_toggle_completion, name='course_toggle_completion'),
+    path('elearning/courses/<int:course_id>/chua-hoc/in/', views.course_print_not_enrolled, name='course_print_not_enrolled'),
     path('elearning/search/learner/', views.course_search_by_learner, name='course_search_by_learner'),
     path('elearning/search/department/', views.course_search_by_department, name='course_search_by_department'),
 
@@ -185,6 +186,11 @@ urlpatterns = [
     path('hdv/api/can-bo/', hdv_reg_views.hdv_employee_lookup_view, name='hdv_employee_lookup'),
     path('hdv/dang-ky/mau-tai-ve/', hdv_reg_views.hdv_registration_template_download_view, name='hdv_registration_template_download'),
     path('hdv/dang-ky/upload/', hdv_reg_views.hdv_registration_import_view, name='hdv_registration_import'),
+    path('hdv/duyet/', hdv_reg_views.hdv_approval_list_view, name='hdv_approval_list'),
+    path('hdv/duyet/<int:pk>/', hdv_reg_views.hdv_approve_view, name='hdv_approve'),
+    path('hdv/add-chi-tieu/', hdv_reg_views.hdv_add_chi_tieu_list_view, name='hdv_add_chi_tieu_list'),
+    path('hdv/add-chi-tieu/<int:pk>/', hdv_reg_views.hdv_add_chi_tieu_view, name='hdv_add_chi_tieu'),
+    path('hdv/add-chi-tieu/in/', hdv_reg_views.hdv_add_chi_tieu_print_view, name='hdv_add_chi_tieu_print'),
 
     # Đăng ký bảng QR
     path('qr/dashboard/', qr_reg_views.qr_dashboard_view, name='qr_dashboard'),
