@@ -5066,7 +5066,7 @@ def course_print_not_enrolled(request, course_id):
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import ParagraphStyle
 
-    from .models import BranchConfig, Course, UserProfile
+    from .models import Course, UserProfile
     from .cash_drawer_views import FONT_REGULAR, FONT_BOLD
 
     if not check_elearning_manage_permission(request.user):
@@ -5079,11 +5079,6 @@ def course_print_not_enrolled(request, course_id):
     not_enrolled = UserProfile.objects.filter(
         user_id__in=not_completed_user_ids
     ).select_related('user').order_by('department', 'full_name')
-
-    branch_names = dict(BranchConfig.objects.values_list('branch_code', 'ten_chi_nhanh'))
-
-    def _chi_nhanh(profile):
-        return branch_names.get(profile.branch, profile.branch)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -5110,16 +5105,13 @@ def course_print_not_enrolled(request, course_id):
         Spacer(1, 5 * mm),
     ]
 
-    cell_style = ParagraphStyle('Cell', fontName=FONT_REGULAR, fontSize=9, leading=11)
-
-    data = [['#', 'Mã NV', 'Họ và tên', 'Chi nhánh', 'Chức vụ']]
+    data = [['#', 'Mã NV', 'Họ và tên', 'Chức vụ']]
     for i, profile in enumerate(not_enrolled, start=1):
         data.append([
-            str(i), profile.employee_code, profile.full_name,
-            Paragraph(_chi_nhanh(profile), cell_style), profile.get_position_display(),
+            str(i), profile.employee_code, profile.full_name, profile.get_position_display(),
         ])
 
-    table = Table(data, colWidths=[10 * mm, 25 * mm, 45 * mm, 60 * mm, 35 * mm], repeatRows=1)
+    table = Table(data, colWidths=[10 * mm, 30 * mm, 90 * mm, 40 * mm], repeatRows=1)
     table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
         ('FONTNAME', (0, 1), (-1, -1), FONT_REGULAR),
