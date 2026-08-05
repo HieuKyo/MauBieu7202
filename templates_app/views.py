@@ -5054,8 +5054,8 @@ def course_toggle_completion(request, enrollment_id):
 @login_required
 def course_print_not_enrolled(request, course_id):
     """
-    Xuất file PDF danh sách nhân viên chưa học xong 1 khóa học — gồm cả người
-    chưa được ghi danh lẫn người đã ghi danh nhưng chưa đánh dấu hoàn thành.
+    Xuất file PDF danh sách nhân viên đã ghi danh nhưng chưa hoàn thành 1 khóa
+    học (không tính người chưa được ghi danh vào khóa).
     Chỉ Superuser và Phòng Tổng hợp có quyền
     """
     import io
@@ -5075,10 +5075,9 @@ def course_print_not_enrolled(request, course_id):
 
     course = get_object_or_404(Course, id=course_id)
 
-    completed_user_ids = course.enrollments.filter(is_completed=True).values_list('user_id', flat=True)
-    enrolled_user_ids = set(course.enrollments.values_list('user_id', flat=True))
-    not_enrolled = UserProfile.objects.exclude(
-        user_id__in=completed_user_ids
+    not_completed_user_ids = course.enrollments.filter(is_completed=False).values_list('user_id', flat=True)
+    not_enrolled = UserProfile.objects.filter(
+        user_id__in=not_completed_user_ids
     ).select_related('user').order_by('department', 'full_name')
 
     buf = io.BytesIO()
@@ -5098,20 +5097,18 @@ def course_print_not_enrolled(request, course_id):
             f"Thời gian: {course.start_date.strftime('%d/%m/%Y')} — {course.end_date.strftime('%d/%m/%Y')}",
             info_style,
         ),
-        Paragraph(f"Tổng số nhân viên chưa học: {not_enrolled.count()}", info_style),
+        Paragraph(f"Tổng số nhân viên chưa hoàn thành: {not_enrolled.count()}", info_style),
         Spacer(1, 5 * mm),
     ]
 
-    data = [['#', 'Mã NV', 'Họ và tên', 'Phòng ban', 'Chức vụ', 'Trạng thái']]
+    data = [['#', 'Mã NV', 'Họ và tên', 'Phòng ban', 'Chức vụ']]
     for i, profile in enumerate(not_enrolled, start=1):
-        da_ghi_danh = profile.user_id in enrolled_user_ids
         data.append([
             str(i), profile.employee_code, profile.full_name,
             profile.get_department_display(), profile.get_position_display(),
-            'Chưa hoàn thành' if da_ghi_danh else 'Chưa ghi danh',
         ])
 
-    table = Table(data, colWidths=[10 * mm, 25 * mm, 45 * mm, 40 * mm, 35 * mm, 30 * mm], repeatRows=1)
+    table = Table(data, colWidths=[10 * mm, 25 * mm, 55 * mm, 45 * mm, 40 * mm], repeatRows=1)
     table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
         ('FONTNAME', (0, 1), (-1, -1), FONT_REGULAR),
