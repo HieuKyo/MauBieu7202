@@ -67,6 +67,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'document_registry:dashboard' %}">
+                                <i class="bi bi-envelope-paper"></i> Văn bản
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'customer_list' %}">
                                 <i class="bi bi-people-fill"></i> Khách hàng
                             </a>
@@ -76,10 +81,37 @@
                                 <i class="bi bi-building"></i> Doanh nghiệp
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" onclick="showComingSoon('Kế toán Ngân quỹ')">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-graph-up-arrow"></i> Tín dụng
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'td_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{% url 'td_analysis' %}"><i class="bi bi-upload me-2"></i>Upload MSIT80</a></li>
+                                <li><a class="dropdown-item" href="{% url 'td_so_sanh' %}"><i class="bi bi-arrow-left-right me-2"></i>So sánh 2 kỳ</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'td_ftp_config' %}"><i class="bi bi-gear me-2"></i>Cấu hình FTP & NIM</a></li>
+                                <li><a class="dropdown-item" href="{% url 'td_faq' %}"><i class="bi bi-question-circle me-2"></i>Hướng dẫn</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-cash-stack"></i> Kế toán Ngân quỹ
                             </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'hdv_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard HĐV</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hdv_registration_list' %}"><i class="bi bi-person-plus me-2"></i>Đăng ký chỉ tiêu HĐV</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hdv_reports' %}"><i class="bi bi-bar-chart-line me-2"></i>Báo cáo HĐV</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'qr_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard QR</a></li>
+                                <li><a class="dropdown-item" href="{% url 'qr_registration_list' %}"><i class="bi bi-qr-code me-2"></i>Đăng ký bảng QR</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'cash_statement' %}"><i class="bi bi-printer me-2"></i>Bảng kê tiền mặt</a></li>
+                                <li><a class="dropdown-item" href="{% url 'cash_drawer_history' %}"><i class="bi bi-clock-history me-2"></i>Lịch sử giao dịch quỹ</a></li>
+                                <li><a class="dropdown-item" href="{% url 'cash_print_config' %}"><i class="bi bi-gear me-2"></i>Cấu hình in bảng kê</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'can_doi_upload' %}"><i class="bi bi-file-earmark-bar-graph me-2"></i>Đọc Cân đối</a></li>
+                            </ul>
                         </li>
                         {% if user.is_superuser %}
                         <li class="nav-item">
@@ -93,6 +125,11 @@
                                 <i class="bi bi-tools"></i> Tiện ích
                             </a>
                             <ul class="dropdown-menu">
+
+                                <!-- ── TIỆN ÍCH NGÂN HÀNG ── -->
+                                <li><h6 class="dropdown-header text-agribank">
+                                    <i class="bi bi-bank"></i> Tiện ích Ngân hàng
+                                </h6></li>
                                 <li><a class="dropdown-item" href="{% url 'variable_library' %}">
                                     <i class="bi bi-book"></i> Thư viện Biến
                                 </a></li>
@@ -105,9 +142,8 @@
                                 <li><a class="dropdown-item" href="{% url 'area_lookup' %}">
                                     <i class="bi bi-geo-alt"></i> Tra cứu địa bàn hành chính
                                 </a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'bank_statement_upload' %}">
-                                    <i class="bi bi-file-earmark-spreadsheet"></i> Phân tích Sao kê Ngân hàng
+                                    <i class="bi bi-file-earmark-spreadsheet"></i> Phân tích Sao kê
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'payroll_statistics:statistics' %}">
                                     <i class="bi bi-cash-coin"></i> Thống kê Lương/Thu Hộ
@@ -120,17 +156,29 @@
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'savings_calculator:calculator' %}">
                                     <i class="bi bi-piggy-bank"></i> Tính lãi Tiết kiệm
-                                    <small class="d-block text-muted ms-4">Tính lãi suất tiết kiệm Agribank</small>
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'savings_calculator:bond_calculator' %}">
+                                    <i class="bi bi-graph-up"></i> Tính lãi Trái phiếu
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'kpi_dashboard' %}">
                                     <i class="bi bi-graph-up-arrow"></i> Dashboard Tính KPI
-                                    <small class="d-block text-muted ms-4">Tự động hóa tính KPI Giao dịch viên</small>
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'webcam_dashboard' %}">
+                                    <i class="bi bi-camera-video"></i> WebCam - Chụp CCCD
+                                </a></li>
+
+                                <li><hr class="dropdown-divider"></li>
+
+                                <!-- ── TIỆN ÍCH KHÁC ── -->
+                                <li><h6 class="dropdown-header text-agribank">
+                                    <i class="bi bi-grid"></i> Tiện ích Khác
+                                </h6></li>
+                                <li><a class="dropdown-item" href="{% url 'quiz_exam_list' %}">
+                                    <i class="bi bi-journal-check"></i> Thi nghiệp vụ
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'tasks:list' %}">
                                     <i class="bi bi-check2-square"></i> Quản lý Công việc
-                                    <small class="d-block text-muted ms-4">Todo/Task Management</small>
                                 </a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'course_dashboard' %}">
                                     <i class="bi bi-mortarboard"></i> Quản lý Khóa học
                                 </a></li>
@@ -139,17 +187,20 @@
                                     <i class="bi bi-people-fill"></i> Quản lý Nhân viên
                                 </a></li>
                                 {% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'webcam_dashboard' %}">
-                                    <i class="bi bi-camera-video"></i> WebCam - Chụp CCCD
-                                    <small class="d-block text-muted ms-4">Chụp và in hồ sơ khách hàng</small>
+                                <li><a class="dropdown-item" href="{% url 'ocr_tool' %}">
+                                    <i class="bi bi-file-earmark-text"></i> Công cụ OCR
+                                    <small class="d-block text-muted ms-4">Trích xuất văn bản từ ảnh/PDF</small>
                                 </a></li>
+                                <li><a class="dropdown-item" href="{% url 'calculator' %}">
+                                    <i class="bi bi-calculator-fill"></i> Máy tính cầm tay
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'pdf_tools' %}">
+                                    <i class="bi bi-file-earmark-pdf"></i> Công cụ PDF
+                                    <small class="d-block text-muted ms-4">Tách và ghép file PDF</small>
+                                </a></li>
+
                                 {% if user.is_superuser %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'permission_management' %}">
-                                    <i class="bi bi-shield-check"></i> Quản lý Phân quyền
-                                    <small class="d-block text-muted ms-4">Cấp/thu hồi quyền Admin và Nhóm</small>
-                                </a></li>
                                 <li><a class="dropdown-item" href="{% url 'branch_config' %}">
                                     <i class="bi bi-gear"></i> Cấu hình hệ thống
                                 </a></li>
@@ -237,6 +288,128 @@
         </div>
     </footer>
 
+    {% if user.is_authenticated %}
+    <!-- Floating message button góc phải dưới -->
+    <a href="{% url 'messaging:inbox' %}" id="msgFloatBtn"
+       title="Hộp thư nội bộ"
+       style="position:fixed; bottom:24px; right:24px; z-index:1050;
+              width:52px; height:52px; border-radius:50%;
+              background:#007934; color:#fff; box-shadow:0 4px 14px rgba(0,0,0,.3);
+              display:flex; align-items:center; justify-content:center;
+              font-size:1.4rem; text-decoration:none;
+              transition:transform .15s, box-shadow .15s;">
+        <i class="bi bi-envelope-fill"></i>
+        <span id="msgNavBadge"
+              style="position:absolute; top:2px; right:2px;
+                     background:#dc3545; color:#fff; border-radius:50%;
+                     font-size:.65rem; font-weight:700; line-height:1;
+                     padding:3px 5px; display:none;">0</span>
+    </a>
+    <style>
+        #msgFloatBtn:hover { transform:scale(1.1); box-shadow:0 6px 18px rgba(0,0,0,.35); }
+    </style>
+
+    <!-- Modal popup hiển thị tin nhắn mới trực tiếp lên màn hình -->
+    <div id="msgPopupOverlay"
+         style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+                backdrop-filter:blur(4px); z-index:2000;
+                align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.4);
+                    max-width:520px; width:92%; max-height:80vh;
+                    display:flex; flex-direction:column; overflow:hidden;
+                    animation:popIn .25s ease;">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#007934,#005a26); color:#fff;
+                        padding:16px 20px; display:flex; align-items:center; gap:12px;">
+                <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);
+                            display:flex;align-items:center;justify-content:center;font-size:1.3rem; flex-shrink:0;">
+                    <i class="bi bi-envelope-fill"></i>
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:.78rem; opacity:.8;">Tin nhắn mới từ</div>
+                    <div id="popupFrom" style="font-weight:700; font-size:1.05rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                </div>
+                <div id="popupQueueBadge"
+                     style="background:#dc3545;color:#fff;border-radius:20px;padding:2px 10px;
+                            font-size:.78rem;font-weight:700;display:none;flex-shrink:0;">
+                </div>
+            </div>
+            <!-- Body -->
+            <div style="padding:20px 24px; overflow-y:auto; flex:1;">
+                <div id="popupSubject" style="font-weight:700; font-size:1.05rem; color:#007934; margin-bottom:12px;"></div>
+                <div id="popupContent" style="white-space:pre-wrap; line-height:1.8; color:#333; font-size:.97rem;"></div>
+            </div>
+            <!-- Footer -->
+            <div style="padding:12px 20px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end; background:#f8f9fa;">
+                <button id="popupNextBtn"
+                        style="display:none; background:#6c757d; color:#fff; border:none;
+                               border-radius:6px; padding:8px 18px; cursor:pointer; font-size:.9rem;">
+                    Tin tiếp theo
+                </button>
+                <a id="popupInboxBtn" href="{% url 'messaging:inbox' %}"
+                   style="background:#007934; color:#fff; border:none;
+                          border-radius:6px; padding:8px 18px; cursor:pointer;
+                          font-size:.9rem; text-decoration:none; display:inline-block;">
+                    <i class="bi bi-inbox"></i> Vào hộp thư
+                </a>
+                <button id="popupCloseBtn"
+                        style="background:#fff; color:#333; border:1px solid #ccc;
+                               border-radius:6px; padding:8px 18px; cursor:pointer; font-size:.9rem;">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes popIn {
+            from { opacity:0; transform:scale(.92) translateY(-20px); }
+            to   { opacity:1; transform:scale(1)  translateY(0); }
+        }
+    </style>
+
+    <!-- Modal popup nhắc nhở công việc/báo cáo chưa hoàn thành -->
+    <div id="taskReminderOverlay"
+         style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+                backdrop-filter:blur(4px); z-index:2000;
+                align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.4);
+                    max-width:520px; width:92%; max-height:80vh;
+                    display:flex; flex-direction:column; overflow:hidden;
+                    animation:popIn .25s ease;">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#AE1C3F,#8a1230); color:#fff;
+                        padding:16px 20px; display:flex; align-items:center; gap:12px;">
+                <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);
+                            display:flex;align-items:center;justify-content:center;font-size:1.3rem; flex-shrink:0;">
+                    <i class="bi bi-alarm-fill"></i>
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:.78rem; opacity:.8;">Nhắc nhở</div>
+                    <div style="font-weight:700; font-size:1.05rem;">Công việc / báo cáo chưa hoàn thành</div>
+                </div>
+            </div>
+            <!-- Body -->
+            <div style="padding:16px 20px; overflow-y:auto; flex:1;">
+                <ul id="taskReminderList" style="list-style:none; padding:0; margin:0;"></ul>
+            </div>
+            <!-- Footer -->
+            <div style="padding:12px 20px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end; background:#f8f9fa;">
+                <a href="{% url 'tasks:list' %}"
+                   style="background:#AE1C3F; color:#fff; border:none;
+                          border-radius:6px; padding:8px 18px; cursor:pointer;
+                          font-size:.9rem; text-decoration:none; display:inline-block;">
+                    <i class="bi bi-list-task"></i> Xem công việc
+                </a>
+                <button id="taskReminderCloseBtn"
+                        style="background:#fff; color:#333; border:1px solid #ccc;
+                               border-radius:6px; padding:8px 18px; cursor:pointer; font-size:.9rem;">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <script>
         function showComingSoon(moduleName) {
@@ -265,6 +438,155 @@
             });
         });
     </script>
+    {% if user.is_authenticated %}
+    <script>
+    (function () {
+        const CHECK_URL = "{% url 'messaging:api_check' %}";
+        let lastTs = Date.now();
+
+        // Hàng đợi tin nhắn chưa hiển thị
+        const msgQueue = [];
+        let popupOpen  = false;
+
+        const overlay    = document.getElementById('msgPopupOverlay');
+        const fromEl     = document.getElementById('popupFrom');
+        const subjectEl  = document.getElementById('popupSubject');
+        const contentEl  = document.getElementById('popupContent');
+        const queueBadge = document.getElementById('popupQueueBadge');
+        const nextBtn    = document.getElementById('popupNextBtn');
+        const closeBtn   = document.getElementById('popupCloseBtn');
+
+        function showNext() {
+            if (msgQueue.length === 0) {
+                overlay.style.display = 'none';
+                popupOpen = false;
+                return;
+            }
+            const m = msgQueue.shift();
+            fromEl.textContent    = m.sender;
+            subjectEl.textContent = m.subject || '(Không có tiêu đề)';
+            contentEl.textContent = m.content || m.preview || '';
+
+            // Hiện số tin còn trong queue
+            if (msgQueue.length > 0) {
+                queueBadge.textContent = '+' + msgQueue.length + ' tin nữa';
+                queueBadge.style.display = 'inline-block';
+                nextBtn.style.display = 'inline-block';
+            } else {
+                queueBadge.style.display = 'none';
+                nextBtn.style.display = 'none';
+            }
+
+            overlay.style.display = 'flex';
+            popupOpen = true;
+        }
+
+        function enqueue(msg) {
+            msgQueue.push(msg);
+            if (!popupOpen) showNext();
+            else {
+                // Cập nhật badge số tin đang chờ
+                if (msgQueue.length > 0) {
+                    queueBadge.textContent = '+' + msgQueue.length + ' tin nữa';
+                    queueBadge.style.display = 'inline-block';
+                    nextBtn.style.display = 'inline-block';
+                }
+            }
+        }
+
+        nextBtn.addEventListener('click', showNext);
+        closeBtn.addEventListener('click', function () {
+            msgQueue.length = 0;
+            overlay.style.display = 'none';
+            popupOpen = false;
+        });
+        // Bấm vào nền mờ để đóng
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeBtn.click();
+        });
+
+        function updateBadge(count) {
+            const b = document.getElementById('msgNavBadge');
+            if (!b) return;
+            if (count > 0) {
+                b.textContent = count > 99 ? '99+' : count;
+                b.style.display = 'inline-block';
+            } else {
+                b.style.display = 'none';
+            }
+        }
+
+        function poll() {
+            fetch(CHECK_URL + '?since=' + lastTs)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    updateBadge(data.unread_count || 0);
+                    if (data.new_messages && data.new_messages.length > 0) {
+                        lastTs = Date.now();
+                        data.new_messages.forEach(function(m) { enqueue(m); });
+                    }
+                })
+                .catch(function() {});
+        }
+
+        poll();
+        setInterval(poll, 8000);
+    })();
+    </script>
+
+    <script>
+    (function () {
+        const REMINDER_URL = "{% url 'tasks:reminder_api' %}";
+        const STORAGE_KEY = "taskReminderShown_{{ user.username }}_" +
+            new Date().toISOString().slice(0, 10);
+
+        // Đã hiển thị popup nhắc nhở hôm nay rồi thì không hỏi API nữa
+        if (localStorage.getItem(STORAGE_KEY)) return;
+
+        const overlay  = document.getElementById('taskReminderOverlay');
+        const listEl   = document.getElementById('taskReminderList');
+        const closeBtn = document.getElementById('taskReminderCloseBtn');
+
+        closeBtn.addEventListener('click', function () {
+            overlay.style.display = 'none';
+        });
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) overlay.style.display = 'none';
+        });
+
+        function escapeHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        fetch(REMINDER_URL)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                localStorage.setItem(STORAGE_KEY, '1');
+                const items = data.items || [];
+                if (items.length === 0) return;
+
+                listEl.innerHTML = items.map(function (t) {
+                    const statusColor = t.is_overdue ? '#dc3545' : '#fd7e14';
+                    const statusText  = t.is_overdue ? 'Quá hạn' : 'Sắp đến hạn';
+                    return (
+                        '<li style="padding:10px 0; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; gap:10px;">' +
+                            '<div>' +
+                                '<div style="font-weight:600;">' + escapeHtml(t.title) + '</div>' +
+                                '<div style="font-size:.82rem; color:#777;">Hạn chót: ' + t.due_date + '</div>' +
+                            '</div>' +
+                            '<span style="flex-shrink:0; background:' + statusColor + '; color:#fff; border-radius:20px; padding:2px 10px; font-size:.75rem; font-weight:700;">' + statusText + '</span>' +
+                        '</li>'
+                    );
+                }).join('');
+
+                overlay.style.display = 'flex';
+            })
+            .catch(function () {});
+    })();
+    </script>
+    {% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 </html>

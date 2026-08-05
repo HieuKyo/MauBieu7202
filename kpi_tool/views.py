@@ -3,15 +3,11 @@ Views cho module quy đổi bút toán
 """
 import os
 import tempfile
-from datetime import datetime
-from decimal import Decimal
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.db.models import Sum, Count
-from django.core.files.storage import default_storage
-from django.views.decorators.http import require_http_methods
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -160,7 +156,6 @@ def export_excel(request, batch_id):
     Xuất báo cáo Excel cho một file/lô đơn lẻ
     """
     batch = get_object_or_404(TellerTransactionBatch, id=batch_id)
-    transactions = batch.transactions.all().select_related('matched_rule')
 
     # Tạo workbook
     wb = Workbook()
@@ -169,19 +164,10 @@ def export_excel(request, batch_id):
 
     # Header style
     header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=12)
     header_alignment = Alignment(horizontal="center", vertical="center")
 
     # Info style
     info_font = Font(bold=True, size=11)
-
-    # Border style
-    thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
 
     # Tiêu đề báo cáo
     ws.merge_cells('A1:G1')

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import Group, User
 from django.core.validators import FileExtensionValidator
 import unicodedata
+import uuid
 from .storage import HybridTemplateStorage
 
 
@@ -477,7 +478,7 @@ class Customer(models.Model):
     def clean(self):
         """Validate customer data"""
         from django.core.exceptions import ValidationError
-        from datetime import datetime, date
+        from datetime import date
         from dateutil.relativedelta import relativedelta
 
         errors = {}
@@ -699,8 +700,8 @@ class Customer(models.Model):
         nghe_nghiep_cong_chuc = checkbox(self.nghe_nghiep == 'Công chức viên chức')
         nghe_nghiep_nong_dan = checkbox(self.nghe_nghiep == 'Nông dân')
         nghe_nghiep_giao_vien_bac_si = checkbox(self.nghe_nghiep == 'Giáo viên/Bác Sĩ')
-        nghe_nghiep_giao_vien = checkbox(self.nghe_nghiep == 'Giáo viên')  # FIX: Thêm riêng lẻ
-        nghe_nghiep_bac_si = checkbox(self.nghe_nghiep == 'Bác sĩ')  # FIX: Thêm riêng lẻ
+        _nghe_nghiep_giao_vien = checkbox(self.nghe_nghiep == 'Giáo viên')  # FIX: Thêm riêng lẻ
+        _nghe_nghiep_bac_si = checkbox(self.nghe_nghiep == 'Bác sĩ')  # FIX: Thêm riêng lẻ
         nghe_nghiep_cong_nhan = checkbox(self.nghe_nghiep == 'Công nhân')
         nghe_nghiep_kinh_doanh = checkbox(self.nghe_nghiep == 'Kinh doanh tự do')
         nghe_nghiep_hoc_sinh_sinh_vien = checkbox(self.nghe_nghiep == 'Học sinh/Sinh viên')
@@ -724,7 +725,7 @@ class Customer(models.Model):
         pl_trungbinh = checkbox(self.ket_qua_phan_loai_kh == 'Trung bình')
         pl_thap = checkbox(self.ket_qua_phan_loai_kh == 'Thấp')
 
-        from datetime import datetime, date
+        from datetime import datetime
 
         # Auto-generate ten_tieng_anh from ho_ten (remove diacritics and uppercase)
         ten_tieng_anh = remove_vietnamese_diacritics(self.ho_ten or '')
@@ -1202,8 +1203,6 @@ class Business(models.Model):
         Dùng để auto-fill form và render template
         """
         from datetime import datetime
-        import re
-        import unicodedata
 
         EMPTY_VALUE = '...........................'
 
@@ -1661,7 +1660,7 @@ class BranchConfig(models.Model):
 
                 if branch_config:
                     return branch_config
-        except Exception as e:
+        except Exception:
             # Log error nếu cần
             pass
 
@@ -1861,6 +1860,25 @@ class BeautifulNumber(models.Model):
 # Employee Management Models
 # ====================
 
+class AppProgram(models.Model):
+    """
+    Danh sách chương trình/phần mềm có thể cấp quyền cho nhân viên
+    """
+    name = models.CharField(max_length=200, verbose_name="Tên chương trình")
+    url = models.CharField(max_length=500, blank=True, verbose_name="Đường dẫn / Link")
+    description = models.TextField(blank=True, verbose_name="Mô tả")
+    is_active = models.BooleanField(default=True, verbose_name="Kích hoạt")
+    order = models.PositiveIntegerField(default=0, verbose_name="Thứ tự hiển thị")
+
+    class Meta:
+        verbose_name = "Chương trình"
+        verbose_name_plural = "Danh sách chương trình"
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
 class UserProfile(models.Model):
     """
     Thông tin mở rộng cho User - Quản lý nhân viên
@@ -1956,9 +1974,9 @@ class UserProfile(models.Model):
     )
     branch = models.CharField(
         max_length=50,
-        choices=BRANCH_CHOICES,
         blank=True,
-        verbose_name="Chi nhánh"
+        verbose_name="Chi nhánh",
+        help_text="Mã đơn vị (phải khớp với BranchConfig.branch_code)"
     )
     department = models.CharField(
         max_length=50,
@@ -1977,6 +1995,32 @@ class UserProfile(models.Model):
         choices=POSITION_CHOICES,
         blank=True,
         verbose_name="Chức vụ"
+    )
+
+    # Thông tin hệ thống
+    ipcas_user = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Tài khoản IPCAS"
+    )
+    mac_address = models.CharField(
+        max_length=17,
+        blank=True,
+        verbose_name="Địa chỉ MAC",
+        help_text="Định dạng: XX:XX:XX:XX:XX:XX"
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        verbose_name="Địa chỉ IP"
+    )
+
+    # Chương trình được cấp quyền
+    app_permissions = models.ManyToManyField(
+        'AppProgram',
+        blank=True,
+        verbose_name="Chương trình được cấp phép",
+        related_name='authorized_users'
     )
 
     # Digital Certificate (Chứng thư số) fields
@@ -2225,6 +2269,41 @@ class Transaction(models.Model):
         return f"{self.stt}. {self.transaction_date.strftime('%d/%m/%Y')} - {self.transaction_type}"
 
 
+class CanDoiUpload(models.Model):
+    """Kết quả đọc file Cân đối tài khoản - số liệu cốt yếu doanh thu phí dịch vụ"""
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày upload")
+    file_name = models.CharField(max_length=255, verbose_name="Tên file")
+    uploaded_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='can_doi_uploads',
+        verbose_name="Người upload"
+    )
+
+    tt_trong_nuoc = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.1 Thanh toán trong nước")
+    tt_quoc_te = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.2 Thanh toán quốc tế")
+    kieu_hoi = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.3 Dịch vụ kiều hối")
+    dich_vu_the = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.4 Dịch vụ thẻ")
+    e_banking = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.5 E-Banking")
+    uy_thac_dai_ly = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.6 Ủy thác và đại lý")
+    bao_lanh = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.7 Bảo lãnh")
+    ngan_quy = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.8 Ngân quỹ")
+    thu_khac = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.9 Thu khác")
+    kd_ngoai_hoi = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="1.10 Thu ròng từ KD ngoại hối")
+    dieu_tiet_noi_bo = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="III. Điều tiết nội bộ phí dịch vụ")
+    tong_doanh_thu = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name="IV. Tổng DT Dịch vụ")
+
+    class Meta:
+        verbose_name = "Đọc Cân đối"
+        verbose_name_plural = "Đọc Cân đối"
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.file_name} - {self.uploaded_at.strftime('%d/%m/%Y %H:%M')}"
+
+
 # ============================================================================
 # ATM Management Models
 # ============================================================================
@@ -2285,7 +2364,6 @@ class ATMManagementBoard(models.Model):
     position = models.CharField(
         max_length=50,
         choices=POSITION_CHOICES,
-        unique=True,
         verbose_name="Chức vụ"
     )
     full_name = models.CharField(
@@ -2296,6 +2374,31 @@ class ATMManagementBoard(models.Model):
         max_length=200,
         blank=True,
         verbose_name="Chức danh"
+    )
+    decision_number = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Số quyết định"
+    )
+    decision_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày quyết định thành lập"
+    )
+    account_number = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Số tài khoản"
+    )
+    effective_from = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Hiệu lực từ ngày"
+    )
+    effective_to = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Hiệu lực đến ngày (bỏ trống nếu đang đương nhiệm)"
     )
     is_active = models.BooleanField(
         default=True,
@@ -2367,6 +2470,11 @@ class Person(models.Model):
     id_issue_place = models.CharField(
         max_length=200,
         verbose_name="Nơi cấp"
+    )
+    account_number = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Số tài khoản"
     )
     is_active = models.BooleanField(
         default=True,
@@ -2589,6 +2697,8 @@ class ATMReplenishment(models.Model):
             'treasury_head_title': treasury_head.title if treasury_head else '',
             'atm_officer_name': atm_officer.full_name if atm_officer else '',
             'atm_officer_title': atm_officer.title if atm_officer else '',
+            'board_decision_number': team_leader.decision_number if team_leader else '',
+            'board_decision_date': team_leader.decision_date.strftime('%d/%m/%Y') if (team_leader and team_leader.decision_date) else '',
 
             # Thông tin người tạo
             'created_by': self.created_by.username,
@@ -2596,6 +2706,27 @@ class ATMReplenishment(models.Model):
         }
 
         return data
+
+
+class VehicleDutySchedule(models.Model):
+    """Lịch trực xe hàng ngày — mỗi ngày có 1 tài xế trực (đã được trả tiền trực từ cơ quan)"""
+    date = models.DateField(unique=True, verbose_name="Ngày trực")
+    driver = models.ForeignKey(
+        Person,
+        on_delete=models.PROTECT,
+        limit_choices_to={'person_type': 'driver'},
+        verbose_name="Tài xế trực"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Lịch trực xe"
+        verbose_name_plural = "Lịch trực xe"
+        ordering = ['date']
+
+    def __str__(self):
+        return f"{self.date.strftime('%d/%m/%Y')} - {self.driver.full_name}"
 
 
 class ATMDiscrepancy(models.Model):
@@ -2645,6 +2776,12 @@ class ATMDiscrepancy(models.Model):
         verbose_name="Trạng thái"
     )
     notes = models.TextField(blank=True, verbose_name="Ghi chú")
+
+    group_id = models.UUIDField(
+        default=uuid.uuid4,
+        db_index=True,
+        verbose_name="Mã nhóm chu kỳ"
+    )
 
     created_by = models.ForeignKey(
         User,
@@ -2718,6 +2855,7 @@ class ATMDiscrepancy(models.Model):
 
             # Thông tin số tiền
             'disc_type': self.get_discrepancy_type_display(),
+            'disc_type_lower': self.get_discrepancy_type_display().lower(),
             'disc_amount': f"{self.amount:,}",
             'disc_amount_words': self.get_amount_in_words(),
 
@@ -2746,6 +2884,8 @@ class ATMDiscrepancy(models.Model):
             'disc_treasury_head_title': treasury_head.title if treasury_head else '',
             'disc_atm_officer_name': atm_officer.full_name if atm_officer else '',
             'disc_atm_officer_title': atm_officer.title if atm_officer else '',
+            'disc_board_decision_number': team_leader.decision_number if team_leader else '',
+            'disc_board_decision_date': team_leader.decision_date.strftime('%d/%m/%Y') if (team_leader and team_leader.decision_date) else '',
 
             # Thông tin người tạo
             'disc_created_by': self.created_by.username,
@@ -2858,6 +2998,39 @@ class ReportConfiguration(models.Model):
         return self.get_report_type_display()
 
 
+# ===== DONG/MO TAI KHOAN HISTORY =====
+
+class DongMoTaiKhoanHistory(models.Model):
+    """Lưu lịch sử thống kê Đóng/Mở tài khoản theo từng kỳ"""
+    report_month = models.DateField(verbose_name="Kỳ báo cáo")  # Ngày đầu tháng
+    tong_mo = models.IntegerField(default=0, verbose_name="Tổng mở TK")
+    ca_nhan_count = models.IntegerField(default=0, verbose_name="Cá nhân")
+    to_chuc_count = models.IntegerField(default=0, verbose_name="Tổ chức")
+    the_mien_phi_count = models.IntegerField(default=0, verbose_name="Thẻ miễn phí")
+    hssv_count = models.IntegerField(default=0, verbose_name="HSSV")
+    dong_tk_count = models.IntegerField(default=0, verbose_name="Đóng TK")
+    dong_he_thong_count = models.IntegerField(default=0, verbose_name="Hệ thống tự đóng")
+    dong_tai_quay_count = models.IntegerField(default=0, verbose_name="Đóng tại quầy")
+    # Phân loại đóng TK theo loại khách hàng
+    dong_ca_nhan_count = models.IntegerField(default=0, verbose_name="Đóng TK - Cá nhân")
+    dong_ca_nhan_tu_dong = models.IntegerField(default=0, verbose_name="Đóng TK - Cá nhân tự động")
+    dong_ca_nhan_tai_quay = models.IntegerField(default=0, verbose_name="Đóng TK - Cá nhân tại quầy")
+    dong_to_chuc_count = models.IntegerField(default=0, verbose_name="Đóng TK - Tổ chức")
+    dong_to_chuc_tu_dong = models.IntegerField(default=0, verbose_name="Đóng TK - Tổ chức tự động")
+    dong_to_chuc_tai_quay = models.IntegerField(default=0, verbose_name="Đóng TK - Tổ chức tại quầy")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Lịch sử Đóng/Mở tài khoản"
+        verbose_name_plural = "Lịch sử Đóng/Mở tài khoản"
+        ordering = ['-report_month']
+        unique_together = ['report_month']
+
+    def __str__(self):
+        return f"ĐMTK {self.report_month.strftime('%m/%Y')}"
+
+
 # ===== ATM TRANSACTION REPORT MODELS =====
 
 class ATMReportUpload(models.Model):
@@ -2926,3 +3099,371 @@ class Promotion(models.Model):
 
     def __str__(self):
         return self.title
+
+
+# ---------------------------------------------------------------------------
+# Tín dụng — Cấu hình FTP & NIM theo gói ưu đãi
+# ---------------------------------------------------------------------------
+
+class FTPConfig(models.Model):
+    """Bảng cấu hình FTP và NIM theo mã gói ưu đãi AGRIBANK."""
+
+    CACH_TINH_CHOICES = [
+        ('SPRD-FTP+DIEU_CHINH',  'NIM = Lãi suất - FTP + Biên độ'),
+        ('SPRD-FTP-DIEU_CHINH',  'NIM = Lãi suất - FTP - Biên độ'),
+        ('SPRD-FTP',             'NIM = Lãi suất - FTP (không biên độ)'),
+        ('NIM_CO_DINH',          'NIM cố định'),
+    ]
+
+    LOAI_KH_CHOICES = [
+        ('Tất cả',  'Tất cả'),
+        ('Cá nhân', 'Cá nhân'),
+        ('Tổ chức', 'Tổ chức'),
+    ]
+
+    ma_goi     = models.CharField(max_length=50, verbose_name="Mã gói ưu đãi")
+    ten_goi    = models.CharField(max_length=200, verbose_name="Tên gói")
+    ftp_pct    = models.FloatField(default=5.0, verbose_name="FTP % bán")
+    bien_do_pct = models.FloatField(default=0.0, verbose_name="Biên độ hỗ trợ %")
+    cach_tinh  = models.CharField(
+        max_length=30, choices=CACH_TINH_CHOICES,
+        default='SPRD-FTP+DIEU_CHINH', verbose_name="Công thức NIM",
+    )
+    nim_co_dinh_pct = models.FloatField(default=0.0, verbose_name="NIM cố định %")
+    loai_kh    = models.CharField(
+        max_length=10, choices=LOAI_KH_CHOICES,
+        default='Tất cả', verbose_name="Loại khách hàng",
+    )
+    is_default = models.BooleanField(
+        default=False, verbose_name="Dùng khi không khớp gói",
+        help_text="Đặt một bản ghi làm mặc định (FTP chung khi khoản vay không có mã gói).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Cấu hình FTP/NIM"
+        verbose_name_plural = "Cấu hình FTP/NIM"
+        ordering = ['ma_goi']
+
+    def __str__(self):
+        return f"{self.ma_goi} — {self.ten_goi} (FTP {self.ftp_pct}%)"
+
+    def compute_nim(self, sprd: float) -> float:
+        """Tính NIM từ lãi suất vay (sprd) và cấu hình gói."""
+        if self.cach_tinh == 'NIM_CO_DINH':
+            return self.nim_co_dinh_pct
+        if self.cach_tinh == 'SPRD-FTP+DIEU_CHINH':
+            return sprd - self.ftp_pct + self.bien_do_pct
+        if self.cach_tinh == 'SPRD-FTP-DIEU_CHINH':
+            return sprd - self.ftp_pct - self.bien_do_pct
+        return sprd - self.ftp_pct
+
+
+# ---------------------------------------------------------------------------
+# Tín dụng — Lưu trữ snapshot phân tích (cho so sánh kỳ)
+# ---------------------------------------------------------------------------
+
+class TDSnapshot(models.Model):
+    """Lưu kết quả phân tích MSIT80 theo ngày để so sánh kỳ trước."""
+
+    file_date   = models.DateField(verbose_name="Ngày dữ liệu file MSIT80", db_index=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Thời điểm upload")
+    uploaded_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='td_snapshots', verbose_name="Người upload",
+    )
+    file_name   = models.CharField(max_length=200, blank=True, verbose_name="Tên file gốc")
+    so_lds      = models.IntegerField(default=0, verbose_name="Số LDS")
+    so_kh       = models.IntegerField(default=0, verbose_name="Số KH")
+    so_hd       = models.IntegerField(default=0, verbose_name="Số HĐ tín dụng")
+    tong_du_no  = models.BigIntegerField(default=0, verbose_name="Tổng dư nợ (đồng)")
+    qua_han     = models.IntegerField(default=0, verbose_name="Số khoản quá hạn")
+    nhom2       = models.IntegerField(default=0, verbose_name="Nhóm 2")
+    nhom35      = models.IntegerField(default=0, verbose_name="Nhóm 3-5")
+    kh_dac_biet = models.IntegerField(default=0, verbose_name="KH đặc biệt")
+    summary_json = models.JSONField(default=dict, verbose_name="JSON tóm tắt phân tích")
+
+    class Meta:
+        verbose_name = "Snapshot phân tích tín dụng"
+        verbose_name_plural = "Snapshot phân tích tín dụng"
+        ordering = ['-file_date', '-uploaded_at']
+
+    def __str__(self):
+        return f"Snapshot {self.file_date} — {self.so_lds} LDS"
+
+
+# ---------------------------------------------------------------------------
+# Đăng ký chỉ tiêu Huy động vốn
+# ---------------------------------------------------------------------------
+
+class HDVRegistration(models.Model):
+    """Cán bộ đăng ký chỉ tiêu huy động vốn cho khách hàng (số tiền mới/tăng thêm)."""
+
+    KY_HAN_CHOICES = [
+        ('KKH', 'Không kỳ hạn'),
+        ('1T', '1 tháng'),
+        ('2T', '2 tháng'),
+        ('3T', '3 tháng'),
+        ('6T', '6 tháng'),
+        ('9T', '9 tháng'),
+        ('12T', '12 tháng'),
+        ('13T', '13 tháng'),
+        ('18T', '18 tháng'),
+        ('24T', '24 tháng'),
+        ('36T', '36 tháng'),
+    ]
+
+    ten_kh      = models.CharField(max_length=200, verbose_name="Tên KH/Tên KHPN")
+    sdt         = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại")
+    cccd        = models.CharField(
+        max_length=30, db_index=True,
+        verbose_name="CCCD/GPĐKKD/GCNĐT/Mã số DN/MST",
+    )
+    dia_chi     = models.CharField(max_length=300, blank=True, verbose_name="Địa chỉ")
+    ngay_dk_huy_dong = models.DateField(verbose_name="Ngày dự kiến gửi tiền", db_index=True)
+    ky_han      = models.CharField(
+        max_length=10, blank=True, choices=KY_HAN_CHOICES, verbose_name="Kỳ hạn gửi tiết kiệm",
+    )
+    so_tien     = models.BigIntegerField(verbose_name="Số tiền")
+    loai_tien   = models.CharField(max_length=10, default='VND', verbose_name="Loại tiền")
+    ma_can_bo   = models.CharField(max_length=30, db_index=True, verbose_name="Mã cán bộ")
+    ten_can_bo  = models.CharField(max_length=200, blank=True, verbose_name="Tên cán bộ")
+    chi_nhanh   = models.CharField(max_length=20, blank=True, verbose_name="Chi nhánh")
+    user_dk     = models.ForeignKey(
+        'auth.User', on_delete=models.CASCADE,
+        related_name='hdv_registrations', verbose_name="Người đăng ký",
+    )
+    ngay_gui_dk = models.DateTimeField(auto_now_add=True, verbose_name="Ngày gửi đăng ký")
+    updated_at  = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
+
+    # Phê duyệt (Kiểm soát viên cùng PGD với người đăng ký)
+    nguoi_duyet = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='hdv_da_duyet', verbose_name="Người phê duyệt",
+    )
+    ngay_duyet  = models.DateTimeField(null=True, blank=True, verbose_name="Ngày giờ phê duyệt")
+
+    # Xác nhận đã "Add chỉ tiêu huy động vốn" vào hệ thống lõi (có thể do 1 GDV
+    # khác thực hiện, không nhất thiết là người đăng ký) — chỉ 1 người/1 lần.
+    nguoi_add_chi_tieu = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='hdv_da_add_chi_tieu', verbose_name="Người add chỉ tiêu",
+    )
+    ngay_add_chi_tieu  = models.DateTimeField(null=True, blank=True, verbose_name="Ngày giờ add chỉ tiêu")
+
+    class Meta:
+        verbose_name = "Đăng ký chỉ tiêu huy động vốn"
+        verbose_name_plural = "Đăng ký chỉ tiêu huy động vốn"
+        ordering = ['-ngay_gui_dk']
+
+    def __str__(self):
+        return f"{self.ten_kh} - {self.so_tien:,} {self.loai_tien}"
+
+
+class HDVImportRecord(models.Model):
+    """Bản ghi huy động vốn import trực tiếp từ file xuất IPCAS (số dư thực tế,
+    không phải đăng ký chỉ tiêu). Mỗi lần upload cập nhật theo SO_TAI_KHOAN để
+    tránh cộng trùng khi upload lại file mới/cập nhật."""
+
+    ma_cn           = models.CharField(max_length=20, blank=True, verbose_name="Mã chi nhánh")
+    ma_kh           = models.CharField(max_length=30, blank=True, db_index=True, verbose_name="Mã khách hàng")
+    ten_kh          = models.CharField(max_length=200, verbose_name="Tên khách hàng")
+    id_number       = models.CharField(max_length=30, db_index=True, verbose_name="CCCD/GPĐKKD/GCNĐT/Mã số DN/MST")
+    ccy             = models.CharField(max_length=10, default='VND', verbose_name="Loại tiền")
+    current_balance = models.BigIntegerField(default=0, verbose_name="Số dư hiện tại")
+    so_tai_khoan    = models.CharField(max_length=30, unique=True, verbose_name="Số tài khoản")
+    opening_date    = models.DateField(null=True, blank=True, db_index=True, verbose_name="Ngày mở/gửi")
+    maturity_date   = models.DateField(null=True, blank=True, verbose_name="Ngày đáo hạn")
+    month_term      = models.IntegerField(default=0, verbose_name="Kỳ hạn (tháng)")
+    account_status  = models.CharField(max_length=20, blank=True, verbose_name="Trạng thái sổ")
+    employee_number = models.CharField(max_length=30, db_index=True, verbose_name="Mã cán bộ")
+    employee_name   = models.CharField(max_length=200, blank=True, verbose_name="Tên cán bộ")
+    uploaded_at     = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
+    uploaded_by     = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='hdv_imports', verbose_name="Người upload",
+    )
+
+    class Meta:
+        verbose_name = "Bản ghi HĐV import từ IPCAS"
+        verbose_name_plural = "Bản ghi HĐV import từ IPCAS"
+        ordering = ['-opening_date']
+
+    def __str__(self):
+        return f"{self.ten_kh} - {self.current_balance:,} {self.ccy}"
+
+
+# ---------------------------------------------------------------------------
+# Đăng ký bảng QR (Kế toán Ngân quỹ)
+# ---------------------------------------------------------------------------
+
+class QRRegistration(models.Model):
+    """Đăng ký bảng QR cho khách hàng/cửa hàng — Phòng Kế toán & Ngân quỹ."""
+
+    ten_kh          = models.CharField(max_length=200, verbose_name="Tên khách hàng")
+    so_tai_khoan    = models.CharField(max_length=30, db_index=True, verbose_name="Số tài khoản")
+    ten_cua_hang    = models.CharField(max_length=200, blank=True, verbose_name="Tên cửa hàng (nếu có)")
+    ten_can_bo      = models.CharField(max_length=200, blank=True, verbose_name="Tên cán bộ đăng ký")
+    phong_giao_dich = models.CharField(max_length=200, blank=True, verbose_name="Phòng giao dịch")
+    user_dk         = models.ForeignKey(
+        'auth.User', on_delete=models.CASCADE,
+        related_name='qr_registrations', verbose_name="Người đăng ký",
+    )
+    ngay_dang_ky    = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng ký", db_index=True)
+    updated_at      = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
+
+    class Meta:
+        verbose_name = "Đăng ký bảng QR"
+        verbose_name_plural = "Đăng ký bảng QR"
+        ordering = ['-ngay_dang_ky']
+
+    def __str__(self):
+        return f"{self.ten_kh} - {self.so_tai_khoan}"
+
+
+# ---------------------------------------------------------------------------
+# Bảng kê tiền mặt (Kế toán Ngân quỹ)
+# ---------------------------------------------------------------------------
+
+CASH_DENOMINATIONS = [500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200]
+
+
+class CashDrawerBalance(models.Model):
+    """Tồn quỹ tiền mặt theo mệnh giá của từng cán bộ (GDV) — cộng dồn xuyên suốt,
+    chỉ về 0 khi cán bộ tự bấm Reset Counter (out quỹ về quỹ chính)."""
+
+    user       = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='cash_drawer_balances')
+    menh_gia   = models.IntegerField(verbose_name="Mệnh giá")
+    so_to      = models.IntegerField(default=0, verbose_name="Số tờ")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
+
+    class Meta:
+        verbose_name = "Tồn quỹ tiền mặt theo mệnh giá"
+        verbose_name_plural = "Tồn quỹ tiền mặt theo mệnh giá"
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'menh_gia'], name='uniq_cash_balance_user_menhgia'),
+        ]
+        ordering = ['-menh_gia']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.menh_gia:,}đ x {self.so_to}"
+
+
+class CashDrawerStatement(models.Model):
+    """Lịch sử bảng kê thu/chi/nhập quỹ/reset của từng cán bộ (GDV)."""
+
+    LOAI_CHOICES = [
+        ('THU',      'Bảng kê thu'),
+        ('CHI',      'Bảng kê chi'),
+        ('NHAP_QUY', 'Nhập số tiền tiếp quỹ (thực nhận)'),
+        ('DE_NGHI',  'Đề nghị tiếp quỹ'),
+        ('RESET',    'Reset counter (out quỹ)'),
+    ]
+
+    user       = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='cash_statements')
+    loai       = models.CharField(max_length=10, choices=LOAI_CHOICES, verbose_name="Loại")
+    ghi_chu    = models.CharField(max_length=200, blank=True, verbose_name="Ghi chú")
+    chi_tiet   = models.JSONField(default=dict, verbose_name="Chi tiết số tờ theo mệnh giá")
+    tong_tien  = models.BigIntegerField(default=0, verbose_name="Tổng tiền")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Thời gian", db_index=True)
+
+    class Meta:
+        verbose_name = "Bảng kê tiền mặt"
+        verbose_name_plural = "Bảng kê tiền mặt"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_loai_display()} - {self.user.username} - {self.tong_tien:,}đ"
+
+
+class CashPrintConfigBase(models.Model):
+    """Các trường tọa độ in dùng chung — mỗi loại giấy in sẵn (giấy rút tiền, giấy
+    nộp tiền...) có vị trí ô khác nhau nên cần 1 bộ cấu hình riêng. Cấu hình theo
+    từng user vì mỗi người dùng máy in khác nhau, khớp lệch trục khác nhau."""
+
+    user             = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    offset_x         = models.FloatField(default=0, verbose_name="Dịch chuyển trục X (mm)")
+    offset_y         = models.FloatField(default=0, verbose_name="Dịch chuyển trục Y (mm)")
+    start_y          = models.FloatField(default=30.0, verbose_name="Vị trí dòng mệnh giá đầu tiên (mm từ trên)")
+    row_spacing      = models.FloatField(default=7.0, verbose_name="Khoảng cách giữa các dòng mệnh giá (mm)")
+    col_so_to_x      = models.FloatField(default=90.0, verbose_name="Vị trí cột Số tờ (mm từ trái)")
+    col_thanh_tien_x = models.FloatField(default=130.0, verbose_name="Vị trí cột Thành tiền (mm từ trái)")
+    total_x          = models.FloatField(default=130.0, verbose_name="Vị trí Tổng cộng - X (mm từ trái)")
+    total_y          = models.FloatField(default=118.0, verbose_name="Vị trí Tổng cộng - Y (mm từ trên)")
+    so_tien_chu_x    = models.FloatField(default=20.0, verbose_name="Vị trí Số tiền bằng chữ - X (mm từ trái)")
+    so_tien_chu_y    = models.FloatField(default=130.0, verbose_name="Vị trí Số tiền bằng chữ - Y (mm từ trên)")
+    font_size        = models.FloatField(default=10.0, verbose_name="Cỡ chữ (pt)")
+    updated_at       = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def get_instance(cls, user):
+        obj, _ = cls.objects.get_or_create(user=user)
+        return obj
+
+
+class CashPrintConfig(CashPrintConfigBase):
+    """Cấu hình vị trí in đè lên giấy rút tiền in sẵn — chỉ in số, không vẽ khung/bảng."""
+
+    class Meta:
+        verbose_name = "Cấu hình in bảng kê tiền mặt"
+        verbose_name_plural = "Cấu hình in bảng kê tiền mặt"
+
+
+class CashPrintConfigNopTien(CashPrintConfigBase):
+    """Cấu hình vị trí in đè lên giấy nộp tiền in sẵn (layout riêng, khác giấy rút tiền)."""
+
+    class Meta:
+        verbose_name = "Cấu hình in bảng kê trắng (giấy nộp tiền)"
+        verbose_name_plural = "Cấu hình in bảng kê trắng (giấy nộp tiền)"
+
+
+class CashPrintConfigChungTuBase(models.Model):
+    """Cấu hình cho các chứng từ tự vẽ khung/bảng (không đè lên giấy in sẵn) —
+    Bảng kê Thu, Bảng kê Chi, Đề nghị tiếp quỹ. Chỉ cần offset + cỡ chữ vì
+    khung/bảng do hệ thống tự vẽ, không cần canh khớp giấy có sẵn. Cấu hình theo
+    từng user vì mỗi người dùng máy in khác nhau."""
+
+    user            = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    offset_x        = models.FloatField(default=0, verbose_name="Dịch chuyển trục X (mm)")
+    offset_y        = models.FloatField(default=0, verbose_name="Dịch chuyển trục Y (mm)")
+    margin          = models.FloatField(default=10.0, verbose_name="Lề trang (mm)")
+    title_font_size = models.FloatField(default=14.0, verbose_name="Cỡ chữ tiêu đề (pt)")
+    body_font_size  = models.FloatField(default=9.0, verbose_name="Cỡ chữ nội dung (pt)")
+    row_height      = models.FloatField(default=5.5, verbose_name="Chiều cao dòng trong bảng (mm)")
+    updated_at      = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def get_instance(cls, user):
+        obj, _ = cls.objects.get_or_create(user=user)
+        return obj
+
+
+class CashPrintConfigBangKeThu(CashPrintConfigChungTuBase):
+    """Cấu hình in Bảng kê Thu (chứng từ có khung/tiêu đề)."""
+
+    class Meta:
+        verbose_name = "Cấu hình in Bảng kê Thu"
+        verbose_name_plural = "Cấu hình in Bảng kê Thu"
+
+
+class CashPrintConfigBangKeChi(CashPrintConfigChungTuBase):
+    """Cấu hình in Bảng kê Chi (chứng từ có khung/tiêu đề)."""
+
+    class Meta:
+        verbose_name = "Cấu hình in Bảng kê Chi"
+        verbose_name_plural = "Cấu hình in Bảng kê Chi"
+
+
+class CashPrintConfigDeNghi(CashPrintConfigChungTuBase):
+    """Cấu hình in Giấy đề nghị tiếp quỹ."""
+
+    class Meta:
+        verbose_name = "Cấu hình in Đề nghị tiếp quỹ"
+        verbose_name_plural = "Cấu hình in Đề nghị tiếp quỹ"

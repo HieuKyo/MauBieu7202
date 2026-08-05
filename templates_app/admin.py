@@ -1,22 +1,20 @@
+from datetime import timedelta
 from django.contrib import admin
+from django import forms
 from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
-from django.http import HttpResponse
 from .models import (
-    Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig,
+    Category, Template, Customer, Business, GlobalConfig, BranchConfig, AppProgram,
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction,
     UserProfile, Course, CourseEnrollment,
     ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy,
+    VehicleDutySchedule,
     Promotion,
 )
 from .import_helpers import (
-    import_variables_from_csv,
-    import_variables_from_excel,
-    import_templates_bulk,
-    export_variables_to_csv,
-    export_variables_to_excel
+    import_templates_bulk
 )
 
 
@@ -259,7 +257,6 @@ class TemplateAdmin(admin.ModelAdmin):
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         """Override to add variable context to the change form"""
-        from .models import GlobalConfig
 
         # Build variable lists for the sidebar
         # 1. Customer variables
@@ -551,7 +548,6 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
             # Process each number
             created_count = 0
             updated_count = 0
-            skipped_count = 0
             errors = []
 
             for num_str in numbers:
@@ -591,7 +587,7 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
 
                 # Determine price tier
                 from .views import get_price_tier_from_fee
-                price_tier = get_price_tier_from_fee(analysis['fee_min_vat'])
+                price_tier = get_price_tier_from_fee(analysis['fee_max_vat'] or analysis['fee_min_vat'])
 
                 # Create beautiful number (mark as sold since import list = sold list)
                 try:
@@ -727,9 +723,35 @@ class TransactionAdmin(admin.ModelAdmin):
 # Employee Management Admin
 # ====================
 
+class UserProfileAdminForm(forms.ModelForm):
+    """Form tùy chỉnh để dropdown branch lấy động từ BranchConfig"""
+
+    branch = forms.ChoiceField(
+        label="Chi nhánh",
+        required=False,
+        help_text="Chọn đơn vị (danh sách lấy từ Cấu hình Chi nhánh)"
+    )
+
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Lấy danh sách chi nhánh động từ BranchConfig
+        branch_choices = [('', '---------')]
+        branch_choices += list(
+            BranchConfig.objects.filter(is_active=True)
+            .order_by('branch_code')
+            .values_list('branch_code', 'ten_chi_nhanh')
+        )
+        self.fields['branch'].choices = branch_choices
+
+
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
     """Admin cho Hồ sơ nhân viên"""
+    form = UserProfileAdminForm
     list_display = ['employee_code', 'full_name', 'user', 'branch', 'department', 'position', 'phone']
     list_filter = ['branch', 'department', 'position', 'job_function']
     search_fields = ['employee_code', 'full_name', 'user__username', 'phone']
@@ -747,6 +769,12 @@ class UserProfileAdmin(admin.ModelAdmin):
         }),
         ('Thông tin công việc', {
             'fields': ('branch', 'department', 'job_function', 'position')
+        }),
+        ('Thông tin hệ thống', {
+            'fields': ('ipcas_user', 'mac_address', 'ip_address')
+        }),
+        ('Chương trình được cấp phép', {
+            'fields': ('app_permissions',)
         }),
     )
 
@@ -836,14 +864,44 @@ class ATMAdmin(admin.ModelAdmin):
 @admin.register(ATMManagementBoard)
 class ATMManagementBoardAdmin(admin.ModelAdmin):
     """Admin cho Ban quản lý ATM"""
-    list_display = ['position', 'full_name', 'title', 'is_active']
+    list_display = ['get_position_display', 'full_name', 'title', 'account_number', 'effective_from', 'effective_to', 'is_active', 'updated_at']
     list_filter = ['position', 'is_active']
     list_editable = ['is_active']
-    ordering = ['position']
+    ordering = ['position', 'full_name']
+
+    def _close_previous_holders(self, obj):
+        """Khi kích hoạt 1 người mới cho 1 vị trí, tự đóng effective_to của người active trước đó (nếu chưa đóng)"""
+        if obj.is_active and obj.effective_from:
+            previous = ATMManagementBoard.objects.filter(
+                position=obj.position, is_active=True, effective_to__isnull=True
+            ).exclude(pk=obj.pk).exclude(effective_from__gte=obj.effective_from)
+            previous.update(effective_to=obj.effective_from - timedelta(days=1))
+        # Nếu đang kích hoạt người này, tắt các người khác cùng vị trí
+        if obj.is_active:
+            ATMManagementBoard.objects.filter(
+                position=obj.position, is_active=True
+            ).exclude(pk=obj.pk).update(is_active=False)
+
+    def save_model(self, request, obj, form, change):
+        self._close_previous_holders(obj)
+        super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in instances:
+            self._close_previous_holders(obj)
+            obj.save()
+        formset.save_m2m()
 
     fieldsets = (
         ('Thông tin chức vụ', {
-            'fields': ('position', 'full_name', 'title')
+            'fields': ('position', 'full_name', 'title', 'account_number')
+        }),
+        ('Thông tin quyết định', {
+            'fields': ('decision_number', 'decision_date')
+        }),
+        ('Hiệu lực', {
+            'fields': ('effective_from', 'effective_to')
         }),
         ('Trạng thái', {
             'fields': ('is_active',)
@@ -873,7 +931,7 @@ class VehicleAdmin(admin.ModelAdmin):
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     """Admin cho Nhân viên vận chuyển"""
-    list_display = ['person_type', 'full_name', 'id_number', 'id_issue_date', 'is_active']
+    list_display = ['person_type', 'full_name', 'id_number', 'id_issue_date', 'account_number', 'is_active']
     list_filter = ['person_type', 'is_active']
     list_editable = ['is_active']
     search_fields = ['full_name', 'id_number']
@@ -881,7 +939,7 @@ class PersonAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Thông tin cơ bản', {
-            'fields': ('person_type', 'full_name')
+            'fields': ('person_type', 'full_name', 'account_number')
         }),
         ('Giấy tờ tùy thân', {
             'fields': ('id_number', 'id_issue_date', 'id_issue_place')
@@ -929,6 +987,16 @@ class ATMReplenishmentAdmin(admin.ModelAdmin):
         if not change:  # Chỉ khi tạo mới
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(VehicleDutySchedule)
+class VehicleDutyScheduleAdmin(admin.ModelAdmin):
+    """Admin cho Lịch trực xe"""
+    list_display = ['date', 'driver']
+    list_filter = ['driver']
+    search_fields = ['driver__full_name']
+    ordering = ['-date']
+    date_hierarchy = 'date'
 
 
 @admin.register(ATMDiscrepancy)
@@ -1068,3 +1136,17 @@ class BranchConfigAdmin(admin.ModelAdmin):
         obj.updated_by = request.user
         super().save_model(request, obj, form, change)
 admin.site.register(BranchConfig, BranchConfigAdmin)
+
+
+@admin.register(AppProgram)
+class AppProgramAdmin(admin.ModelAdmin):
+    """Admin cho danh sách chương trình"""
+    list_display = ['name', 'url', 'is_active', 'order', 'user_count']
+    list_editable = ['is_active', 'order']
+    search_fields = ['name', 'url', 'description']
+    list_filter = ['is_active']
+    ordering = ['order', 'name']
+
+    def user_count(self, obj):
+        return obj.authorized_users.count()
+    user_count.short_description = 'Số người dùng'

@@ -4,7 +4,7 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wordgen.settings')
 django.setup()
 
-from tax_payment.models import TaxLocation, TaxSubEntry
+from tax_payment.models import TaxLocation, TaxSubEntry  # noqa: E402
 
 print('=== KIỂM TRA DỮ LIỆU TAX PAYMENT ===\n')
 

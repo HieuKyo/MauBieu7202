@@ -58,6 +58,9 @@ INSTALLED_APPS = [
     "kpi_tool",
     "tasks",
     "savings_calculator",
+    "quiz",
+    "messaging",
+    "document_registry",
 ]
 
 MIDDLEWARE = [

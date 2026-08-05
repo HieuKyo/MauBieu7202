@@ -4,7 +4,7 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wordgen.settings')
 django.setup()
 
-from templates_app.models import Variable
+from templates_app.models import Variable  # noqa: E402
 
 print('=== KIỂM TRA BIẾN TRONG VARIABLE LIBRARY ===\n')
 print(f'Tổng số biến: {Variable.objects.count()}\n')

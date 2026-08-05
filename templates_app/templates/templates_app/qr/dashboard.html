@@ -1,0 +1,150 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Dashboard QR{% endblock %}
+
+{% block extra_head %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-speedometer2"></i> DASHBOARD ĐĂNG KÝ BẢNG QR</h2>
+        </div>
+    </div>
+
+    {% include 'templates_app/qr/_nav.html' with active='dashboard' %}
+
+    <div class="row g-3 align-items-stretch mb-4">
+        <div class="col-md-6">
+            <form method="get" class="row g-2 align-items-end h-100">
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Chọn tháng</label>
+                    <input type="month" class="form-control" name="thang" value="{{ thang }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Xem thống kê</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100" style="background-color: var(--agri-red); color: #fff;">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-qr-code"></i> Tổng số bảng QR đăng ký</div>
+                    <div class="fs-3 fw-bold">{{ tong_qr }}</div>
+                    <div class="small">{{ tu_ngay }} → {{ den_ngay }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100 text-bg-dark">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-person-badge"></i> Cán bộ có đăng ký</div>
+                    <div class="fs-3 fw-bold">{{ so_can_bo }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="small text-muted"><i class="bi bi-building"></i> Phòng giao dịch có đăng ký</div>
+                    <div class="fs-3 fw-bold">{{ so_pgd }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6>Số bảng QR đăng ký theo ngày trong tháng</h6>
+            <canvas id="chartByDay" height="90"></canvas>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h6>Theo cán bộ đăng ký</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Cán bộ</th>
+                                    <th>Phòng giao dịch</th>
+                                    <th class="text-end">Số lượng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in by_can_bo %}
+                                <tr>
+                                    <td>{{ row.ten_can_bo }}</td>
+                                    <td>{{ row.phong_giao_dich|default:"—" }}</td>
+                                    <td class="text-end">{{ row.so_luong }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center text-muted">Chưa có dữ liệu trong tháng này</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h6>Theo phòng giao dịch</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Phòng giao dịch</th>
+                                    <th class="text-end">Số lượng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in by_pgd %}
+                                <tr>
+                                    <td>{{ row.phong_giao_dich }}</td>
+                                    <td class="text-end">{{ row.so_luong }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center text-muted">Chưa có dữ liệu trong tháng này</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    new Chart(document.getElementById('chartByDay'), {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels_json|safe }},
+            datasets: [{
+                label: 'Số bảng QR',
+                data: {{ chart_values_json|safe }},
+                backgroundColor: '#8B1E2D',
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+    });
+</script>
+{% endblock %}

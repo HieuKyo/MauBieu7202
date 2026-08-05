@@ -180,10 +180,29 @@
     </div>
     {% endif %}
 
-    <!-- Filter Section -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="filter-section">
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-gd-btn" data-bs-toggle="tab" data-bs-target="#tab-gd" type="button" role="tab">
+                <i class="bi bi-table"></i> Chi tiết giao dịch
+                <span class="badge bg-secondary ms-1">{{ page_obj.paginator.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-thongke-btn" data-bs-toggle="tab" data-bs-target="#tab-thongke" type="button" role="tab">
+                <i class="bi bi-graph-up"></i> Thống kê
+                {% if frequent_recipients or frequent_senders %}
+                <span class="badge bg-warning text-dark ms-1">!</span>
+                {% endif %}
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="mainTabContent">
+        <!-- Tab Chi tiết giao dịch -->
+        <div class="tab-pane fade show active" id="tab-gd" role="tabpanel">
+            <!-- Filter Section -->
+            <div class="filter-section mb-3">
                 <form method="get" class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-bold">
@@ -207,12 +226,7 @@
                     </div>
                 </form>
             </div>
-        </div>
-    </div>
 
-    <!-- Transactions Table -->
-    <div class="row">
-        <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-agribank text-white">
                     <h6 class="mb-0">
@@ -328,6 +342,113 @@
                 </div>
                 {% endif %}
             </div>
+        </div>
+
+        <!-- Tab Thống kê -->
+        <div class="tab-pane fade" id="tab-thongke" role="tabpanel">
+
+            <!-- Tài khoản nhận tiền nhiều lần -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-arrow-up-right-circle"></i>
+                        Tài khoản nhận tiền nhiều lần
+                        <small class="fw-normal ms-2">(tất cả)</small>
+                        {% if frequent_recipients %}
+                        <span class="badge bg-light text-dark ms-2">{{ frequent_recipients|length }} tài khoản</span>
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if frequent_recipients %}
+                    <div class="table-responsive">
+                        <table class="table table-hover transaction-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th style="width: 140px;">Ngân hàng</th>
+                                    <th style="width: 160px;">Số tài khoản</th>
+                                    <th style="width: 200px;">Tên</th>
+                                    <th class="text-center" style="width: 80px;">Số lần</th>
+                                    <th class="text-end">Tổng tiền ra (VNĐ)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for acc in frequent_recipients %}
+                                <tr>
+                                    <td class="text-center text-muted">{{ forloop.counter }}</td>
+                                    <td>{{ acc.bank_name|default:"-" }}</td>
+                                    <td class="font-monospace">{{ acc.account_number }}</td>
+                                    <td>{{ acc.name|default:"-"|truncatechars:30 }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-danger">{{ acc.count }}</span>
+                                    </td>
+                                    <td class="text-end text-danger fw-bold">{{ acc.total_amount|floatformat:0|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Không có tài khoản nào nhận tiền quá 3 lần</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tài khoản chuyển tiền đến nhiều lần -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-arrow-down-left-circle"></i>
+                        Tài khoản chuyển tiền đến nhiều lần
+                        <small class="fw-normal ms-2">(tất cả)</small>
+                        {% if frequent_senders %}
+                        <span class="badge bg-light text-dark ms-2">{{ frequent_senders|length }} tài khoản</span>
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if frequent_senders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover transaction-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th style="width: 140px;">Ngân hàng</th>
+                                    <th style="width: 160px;">Số tài khoản</th>
+                                    <th style="width: 200px;">Tên</th>
+                                    <th class="text-center" style="width: 80px;">Số lần</th>
+                                    <th class="text-end">Tổng tiền vào (VNĐ)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for acc in frequent_senders %}
+                                <tr>
+                                    <td class="text-center text-muted">{{ forloop.counter }}</td>
+                                    <td>{{ acc.bank_name|default:"-" }}</td>
+                                    <td class="font-monospace">{{ acc.account_number }}</td>
+                                    <td>{{ acc.name|default:"-"|truncatechars:30 }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">{{ acc.count }}</span>
+                                    </td>
+                                    <td class="text-end text-success fw-bold">{{ acc.total_amount|floatformat:0|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Không có tài khoản nào chuyển tiền đến quá 3 lần</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
         </div>
     </div>
 </div>

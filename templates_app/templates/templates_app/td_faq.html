@@ -1,0 +1,155 @@
+{% extends "templates_app/base.html" %}
+{% block title %}Trợ giúp & FAQ — Tín dụng{% endblock %}
+
+{% block extra_head %}
+<style>
+.faq-section { border-left: 4px solid #1976D2; padding-left: 14px; margin-bottom: 32px; }
+.faq-section h5 { color: #1565C0; font-weight: 700; margin-bottom: 14px; }
+.faq-q { font-weight: 600; color: #333; margin-bottom: 4px; }
+.faq-a { color: #555; font-size: .9rem; margin-bottom: 18px; padding-left: 12px; }
+.flow-step { border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; background: #f8f9fa; height: 100%; }
+.flow-step .step-num { width: 32px; height: 32px; border-radius: 50%; background: #1976D2; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: .9rem; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0"><i class="bi bi-question-circle me-2 text-info"></i>Trung tâm Trợ giúp — Phân tích Tín dụng</h4>
+      <small class="text-muted">Hướng dẫn sử dụng và giải thích các khái niệm trong hệ thống</small>
+    </div>
+    <a href="{% url 'td_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Về Dashboard
+    </a>
+  </div>
+
+  <!-- Quy trình làm việc -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header fw-bold py-2"><i class="bi bi-diagram-3 me-2 text-success"></i>Quy trình làm việc</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <div class="flow-step">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="step-num">1</div><strong>Xuất file MSIT80</strong></div>
+            <div style="font-size:.85rem; color:#555;">Vào hệ thống core banking AGRIBANK → Module tín dụng → Xuất báo cáo MSIT80 (định dạng .xls hoặc .xlsx)</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="flow-step">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="step-num">2</div><strong>Upload & Phân tích</strong></div>
+            <div style="font-size:.85rem; color:#555;">Vào <a href="{% url 'td_analysis' %}">Tín dụng → Upload file</a>, chọn file MSIT80 vừa xuất, bấm "Phân tích ngay". Hệ thống sẽ tự động tính toán tất cả KPI.</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="flow-step">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="step-num">3</div><strong>Xem Dashboard & Xuất báo cáo</strong></div>
+            <div style="font-size:.85rem; color:#555;">Dashboard hiển thị tự động. Sử dụng bộ lọc 6 chiều để phân tích chi tiết. Xuất Excel hoặc Word theo nhu cầu.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-7">
+
+      <!-- Giải thích Dashboard -->
+      <div class="faq-section">
+        <h5><i class="bi bi-speedometer2 me-2"></i>Giải thích các chỉ số Dashboard</h5>
+
+        <div class="faq-q">Tổng dư nợ là gì?</div>
+        <div class="faq-a">Tổng giá trị còn lại của tất cả khoản vay trong danh mục (cột <code>dsbsbal</code> trong MSIT80). Đơn vị: tỷ đồng.</div>
+
+        <div class="faq-q">Số món LDS, Số KH, Số HĐ khác nhau thế nào?</div>
+        <div class="faq-a">
+          <b>Số món LDS</b>: tổng số dòng trong file (mỗi dòng = 1 khoản giải ngân — dsbsseq).<br>
+          <b>Số KH</b>: số lượng khách hàng duy nhất (đếm theo custseq).<br>
+          <b>Số HĐ</b>: số hợp đồng tín dụng duy nhất (đếm theo apprseq). Một HĐ có thể có nhiều món giải ngân.
+        </div>
+
+        <div class="faq-q">Quá hạn được tính như thế nào?</div>
+        <div class="faq-a">Khoản vay được tính là "quá hạn" khi <b>ngày trả lãi tiếp theo (<code>nxtintschddt</code>) hoặc ngày trả gốc tiếp theo (<code>nxtrpmtschddt</code>) đã qua ngày hôm nay</b>. Khác với ngày đáo hạn khoản (<code>dsbsmatdt</code>).</div>
+
+        <div class="faq-q">Đến hạn 30 ngày là gì?</div>
+        <div class="faq-a">Số khoản vay có ngày đáo hạn (<code>dsbsmatdt</code>) trong vòng 30 ngày tới (kể cả đã qua). Cần theo dõi để thu hồi hoặc gia hạn kịp thời.</div>
+
+        <div class="faq-q">KH đặc biệt là ai?</div>
+        <div class="faq-a">Khách hàng có <b>điểm rủi ro tổng hợp &gt; 150</b>. Đây là ngưỡng cao nhất trong thang đánh giá, cần được Ban lãnh đạo quan tâm trực tiếp.</div>
+      </div>
+
+      <!-- Giải thích FTP & NIM -->
+      <div class="faq-section">
+        <h5><i class="bi bi-percent me-2"></i>Giải thích FTP và NIM</h5>
+
+        <div class="faq-q">FTP là gì?</div>
+        <div class="faq-a"><b>FTP (Fund Transfer Price)</b> — giá chuyển vốn nội bộ. Đây là lãi suất mà chi nhánh phải "trả" cho Hội sở khi huy động vốn để cho vay. FTP cao → biên lợi nhuận thấp hơn.</div>
+
+        <div class="faq-q">NIM là gì?</div>
+        <div class="faq-a"><b>NIM (Net Interest Margin)</b> — biên lãi suất ròng, phản ánh lợi nhuận thực tế từ hoạt động tín dụng sau khi trừ chi phí vốn (FTP). NIM dương = có lãi; NIM âm = lỗ.</div>
+
+        <div class="faq-q">Công thức tính NIM như thế nào?</div>
+        <div class="faq-a">
+          Tùy cấu hình FTP của từng gói ưu đãi:<br>
+          • <b>NIM = LS vay - FTP + Biên độ</b> (áp dụng phổ biến nhất)<br>
+          • <b>NIM = LS vay - FTP - Biên độ</b> (gói khách hàng được giảm lãi)<br>
+          • <b>NIM = LS vay - FTP</b> (không có biên độ)<br>
+          • <b>NIM cố định</b> (đã thỏa thuận, không đổi theo lãi suất)<br>
+          Nếu khoản vay không có mã gói ưu đãi → áp dụng cấu hình <b>Mặc định</b> (FTP = 5%). Xem <a href="{% url 'td_ftp_config' %}">Cấu hình FTP</a>.
+        </div>
+      </div>
+
+    </div>
+    <div class="col-12 col-lg-5">
+
+      <!-- Giải thích Điểm RR -->
+      <div class="faq-section">
+        <h5><i class="bi bi-shield-half me-2"></i>Thang điểm rủi ro</h5>
+
+        <table class="table table-sm table-bordered" style="font-size:.83rem;">
+          <thead class="table-secondary">
+            <tr><th>Mức</th><th>Điểm</th><th>Ý nghĩa</th></tr>
+          </thead>
+          <tbody>
+            <tr class="table-success"><td><b>Xanh</b></td><td>0</td><td>Khoản vay bình thường, không có vấn đề</td></tr>
+            <tr class="table-warning"><td><b>Vàng</b></td><td>1–50</td><td>Cần theo dõi định kỳ</td></tr>
+            <tr><td><b>Cam</b></td><td>51–100</td><td>Có dấu hiệu rủi ro, cần xử lý sớm</td></tr>
+            <tr class="table-danger"><td><b>Đỏ</b></td><td>101–150</td><td>Rủi ro cao, ưu tiên xử lý</td></tr>
+            <tr class="table-danger"><td><b>Đỏ đậm</b></td><td>&gt;150</td><td>Rủi ro đặc biệt — KH đặc biệt</td></tr>
+          </tbody>
+        </table>
+
+        <div class="faq-q mt-3">Điểm rủi ro được tính từ những yếu tố nào?</div>
+        <div class="faq-a">
+          Tổng hợp từ nhiều yếu tố:<br>
+          • Số ngày quá hạn gốc/lãi (quá 30 ngày: +50đ, quá 90 ngày: +100đ)<br>
+          • Nhóm nợ (Nhóm 3: +50đ, Nhóm 4: +80đ, Nhóm ≥5: +120đ)<br>
+          • Dư nợ cao (>5 tỷ: +40đ, >2 tỷ: +20đ)<br>
+          • Khách hàng có ≥3 khoản vay: +10đ<br>
+          • Lãi đã quá hạn: +20đ, Gốc đã quá hạn: +30đ
+        </div>
+      </div>
+
+      <!-- FAQ thường gặp -->
+      <div class="faq-section">
+        <h5><i class="bi bi-chat-square-question me-2"></i>Câu hỏi thường gặp</h5>
+
+        <div class="faq-q">File upload báo lỗi "thiếu cột bắt buộc"?</div>
+        <div class="faq-a">File MSIT80 phải có đủ các cột: custnm, ofcnm, custseq, apprseq, apprdt, apprmatdt, appramt, dsbsseq, dsbsdt, dsbsmatdt, dsbsbal, sprd, grpno, nxtintschddt, nxtrpmtschddt, custtpnm. Kiểm tra lại file xuất từ core banking.</div>
+
+        <div class="faq-q">Dữ liệu cũ sau khi upload file mới có mất không?</div>
+        <div class="faq-a">Không. Mỗi lần upload tạo một <b>snapshot</b> mới cho ngày đó. Dữ liệu cũ vẫn được lưu để so sánh kỳ. Dashboard chỉ hiển thị kết quả của lần upload gần nhất trong phiên làm việc.</div>
+
+        <div class="faq-q">So sánh kỳ không có dữ liệu?</div>
+        <div class="faq-a">Tính năng so sánh kỳ cần có ít nhất 2 lần upload vào các ngày khác nhau. Upload file của ngày hôm nay và ngày hôm qua sẽ kích hoạt so sánh "Ngày trước".</div>
+
+        <div class="faq-q">Cột NIM hiển thị "—" trong bảng lọc?</div>
+        <div class="faq-a">Khoản vay chưa có mã gói ưu đãi (cột udpcd1 trống) và chưa có cấu hình FTP mặc định. Vào <a href="{% url 'td_ftp_config' %}">Cấu hình FTP</a> để thiết lập gói mặc định.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

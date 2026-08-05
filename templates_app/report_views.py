@@ -7,12 +7,14 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from .models import MailEnvelopeTracking, ReportConfiguration
+import math
 import pandas as pd
 import openpyxl
 import io
 import json
 import re
 import traceback
+import unicodedata
 from openpyxl.utils.dataframe import dataframe_to_rows
 from copy import copy
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
@@ -215,211 +217,36 @@ def phat_hanh_the_report_view(request):
 
 @login_required
 @require_http_methods(["POST"])
+@login_required
+@require_http_methods(["POST"])
 def process_phat_hanh_the_report(request):
-    """Xử lý báo cáo Phát hành thẻ"""
+    """Xử lý báo cáo Phát hành thẻ (ATM + Visa gộp chung)"""
     try:
-        # Lấy cấu hình từ database
-        try:
-            config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
-            pht_config = config_obj.config_data
-        except (ReportConfiguration.DoesNotExist, Exception):
-            # Cấu hình mặc định
-            pht_config = {
-                'pgd_user_map': {
-                    "PGD Phường 1": ["GRALTHUC", "GRATTHAO"],
-                    "PGD Láng Tròn": ["GRANTHAO", "GRASHANH"],
-                    "Hội Sở": ["GRATNNHI", "GRANSINH", "GRATHIEU", "GRACACHI", "Yến Mi"]
-                }
-            }
-            messages.info(request, "Sử dụng cấu hình mặc định vì chưa có cấu hình trong database.")
+        combined_df, pgd_user_map, err = _collect_phat_hanh_the_data(request)
+        if err:
+            messages.warning(request, err)
+            return redirect('phat_hanh_the_report')
 
-        data_file = request.FILES.get('data_file')
         start_date_str = request.POST.get('start_date')
         end_date_str = request.POST.get('end_date')
 
-        if not all([data_file, start_date_str, end_date_str]):
-            messages.error(request, "Vui lòng cung cấp đủ file và khoảng thời gian.")
+        output, sheets_created = _build_phat_hanh_the_excel(
+            combined_df, pgd_user_map, start_date_str, end_date_str
+        )
+        if sheets_created == 0:
+            messages.warning(request, "Không có dữ liệu nào để tạo báo cáo.")
             return redirect('phat_hanh_the_report')
 
-        df = pd.read_excel(data_file)
-
-        # Debug: Kiểm tra columns
-        print(f"DEBUG: Columns in file: {df.columns.tolist()}")
-        print(f"DEBUG: Total rows: {len(df)}")
-
-        if 'acctseq' in df.columns:
-            df['acctseq'] = df['acctseq'].astype(str)
-
-        # Kiểm tra cột dlvrydt tồn tại
-        if 'dlvrydt' not in df.columns:
-            messages.error(request, "File không có cột 'dlvrydt' (Ngày phát hành). Vui lòng kiểm tra lại file Excel.")
-            return redirect('phat_hanh_the_report')
-
-        df['dlvrydt_datetime'] = pd.to_datetime(df['dlvrydt'], format='%d/%m/%Y', errors='coerce').dt.normalize()
-
-        start_date = pd.to_datetime(start_date_str)
-        end_date = pd.to_datetime(end_date_str)
-
-        mask = (df['dlvrydt_datetime'] >= start_date) & (df['dlvrydt_datetime'] <= end_date)
-        filtered_df = df.loc[mask].copy()
-
-        print(f"DEBUG: Filtered rows (by date): {len(filtered_df)}")
-
-        if filtered_df.empty:
-            messages.warning(request, "Không có dữ liệu phát hành thẻ trong khoảng thời gian đã chọn.")
-            return redirect('phat_hanh_the_report')
-
-        pgd_user_map = pht_config.get('pgd_user_map', {})
-        print(f"DEBUG: PGD user map: {pgd_user_map}")
-
-        user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
-        print(f"DEBUG: User to PGD map: {user_to_pgd_map}")
-
-        # Kiểm tra cột dlvryusrid tồn tại
-        if 'dlvryusrid' not in filtered_df.columns:
-            messages.error(request, "File không có cột 'dlvryusrid' (User phát hành). Vui lòng kiểm tra lại file Excel.")
-            return redirect('phat_hanh_the_report')
-
-        filtered_df['PGD'] = filtered_df['dlvryusrid'].map(user_to_pgd_map)
-        final_df = filtered_df.dropna(subset=['PGD'])
-
-        print(f"DEBUG: Final rows (after PGD mapping): {len(final_df)}")
-        print(f"DEBUG: Unique users in data: {filtered_df['dlvryusrid'].unique().tolist()}")
-
-        if final_df.empty:
-            messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình. Users trong file: {filtered_df['dlvryusrid'].unique().tolist()}")
-            return redirect('phat_hanh_the_report')
-
-        # Tạo Excel với nhiều sheet
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            for pgd_name in pgd_user_map.keys():
-                pgd_df = final_df[final_df['PGD'] == pgd_name]
-
-                if not pgd_df.empty:
-                    pgd_df_to_output = pgd_df.copy()
-                    pgd_df_to_output['dlvrydt_str'] = pgd_df_to_output['dlvrydt_datetime'].dt.strftime('%d/%m/%Y')
-
-                    # Kiểm tra các cột cần thiết
-                    required_cols = ['custnm', 'acctseq', 'cdtpcdnm', 'dlvryusrid']
-                    missing_cols = [col for col in required_cols if col not in pgd_df_to_output.columns]
-                    if missing_cols:
-                        print(f"WARNING: Missing columns for PGD {pgd_name}: {missing_cols}")
-                        continue
-
-                    output_cols = ['custnm', 'acctseq', 'cdtpcdnm', 'dlvryusrid', 'dlvrydt_str']
-                    pgd_df_final = pgd_df_to_output[output_cols].rename(columns={
-                        'custnm': 'Họ tên',
-                        'acctseq': 'Số tài khoản',
-                        'cdtpcdnm': 'Loại thẻ',
-                        'dlvryusrid': 'User phát hành',
-                        'dlvrydt_str': 'Ngày phát hành'
-                    })
-
-                    print(f"DEBUG: Creating sheet for {pgd_name} with {len(pgd_df_final)} rows")
-
-                    pgd_df_final.to_excel(writer, sheet_name=pgd_name, index=False, startrow=3)
-
-                    worksheet = writer.sheets[pgd_name]
-
-                    title = f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}"
-                    date_range_str = f"Từ ngày {pd.to_datetime(start_date_str).strftime('%d/%m/%Y')} đến ngày {pd.to_datetime(end_date_str).strftime('%d/%m/%Y')}"
-
-                    worksheet['A1'] = title
-                    worksheet.merge_cells('A1:E1')
-                    worksheet['A1'].font = Font(bold=True, size=14)
-                    worksheet['A1'].alignment = Alignment(horizontal='center')
-
-                    worksheet['A2'] = date_range_str
-                    worksheet.merge_cells('A2:E2')
-                    worksheet['A2'].font = Font(italic=True, size=11)
-                    worksheet['A2'].alignment = Alignment(horizontal='center')
-
-                    thin_border = Border(
-                        left=Side(style='thin'),
-                        right=Side(style='thin'),
-                        top=Side(style='thin'),
-                        bottom=Side(style='thin')
-                    )
-
-                    highlight_fill = PatternFill(
-                        start_color="FFFFE0",
-                        end_color="FFFFE0",
-                        fill_type="solid"
-                    )
-
-                    start_data_row = 5
-                    end_data_row = start_data_row + len(pgd_df_final) - 1
-
-                    for row_idx in range(start_data_row, end_data_row + 1):
-                        loai_the_cell = worksheet[f'C{row_idx}']
-                        apply_highlight = False
-                        if loai_the_cell.value != "(97040509)- The PLUS SUCCESS":
-                            apply_highlight = True
-
-                        for col_idx in range(1, len(pgd_df_final.columns) + 1):
-                            cell = worksheet.cell(row=row_idx, column=col_idx)
-                            cell.border = thin_border
-                            if apply_highlight:
-                                cell.fill = highlight_fill
-
-                    for cell in worksheet[4]:
-                        cell.border = thin_border
-
-                    for col_idx in range(1, len(pgd_df_final.columns) + 1):
-                        column_letter = get_column_letter(col_idx)
-                        max_length = 0
-                        for cell in worksheet[column_letter]:
-                            if cell.row < 4:
-                                continue
-                            try:
-                                if cell.value:
-                                    cell_length = len(str(cell.value))
-                                    if cell_length > max_length:
-                                        max_length = cell_length
-                            except:
-                                pass
-                        adjusted_width = min((max_length + 2), 60)
-                        worksheet.column_dimensions[column_letter].width = adjusted_width
-
-                    # Fit sheet on one page when printing
-                    worksheet.page_setup.fitToPage = True
-                    worksheet.page_setup.fitToWidth = 1
-                    worksheet.page_setup.fitToHeight = 0  # 0 = không giới hạn chiều cao, co dãn theo chiều rộng
-                    if worksheet.sheet_properties.pageSetUpPr is None:
-                        from openpyxl.worksheet.properties import PageSetupProperties
-                        worksheet.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
-                    else:
-                        worksheet.sheet_properties.pageSetUpPr.fitToPage = True
-
-        # Kiểm tra xem có sheet nào được tạo không
-        if not writer.sheets:
-            messages.warning(request, "Không có dữ liệu nào để tạo báo cáo. Vui lòng kiểm tra lại file và cấu hình.")
-            return redirect('phat_hanh_the_report')
-
-        print(f"DEBUG: Total sheets created: {len(writer.sheets)}")
-
-        # Lưu dữ liệu vào session để sử dụng cho print preview
-        pgd_data_for_session = {}
-        for pgd_name in pgd_user_map.keys():
-            pgd_df = final_df[final_df['PGD'] == pgd_name]
-            if not pgd_df.empty:
-                pgd_data_for_session[pgd_name] = len(pgd_df)
-
-        request.session['phat_hanh_the_data'] = {
-            'pgd_list': pgd_data_for_session,
-            'start_date': pd.to_datetime(start_date_str).strftime('%d/%m/%Y'),
-            'end_date': pd.to_datetime(end_date_str).strftime('%d/%m/%Y'),
-        }
+        _save_phat_hanh_the_session(request, combined_df, pgd_user_map, start_date_str, end_date_str)
 
         output.seek(0)
         response = HttpResponse(
             output.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = f'attachment; filename="BaoCao_PhatHanhThe_{start_date_str}_den_{end_date_str}.xlsx"'
-
-        print("DEBUG: Returning file response")
+        response['Content-Disposition'] = (
+            f'attachment; filename="BaoCao_PhatHanhThe_{start_date_str}_den_{end_date_str}.xlsx"'
+        )
         return response
 
     except Exception as e:
@@ -431,83 +258,298 @@ def process_phat_hanh_the_report(request):
 @login_required
 @require_http_methods(["POST"])
 def process_phat_hanh_the_for_print(request):
-    """Xử lý báo cáo Phát hành thẻ và chuyển tới trang in preview"""
+    """Xử lý báo cáo Phát hành thẻ (ATM + Visa) và chuyển tới trang in"""
     try:
-        # Lấy cấu hình từ database
-        try:
-            config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
-            pht_config = config_obj.config_data
-        except (ReportConfiguration.DoesNotExist, Exception):
-            pht_config = {
-                'pgd_user_map': {
-                    "PGD Phường 1": ["GRALTHUC", "GRATTHAO"],
-                    "PGD Láng Tròn": ["GRANTHAO", "GRASHANH"],
-                    "Hội Sở": ["GRATNNHI", "GRANSINH", "GRATHIEU", "GRACACHI", "Yến Mi"]
-                }
-            }
+        combined_df, pgd_user_map, err = _collect_phat_hanh_the_data(request)
+        if err:
+            messages.warning(request, err)
+            return redirect('phat_hanh_the_report')
 
-        data_file = request.FILES.get('data_file')
         start_date_str = request.POST.get('start_date')
         end_date_str = request.POST.get('end_date')
-
-        if not all([data_file, start_date_str, end_date_str]):
-            messages.error(request, "Vui lòng cung cấp đủ file và khoảng thời gian.")
-            return redirect('phat_hanh_the_report')
-
-        df = pd.read_excel(data_file)
-
-        if 'acctseq' in df.columns:
-            df['acctseq'] = df['acctseq'].astype(str)
-
-        if 'dlvrydt' not in df.columns:
-            messages.error(request, "File không có cột 'dlvrydt'. Vui lòng kiểm tra lại file Excel.")
-            return redirect('phat_hanh_the_report')
-
-        df['dlvrydt_datetime'] = pd.to_datetime(df['dlvrydt'], format='%d/%m/%Y', errors='coerce').dt.normalize()
-
-        start_date = pd.to_datetime(start_date_str)
-        end_date = pd.to_datetime(end_date_str)
-
-        mask = (df['dlvrydt_datetime'] >= start_date) & (df['dlvrydt_datetime'] <= end_date)
-        filtered_df = df.loc[mask].copy()
-
-        if filtered_df.empty:
-            messages.warning(request, "Không có dữ liệu phát hành thẻ trong khoảng thời gian đã chọn.")
-            return redirect('phat_hanh_the_report')
-
-        pgd_user_map = pht_config.get('pgd_user_map', {})
-        user_to_pgd_map = {user: pgd for pgd, users in pgd_user_map.items() for user in users}
-
-        if 'dlvryusrid' not in filtered_df.columns:
-            messages.error(request, "File không có cột 'dlvryusrid'. Vui lòng kiểm tra lại file Excel.")
-            return redirect('phat_hanh_the_report')
-
-        filtered_df['PGD'] = filtered_df['dlvryusrid'].map(user_to_pgd_map)
-        final_df = filtered_df.dropna(subset=['PGD'])
-
-        if final_df.empty:
-            messages.warning(request, f"Không có dữ liệu nào khớp với các user trong cấu hình.")
-            return redirect('phat_hanh_the_report')
-
-        # Lưu dữ liệu vào session
-        pgd_data_for_session = {}
-        for pgd_name in pgd_user_map.keys():
-            pgd_df = final_df[final_df['PGD'] == pgd_name]
-            if not pgd_df.empty:
-                pgd_data_for_session[pgd_name] = len(pgd_df)
-
-        request.session['phat_hanh_the_data'] = {
-            'pgd_list': pgd_data_for_session,
-            'start_date': pd.to_datetime(start_date_str).strftime('%d/%m/%Y'),
-            'end_date': pd.to_datetime(end_date_str).strftime('%d/%m/%Y'),
-        }
-
+        _save_phat_hanh_the_session(request, combined_df, pgd_user_map, start_date_str, end_date_str)
         return redirect('phat_hanh_the_print_preview')
 
     except Exception as e:
         traceback.print_exc()
         messages.error(request, f"Đã xảy ra lỗi: {e}")
         return redirect('phat_hanh_the_report')
+
+
+# ── Helpers dùng chung cho phát hành thẻ ──────────────────────────────────────
+
+def _get_atm_pgd_config():
+    """Cấu hình PGD cho thẻ ATM (user ID mới)"""
+    try:
+        config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
+        return config_obj.config_data.get('pgd_user_map', {})
+    except Exception:
+        return {
+            "PGD Phường 1": ["7202cthuclt", "7202CTHAOTLT"],
+            "PGD Láng Tròn": ["7202canhsh", "7202CTHAOTN"],
+            "Hội Sở": ["7202chieutt", "7202CSINHNT", "7202cnhitn", "7202CCHICA"],
+        }
+
+
+def _get_visa_pgd_config():
+    """Cấu hình PGD cho thẻ Visa (user ID cũ)"""
+    try:
+        config_obj = ReportConfiguration.objects.get(report_type='visa_card', is_active=True)
+        return config_obj.config_data.get('pgd_user_map', {})
+    except Exception:
+        return {
+            "PGD Phường 1": ["GRALTHUC", "GRATTHAO"],
+            "PGD Láng Tròn": ["GRANTHAO", "GRASHANH"],
+            "Hội Sở": ["GRATNNHI", "GRANSINH", "GRATHIEU", "GRACACHI"],
+        }
+
+
+def _read_excel_safe(file_obj, **kwargs):
+    """Đọc file Excel, tự bỏ qua workbook corruption cho file .xls cũ.
+    Truyền usecols=... để chỉ đọc cột cần thiết, giảm bộ nhớ cho file lớn."""
+    file_bytes = file_obj.read() if hasattr(file_obj, 'read') else file_obj
+    try:
+        return pd.read_excel(io.BytesIO(file_bytes), **kwargs)
+    except Exception:
+        import xlrd
+        wb = xlrd.open_workbook(file_contents=file_bytes, ignore_workbook_corruption=True)
+        return pd.read_excel(wb, **kwargs)
+
+
+def _read_atm_normalized(data_file, start_date_str, end_date_str, pgd_user_map):
+    """
+    Đọc file ATM (cấu trúc mới), lọc theo ngày và PGD.
+    Trả về DataFrame chuẩn hóa với cột:
+      Họ tên | Số tài khoản | Loại thẻ | GDV phát hành | Ngày phát hành | PGD
+    Hoặc None nếu không có dữ liệu / lỗi cột.
+    """
+    df = _read_excel_safe(data_file)
+    df.columns = df.columns.str.strip()
+
+    for col in ['CDATE', 'CUSER', 'CUSTVIENAME', 'ACCOUNT', 'CARDTYPE']:
+        if col not in df.columns:
+            return None, f"File ATM không có cột '{col}'."
+
+    df['ACCOUNT'] = df['ACCOUNT'].astype(str)
+    df['_date'] = pd.to_datetime(df['CDATE'].astype(str).str[:10], format='%d/%m/%Y', errors='coerce').dt.normalize()
+
+    start_dt = pd.to_datetime(start_date_str)
+    end_dt   = pd.to_datetime(end_date_str)
+    df = df[(df['_date'] >= start_dt) & (df['_date'] <= end_dt)].copy()
+
+    user_map = {u: pgd for pgd, users in pgd_user_map.items() for u in users}
+    df['PGD'] = df['CUSER'].map(user_map)
+    df = df.dropna(subset=['PGD'])
+
+    if df.empty:
+        return None, None  # không lỗi, chỉ không có dữ liệu
+
+    result = pd.DataFrame({
+        'Họ tên':          df['CUSTVIENAME'].values,
+        'Số tài khoản':    df['ACCOUNT'].values,
+        'Loại thẻ':        df['CARDTYPE'].values,
+        'GDV phát hành':   df['CUSER'].values,
+        'Ngày phát hành':  df['_date'].dt.strftime('%d/%m/%Y').values,
+        'PGD':             df['PGD'].values,
+    })
+    return result, None
+
+
+def _read_visa_normalized(visa_file, start_date_str, end_date_str, pgd_user_map):
+    """
+    Đọc file Visa (cấu trúc cũ, có thể có header lặp), lọc theo ngày và PGD.
+    Trả về DataFrame chuẩn hóa cùng cột như _read_atm_normalized.
+    """
+    df = _read_excel_safe(visa_file)
+    df.columns = df.columns.str.strip()
+
+    # Loại bỏ các dòng header trùng lặp
+    if 'custnm' in df.columns:
+        df = df[df['custnm'] != 'custnm'].copy()
+
+    for col in ['dlvrydt', 'dlvryusrid', 'custnm', 'cdtpcdnm', 'acctseq']:
+        if col not in df.columns:
+            return None, f"File Visa không có cột '{col}'."
+
+    df['acctseq'] = df['acctseq'].astype(str)
+    df['_date'] = pd.to_datetime(df['dlvrydt'], format='%d/%m/%Y', errors='coerce').dt.normalize()
+
+    start_dt = pd.to_datetime(start_date_str)
+    end_dt   = pd.to_datetime(end_date_str)
+    df = df[(df['_date'] >= start_dt) & (df['_date'] <= end_dt)].copy()
+
+    user_map = {u: pgd for pgd, users in pgd_user_map.items() for u in users}
+    df['PGD'] = df['dlvryusrid'].map(user_map)
+    df = df.dropna(subset=['PGD'])
+
+    if df.empty:
+        return None, None
+
+    result = pd.DataFrame({
+        'Họ tên':          df['custnm'].values,
+        'Số tài khoản':    df['acctseq'].values,
+        'Loại thẻ':        df['cdtpcdnm'].values,
+        'GDV phát hành':   df['dlvryusrid'].values,
+        'Ngày phát hành':  df['_date'].dt.strftime('%d/%m/%Y').values,
+        'PGD':             df['PGD'].values,
+    })
+    return result, None
+
+
+def _collect_phat_hanh_the_data(request):
+    """
+    Đọc file ATM (bắt buộc) và file Visa (tùy chọn) từ request,
+    gộp lại thành 1 DataFrame chuẩn hóa.
+    Trả về (combined_df, pgd_user_map, error_msg).
+    """
+    data_file    = request.FILES.get('data_file')
+    visa_file    = request.FILES.get('visa_file')
+    start_date_str = request.POST.get('start_date', '')
+    end_date_str   = request.POST.get('end_date', '')
+
+    if not start_date_str or not end_date_str:
+        return None, None, "Vui lòng cung cấp khoảng thời gian."
+    if not data_file and not visa_file:
+        return None, None, "Vui lòng tải lên ít nhất một file dữ liệu."
+
+    atm_pgd_map  = _get_atm_pgd_config()
+    visa_pgd_map = _get_visa_pgd_config()
+
+    # PGD master list — lấy từ ATM config (thứ tự sheet)
+    pgd_user_map = atm_pgd_map
+
+    frames = []
+    warnings = []
+
+    if data_file:
+        atm_df, err = _read_atm_normalized(data_file, start_date_str, end_date_str, atm_pgd_map)
+        if err:
+            warnings.append(f"File ATM: {err}")
+        elif atm_df is not None:
+            frames.append(atm_df)
+
+    if visa_file:
+        visa_df, err = _read_visa_normalized(visa_file, start_date_str, end_date_str, visa_pgd_map)
+        if err:
+            warnings.append(f"File Visa: {err}")
+        elif visa_df is not None:
+            frames.append(visa_df)
+
+    if warnings:
+        # Chỉ là cảnh báo, không ngăn xử lý
+        pass
+
+    if not frames:
+        msg = "Không có dữ liệu trong khoảng thời gian đã chọn."
+        if warnings:
+            msg += " (" + "; ".join(warnings) + ")"
+        return None, None, msg
+
+    combined_df = pd.concat(frames, ignore_index=True)
+    return combined_df, pgd_user_map, "; ".join(warnings) if warnings else None
+
+
+def _build_phat_hanh_the_excel(combined_df, pgd_user_map, start_date_str, end_date_str):
+    """Tạo Excel nhiều sheet từ DataFrame đã chuẩn hóa"""
+    output = io.BytesIO()
+    sheets_created = 0
+
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    highlight_fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        for pgd_name in pgd_user_map.keys():
+            pgd_df = combined_df[combined_df['PGD'] == pgd_name]
+            if pgd_df.empty:
+                continue
+
+            output_cols = ['Họ tên', 'Số tài khoản', 'Loại thẻ', 'GDV phát hành', 'Ngày phát hành']
+            pgd_df_final = (
+                pgd_df[output_cols]
+                .assign(_sort_date=pd.to_datetime(pgd_df['Ngày phát hành'], format='%d/%m/%Y', errors='coerce'))
+                .sort_values('_sort_date')
+                .drop(columns=['_sort_date'])
+                .reset_index(drop=True)
+            )
+
+            sheets_created += 1
+            pgd_df_final.to_excel(writer, sheet_name=pgd_name, index=False, startrow=3)
+            ws = writer.sheets[pgd_name]
+
+            title = f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}"
+            date_range_str = (
+                f"Từ ngày {pd.to_datetime(start_date_str).strftime('%d/%m/%Y')} "
+                f"đến ngày {pd.to_datetime(end_date_str).strftime('%d/%m/%Y')}"
+            )
+
+            ws['A1'] = title
+            ws.merge_cells('A1:E1')
+            ws['A1'].font = Font(bold=True, size=14)
+            ws['A1'].alignment = Alignment(horizontal='center')
+
+            ws['A2'] = date_range_str
+            ws.merge_cells('A2:E2')
+            ws['A2'].font = Font(italic=True, size=11)
+            ws['A2'].alignment = Alignment(horizontal='center')
+
+            # Border + highlight cho dữ liệu
+            for row_idx in range(5, 5 + len(pgd_df_final)):
+                loai_the = ws[f'C{row_idx}'].value or ''
+                apply_highlight = loai_the not in ('PSuccess', '(486283)-Visa Gold Debit')
+                for col_idx in range(1, 6):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    cell.border = thin_border
+                    if apply_highlight:
+                        cell.fill = highlight_fill
+
+            for cell in ws[4]:
+                cell.border = thin_border
+
+            # Auto-fit cột
+            for col_idx in range(1, 6):
+                col_letter = get_column_letter(col_idx)
+                max_len = max(
+                    (len(str(c.value)) for c in ws[col_letter] if c.row >= 4 and c.value),
+                    default=10
+                )
+                ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
+
+            from openpyxl.worksheet.properties import PageSetupProperties
+            ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+            ws.page_setup.fitToWidth = 1
+            ws.page_setup.fitToHeight = 0
+
+    return output, sheets_created
+
+
+def _save_phat_hanh_the_session(request, combined_df, pgd_user_map, start_date_str, end_date_str):
+    """Lưu thông tin PGD và số lượng thẻ vào session để dùng cho print preview"""
+    pgd_counts = {
+        pgd: len(combined_df[combined_df['PGD'] == pgd])
+        for pgd in pgd_user_map.keys()
+        if not combined_df[combined_df['PGD'] == pgd].empty
+    }
+    request.session['phat_hanh_the_data'] = {
+        'pgd_list': pgd_counts,
+        'start_date': pd.to_datetime(start_date_str).strftime('%d/%m/%Y'),
+        'end_date':   pd.to_datetime(end_date_str).strftime('%d/%m/%Y'),
+    }
+
+
+# Giữ lại stub để URL không bị lỗi (2 URL cũ vẫn trỏ vào đây)
+@login_required
+@require_http_methods(["POST"])
+def process_visa_card_report(request):
+    return redirect('phat_hanh_the_report')
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_visa_card_for_print(request):
+    return redirect('phat_hanh_the_report')
 
 
 @login_required
@@ -557,7 +599,7 @@ def mail_envelope_tracking_view(request):
         config_obj = ReportConfiguration.objects.get(report_type='phat_hanh_the', is_active=True)
         pgd_user_map = config_obj.config_data.get('pgd_user_map', {})
         all_users = sorted([user for users in pgd_user_map.values() for user in users])
-    except:
+    except Exception:
         all_users = []
 
     return render(request, 'templates_app/reports/mail_envelope_tracking.html', {'all_users': all_users})
@@ -570,7 +612,7 @@ def save_mail_envelope(request):
     try:
         data = json.loads(request.body)
 
-        envelope = MailEnvelopeTracking.objects.create(
+        MailEnvelopeTracking.objects.create(
             envelope_code=data['ma_bithu'],
             receive_date=data['ngay_nhan'],
             receiver=data['nguoi_nhan']
@@ -611,10 +653,573 @@ def mail_envelope_report_view(request):
     return render(request, 'templates_app/reports/mail_envelope_report.html', context)
 
 
+# Nhãn hiển thị cho từng chỉ tiêu
+_TKTL_LABELS = {
+    'tong_kh':              'Tổng KH có tài khoản',
+    'tk_tiet_kiem':         'Danh sách TK tiết kiệm',
+    'kh_tiet_kiem':         'KH gửi tiết kiệm',
+    'kh_lanh_lai_dinh_ky':  'KH tiết kiệm lãnh lãi định kỳ',
+    'kh_tietkiem_co_tt':    'KH tiết kiệm có TK thanh toán',
+    'kh_tra_lai_qua_tk':    'KH trả lãi qua TKTGTT',
+    'kh_dinh_ky_qua_tk':    'KH định kỳ trả lãi qua TKTGTT',
+    'kh_15_tuoi_co_tk':     'KH trên 15 tuổi có tài khoản',
+    'kh_15_tuoi_hoatdong':  'KH trên 15 tuổi có tài khoản đang hoạt động',
+    'tk_tt_ca_nhan':        'TK thanh toán - Khách hàng cá nhân',
+    'tk_tt_to_chuc':        'TK thanh toán - Khách hàng tổ chức',
+    'tk_tt_ca_nhan_hoatdong': 'TK thanh toán đang hoạt động - Khách hàng cá nhân',
+    'tk_tt_to_chuc_hoatdong': 'TK thanh toán đang hoạt động - Khách hàng tổ chức',
+}
+
+# Chỉ đọc các cột cần thiết để giảm bộ nhớ với file lớn
+_TG_COLS   = ['Acctcd', 'Customer_No', 'Customer_Name', 'Cust_Name', 'DP_TypeName',
+              'Account_Number', 'Month_Term', 'Tr_Office_Name', 'acc_st']
+_DPDA08_COLS = ['idxacno', 'custseq', 'custnm', 'termdptp', 'altacctno']
+
+
+def _store_detail(request, key, df, cols_rename):
+    """Lưu DataFrame vào session dưới dạng JSON nén (gzip+base64)."""
+    import gzip
+    import base64
+    df_out = df[list(cols_rename.keys())].rename(columns=cols_rename).copy()
+    raw = df_out.to_json(orient='records', force_ascii=False)
+    compressed = base64.b64encode(gzip.compress(raw.encode('utf-8'))).decode('ascii')
+    request.session[f'tktl_{key}'] = compressed
+
+
+def _load_detail(request, key):
+    """Đọc lại detail từ session, trả về list of dicts hoặc None."""
+    import gzip
+    import base64
+    compressed = request.session.get(f'tktl_{key}')
+    if not compressed:
+        return None
+    raw = gzip.decompress(base64.b64decode(compressed.encode('ascii'))).decode('utf-8')
+    return json.loads(raw)
+
+
+@login_required
+def tiet_kiem_tra_lai_view(request):
+    """Báo cáo KH tiết kiệm trả lãi qua tài khoản tiền gửi thanh toán"""
+    context = {}
+
+    if request.method != 'POST':
+        return render(request, 'templates_app/reports/tiet_kiem_tra_lai.html', context)
+
+    tg_file = request.FILES.get('tg_file')
+    dp_file = request.FILES.get('dp_file')
+
+    if not tg_file or not dp_file:
+        messages.error(request, 'Vui lòng tải lên cả 2 file (TG và DPDA08).')
+        return render(request, 'templates_app/reports/tiet_kiem_tra_lai.html', context)
+
+    try:
+        # Đọc chỉ các cột cần thiết — giảm bộ nhớ đáng kể với file 30MB
+        df_tg = _read_excel_safe(tg_file, usecols=_TG_COLS)
+        df_dp = _read_excel_safe(dp_file, usecols=_DPDA08_COLS)
+
+        df_tg.columns = df_tg.columns.str.strip()
+        df_dp.columns = df_dp.columns.str.strip()
+
+        # Chuẩn hóa cột tg
+        df_tg['_month_term'] = pd.to_numeric(
+            df_tg['Month_Term'].astype(str).str.strip().str.split().str[0],
+            errors='coerce'
+        ).fillna(0)
+        df_tg['_acctcd'] = pd.to_numeric(df_tg['Acctcd'], errors='coerce').fillna(0).astype(int)
+        df_tg['_custno'] = df_tg['Customer_No'].astype(str).str.strip()
+        df_tg['_cust_name'] = df_tg['Cust_Name'].astype(str).str.strip()
+        df_tg['_acc_st'] = df_tg['acc_st'].astype(str).str.strip()
+        df_tg['_dp_type_name'] = df_tg['DP_TypeName'].astype(str).str.strip()
+
+        # Debug: Hiển thị các giá trị unique của các cột quan trọng
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("=== DEBUG TG FILE ===")
+        logger.info(f"Total rows in TG: {len(df_tg)}")
+        logger.info(f"Unique Cust_Name values: {df_tg['_cust_name'].unique()[:20]}")
+        logger.info(f"Unique acc_st values: {df_tg['_acc_st'].unique()}")
+        logger.info(f"Unique DP_TypeName values: {df_tg['_dp_type_name'].unique()[:20]}")
+        logger.info(f"Month_Term = 0 count: {(df_tg['_month_term'] == 0).sum()}")
+        logger.info("=====================")
+
+        # Chuẩn hóa cột dp
+        df_dp['_termdptp']  = df_dp['termdptp'].astype(str).str.strip()
+        df_dp['_custseq']   = df_dp['custseq'].astype(str).str.strip()
+        df_dp['_altacctno'] = df_dp['altacctno'].astype(str).str.strip()
+        df_dp['_idxacno']   = df_dp['idxacno'].astype(str).str.strip()
+
+        # ── 1. Tổng KH có TK ──────────────────────────────────────────────
+        df_tong_kh = df_tg.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        _store_detail(request, 'tong_kh', df_tong_kh,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 2. TK tiết kiệm: Acctcd 423101 hoặc Month_Term > 0 ───────────
+        is_savings = (df_tg['_acctcd'] == 423101) | (df_tg['_month_term'] > 0)
+        df_savings = df_tg[is_savings].copy()
+        _store_detail(request, 'tk_tiet_kiem', df_savings,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', 'DP_TypeName': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị'})
+
+        # ── 2b. KH tiết kiệm (unique) ─────────────────────────────────────
+        df_kh_tietkiem = df_savings.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        _store_detail(request, 'kh_tiet_kiem', df_kh_tietkiem,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 2c. KH lãnh lãi định kỳ ───────────────────────────────────────
+        df_dinh_ky = df_dp[df_dp['_termdptp'] == 'Trả lãi sau định kỳ']
+        df_dk_unique = df_dinh_ky.drop_duplicates('_custseq')[
+            ['_idxacno', '_custseq', 'custnm', '_termdptp']
+        ]
+        _store_detail(request, 'kh_lanh_lai_dinh_ky', df_dk_unique,
+                      {'_idxacno': 'Số TK TK', '_custseq': 'Mã KH',
+                       'custnm': 'Tên KH', '_termdptp': 'Hình thức'})
+
+        # ── 3. KH tiết kiệm có TK thanh toán ─────────────────────────────
+        savings_custnos = set(df_savings['_custno'].unique())
+        payment_custnos = set(df_tg[~is_savings]['_custno'].unique())
+        both_custnos = savings_custnos & payment_custnos
+        df_co_tt = df_kh_tietkiem[df_kh_tietkiem['_custno'].isin(both_custnos)]
+        _store_detail(request, 'kh_tietkiem_co_tt', df_co_tt,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 4. KH trả lãi qua TK thanh toán ──────────────────────────────
+        has_altacct = (
+            df_dp['_altacctno'].notna() &
+            ~df_dp['_altacctno'].isin(['', 'nan', '0'])
+        )
+        df_qua_tk = df_dp[has_altacct]
+        df_qua_tk_unique = df_qua_tk.drop_duplicates('_custseq')[
+            ['_idxacno', '_custseq', 'custnm', '_altacctno', '_termdptp']
+        ]
+        _store_detail(request, 'kh_tra_lai_qua_tk', df_qua_tk_unique,
+                      {'_idxacno': 'Số TK TK', '_custseq': 'Mã KH',
+                       'custnm': 'Tên KH', '_altacctno': 'TK nhận lãi',
+                       '_termdptp': 'Hình thức'})
+
+        # ── 4a. Trong đó: định kỳ qua TK ─────────────────────────────────
+        df_dk_qua_tk = df_qua_tk[
+            df_qua_tk['_termdptp'].isin(['Thanh toán hàng tháng', 'Trả lãi sau định kỳ'])
+        ]
+        df_dk_qua_tk_unique = df_dk_qua_tk.drop_duplicates('_custseq')[
+            ['_idxacno', '_custseq', 'custnm', '_altacctno', '_termdptp']
+        ]
+        _store_detail(request, 'kh_dinh_ky_qua_tk', df_dk_qua_tk_unique,
+                      {'_idxacno': 'Số TK TK', '_custseq': 'Mã KH',
+                       'custnm': 'Tên KH', '_altacctno': 'TK nhận lãi',
+                       '_termdptp': 'Hình thức'})
+
+        # ── 5. Tổng số khách hàng trên 15 tuổi có tài khoản ─────────────────
+        # Lọc: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)" ở DP_TypeName
+        df_kh_15_tuoi = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
+        ].copy()
+        logger.info(f"DEBUG: KH 15+ tuổi có TK - Before dedup: {len(df_kh_15_tuoi)} rows")
+        df_kh_15_tuoi_unique = df_kh_15_tuoi.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        logger.info(f"DEBUG: KH 15+ tuổi có TK - After dedup: {len(df_kh_15_tuoi_unique)} unique customers")
+        _store_detail(request, 'kh_15_tuoi_co_tk', df_kh_15_tuoi_unique,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 6. Tổng số khách hàng trên 15 tuổi có tài khoản đang hoạt động ─────
+        # Lọc: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)" ở DP_TypeName, acc_st = "Normal"
+        df_kh_15_tuoi_hoatdong = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
+            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
+        ].copy()
+        logger.info(f"DEBUG: KH 15+ tuổi hoạt động - Before dedup: {len(df_kh_15_tuoi_hoatdong)} rows")
+        df_kh_15_tuoi_hoatdong_unique = df_kh_15_tuoi_hoatdong.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
+        logger.info(f"DEBUG: KH 15+ tuổi hoạt động - After dedup: {len(df_kh_15_tuoi_hoatdong_unique)} unique customers")
+        _store_detail(request, 'kh_15_tuoi_hoatdong', df_kh_15_tuoi_hoatdong_unique,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
+
+        # ── 7. Tổng số lượng tài khoản thanh toán ─────────────────────────────
+        # Khách hàng cá nhân: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)"
+        df_tk_tt_ca_nhan = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
+        ].copy()
+        logger.info(f"DEBUG: TK thanh toán cá nhân: {len(df_tk_tt_ca_nhan)} accounts")
+        _store_detail(request, 'tk_tt_ca_nhan', df_tk_tt_ca_nhan,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị'})
+
+        # Khách hàng tổ chức: Month_Term = 0, Bỏ Cust_Name = "Cá Nhân", "Hộ gia đình", Bỏ "TG TK KHONG KY HAN" và "(Blanks)"
+        df_tk_tt_to_chuc = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (~df_tg['_cust_name'].str.strip().str.lower().isin(['cá nhân', 'hộ gia đình'])) &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
+        ].copy()
+        logger.info(f"DEBUG: TK thanh toán tổ chức: {len(df_tk_tt_to_chuc)} accounts")
+        _store_detail(request, 'tk_tt_to_chuc', df_tk_tt_to_chuc,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị', '_cust_name': 'Loại KH'})
+
+        # ── 8. Tổng số lượng tài khoản thanh toán đang hoạt động ───────────────
+        # Khách hàng cá nhân: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)", acc_st = "Normal"
+        df_tk_tt_ca_nhan_hoatdong = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
+            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
+        ].copy()
+        logger.info(f"DEBUG: TK thanh toán cá nhân hoạt động: {len(df_tk_tt_ca_nhan_hoatdong)} accounts")
+        _store_detail(request, 'tk_tt_ca_nhan_hoatdong', df_tk_tt_ca_nhan_hoatdong,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị'})
+
+        # Khách hàng tổ chức: Month_Term = 0, Bỏ Cust_Name = "Cá Nhân", "Hộ gia đình", Bỏ "TG TK KHONG KY HAN" và "(Blanks)", acc_st = "Normal"
+        df_tk_tt_to_chuc_hoatdong = df_tg[
+            (df_tg['_month_term'] == 0) &
+            (~df_tg['_cust_name'].str.strip().str.lower().isin(['cá nhân', 'hộ gia đình'])) &
+            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
+            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
+        ].copy()
+        logger.info(f"DEBUG: TK thanh toán tổ chức hoạt động: {len(df_tk_tt_to_chuc_hoatdong)} accounts")
+        _store_detail(request, 'tk_tt_to_chuc_hoatdong', df_tk_tt_to_chuc_hoatdong,
+                      {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
+                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
+                       'Tr_Office_Name': 'Đơn vị', '_cust_name': 'Loại KH'})
+
+        context['result'] = {
+            'tong_kh':              len(df_tong_kh),
+            'tong_tk_tiet_kiem':    len(df_savings),
+            'so_kh_tiet_kiem':      len(df_kh_tietkiem),
+            'so_kh_lanh_lai_dinh_ky': len(df_dk_unique),
+            'so_kh_tietkiem_co_tt': len(df_co_tt),
+            'so_kh_tra_lai_qua_tk': len(df_qua_tk_unique),
+            'so_kh_dinh_ky_qua_tk': len(df_dk_qua_tk_unique),
+            'so_kh_15_tuoi_co_tk': len(df_kh_15_tuoi_unique),
+            'so_kh_15_tuoi_hoatdong': len(df_kh_15_tuoi_hoatdong_unique),
+            'so_tk_tt_ca_nhan': len(df_tk_tt_ca_nhan),
+            'so_tk_tt_to_chuc': len(df_tk_tt_to_chuc),
+            'so_tk_tt_ca_nhan_hoatdong': len(df_tk_tt_ca_nhan_hoatdong),
+            'so_tk_tt_to_chuc_hoatdong': len(df_tk_tt_to_chuc_hoatdong),
+        }
+
+    except Exception as e:
+        messages.error(request, f'Lỗi xử lý: {str(e)}')
+        import traceback
+        traceback.print_exc()
+
+    return render(request, 'templates_app/reports/tiet_kiem_tra_lai.html', context)
+
+
+@login_required
+def tiet_kiem_tra_lai_detail(request, metric_key):
+    """AJAX: trả về JSON preview (200 dòng đầu) cho một chỉ tiêu."""
+    if metric_key not in _TKTL_LABELS:
+        return JsonResponse({'error': 'Chỉ tiêu không hợp lệ.'}, status=400)
+    data = _load_detail(request, metric_key)
+    if data is None:
+        return JsonResponse({'error': 'Chưa có dữ liệu. Vui lòng xử lý lại.'}, status=404)
+    return JsonResponse({
+        'label': _TKTL_LABELS[metric_key],
+        'total': len(data),
+        'rows': data[:200],
+        'headers': list(data[0].keys()) if data else [],
+    })
+
+
+@login_required
+def tiet_kiem_tra_lai_download(request, metric_key):
+    """Download Excel cho một chỉ tiêu."""
+    if metric_key not in _TKTL_LABELS:
+        messages.error(request, 'Chỉ tiêu không hợp lệ.')
+        return redirect('tiet_kiem_tra_lai')
+    data = _load_detail(request, metric_key)
+    if not data:
+        messages.error(request, 'Chưa có dữ liệu. Vui lòng xử lý lại.')
+        return redirect('tiet_kiem_tra_lai')
+
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Danh sách', index=False)
+        ws = writer.sheets['Danh sách']
+        for col in ws.columns:
+            max_len = max((len(str(c.value or '')) for c in col), default=10)
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
+    output.seek(0)
+
+    filename = f'{metric_key}.xlsx'
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
 @login_required
 def dien_luc_report_view(request):
     """Giao diện báo cáo Điện lực - xử lý client-side"""
     return render(request, 'templates_app/reports/dien_luc.html')
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_dien_luc_report(request):
+    """Xử lý báo cáo Thu hộ tiền điện - xuất Excel bảng kê"""
+    try:
+        uploaded_file = request.FILES.get('dien_luc_file')
+        start_date_str = request.POST.get('start_date', '').strip()
+        end_date_str = request.POST.get('end_date', '').strip()
+
+        if not uploaded_file:
+            messages.error(request, 'Vui lòng chọn file Excel.')
+            return redirect('dien_luc_report')
+
+        if not start_date_str or not end_date_str:
+            messages.error(request, 'Vui lòng nhập đầy đủ khoảng thời gian.')
+            return redirect('dien_luc_report')
+
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Đọc file Excel — dùng helper tự xử lý corruption cho .xls cũ
+        df = _read_excel_safe(uploaded_file)
+
+        # Chuẩn hóa tên cột (strip whitespace)
+        df.columns = [c.strip() for c in df.columns]
+
+        required_cols = ['NGAY_NOP', 'TONG_NOP']
+        for col in required_cols:
+            if col not in df.columns:
+                messages.error(request, f'File thiếu cột bắt buộc: {col}. Các cột hiện có: {", ".join(df.columns)}')
+                return redirect('dien_luc_report')
+
+        # Parse NGAY_NOP — thử nhiều format, ưu tiên DD/MM/YYYY
+        raw = df['NGAY_NOP']
+        if pd.api.types.is_datetime64_any_dtype(raw):
+            df['ngay_parsed'] = raw
+        else:
+            s = raw.astype(str).str.strip().str[:10]
+            # Thử lần lượt các format phổ biến
+            for fmt in ('%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y', '%m/%d/%Y'):
+                parsed = pd.to_datetime(s, format=fmt, errors='coerce')
+                ok = parsed.notna().sum()
+                if ok > len(df) * 0.5:
+                    df['ngay_parsed'] = parsed
+                    break
+            else:
+                df['ngay_parsed'] = pd.NaT
+
+        df = df.dropna(subset=['ngay_parsed'])
+        if df.empty:
+            messages.error(request, 'Không thể parse cột NGAY_NOP. Kiểm tra lại định dạng ngày trong file.')
+            return redirect('dien_luc_report')
+
+        df['ngay_date'] = df['ngay_parsed'].dt.date
+
+        # Debug: show sample parsed dates and range
+        sample_dates = sorted(df['ngay_date'].unique())[:5]
+        sample_str = ', '.join(d.strftime('%d/%m/%Y') for d in sample_dates)
+
+        # Filter by date range
+        df_filtered = df[(df['ngay_date'] >= start_date) & (df['ngay_date'] <= end_date)]
+
+        if df_filtered.empty:
+            messages.warning(request,
+                f'Không có dữ liệu trong khoảng {start_date.strftime("%d/%m/%Y")} – {end_date.strftime("%d/%m/%Y")}. '
+                f'File có {len(df)} dòng, ngày đầu tiên parse được: {sample_str}')
+            return redirect('dien_luc_report')
+
+        df = df_filtered
+
+        # Parse TONG_NOP as numeric — strip spaces/commas nếu là string
+        tong_nop_raw = df['TONG_NOP'].astype(str).str.strip().str.replace(',', '', regex=False)
+        df['tong_nop_num'] = pd.to_numeric(tong_nop_raw, errors='coerce').fillna(0)
+
+        # Đếm số hóa đơn bằng size (đếm tất cả các dòng, không bỏ NaN)
+        size_by_date = df.groupby('ngay_date').size().rename('so_luong')
+        sum_by_date = df.groupby('ngay_date')['tong_nop_num'].sum().rename('so_tien')
+        grouped = (
+            pd.concat([size_by_date, sum_by_date], axis=1)
+            .reset_index()
+            .sort_values('ngay_date')
+        )
+
+        # Build Excel with openpyxl
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Bảng kê tiền điện'
+
+        # Fit tất cả cột vào 1 trang khi in
+        ws.sheet_properties.pageSetUpPr.fitToPage = True
+        ws.page_setup.fitToWidth = 1
+        ws.page_setup.fitToHeight = 0  # 0 = không giới hạn số trang dọc
+        ws.page_setup.orientation = 'portrait'
+
+        # --- Styles ---
+        bold_font = Font(name='Times New Roman', bold=True, size=12)
+        normal_font = Font(name='Times New Roman', size=12)
+        center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        left = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        right = Alignment(horizontal='right', vertical='center')
+
+        thin = Side(border_style='thin', color='000000')
+        all_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        header_fill = PatternFill(start_color='D9E1F2', end_color='D9E1F2', fill_type='solid')
+
+        # Column widths: A(STT), B(Ngày), C(Số HĐ), D(Số tiền), E(Ghi chú)
+        ws.column_dimensions['A'].width = 8
+        ws.column_dimensions['B'].width = 18
+        ws.column_dimensions['C'].width = 22
+        ws.column_dimensions['D'].width = 22
+        ws.column_dimensions['E'].width = 25
+
+        row = 1
+
+        # Row 1: bank name (left A:C) + CHXHCNVN (right D:E)
+        ws.merge_cells(f'A{row}:C{row}')
+        c = ws.cell(row=row, column=1,
+                    value='NGÂN HÀNG NÔNG NGHIỆP\nVÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM')
+        c.font = Font(name='Times New Roman', bold=True, size=11)
+        c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        ws.row_dimensions[row].height = 32
+
+        ws.merge_cells(f'D{row}:E{row}')
+        c2 = ws.cell(row=row, column=4,
+                     value='CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM')
+        c2.font = Font(name='Times New Roman', bold=True, size=11)
+        c2.alignment = center
+        row += 1
+
+        # Row 2: Chi nhánh (left A:C) + Độc lập (right D:E)
+        ws.merge_cells(f'A{row}:C{row}')
+        c = ws.cell(row=row, column=1, value='CHI NHÁNH GIÁ RAI BẠC LIÊU')
+        c.font = Font(name='Times New Roman', bold=True, underline='single', size=11)
+        c.alignment = center
+
+        ws.merge_cells(f'D{row}:E{row}')
+        c2 = ws.cell(row=row, column=4, value='Độc lập - Tự do - Hạnh phúc')
+        c2.font = Font(name='Times New Roman', bold=True, underline='single', size=11)
+        c2.alignment = center
+        ws.row_dimensions[row].height = 18
+        row += 1
+
+        # Empty row
+        row += 1
+
+        # Title row
+        start_fmt = start_date.strftime('%d/%m/%Y')
+        end_fmt = end_date.strftime('%d/%m/%Y')
+        title = f'BẢNG KÊ THANH TOÁN HOÁ ĐƠN TIỀN ĐIỆN\nTỪ NGÀY {start_fmt} ĐẾN NGÀY {end_fmt}'
+        ws.merge_cells(f'A{row}:E{row}')
+        c = ws.cell(row=row, column=1, value=title)
+        c.font = Font(name='Times New Roman', bold=True, size=14)
+        c.alignment = center
+        ws.row_dimensions[row].height = 46
+        row += 1
+
+        # Empty row
+        row += 1
+
+        # Table header
+        headers = ['STT', 'Ngày', 'Số lượng Hoá Đơn', 'Số tiền', 'Ghi Chú']
+        for col_idx, h in enumerate(headers, start=1):
+            c = ws.cell(row=row, column=col_idx, value=h)
+            c.font = bold_font
+            c.alignment = center
+            c.border = all_border
+            c.fill = header_fill
+        ws.row_dimensions[row].height = 22
+        row += 1
+
+        # Data rows
+        total_so_luong = 0
+        total_so_tien = 0
+
+        for i, data_row in enumerate(grouped.itertuples(), start=1):
+            ngay_str = data_row.ngay_date.strftime('%d/%m/%Y')
+            so_luong = int(data_row.so_luong)
+            so_tien = float(data_row.so_tien)
+            total_so_luong += so_luong
+            total_so_tien += so_tien
+
+            values = [i, ngay_str, so_luong, so_tien, '']
+            aligns = [center, center, center, right, left]
+            for col_idx, (val, aln) in enumerate(zip(values, aligns), start=1):
+                c = ws.cell(row=row, column=col_idx, value=val)
+                c.font = normal_font
+                c.alignment = aln
+                c.border = all_border
+                if col_idx == 4:
+                    c.number_format = '#,##0'
+            ws.row_dimensions[row].height = 18
+            row += 1
+
+        # Total row
+        total_values = ['', 'TỔNG CỘNG', total_so_luong, total_so_tien, '']
+        total_aligns = [center, center, center, right, left]
+        for col_idx, (val, aln) in enumerate(zip(total_values, total_aligns), start=1):
+            c = ws.cell(row=row, column=col_idx, value=val)
+            c.font = bold_font
+            c.alignment = aln
+            c.border = all_border
+            if col_idx == 4:
+                c.number_format = '#,##0'
+        ws.row_dimensions[row].height = 18
+        row += 1
+
+        # Empty row before signatures
+        row += 1
+
+        # Signature title row: LẬP BẢNG / KIỂM SOÁT
+        ws.merge_cells(f'B{row}:C{row}')
+        c = ws.cell(row=row, column=2, value='LẬP BẢNG')
+        c.font = bold_font
+        c.alignment = center
+
+        ws.merge_cells(f'D{row}:E{row}')
+        c2 = ws.cell(row=row, column=4, value='KIỂM SOÁT')
+        c2.font = bold_font
+        c2.alignment = center
+        ws.row_dimensions[row].height = 18
+        row += 1
+
+        # Sub-label row: (Ký, ghi rõ họ tên) — directly below, no extra gap
+        ws.merge_cells(f'B{row}:C{row}')
+        c = ws.cell(row=row, column=2, value='(Ký, ghi rõ họ tên)')
+        c.font = normal_font
+        c.alignment = center
+
+        ws.merge_cells(f'D{row}:E{row}')
+        c2 = ws.cell(row=row, column=4, value='(Ký, ghi rõ họ tên)')
+        c2.font = normal_font
+        c2.alignment = center
+        ws.row_dimensions[row].height = 18
+        row += 1
+
+        # Empty rows for actual signature space
+        ws.row_dimensions[row].height = 50
+        row += 1
+
+        # Output
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = f'bang_ke_tien_dien_{start_fmt.replace("/","")}-{end_fmt.replace("/","")}.xlsx'
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f'Lỗi xử lý file: {str(e)}')
+        return redirect('dien_luc_report')
 
 
 @login_required
@@ -801,11 +1406,29 @@ def atm_transaction_report(request):
     selected_period = request.GET.get('period', '')
     selected_atm = request.GET.get('atm', '')
     selected_branch = request.GET.get('branch', '')
-    period_type = request.GET.get('period_type', 'month')  # month hoặc 6months
+    period_type = request.GET.get('period_type', 'month')  # month, 6months, quarter, year
     tx_type_filter = request.GET.get('tx_type', '')  # deposit, withdrawal, transfer, other
 
     # Lấy danh sách các kỳ báo cáo có sẵn
     available_periods = ATMReportUpload.objects.all().order_by('-report_period')
+
+    # Tổng hợp danh sách năm và quý từ dữ liệu có sẵn
+    from django.db.models.functions import TruncYear, TruncQuarter
+    available_years = (
+        ATMReportUpload.objects.annotate(nam=TruncYear('report_period'))
+        .values('nam').distinct().order_by('-nam')
+    )
+    available_quarters = (
+        ATMReportUpload.objects.annotate(quy=TruncQuarter('report_period'))
+        .values('quy').distinct().order_by('-quy')
+    )
+    available_quarters_list = []
+    for row in available_quarters:
+        m = row['quy'].month
+        available_quarters_list.append({
+            'value': row['quy'].strftime('%Y-%m-%d'),
+            'label': f"Q{(m-1)//3+1}/{row['quy'].year}",
+        })
 
     # Lấy danh sách ATM và chi nhánh để làm filter
     all_atms = ATMTransactionReport.objects.values('atm_no').distinct().order_by('atm_no')
@@ -820,12 +1443,28 @@ def atm_transaction_report(request):
             period_date = datetime.strptime(selected_period, '%Y-%m-%d').date()
 
             if period_type == '6months':
-                # Lấy 6 tháng gần nhất tính từ tháng được chọn
                 start_date = period_date - relativedelta(months=5)
                 queryset = queryset.filter(
                     report_period__gte=start_date,
                     report_period__lte=period_date
                 )
+            elif period_type == 'quarter':
+                # Lấy toàn bộ quý chứa tháng được chọn
+                q_month = ((period_date.month - 1) // 3) * 3 + 1
+                import datetime as dt
+                q_start = period_date.replace(month=q_month, day=1)
+                q_end_month = q_month + 2
+                q_end_year = period_date.year + (1 if q_end_month > 12 else 0)
+                q_end_month = q_end_month if q_end_month <= 12 else q_end_month - 12
+                import calendar
+                q_end = dt.date(q_end_year, q_end_month, calendar.monthrange(q_end_year, q_end_month)[1])
+                queryset = queryset.filter(
+                    report_period__gte=q_start,
+                    report_period__lte=q_end
+                )
+            elif period_type == 'year':
+                # Lấy toàn bộ năm của tháng được chọn
+                queryset = queryset.filter(report_period__year=period_date.year)
             else:
                 # Chỉ lấy tháng được chọn
                 queryset = queryset.filter(report_period=period_date)
@@ -1000,6 +1639,8 @@ def atm_transaction_report(request):
 
     context = {
         'available_periods': available_periods,
+        'available_years': available_years,
+        'available_quarters': available_quarters_list,
         'all_atms': all_atms,
         'all_branches': all_branches,
         'selected_period': selected_period,
@@ -1104,3 +1745,1175 @@ def atm_transaction_detail(request, atm_no):
     }
 
     return render(request, 'templates_app/reports/atm_transaction_detail.html', context)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BÁO CÁO ĐÓNG/MỞ TÀI KHOẢN
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _to_json_safe(obj):
+    """Chuyển đổi đệ quy các kiểu dữ liệu pandas/numpy thành kiểu JSON thuần."""
+    import numpy as np
+    if isinstance(obj, dict):
+        return {k: _to_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_json_safe(i) for i in obj]
+    if isinstance(obj, pd.Timestamp):
+        return obj.strftime('%d/%m/%Y') if not pd.isnull(obj) else None
+    if isinstance(obj, float) and math.isnan(obj):
+        return None
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating,)):
+        v = float(obj)
+        return None if math.isnan(v) else v
+    if isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    if obj is pd.NaT:
+        return None
+    return obj
+
+# Danh mục phân loại
+_LOAI_CA_NHAN = [
+    'TG KKH Cá nhân (Số đẹp)',
+    'TG KKH CB lương Ngân sách',
+    'Tiền gửi thanh toán cá nhân',
+    'TG thanh toán cá nhân eKYC',
+]
+_LOAI_TO_CHUC = [
+    'Tg KKH TCKT (Số đẹp)',
+    'TG KKH TCKT',
+    'TKTT Hộ kinh doanh',
+]
+# locdpnm dùng để nhận diện HSSV (phải là CA NHÂN loại này)
+_LOCDPNM_HSSV = 'Tiền gửi thanh toán cá nhân'
+
+# Các tên cột số tài khoản có thể có trong file mở TK (theo thứ tự ưu tiên)
+_POSSIBLE_ACCTNO_COLS = ['idxacno', 'acctno', 'acctcd', 'acctseq', 'so_tai_khoan', 'account_no']
+
+
+def _find_col(df_cols, candidates):
+    """Tìm tên cột trong df theo danh sách ứng viên (case-insensitive, bỏ qua khoảng trắng thừa)."""
+    lower_map = {c.strip().lower(): c for c in df_cols}
+    for cand in candidates:
+        key = cand.strip().lower()
+        if key in lower_map:
+            return lower_map[key]
+    return None
+
+
+@login_required
+def dong_mo_tai_khoan_report_view(request):
+    """Giao diện báo cáo Đóng/Mở tài khoản"""
+    from .models import DongMoTaiKhoanHistory
+    from django.db.models import Sum
+    from django.db.models.functions import TruncYear, TruncQuarter
+
+    # Xóa session cũ nếu sai format
+    old = request.session.get('dmtk_result')
+    if old and 'has_dong_tk_file' not in old:
+        del request.session['dmtk_result']
+
+    # Lịch sử theo tháng
+    history_monthly = list(
+        DongMoTaiKhoanHistory.objects.order_by('-report_month').values(
+            'report_month', 'tong_mo', 'ca_nhan_count', 'to_chuc_count',
+            'the_mien_phi_count', 'hssv_count',
+            'dong_tk_count', 'dong_he_thong_count', 'dong_tai_quay_count',
+            'dong_ca_nhan_count', 'dong_to_chuc_count'
+        )
+    )
+
+    # Tổng hợp theo quý
+    history_quarterly = list(
+        DongMoTaiKhoanHistory.objects
+        .annotate(quy=TruncQuarter('report_month'))
+        .values('quy')
+        .annotate(
+            tong_mo=Sum('tong_mo'),
+            ca_nhan_count=Sum('ca_nhan_count'),
+            to_chuc_count=Sum('to_chuc_count'),
+            the_mien_phi_count=Sum('the_mien_phi_count'),
+            hssv_count=Sum('hssv_count'),
+            dong_tk_count=Sum('dong_tk_count'),
+            dong_he_thong_count=Sum('dong_he_thong_count'),
+            dong_tai_quay_count=Sum('dong_tai_quay_count'),
+            dong_ca_nhan_count=Sum('dong_ca_nhan_count'),
+            dong_to_chuc_count=Sum('dong_to_chuc_count'),
+        )
+        .order_by('-quy')
+    )
+    # Tính số quý từ tháng đầu quý
+    for row in history_quarterly:
+        m = row['quy'].month
+        row['quy_label'] = f"Q{(m-1)//3+1}/{row['quy'].year}"
+
+    # Tổng hợp theo năm
+    history_yearly = list(
+        DongMoTaiKhoanHistory.objects
+        .annotate(nam=TruncYear('report_month'))
+        .values('nam')
+        .annotate(
+            tong_mo=Sum('tong_mo'),
+            ca_nhan_count=Sum('ca_nhan_count'),
+            to_chuc_count=Sum('to_chuc_count'),
+            the_mien_phi_count=Sum('the_mien_phi_count'),
+            hssv_count=Sum('hssv_count'),
+            dong_tk_count=Sum('dong_tk_count'),
+            dong_he_thong_count=Sum('dong_he_thong_count'),
+            dong_tai_quay_count=Sum('dong_tai_quay_count'),
+            dong_ca_nhan_count=Sum('dong_ca_nhan_count'),
+            dong_to_chuc_count=Sum('dong_to_chuc_count'),
+        )
+        .order_by('-nam')
+    )
+
+    return render(request, 'templates_app/reports/dong_mo_tai_khoan.html', {
+        'history_monthly': history_monthly,
+        'history_quarterly': history_quarterly,
+        'history_yearly': history_yearly,
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_dong_mo_tai_khoan_report(request):
+    """Xử lý báo cáo Đóng/Mở tài khoản"""
+    try:
+        mo_tk_file   = request.FILES.get('mo_tk_file')
+        dong_tk_file = request.FILES.get('dong_tk_file')  # tùy chọn
+        the_file     = request.FILES.get('the_file')      # tùy chọn
+
+        if not mo_tk_file:
+            messages.error(request, "Vui lòng tải lên file Mở tài khoản.")
+            return redirect('dong_mo_tai_khoan_report')
+
+        # ── Đọc file mở tài khoản ──────────────────────────────────────────
+        try:
+            df_mo = pd.read_excel(mo_tk_file)
+            df_mo.columns = df_mo.columns.str.strip()
+        except Exception as e:
+            messages.error(request, f"Không đọc được file Mở tài khoản: {e}")
+            return redirect('dong_mo_tai_khoan_report')
+
+        # Kiểm tra cột bắt buộc locdpnm
+        locdpnm_col = _find_col(df_mo.columns, ['locdpnm', 'loai_sp', 'loai_tk', 'product_name'])
+        if locdpnm_col is None:
+            messages.error(
+                request,
+                f"Không tìm thấy cột 'locdpnm' trong file Mở tài khoản. "
+                f"Các cột hiện có: {', '.join(df_mo.columns.tolist())}"
+            )
+            return redirect('dong_mo_tai_khoan_report')
+
+        df_mo[locdpnm_col] = df_mo[locdpnm_col].astype(str).str.strip()
+
+        # ── Phân loại cơ bản ───────────────────────────────────────────────
+        mask_cn  = df_mo[locdpnm_col].isin(_LOAI_CA_NHAN)
+        mask_tc  = df_mo[locdpnm_col].isin(_LOAI_TO_CHUC)
+
+        df_ca_nhan  = df_mo[mask_cn].copy()
+        df_to_chuc  = df_mo[mask_tc].copy()
+
+        # ── Nhận diện Thẻ miễn phí và HSSV qua file phát hành thẻ ──────────
+        the_mien_phi_count   = 0
+        the_mien_phi_records = []
+        hssv_count           = 0
+        hssv_records         = []
+        join_col_mo          = None
+        join_warning         = None
+
+        if the_file:
+            try:
+                df_the = pd.read_excel(the_file)
+                df_the.columns = df_the.columns.str.strip()
+
+                # Kiểm tra cột bắt buộc của file thẻ
+                missing_the_cols = [c for c in ['ISSUE_TYPE', 'HASFEE_DES']
+                                    if _find_col(df_the.columns, [c]) is None]
+                if missing_the_cols:
+                    join_warning = (
+                        f"File phát hành thẻ thiếu cột: {', '.join(missing_the_cols)}. "
+                        f"Không thể xác định HSSV."
+                    )
+                else:
+                    issue_col  = _find_col(df_the.columns, ['ISSUE_TYPE'])
+                    hasfee_col = _find_col(df_the.columns, ['HASFEE_DES'])
+
+                    def _norm_text(s):
+                        """Chuẩn hóa text để so sánh: gộp dấu Unicode (NFC), bỏ khoảng trắng thừa, hoa hết.
+                        File Excel xuất từ IPCAS có thể lưu tiếng Việt ở dạng NFD (dấu tách rời) khiến
+                        so sánh trực tiếp với chuỗi hardcode NFC luôn sai dù nhìn giống hệt nhau."""
+                        return unicodedata.normalize('NFC', str(s)).strip().upper()
+
+                    # Lọc thẻ HSSV: CSP_New + MIỄN PHÍ PHT (so sánh không phân biệt hoa/thường,
+                    # chuẩn hóa Unicode để tránh lệch do dấu tiếng Việt tách rời)
+                    mask_hssv_the = (
+                        (df_the[issue_col].apply(_norm_text) == 'CSP_NEW') &
+                        (df_the[hasfee_col].apply(_norm_text) == 'MIỄN PHÍ PHT')
+                    )
+                    df_the_hssv = df_the[mask_hssv_the].copy()
+
+                    # Tìm cột số tài khoản để join
+                    join_col_the = _find_col(df_the.columns, ['ACCOUNT', 'idxacno', 'acctseq', 'acctno', 'acctcd', 'so_tai_khoan'])
+                    join_col_mo  = _find_col(df_mo.columns,  _POSSIBLE_ACCTNO_COLS)
+
+                    # Mapping CUSER → Phòng giao dịch
+                    _CUSER_PGD_MAP = {
+                        '7202canhsh':   'PGD Láng Tròn',
+                        '7202cthaotn':  'PGD Láng Tròn',
+                        '7202cthuclt':  'PGD Giá Rai',
+                        '7202cthaotlt': 'PGD Giá Rai',
+                        '7202chieutt':  'Hội sở Giá Rai',
+                        '7202csinhnt':  'Hội sở Giá Rai',
+                        '7202cchica':   'Hội sở Giá Rai',
+                        '7202cnhitn':   'Hội sở Giá Rai',
+                    }
+
+                    if join_col_the and join_col_mo:
+                        # Chuẩn hóa key join: bỏ khoảng trắng/ký tự lạ, bỏ .0 cuối (Excel đọc thành số thực),
+                        # bỏ số 0 ở đầu — vì 2 file có thể lưu số tài khoản khác định dạng
+                        # (VD: file này là số "123456", file kia là text "0123456").
+                        def _norm_acct(s):
+                            s = str(s).strip()
+                            if s.endswith('.0'):
+                                s = s[:-2]
+                            digits = re.sub(r'\D', '', s)
+                            if digits:
+                                return digits.lstrip('0') or '0'
+                            return s
+
+                        df_the_hssv = df_the_hssv.copy()
+                        df_the_hssv['_key'] = df_the_hssv[join_col_the].apply(_norm_acct)
+
+                        # Cột thông tin bổ sung từ file thẻ
+                        custviename_col  = _find_col(df_the.columns, ['CUSTVIENAME'])
+                        cdate_col        = _find_col(df_the.columns, ['CDATE'])
+                        cuser_col        = _find_col(df_the.columns, ['CUSER'])
+                        birthdate_col    = _find_col(df_the.columns, ['CUSTBIRTHDATE'])
+
+                        # ── Thẻ miễn phí: toàn bộ CSP_New + MIỄN PHÍ PHT ──
+                        tmp_acct_set = set(df_the_hssv['_key'])
+                        mask_tmp = df_mo[join_col_mo].apply(_norm_acct).isin(tmp_acct_set)
+                        df_tmp = df_mo[mask_tmp].copy()
+                        df_tmp['_key'] = df_tmp[join_col_mo].apply(_norm_acct)
+                        the_lookup_all = df_the_hssv.set_index('_key')
+
+                        def _get_info(acct, lookup):
+                            if acct not in lookup.index:
+                                return {'ho_ten': '', 'ngay_mo_the': '', 'cuser': '', 'pgd': '', 'ngay_sinh': '', 'tuoi': ''}
+                            row = lookup.loc[acct]
+                            if isinstance(row, pd.DataFrame):
+                                row = row.iloc[0]
+                            cuser_val = str(row[cuser_col]).strip() if cuser_col else ''
+                            # Tính tuổi
+                            ngay_sinh_str = ''
+                            tuoi_str = ''
+                            if birthdate_col:
+                                raw_bd = row[birthdate_col]
+                                try:
+                                    import datetime
+                                    if pd.isna(raw_bd):
+                                        pass
+                                    else:
+                                        bd = pd.to_datetime(raw_bd, dayfirst=True, errors='coerce')
+                                        if pd.notna(bd):
+                                            today = datetime.date.today()
+                                            tuoi = today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
+                                            ngay_sinh_str = bd.strftime('%d/%m/%Y')
+                                            tuoi_str = str(tuoi)
+                                except Exception:
+                                    pass
+                            return {
+                                'ho_ten':      str(row[custviename_col]).strip() if custviename_col else '',
+                                'ngay_mo_the': str(row[cdate_col]).strip()       if cdate_col       else '',
+                                'cuser':       cuser_val,
+                                'pgd':         _CUSER_PGD_MAP.get(cuser_val.lower(), cuser_val),
+                                'ngay_sinh':   ngay_sinh_str,
+                                'tuoi':        tuoi_str,
+                            }
+
+                        def _build_records(df_joined, lookup):
+                            records = []
+                            for _, row in df_joined.head(500).iterrows():
+                                acct = str(row[join_col_mo]).strip()
+                                if acct.endswith('.0'):
+                                    acct = acct[:-2]
+                                info = _get_info(acct, lookup)
+                                records.append({
+                                    'so_tai_khoan': acct,
+                                    'ho_ten':       info['ho_ten'],
+                                    'ngay_mo_the':  info['ngay_mo_the'],
+                                    'ngay_sinh':    info['ngay_sinh'],
+                                    'tuoi':         info['tuoi'],
+                                    'cuser':        info['cuser'],
+                                    'pgd':          info['pgd'],
+                                })
+                            return records
+
+                        the_mien_phi_count   = len(df_tmp)
+                        the_mien_phi_records = _build_records(df_tmp, the_lookup_all)
+
+                        # ── HSSV: thêm điều kiện tuổi < 18 ──────────────────
+                        if birthdate_col:
+                            import datetime
+                            today = datetime.date.today()
+
+                            def _is_under_18(acct):
+                                if acct not in the_lookup_all.index:
+                                    return False
+                                row = the_lookup_all.loc[acct]
+                                if isinstance(row, pd.DataFrame):
+                                    row = row.iloc[0]
+                                raw_bd = row[birthdate_col]
+                                try:
+                                    if pd.isna(raw_bd):
+                                        return False
+                                    bd = pd.to_datetime(raw_bd, dayfirst=True, errors='coerce')
+                                    if pd.isna(bd):
+                                        return False
+                                    tuoi = today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
+                                    return tuoi < 18
+                                except Exception:
+                                    return False
+
+                            mask_hssv = df_tmp['_key'].apply(_is_under_18)
+                            df_hssv_new = df_tmp[mask_hssv].copy()
+                            hssv_count   = len(df_hssv_new)
+                            hssv_records = _build_records(df_hssv_new, the_lookup_all)
+                        else:
+                            join_warning = "File thẻ thiếu cột CUSTBIRTHDATE — không thể lọc HSSV theo tuổi."
+
+                        if the_mien_phi_count == 0:
+                            join_warning = (
+                                f"[Debug] Thẻ lọc được: {len(df_the_hssv)} | "
+                                f"Cột join thẻ: '{join_col_the}' | Cột join mở TK: '{join_col_mo}' | "
+                                f"Mẫu TK thẻ: {list(tmp_acct_set)[:3]} | "
+                                f"Mẫu TK mở TK: {[_norm_acct(v) for v in df_mo[join_col_mo].head(3).tolist()]}"
+                            )
+                    else:
+                        missing = []
+                        if not join_col_the:
+                            missing.append("file thẻ thiếu cột số tài khoản")
+                        if not join_col_mo:
+                            missing.append(f"file mở TK thiếu cột số tài khoản (thử: {', '.join(_POSSIBLE_ACCTNO_COLS)})")
+                        join_warning = "Không thể join: " + "; ".join(missing)
+
+            except Exception as e:
+                join_warning = f"Lỗi khi xử lý file phát hành thẻ: {e}"
+
+        # ── Xử lý file Đóng tài khoản ─────────────────────────────────────
+        dong_tk_count       = 0
+        dong_he_thong_count = 0
+        dong_tai_quay_count = 0
+        dong_tk_records     = []
+        dong_col_labels     = []
+
+        # Phân loại theo loại khách hàng
+        dong_ca_nhan_count           = 0
+        dong_ca_nhan_tu_dong         = 0
+        dong_ca_nhan_tai_quay        = 0
+        dong_to_chuc_count           = 0
+        dong_to_chuc_tu_dong         = 0
+        dong_to_chuc_tai_quay        = 0
+
+        if dong_tk_file:
+            try:
+                df_dong = pd.read_excel(dong_tk_file)
+                df_dong.columns = df_dong.columns.str.strip()
+
+                teller_col_dong = _find_col(df_dong.columns, ['tellernm', 'teller', 'teller_name'])
+                locdpnm_col_dong = _find_col(df_dong.columns, ['locdpnm', 'loai_sp', 'loai_tk', 'product_name'])
+
+                _DONG_WANT_COLS   = ['idxacno', 'custnm', 'locdpnm', 'clsdt', 'tellernm']
+                _DONG_WANT_LABELS = ['Số tài khoản', 'Họ tên', 'Loại sản phẩm', 'Ngày đóng', 'Teller']
+
+                dong_actual_cols = []
+                for col_key, col_label in zip(_DONG_WANT_COLS, _DONG_WANT_LABELS):
+                    actual = _find_col(df_dong.columns, [col_key])
+                    if actual:
+                        dong_actual_cols.append((actual, col_label))
+                dong_col_labels = [lbl for _, lbl in dong_actual_cols]
+
+                def _loai_dong(teller_val):
+                    t = str(teller_val).strip().upper()
+                    if t == '7202DP':
+                        return 'Hệ thống tự đóng'
+                    elif t.startswith('GRA'):
+                        return 'KH đóng tại quầy'
+                    return str(teller_val).strip()
+
+                def _norm_val(v):
+                    if v is None:
+                        return ''
+                    try:
+                        import math
+                        if isinstance(v, float) and math.isnan(v):
+                            return ''
+                    except Exception:
+                        pass
+                    return str(v)
+
+                dong_tk_count = len(df_dong)
+
+                # Phân loại theo loại khách hàng
+                if locdpnm_col_dong:
+                    df_dong['_locdpnm'] = df_dong[locdpnm_col_dong].astype(str).str.strip()
+
+                    # Lọc khách hàng cá nhân
+                    df_dong_ca_nhan = df_dong[df_dong['_locdpnm'].isin(_LOAI_CA_NHAN)].copy()
+                    dong_ca_nhan_count = len(df_dong_ca_nhan)
+
+                    if teller_col_dong:
+                        dong_ca_nhan_tu_dong = int((df_dong_ca_nhan[teller_col_dong].astype(str).str.strip().str.upper() == '7202DP').sum())
+                        dong_ca_nhan_tai_quay = int(df_dong_ca_nhan[teller_col_dong].astype(str).str.strip().str.upper().str.startswith('GRA').sum())
+
+                    # Lọc khách hàng tổ chức
+                    df_dong_to_chuc = df_dong[df_dong['_locdpnm'].isin(_LOAI_TO_CHUC)].copy()
+                    dong_to_chuc_count = len(df_dong_to_chuc)
+
+                    if teller_col_dong:
+                        dong_to_chuc_tu_dong = int((df_dong_to_chuc[teller_col_dong].astype(str).str.strip().str.upper() == '7202DP').sum())
+                        dong_to_chuc_tai_quay = int(df_dong_to_chuc[teller_col_dong].astype(str).str.strip().str.upper().str.startswith('GRA').sum())
+
+                if teller_col_dong:
+                    dong_he_thong_count = int((df_dong[teller_col_dong].astype(str).str.strip().str.upper() == '7202DP').sum())
+                    dong_tai_quay_count = int(df_dong[teller_col_dong].astype(str).str.strip().str.upper().str.startswith('GRA').sum())
+
+                for _, row in df_dong.head(500).iterrows():
+                    vals = [_norm_val(row[col]) for col, _ in dong_actual_cols]
+                    loai = _loai_dong(row[teller_col_dong]) if teller_col_dong else ''
+                    dong_tk_records.append({'vals': vals, 'loai_dong': loai})
+
+            except Exception as e:
+                messages.warning(request, f"Lỗi đọc file Đóng tài khoản: {e}")
+
+        # ── Thống kê chi tiết theo locdpnm ────────────────────────────────
+        def _breakdown(df):
+            return (
+                df[locdpnm_col]
+                .value_counts()
+                .reset_index()
+                .rename(columns={locdpnm_col: 'loai', 'count': 'so_luong'})
+                .to_dict('records')
+            )
+
+        # ── Cột hiển thị bảng chi tiết (list of lists để template iterate) ─
+        _WANT_COLS   = ['idxacno', 'custnm', 'locdpnm', 'opndt', 'curbal', 'onofftp', 'tellernm']
+        _WANT_LABELS = ['Số tài khoản', 'Họ tên', 'Loại sản phẩm', 'Ngày mở', 'Số dư hiện tại', 'Đơn vị', 'Teller']
+
+        actual_view_cols = []
+        view_col_labels  = []
+        for col_key, col_label in zip(_WANT_COLS, _WANT_LABELS):
+            actual = _find_col(df_mo.columns, [col_key])
+            if actual:
+                actual_view_cols.append(actual)
+                view_col_labels.append(col_label)
+
+        def _to_list_records(df, limit=500):
+            rows = []
+            for _, row in df.head(limit).iterrows():
+                rows.append([
+                    '' if (row[c] is None or (hasattr(row[c], '__class__') and str(type(row[c])) == "<class 'float'>" and str(row[c]) == 'nan')) else str(row[c])
+                    for c in actual_view_cols
+                ])
+            return rows
+
+        # ── Tổng hợp kết quả ──────────────────────────────────────────────
+        result = {
+            'tong_mo': len(df_mo),
+            'ca_nhan_count': len(df_ca_nhan),
+            'the_mien_phi_count': the_mien_phi_count,
+            'hssv_count': hssv_count,
+            'to_chuc_count': len(df_to_chuc),
+            'ca_nhan_breakdown': _breakdown(df_ca_nhan),
+            'to_chuc_breakdown': _breakdown(df_to_chuc),
+            'ca_nhan_records': _to_list_records(df_ca_nhan),
+            'to_chuc_records': _to_list_records(df_to_chuc),
+            'view_col_labels': view_col_labels,
+            'the_mien_phi_records': the_mien_phi_records,
+            'hssv_records': hssv_records,
+            'join_warning': join_warning,
+            'has_the_file': the_file is not None,
+            'has_dong_tk_file': dong_tk_file is not None,
+            'dong_tk_count': dong_tk_count,
+            'dong_he_thong_count': dong_he_thong_count,
+            'dong_tai_quay_count': dong_tai_quay_count,
+            'dong_tk_records': dong_tk_records,
+            'dong_col_labels': dong_col_labels,
+            # Phân loại đóng TK theo loại khách hàng
+            'dong_ca_nhan_count': dong_ca_nhan_count,
+            'dong_ca_nhan_tu_dong': dong_ca_nhan_tu_dong,
+            'dong_ca_nhan_tai_quay': dong_ca_nhan_tai_quay,
+            'dong_to_chuc_count': dong_to_chuc_count,
+            'dong_to_chuc_tu_dong': dong_to_chuc_tu_dong,
+            'dong_to_chuc_tai_quay': dong_to_chuc_tai_quay,
+        }
+
+        request.session['dmtk_result'] = _to_json_safe(result)
+
+        # Lưu lịch sử nếu có chọn kỳ báo cáo
+        report_month_str = request.POST.get('report_month', '').strip()
+        if report_month_str:
+            try:
+                from .models import DongMoTaiKhoanHistory
+                import datetime
+                # Input type="month" gửi định dạng "YYYY-MM" (không có ngày), fromisoformat không parse được
+                report_month = datetime.datetime.strptime(report_month_str, '%Y-%m').date().replace(day=1)
+                DongMoTaiKhoanHistory.objects.update_or_create(
+                    report_month=report_month,
+                    defaults={
+                        'tong_mo': result['tong_mo'],
+                        'ca_nhan_count': result['ca_nhan_count'],
+                        'to_chuc_count': result['to_chuc_count'],
+                        'the_mien_phi_count': result['the_mien_phi_count'],
+                        'hssv_count': result['hssv_count'],
+                        'dong_tk_count': result['dong_tk_count'],
+                        'dong_he_thong_count': result['dong_he_thong_count'],
+                        'dong_tai_quay_count': result['dong_tai_quay_count'],
+                        'dong_ca_nhan_count': result['dong_ca_nhan_count'],
+                        'dong_ca_nhan_tu_dong': result['dong_ca_nhan_tu_dong'],
+                        'dong_ca_nhan_tai_quay': result['dong_ca_nhan_tai_quay'],
+                        'dong_to_chuc_count': result['dong_to_chuc_count'],
+                        'dong_to_chuc_tu_dong': result['dong_to_chuc_tu_dong'],
+                        'dong_to_chuc_tai_quay': result['dong_to_chuc_tai_quay'],
+                    }
+                )
+                messages.success(request, f"Đã lưu thống kê kỳ {report_month.strftime('%m/%Y')} vào lịch sử.")
+            except Exception as e:
+                messages.warning(request, f"Không thể lưu lịch sử: {e}")
+
+        return redirect('dong_mo_tai_khoan_report')
+
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"Đã xảy ra lỗi: {e}")
+        return redirect('dong_mo_tai_khoan_report')
+
+
+# ---------------------------------------------------------------------------
+# Báo cáo Đối chiếu huy động vốn (File Chương trình vs File Hệ thống IPCAS)
+# ---------------------------------------------------------------------------
+
+def _hdv_clean_str(val):
+    """Xóa dấu nháy đơn, khoảng trắng thừa, đuôi '.0' (khi Excel lưu mã dạng số
+    khiến pandas đọc thành số thực trước khi ép chuỗi, vd '123456.0'). Trả '' nếu rỗng/NaN."""
+    if pd.isna(val):
+        return ''
+    s = str(val).replace("'", '').strip()
+    return s[:-2] if s.endswith('.0') else s
+
+
+def _hdv_remove_leading_zeros(val):
+    return _hdv_clean_str(val).lstrip('0')
+
+
+def _hdv_to_float(val):
+    try:
+        f = float(val)
+        return 0.0 if math.isnan(f) else f
+    except (TypeError, ValueError):
+        pass
+    # Một số file IPCAS lưu số dạng chuỗi có đơn vị/ký tự kèm theo (vd '01 Tháng', '1,0')
+    m = re.search(r'-?\d+(?:[.,]\d+)?', _hdv_clean_str(val))
+    if not m:
+        return 0.0
+    return float(m.group(0).replace(',', '.'))
+
+
+def _hdv_format_date_dmy(val):
+    """Chuyển các định dạng ngày thường gặp ('2026-06-23 00:00:00', '20261225')
+    sang dd/mm/yyyy. Giữ nguyên chuỗi gốc nếu không nhận diện được."""
+    s = _hdv_clean_str(val)
+    if not s:
+        return s
+    date_part = s.split(' ')[0]
+    for fmt in ('%Y-%m-%d', '%Y%m%d', '%d/%m/%Y'):
+        try:
+            return datetime.strptime(date_part, fmt).strftime('%d/%m/%Y')
+        except ValueError:
+            continue
+    return s
+
+
+def _hdv_join_unique(values):
+    """Nối các giá trị khác rỗng, không trùng lặp, theo thứ tự xuất hiện."""
+    seen = []
+    for v in values:
+        if v and v not in seen:
+            seen.append(v)
+    return '; '.join(seen)
+
+
+# Theo văn bản 329/NHNo.CT-KH&QLRR ngày 05/6/2026 (mục II.1):
+# Số tiền thưởng = tỷ lệ thưởng x Σ số tiền gửi mới/tăng thêm phát sinh trong tháng,
+# làm tròn đến 10.000đ, tối đa 5.000.000đ/cán bộ/tháng.
+# Chưa có dữ liệu phân loại lãi suất niêm yết (0,1%) / chính sách (0,05%) trong file nguồn
+# nên tạm áp dụng cố định mức niêm yết 0,1%.
+HDV_TY_LE_THUONG = 0.001
+HDV_TRAN_THUONG_THANG = 5_000_000
+
+
+def _hdv_round_10k(amount):
+    return round(amount / 10_000) * 10_000
+
+
+@login_required
+def huy_dong_von_report_view(request):
+    """Giao diện báo cáo Đối chiếu huy động vốn"""
+    return render(request, 'templates_app/reports/huy_dong_von.html')
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_huy_dong_von_report(request):
+    """Đối chiếu file Chương trình (đăng ký HĐV) với file Hệ thống IPCAS."""
+    try:
+        file_ct = request.FILES.get('file_chuong_trinh')
+        file_ht = request.FILES.get('file_he_thong')
+        if not all([file_ct, file_ht]):
+            messages.error(request, "Vui lòng tải lên đủ 2 file.")
+            return redirect('huy_dong_von_report')
+
+        try:
+            df_ct = pd.read_excel(file_ct, dtype=str)
+            df_ht = pd.read_excel(file_ht, dtype=str)
+        except Exception as e:
+            messages.error(request, f"Không đọc được file Excel: {e}")
+            return redirect('huy_dong_von_report')
+
+        required_ht = ['ID_NUMBER', 'EMPLOYEE_NUMBER', 'EMPLOYEE_NAME', 'CCY',
+                       'CURRENT_BALANCE', 'OPENING_DATE', 'MATURITY_DATE', 'MONTH_TERM', 'RATE',
+                       'SO_TAI_KHOAN', 'ACCOUNT_STATUS', 'MA_KH', 'MA_CN']
+        missing_ht = [c for c in required_ht if _find_col(df_ht.columns, [c]) is None]
+        if missing_ht:
+            messages.error(request, f"File Hệ thống IPCAS thiếu cột: {', '.join(missing_ht)}")
+            return redirect('huy_dong_von_report')
+
+        col_id     = _find_col(df_ht.columns, ['ID_NUMBER'])
+        col_emp    = _find_col(df_ht.columns, ['EMPLOYEE_NUMBER'])
+        col_ename  = _find_col(df_ht.columns, ['EMPLOYEE_NAME'])
+        col_ccy    = _find_col(df_ht.columns, ['CCY'])
+        col_bal    = _find_col(df_ht.columns, ['CURRENT_BALANCE'])
+        col_open   = _find_col(df_ht.columns, ['OPENING_DATE'])
+        col_mat    = _find_col(df_ht.columns, ['MATURITY_DATE'])
+        col_term   = _find_col(df_ht.columns, ['MONTH_TERM'])
+        col_rate   = _find_col(df_ht.columns, ['RATE'])
+        col_sotk   = _find_col(df_ht.columns, ['SO_TAI_KHOAN'])
+        col_status = _find_col(df_ht.columns, ['ACCOUNT_STATUS'])
+        col_makh   = _find_col(df_ht.columns, ['MA_KH'])
+        col_ma_cn  = _find_col(df_ht.columns, ['MA_CN'])
+        col_ngt    = _find_col(df_ht.columns, ['NGUOI_GIOI_THIEU'])
+        col_ten_ngt = _find_col(df_ht.columns, ['TEN_NGUOI_GIOI_THIEU'])
+
+        required_ct = {
+            'CCCD/GPĐKKD/GCNĐT/Mã số DN/MST': None,
+            'Mã cán bộ': None,
+            'Số tiền': None,
+        }
+        for name in required_ct:
+            required_ct[name] = _find_col(df_ct.columns, [name])
+        missing_ct = [name for name, col in required_ct.items() if col is None]
+        if missing_ct:
+            messages.error(request, f"File Chương trình thiếu cột: {', '.join(missing_ct)}")
+            return redirect('huy_dong_von_report')
+
+        col_cccd   = required_ct['CCCD/GPĐKKD/GCNĐT/Mã số DN/MST']
+        col_emp_ct = required_ct['Mã cán bộ']
+        col_amount = required_ct['Số tiền']
+
+        col_ngay_dk = _find_col(df_ct.columns, ['Ngày ĐK huy động'])
+        if col_ngay_dk:
+            df_ct[col_ngay_dk] = df_ct[col_ngay_dk].apply(_hdv_format_date_dmy)
+
+        # Gộp số dư IPCAS hợp lệ (VND, kỳ hạn >= 1 tháng theo MONTH_TERM) theo CCCD_Mã cán bộ
+        # + cccd_employees: CCCD -> tập mã cán bộ đã từng được gán cho KH này (kể cả sổ đã tất toán)
+        # + cccd_balance:   CCCD -> tổng số dư các sổ đang Normal (dùng khi KH tất toán sổ gốc rồi gửi lại
+        #                   sổ khác chưa kịp gán mã — vẫn tính chỉ tiêu cho cán bộ đã được xác nhận ở trên)
+        sys_agg = {}
+        cccd_employees = {}
+        cccd_balance = {}
+        vnd_count = 0
+        term_ok_count = 0
+        for _, row in df_ht.iterrows():
+            if _hdv_clean_str(row[col_ccy]).upper() != 'VND':
+                continue
+            vnd_count += 1
+            if _hdv_to_float(row[col_term]) < 1:
+                continue
+            term_ok_count += 1
+
+            cccd = _hdv_remove_leading_zeros(row[col_id])
+            emp  = _hdv_clean_str(row[col_emp])
+            detail = {
+                'employee_name': _hdv_clean_str(row[col_ename]),
+                'rate': _hdv_clean_str(row[col_rate]),
+                'opening_date': _hdv_format_date_dmy(row[col_open]),
+                'maturity_date': _hdv_format_date_dmy(row[col_mat]),
+                'month_term': _hdv_clean_str(row[col_term]),
+                'so_tai_khoan': _hdv_clean_str(row[col_sotk]),
+                'ma_kh': (
+                    f"{_hdv_clean_str(row[col_ma_cn])}-{_hdv_clean_str(row[col_makh])}"
+                    if _hdv_clean_str(row[col_makh]) else ''
+                ),
+                'ma_can_bo_gt': _hdv_clean_str(row[col_ngt]) if col_ngt else '',
+                'ten_can_bo_gt': _hdv_clean_str(row[col_ten_ngt]) if col_ten_ngt else '',
+            }
+            balance = _hdv_to_float(row[col_bal])
+
+            key = f"{cccd}_{emp}"
+            entry = sys_agg.setdefault(key, {
+                'balance': 0.0, 'employee_names': [], 'rates': [], 'opening_dates': [],
+                'maturity_dates': [], 'month_terms': [], 'so_tai_khoans': [], 'ma_khs': [],
+                'ma_can_bo_gts': [], 'ten_can_bo_gts': [],
+            })
+            entry['balance'] += balance
+            entry['employee_names'].append(detail['employee_name'])
+            entry['rates'].append(detail['rate'])
+            entry['opening_dates'].append(detail['opening_date'])
+            entry['maturity_dates'].append(detail['maturity_date'])
+            entry['month_terms'].append(detail['month_term'])
+            entry['so_tai_khoans'].append(detail['so_tai_khoan'])
+            entry['ma_khs'].append(detail['ma_kh'])
+            entry['ma_can_bo_gts'].append(detail['ma_can_bo_gt'])
+            entry['ten_can_bo_gts'].append(detail['ten_can_bo_gt'])
+
+            if emp:
+                cccd_employees.setdefault(cccd, set()).add(emp)
+
+            if _hdv_clean_str(row[col_status]).lower() == 'normal':
+                b_entry = cccd_balance.setdefault(cccd, {
+                    'balance': 0.0, 'employee_names': [], 'rates': [], 'opening_dates': [],
+                    'maturity_dates': [], 'month_terms': [], 'so_tai_khoans': [], 'ma_khs': [],
+                    'ma_can_bo_gts': [], 'ten_can_bo_gts': [],
+                })
+                b_entry['balance'] += balance
+                b_entry['employee_names'].append(detail['employee_name'])
+                b_entry['rates'].append(detail['rate'])
+                b_entry['opening_dates'].append(detail['opening_date'])
+                b_entry['maturity_dates'].append(detail['maturity_date'])
+                b_entry['month_terms'].append(detail['month_term'])
+                b_entry['so_tai_khoans'].append(detail['so_tai_khoan'])
+                b_entry['ma_khs'].append(detail['ma_kh'])
+                b_entry['ma_can_bo_gts'].append(detail['ma_can_bo_gt'])
+                b_entry['ten_can_bo_gts'].append(detail['ten_can_bo_gt'])
+
+        if not sys_agg:
+            messages.warning(
+                request,
+                f"Cảnh báo: Không có khoản HĐV nào trong file IPCAS thỏa điều kiện đối chiếu "
+                f"(tổng {len(df_ht)} dòng; VND: {vnd_count} dòng; kỳ hạn ≥ 1 tháng: {term_ok_count} dòng). "
+                f"Toàn bộ kết quả sẽ hiển thị 'Không khớp IPCAS' — kiểm tra lại định dạng cột CCY/MONTH_TERM."
+            )
+        else:
+            matched_keys = {
+                f"{_hdv_remove_leading_zeros(r[col_cccd])}_{_hdv_clean_str(r[col_emp_ct])}"
+                for _, r in df_ct.iterrows()
+            } & sys_agg.keys()
+            if not matched_keys:
+                messages.warning(
+                    request,
+                    f"Cảnh báo: {len(sys_agg)} khoản IPCAS hợp lệ nhưng không khoản nào khớp với "
+                    f"CCCD + Mã cán bộ trong file Chương trình — kiểm tra lại 2 cột này (định dạng, số 0 đầu, mã cán bộ)."
+                )
+
+        # Cán bộ đăng ký nhiều lần cho cùng 1 KH (vd sửa/cập nhật số tiền đăng ký):
+        # chỉ lần đăng ký mới nhất (theo "Ngày ĐK huy động") được tính, các lần đăng ký
+        # cũ hơn cho cùng cặp CCCD + Mã cán bộ bị coi là đã thay thế.
+        reg_latest_date = {}
+        if col_ngay_dk:
+            for _, row in df_ct.iterrows():
+                k = f"{_hdv_remove_leading_zeros(row[col_cccd])}_{_hdv_clean_str(row[col_emp_ct])}"
+                try:
+                    d = datetime.strptime(_hdv_clean_str(row[col_ngay_dk]), '%d/%m/%Y')
+                except ValueError:
+                    continue
+                if k not in reg_latest_date or d > reg_latest_date[k]:
+                    reg_latest_date[k] = d
+
+        # Đối chiếu từng dòng file Chương trình
+        so_du_ipcas, chenh_lech, trang_thai, co_so_thuong = [], [], [], []
+        employee_name_out, rate_out, maturity_out, month_term_out, so_tk_out = [], [], [], [], []
+        opening_out = []
+        ma_kh_out = []
+        ma_can_bo_gt_out, ten_can_bo_gt_out = [], []
+        ghi_chu_out = []
+        can_bo_agg = {}  # mã cán bộ (đã làm sạch) -> tổng cơ sở tính thưởng
+        for _, row in df_ct.iterrows():
+            ma_cb   = _hdv_clean_str(row[col_emp_ct])
+            cccd    = _hdv_remove_leading_zeros(row[col_cccd])
+            key     = f"{cccd}_{ma_cb}"
+            amount  = _hdv_to_float(row[col_amount])
+            ghi_chu = ''
+
+            # Cán bộ đăng ký nhiều lần cho cùng 1 KH: lần đăng ký cũ hơn bị coi là không hợp lệ,
+            # không hiển thị dữ liệu đối chiếu IPCAS (chỉ giữ ghi chú + trạng thái).
+            superseded_by = None
+            if col_ngay_dk:
+                try:
+                    reg_date = datetime.strptime(_hdv_clean_str(row[col_ngay_dk]), '%d/%m/%Y')
+                except ValueError:
+                    reg_date = None
+                latest = reg_latest_date.get(key)
+                if reg_date is not None and latest is not None and reg_date < latest:
+                    superseded_by = latest
+
+            if superseded_by is not None:
+                entry = None
+                matched = 0.0
+                status = f"Không hợp lệ do đã gửi vào ngày {superseded_by.strftime('%d/%m/%Y')}"
+                co_so = 0.0
+            else:
+                entry   = sys_agg.get(key)
+                matched = entry['balance'] if entry else 0.0
+
+                # KH tất toán sổ đã gán mã cán bộ rồi gửi lại sổ khác chưa kịp gán mã:
+                # nếu cán bộ này đã từng được xác nhận gắn với CCCD này (kể cả ở sổ đã tất toán),
+                # vẫn tính chỉ tiêu theo tổng số dư các sổ đang hoạt động (Normal) của KH đó.
+                if matched <= 0 and ma_cb and ma_cb in cccd_employees.get(cccd, set()):
+                    broadened = cccd_balance.get(cccd)
+                    if broadened and broadened['balance'] > 0:
+                        entry = broadened
+                        matched = broadened['balance']
+                        ghi_chu = 'Tính theo sổ khác của KH (đã tất toán sổ gốc, sổ mới chưa gán mã)'
+
+                if matched >= amount and amount > 0:
+                    status = "Khớp lệ (Đạt/Vượt chỉ tiêu)"
+                elif 0 < matched < amount:
+                    status = "Khớp lệ (Thực gửi ít hơn đăng ký)"
+                else:
+                    status = "Không khớp IPCAS (Chưa gán mã/Chưa gửi)"
+
+                # Cơ sở tính thưởng = min(số tiền đăng ký, số dư thực tế IPCAS)
+                co_so = min(amount, matched) if amount > 0 else 0.0
+                co_so = max(co_so, 0.0)
+
+            so_du_ipcas.append(matched if superseded_by is None else '')
+            chenh_lech.append((matched - amount) if superseded_by is None else '')
+            trang_thai.append(status)
+            co_so_thuong.append(co_so)
+            employee_name_out.append(_hdv_join_unique(entry['employee_names']) if entry else '')
+            rate_out.append(_hdv_join_unique(entry['rates']) if entry else '')
+            opening_out.append(_hdv_join_unique(entry['opening_dates']) if entry else '')
+            maturity_out.append(_hdv_join_unique(entry['maturity_dates']) if entry else '')
+            month_term_out.append(_hdv_join_unique(entry['month_terms']) if entry else '')
+            so_tk_out.append(_hdv_join_unique(entry['so_tai_khoans']) if entry else '')
+            ma_kh_out.append(_hdv_join_unique(entry['ma_khs']) if entry else '')
+            ma_can_bo_gt_out.append(_hdv_join_unique(entry['ma_can_bo_gts']) if entry else '')
+            ten_can_bo_gt_out.append(_hdv_join_unique(entry['ten_can_bo_gts']) if entry else '')
+            ghi_chu_out.append(ghi_chu)
+
+            if ma_cb:
+                can_bo_agg[ma_cb] = can_bo_agg.get(ma_cb, 0.0) + co_so
+
+        df_ct['Mã khách hàng (MA_KH)'] = ma_kh_out
+        df_ct['Tên cán bộ IPCAS (EMPLOYEE_NAME)'] = employee_name_out
+        df_ct['Mã cán bộ giới thiệu (NGUOI_GIOI_THIEU)'] = ma_can_bo_gt_out
+        df_ct['Tên cán bộ giới thiệu (TEN_NGUOI_GIOI_THIEU)'] = ten_can_bo_gt_out
+        df_ct['Lãi suất (RATE)'] = rate_out
+        df_ct['Ngày tới hạn (MATURITY_DATE)'] = maturity_out
+        df_ct['Ngày gửi tiền thực tế (OPENING_DATE)'] = opening_out
+        df_ct['Kỳ hạn (MONTH_TERM)'] = month_term_out
+        df_ct['Số tài khoản (SO_TAI_KHOAN)'] = so_tk_out
+        df_ct['Số dư thực tế IPCAS'] = so_du_ipcas
+        df_ct['Chênh lệch'] = chenh_lech
+        df_ct['Ghi chú đối chiếu'] = ghi_chu_out
+        df_ct['Trạng thái đối chiếu'] = trang_thai
+        df_ct['Số tiền tính thưởng'] = co_so_thuong
+
+        # Tổng hợp thưởng theo cán bộ (mục II.1 văn bản 329/NHNo.CT-KH&QLRR)
+        thuong_rows = []
+        for ma_cb, tong_co_so in sorted(can_bo_agg.items(), key=lambda x: -x[1]):
+            thuong_truoc_tran = _hdv_round_10k(tong_co_so * HDV_TY_LE_THUONG)
+            thuong = min(thuong_truoc_tran, HDV_TRAN_THUONG_THANG)
+            thuong_rows.append({
+                'Mã cán bộ': ma_cb,
+                'Tổng số tiền tính thưởng': tong_co_so,
+                'Tỷ lệ thưởng': HDV_TY_LE_THUONG,
+                'Số tiền thưởng (trước trần)': thuong_truoc_tran,
+                'Số tiền thưởng': thuong,
+                'Đã áp trần 5tr/tháng': thuong_truoc_tran > HDV_TRAN_THUONG_THANG,
+            })
+        df_thuong = pd.DataFrame(thuong_rows, columns=[
+            'Mã cán bộ', 'Tổng số tiền tính thưởng', 'Tỷ lệ thưởng',
+            'Số tiền thưởng (trước trần)', 'Số tiền thưởng', 'Đã áp trần 5tr/tháng',
+        ])
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_ct.to_excel(writer, index=False, sheet_name='Ket Qua Doi Chieu')
+            df_thuong.to_excel(writer, index=False, sheet_name='Tinh Thuong HDV')
+
+            ws = writer.sheets['Ket Qua Doi Chieu']
+            for col_name in [col_amount, 'Số dư thực tế IPCAS']:
+                col_idx = df_ct.columns.get_loc(col_name) + 1
+                col_letter = get_column_letter(col_idx)
+                for cell in ws[col_letter][1:]:
+                    cell.number_format = '#,##0'
+        output.seek(0)
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="Ket_Qua_Doi_Chieu_HDV.xlsx"'
+        return response
+
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"Đã xảy ra lỗi: {e}")
+        return redirect('huy_dong_von_report')
+
+
+# ── Báo cáo Thu hộ học phí và điện lực ────────────────────────────────────────
+
+# Mã DV -> Tên trường (theo phụ lục). Mã DV "759" là Điện lực (xử lý riêng bên dưới).
+THU_HO_HOC_PHI_MA_DV_TRUONG = {
+    '13211': 'Trường THPT Giá Rai',
+    '13212': 'Trường THPT Nguyễn Trung Trực',
+    '13213': 'Trường THPT Tân Phong',
+    '15005': 'Trường THPT Giá Rai',
+    '15013': 'Trường THPT Nguyễn Trung Trực',
+    '15014': 'Trường Tiểu Học Phong Thạnh Tây',
+    '15142': 'Trường Tiểu Học Phong Tân',
+    '15143': 'Trường Tiểu Học Phong Thạnh',
+    '15144': 'Trường Tiểu Học Phong Thạnh Đông',
+    '15145': 'Trường Tiểu Học Phong Thạnh Tây',
+    '15148': 'Trường Tiểu Học Tân Hiệp',
+    '15149': 'Trường Tiểu Học Tân Thạnh A',
+    '15169': 'Trường THCS Giá Rai A',
+    '15170': 'Trường THCS Giá Rai B',
+    '15171': 'Trường THCS Hộ Phòng',
+    '15187': 'Trường THCS Phong Phú',
+    '15188': 'Trường THCS Phong Tân',
+    '15189': 'Trường THCS Phong Thạnh',
+    '15190': 'Trường THCS Phong Thạnh Đông',
+    '15194': 'Trường THCS Tân Hiệp',
+    '15195': 'Trường THCS Thạnh Bình',
+    '15320': 'Trường Mẫu Giáo Phong Phú',
+    '15324': 'Trường Mẫu Giáo Tân Hiệp',
+    '15325': 'Trường Tiểu Học Thạnh Bình',
+    '15326': 'Trường Mầm Non Tuổi Thơ',
+    '14289': 'Trường Tiểu Học Giá Rai A',
+    '14290': 'Trường Tiểu Học Giá Rai B',
+    '14291': 'Trường Tiểu Học Hộ Phòng A',
+    '14292': 'Trường Tiểu Học Hộ Phòng B',
+    '14293': 'Trường Tiểu Học Phong Thạnh',
+    '14294': 'Trường Tiểu Học Phong Phú A',
+    '14295': 'Trường Tiểu Học Phong Phú B',
+    '14296': 'Trường Tiểu Học Phong Thạnh Tây',
+    '14297': 'Trường Tiểu Học Phong Tân',
+    '14298': 'Trường Tiểu Học Thạnh Bình',
+    '14300': 'Trường Tiểu Học Tân Thạnh A',
+    '14301': 'Trường Tiểu Học Phong Thạnh Đông',
+    '15070': 'Trường Mầm Non Họa Mi',
+    '15078': 'Trường Mầm Non Hương Sen',
+    '15086': 'Trường Mầm Non Sơn Ca 1',
+    '15094': 'Trường Mầm Non Phong Thạnh A',
+    '15095': 'Trường Mầm Non Phong Thạnh Đông',
+    '15096': 'Trường Mầm Non Sơn Ca 2',
+    '15097': 'Trường Mẫu Giáo Thạnh Bình',
+    '15101': 'Trường Tiểu Học Và THCS Phong Thạnh A',
+    '15108': 'Trường Tiểu Học Giá Rai A',
+    '15109': 'Trường Tiểu Học Giá Rai B',
+    '15110': 'Trường Tiểu Học Hộ Phòng A',
+    '15111': 'Trường Tiểu Học Hộ Phòng B',
+    '15140': 'Trường Tiểu Học Phong Phú A',
+    '15141': 'Trường Tiểu Học Phong Phú B',
+}
+THU_HO_DIEN_LUC_MA_DV = '759'
+THU_HO_HOC_PHI_HEADER_ROW = 9  # Excel row 10 (0-indexed) chứa header STT/Mã DV/Số tiền...
+
+
+def _thu_ho_normalize_ma_dv(value):
+    """Chuẩn hóa giá trị Mã DV về string, bỏ '.0' nếu Excel đọc thành số thực."""
+    s = str(value).strip()
+    if s.endswith('.0'):
+        s = s[:-2]
+    return s
+
+
+@login_required
+def thu_ho_hoc_phi_report_view(request):
+    """Giao diện báo cáo Thu hộ học phí và điện lực"""
+    if 'thu_ho_hoc_phi_data' in request.session:
+        del request.session['thu_ho_hoc_phi_data']
+    return render(request, 'templates_app/reports/thu_ho_hoc_phi.html')
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_thu_ho_hoc_phi_report(request):
+    """Đọc file giao dịch, phân loại theo Mã DV (từng trường + điện lực), thống kê số món/số tiền."""
+    try:
+        uploaded_file = request.FILES.get('data_file')
+        if not uploaded_file:
+            messages.error(request, 'Vui lòng chọn file Excel.')
+            return redirect('thu_ho_hoc_phi_report')
+
+        df = _read_excel_safe(uploaded_file, header=THU_HO_HOC_PHI_HEADER_ROW)
+        df.columns = [str(c).strip() for c in df.columns]
+
+        required_cols = ['Mã DV', 'Số tiền']
+        for col in required_cols:
+            if col not in df.columns:
+                messages.error(
+                    request,
+                    f"File thiếu cột bắt buộc: {col}. Các cột hiện có: {', '.join(df.columns)}"
+                )
+                return redirect('thu_ho_hoc_phi_report')
+
+        df = df.dropna(subset=['Mã DV'])
+        df['_ma_dv'] = df['Mã DV'].apply(_thu_ho_normalize_ma_dv)
+        tien_raw = df['Số tiền'].astype(str).str.strip().str.replace(',', '', regex=False)
+        df['_so_tien'] = pd.to_numeric(tien_raw, errors='coerce').fillna(0)
+
+        def _classify(ma_dv):
+            if ma_dv == THU_HO_DIEN_LUC_MA_DV:
+                return 'Điện lực'
+            return THU_HO_HOC_PHI_MA_DV_TRUONG.get(ma_dv, f'Không xác định (Mã DV {ma_dv})')
+
+        df['_nhom'] = df['_ma_dv'].apply(_classify)
+
+        grouped = (
+            df.groupby('_nhom')
+            .agg(so_mon=('_so_tien', 'size'), so_tien=('_so_tien', 'sum'))
+            .reset_index()
+            .rename(columns={'_nhom': 'nhom'})
+        )
+
+        dien_luc_row = grouped[grouped['nhom'] == 'Điện lực']
+        truong_rows = grouped[
+            (grouped['nhom'] != 'Điện lực') & (~grouped['nhom'].str.startswith('Không xác định'))
+        ].sort_values('nhom')
+        unknown_rows = grouped[grouped['nhom'].str.startswith('Không xác định')].sort_values('nhom')
+
+        truong_list = truong_rows.to_dict('records')
+        unknown_list = unknown_rows.to_dict('records')
+        dien_luc = dien_luc_row.to_dict('records')[0] if not dien_luc_row.empty else {'so_mon': 0, 'so_tien': 0}
+
+        tong_so_mon = int(grouped['so_mon'].sum())
+        tong_so_tien = float(grouped['so_tien'].sum())
+
+        result = {
+            'truong_list': truong_list,
+            'unknown_list': unknown_list,
+            'dien_luc': dien_luc,
+            'tong_so_mon': tong_so_mon,
+            'tong_so_tien': tong_so_tien,
+            'truong_count': len(truong_list),
+            'unknown_count': len(unknown_list),
+        }
+        request.session['thu_ho_hoc_phi_data'] = result
+
+        return render(request, 'templates_app/reports/thu_ho_hoc_phi.html', {'result': result})
+
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"Đã xảy ra lỗi: {e}")
+        return redirect('thu_ho_hoc_phi_report')
+
+
+@login_required
+def download_thu_ho_hoc_phi_report(request):
+    """Xuất Excel bảng thống kê từ dữ liệu đã xử lý (lưu trong session)."""
+    result = request.session.get('thu_ho_hoc_phi_data')
+    if not result:
+        messages.error(request, 'Chưa có dữ liệu để tải. Vui lòng xử lý báo cáo trước.')
+        return redirect('thu_ho_hoc_phi_report')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Thu ho hoc phi va dien luc'
+
+    bold_font = Font(name='Times New Roman', bold=True, size=12)
+    normal_font = Font(name='Times New Roman', size=12)
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left = Alignment(horizontal='left', vertical='center', wrap_text=True)
+    right = Alignment(horizontal='right', vertical='center')
+    thin = Side(border_style='thin', color='000000')
+    all_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_fill = PatternFill(start_color='D9E1F2', end_color='D9E1F2', fill_type='solid')
+    dien_luc_fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
+
+    ws.column_dimensions['A'].width = 6
+    ws.column_dimensions['B'].width = 45
+    ws.column_dimensions['C'].width = 14
+    ws.column_dimensions['D'].width = 18
+
+    ws.merge_cells('A1:D1')
+    c = ws.cell(row=1, column=1, value='THỐNG KÊ THU HỘ HỌC PHÍ VÀ ĐIỆN LỰC')
+    c.font = Font(name='Times New Roman', bold=True, size=14)
+    c.alignment = center
+    ws.row_dimensions[1].height = 24
+
+    row = 3
+    headers = ['STT', 'Đơn vị', 'Số món', 'Số tiền']
+    for col_idx, h in enumerate(headers, start=1):
+        c = ws.cell(row=row, column=col_idx, value=h)
+        c.font = bold_font
+        c.alignment = center
+        c.border = all_border
+        c.fill = header_fill
+    row += 1
+
+    stt = 1
+    for item in result['truong_list']:
+        values = [stt, item['nhom'], int(item['so_mon']), float(item['so_tien'])]
+        aligns = [center, left, center, right]
+        for col_idx, (val, aln) in enumerate(zip(values, aligns), start=1):
+            c = ws.cell(row=row, column=col_idx, value=val)
+            c.font = normal_font
+            c.alignment = aln
+            c.border = all_border
+            if col_idx == 4:
+                c.number_format = '#,##0'
+        row += 1
+        stt += 1
+
+    for item in result['unknown_list']:
+        values = [stt, item['nhom'], int(item['so_mon']), float(item['so_tien'])]
+        aligns = [center, left, center, right]
+        for col_idx, (val, aln) in enumerate(zip(values, aligns), start=1):
+            c = ws.cell(row=row, column=col_idx, value=val)
+            c.font = normal_font
+            c.alignment = aln
+            c.border = all_border
+            if col_idx == 4:
+                c.number_format = '#,##0'
+        row += 1
+        stt += 1
+
+    dl = result['dien_luc']
+    values = [stt, 'Điện lực', int(dl['so_mon']), float(dl['so_tien'])]
+    aligns = [center, left, center, right]
+    for col_idx, (val, aln) in enumerate(zip(values, aligns), start=1):
+        c = ws.cell(row=row, column=col_idx, value=val)
+        c.font = bold_font
+        c.alignment = aln
+        c.border = all_border
+        c.fill = dien_luc_fill
+        if col_idx == 4:
+            c.number_format = '#,##0'
+    row += 1
+
+    total_values = ['', 'TỔNG CỘNG', result['tong_so_mon'], result['tong_so_tien']]
+    aligns = [center, center, center, right]
+    for col_idx, (val, aln) in enumerate(zip(total_values, aligns), start=1):
+        c = ws.cell(row=row, column=col_idx, value=val)
+        c.font = bold_font
+        c.alignment = aln
+        c.border = all_border
+        if col_idx == 4:
+            c.number_format = '#,##0'
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="ThuHoHocPhiDienLuc.xlsx"'
+    return response

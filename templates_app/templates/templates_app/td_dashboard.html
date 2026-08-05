@@ -1,0 +1,830 @@
+{% extends "templates_app/base.html" %}
+{% block title %}Dashboard Tín dụng{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── KPI Cards ── */
+.kpi-card { border-radius:10px; padding:18px 20px; color:#fff; min-height:110px; position:relative; overflow:hidden; }
+.kpi-card .kpi-icon { position:absolute; right:14px; top:14px; font-size:2.4rem; opacity:.25; }
+.kpi-card .kpi-value { font-size:2rem; font-weight:700; line-height:1; }
+.kpi-card .kpi-label { font-size:.78rem; opacity:.85; margin-top:4px; }
+.kpi-card .kpi-sub { font-size:.72rem; opacity:.7; margin-top:2px; }
+.kpi-blue   { background:linear-gradient(135deg,#1565C0,#1976D2); }
+.kpi-green  { background:linear-gradient(135deg,#2E7D32,#43A047); }
+.kpi-orange { background:linear-gradient(135deg,#E65100,#EF6C00); }
+.kpi-red    { background:linear-gradient(135deg,#B71C1C,#D32F2F); }
+.kpi-teal   { background:linear-gradient(135deg,#00695C,#00897B); }
+.kpi-purple { background:linear-gradient(135deg,#6A1B9A,#8E24AA); }
+.kpi-indigo { background:linear-gradient(135deg,#283593,#3949AB); }
+.kpi-amber  { background:linear-gradient(135deg,#F57F17,#F9A825); }
+
+/* ── Delta badge ── */
+.delta-up   { color:#2e7d32; font-size:.75rem; }
+.delta-down { color:#c62828; font-size:.75rem; }
+.delta-flat { color:#777; font-size:.75rem; }
+
+/* ── Section title ── */
+.section-title { font-size:1rem; font-weight:600; padding:8px 12px; background:#f8f9fa; border-left:4px solid #1976D2; border-radius:0 6px 6px 0; margin-bottom:14px; }
+
+/* ── Table compact ── */
+.td-table { font-size:.82rem; }
+.td-table th { background:#343a40; color:#fff; white-space:nowrap; position:sticky; top:0; z-index:2; }
+.td-table td { white-space:nowrap; }
+.td-table-wrap { max-height:420px; overflow-y:auto; border-radius:6px; }
+
+/* ── Mức RR badges ── */
+.badge-xanh   { background:#2e7d32; }
+.badge-vang   { background:#f9a825; color:#333; }
+.badge-cam    { background:#ef6c00; }
+.badge-do     { background:#d32f2f; }
+.badge-dodam  { background:#7b1fa2; }
+
+/* ── Hom nay ── */
+.task-card { border-radius:8px; border-left:5px solid #ccc; padding:10px 14px; margin-bottom:8px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.task-card.high   { border-color:#d32f2f; }
+.task-card.medium { border-color:#f9a825; }
+.task-card.low    { border-color:#2e7d32; }
+
+/* ── Chart placeholder ── */
+.chart-bar { display:inline-block; height:14px; border-radius:3px; min-width:4px; }
+
+/* ── Tabs ── */
+.nav-tabs .nav-link.active { font-weight:600; }
+
+/* ── CBTD row clickable ── */
+.cbtd-row { cursor:pointer; }
+.cbtd-row:hover td { background:rgba(25,118,210,.07) !important; }
+.cbtd-row.selected td { background:rgba(25,118,210,.18) !important; outline:2px solid #1976D2; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+<!-- Header -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div>
+    <h4 class="mb-0 fw-bold"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Dashboard Phân tích Tín dụng</h4>
+    {% if file_name %}<small class="text-muted">File: {{ file_name }} — {{ today }}</small>{% endif %}
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'td_analysis' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-upload me-1"></i>Upload file mới
+    </a>
+    <button class="btn btn-outline-success btn-sm" onclick="openExportModal()">
+      <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel
+    </button>
+    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#wordModal">
+      <i class="bi bi-file-earmark-word me-1"></i>Xuất Word
+    </button>
+    <a href="{% url 'td_so_sanh' %}" class="btn btn-outline-info btn-sm">
+      <i class="bi bi-arrow-left-right me-1"></i>So sánh kỳ
+    </a>
+    <a href="{% url 'td_ftp_config' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-gear me-1"></i>Cấu hình FTP
+    </a>
+    <a href="{% url 'td_faq' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-question-circle me-1"></i>Trợ giúp
+    </a>
+  </div>
+</div>
+
+<!-- ══════════════════════════ KPI CARDS ══════════════════════════ -->
+<div class="row g-3 mb-4">
+  {% with k=kpi %}
+  <div class="col-6 col-md-3 col-xl-3">
+    <div class="kpi-card kpi-blue">
+      <i class="bi bi-currency-dollar kpi-icon"></i>
+      <div class="kpi-value">{{ k.tong_du_no_ty|floatformat:1 }} tỷ</div>
+      <div class="kpi-label">Tổng dư nợ</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-xl-3">
+    <div class="kpi-card kpi-teal">
+      <i class="bi bi-file-earmark-text kpi-icon"></i>
+      <div class="kpi-value">{{ k.so_lds }}</div>
+      <div class="kpi-label">Số món vay (LDS)</div>
+      <div class="kpi-sub">{{ k.so_kh }} KH / {{ k.so_hd }} HĐ</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-xl-3">
+    <div class="kpi-card kpi-orange">
+      <i class="bi bi-exclamation-triangle kpi-icon"></i>
+      <div class="kpi-value">{{ k.qua_han }}</div>
+      <div class="kpi-label">Món quá hạn</div>
+      <div class="kpi-sub">{{ k.du_no_qua_han_ty|floatformat:1 }} tỷ — {{ k.ty_le_qua_han }}%</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-xl-3">
+    <div class="kpi-card kpi-amber">
+      <i class="bi bi-clock-history kpi-icon"></i>
+      <div class="kpi-value">{{ k.den_han }}</div>
+      <div class="kpi-label">Đến hạn (30 ngày)</div>
+      <div class="kpi-sub">Cần theo dõi</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-xl-3">
+    <div class="kpi-card kpi-red">
+      <i class="bi bi-shield-exclamation kpi-icon"></i>
+      <div class="kpi-value">{{ k.nhom35 }}</div>
+      <div class="kpi-label">Nợ xấu (Nhóm 3–5)</div>
+      <div class="kpi-sub">{{ k.nhom2 }} món Nhóm 2</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-xl-3">
+    <div class="kpi-card kpi-purple">
+      <i class="bi bi-person-exclamation kpi-icon"></i>
+      <div class="kpi-value">{{ k.kh_dac_biet }}</div>
+      <div class="kpi-label">KH đặc biệt (RR &gt; 150)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-xl-3">
+    <div class="kpi-card kpi-indigo">
+      <i class="bi bi-file-earmark-x kpi-icon"></i>
+      <div class="kpi-value">{{ k.xlrr }}</div>
+      <div class="kpi-label">Khoản XLRR (Nhóm ≥3)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3 col-xl-3">
+    <div class="kpi-card kpi-green">
+      <i class="bi bi-calendar-check kpi-icon"></i>
+      <div class="kpi-value">{{ k.hd_theo_doi }}</div>
+      <div class="kpi-label">HĐ cần theo dõi (30 ngày)</div>
+    </div>
+  </div>
+  {% endwith %}
+</div>
+
+<!-- ══════════════════════════ BẢNG SO SÁNH CBTD ══════════════════════════ -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between py-2 flex-wrap gap-2">
+    <span class="fw-bold"><i class="bi bi-people me-2 text-primary"></i>Bảng so sánh Cán bộ Tín dụng</span>
+    <select id="topCBTD" class="form-select form-select-sm" style="width:auto;" onchange="filterCBTD(this.value)">
+      <option value="">Tất cả CBTD</option>
+      <option value="5">Top 5 dư nợ cao</option>
+      <option value="10">Top 10 dư nợ cao</option>
+    </select>
+  </div>
+  <div class="card-body p-0">
+    <div class="td-table-wrap">
+      <table class="table table-bordered table-hover td-table mb-0">
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Cán bộ TD</th>
+            <th class="text-end">Số món</th>
+            <th class="text-end">Số KH</th>
+            <th class="text-end">Dư nợ (tỷ)</th>
+            <th class="text-end">Đến hạn</th>
+            <th class="text-end">Quá hạn</th>
+            <th class="text-end">Tỷ lệ QH%</th>
+            <th class="text-end">Nhóm 2</th>
+            <th class="text-end">Nhóm 3–5</th>
+            <th class="text-end">Điểm RR TB</th>
+            <th class="text-end">LS BQ%</th>
+            <th class="text-end">NIM BQ%</th>
+            <th>Đánh giá</th>
+          </tr>
+        </thead>
+        <tbody id="cbtdTableBody">
+          {% for cb in can_bo_list %}
+          <tr class="cbtd-row {% if cb.danh_gia == 'Rủi ro cao' %}table-danger{% elif cb.danh_gia == 'Cần chú ý' %}table-warning{% endif %}"
+              onclick="selectCBTD(this, '{{ cb.ten_cbtd|escapejs }}')"
+              title="Bấm để xem khách hàng của {{ cb.ten_cbtd }}">
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-semibold">{{ cb.ten_cbtd }}</td>
+            <td class="text-end">{{ cb.so_mon }}</td>
+            <td class="text-end">{{ cb.so_kh }}</td>
+            <td class="text-end">{{ cb.du_no_ty|floatformat:3 }}</td>
+            <td class="text-end">{{ cb.den_han }}</td>
+            <td class="text-end {% if cb.so_mon_qua_han > 0 %}text-danger fw-bold{% endif %}">{{ cb.so_mon_qua_han }}</td>
+            <td class="text-end {% if cb.ty_le_qua_han_phan_tram > 10 %}text-danger{% endif %}">{{ cb.ty_le_qua_han_phan_tram|floatformat:1 }}%</td>
+            <td class="text-end {% if cb.nhom2 > 0 %}text-warning fw-bold{% endif %}">{{ cb.nhom2 }}</td>
+            <td class="text-end {% if cb.nhom35 > 0 %}text-danger fw-bold{% endif %}">{{ cb.nhom35 }}</td>
+            <td class="text-end">{{ cb.diem_rr_trung_binh|floatformat:1 }}</td>
+            <td class="text-end">{{ cb.lai_suat_bq_phan_tram|floatformat:2 }}</td>
+            <td class="text-end">{% if cb.nim_bq is not None %}{{ cb.nim_bq|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td><span class="badge {% if cb.danh_gia == 'Tốt' %}bg-success{% elif cb.danh_gia == 'Cần chú ý' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ cb.danh_gia }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="14" class="text-center text-muted py-3">Không có dữ liệu</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ TỔNG QUAN CHI NHÁNH / BỘ LỌC ══════════════════════════ -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header py-2">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <span class="fw-bold"><i class="bi bi-table me-2 text-success"></i>Tổng quan chi nhánh / Phòng</span>
+      <span id="filterResultInfo" class="badge bg-secondary fs-6"></span>
+    </div>
+    <!-- Bộ lọc 6 chiều -->
+    <div class="row g-2 mt-2">
+      <div class="col-6 col-md-4 col-lg-2">
+        <label class="form-label fw-semibold mb-1" style="font-size:.78rem;">Cán bộ TD</label>
+        <select id="fCBTD" class="form-select form-select-sm">
+          <option value="">Tất cả</option>
+          {% for cb in cbtd_list %}<option value="{{ cb }}">{{ cb }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-4 col-lg-2">
+        <label class="form-label fw-semibold mb-1" style="font-size:.78rem;">Nhóm nợ</label>
+        <select id="fNhomNo" class="form-select form-select-sm">
+          <option value="">Tất cả</option>
+          <option value="1">Nhóm 1</option>
+          <option value="2">Nhóm 2</option>
+          <option value="3">Nhóm 3</option>
+          <option value="4">Nhóm 4</option>
+          <option value="5">Nhóm 5</option>
+          <option value="35">Nhóm 3–5 (Nợ xấu)</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-4 col-lg-2">
+        <label class="form-label fw-semibold mb-1" style="font-size:.78rem;">Trạng thái</label>
+        <select id="fTrangThai" class="form-select form-select-sm">
+          <option value="">Tất cả</option>
+          <option value="Bình thường">Bình thường</option>
+          <option value="Đến hạn">Đến hạn</option>
+          <option value="Quá hạn">Quá hạn</option>
+          <option value="Quá hạn gốc và lãi">Quá hạn gốc và lãi</option>
+          <option value="HĐ hết hạn">HĐ hết hạn</option>
+          <option value="XLRR">XLRR</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-4 col-lg-2">
+        <label class="form-label fw-semibold mb-1" style="font-size:.78rem;">Mức rủi ro</label>
+        <select id="fRuiRo" class="form-select form-select-sm">
+          <option value="">Tất cả</option>
+          <option value="Xanh">Xanh</option>
+          <option value="Vàng">Vàng</option>
+          <option value="Cam">Cam</option>
+          <option value="Đỏ">Đỏ</option>
+          <option value="Đỏ đậm">Đỏ đậm</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-4 col-lg-2">
+        <label class="form-label fw-semibold mb-1" style="font-size:.78rem;">Gói ưu đãi</label>
+        <select id="fGoi" class="form-select form-select-sm">
+          <option value="">Tất cả</option>
+          {% for g in goi_list %}<option value="{{ g }}">{{ g }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-4 col-lg-2">
+        <label class="form-label fw-semibold mb-1" style="font-size:.78rem;">Loại KH</label>
+        <select id="fLoaiKH" class="form-select form-select-sm">
+          <option value="">Tất cả</option>
+          <option value="Cá nhân">Cá nhân</option>
+          <option value="Tổ chức">Tổ chức</option>
+        </select>
+      </div>
+    </div>
+    <!-- Bộ lọc Top + nút -->
+    <div class="row g-2 mt-1 align-items-end">
+      <div class="col-auto">
+        <label class="form-label fw-semibold mb-1" style="font-size:.78rem;">Bộ lọc Top</label>
+        <select id="fTopField" class="form-select form-select-sm">
+          <option value="">Không dùng</option>
+          <option value="dsbsbal">Top dư nợ cao nhất</option>
+          <option value="_score">Top điểm rủi ro cao nhất</option>
+          <option value="_ngay_mon">Top gần đáo hạn nhất</option>
+          <option value="sprd">Top lãi suất cao nhất</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label fw-semibold mb-1" style="font-size:.78rem;">Số lượng</label>
+        <select id="fTopN" class="form-select form-select-sm">
+          <option value="5">Top 5</option>
+          <option value="10">Top 10</option>
+          <option value="20" selected>Top 20</option>
+          <option value="50">Top 50</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" onclick="applyFilter()">
+          <i class="bi bi-funnel me-1"></i>Lọc
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" onclick="resetFilter()">
+          <i class="bi bi-x-circle me-1"></i>Xóa lọc
+        </button>
+        <button class="btn btn-outline-success btn-sm ms-1" onclick="exportFiltered()">
+          <i class="bi bi-file-earmark-excel me-1"></i>Xuất danh sách
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="td-table-wrap" id="filterTableWrap">
+      <table class="table table-bordered table-hover td-table mb-0">
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Khách hàng</th>
+            <th>Cán bộ TD</th>
+            <th>Số HĐ</th>
+            <th class="text-end">Dư nợ (đồng)</th>
+            <th class="text-end">LS%</th>
+            <th>Nhóm</th>
+            <th>Ngày đáo hạn</th>
+            <th>Lịch trả lãi</th>
+            <th>Lịch trả gốc</th>
+            <th>Gói ƯĐ</th>
+            <th>Điểm RR</th>
+            <th>Mức RR</th>
+            <th>Trạng thái</th>
+            <th>NIM%</th>
+          </tr>
+        </thead>
+        <tbody id="filterTableBody">
+          <tr><td colspan="15" class="text-center text-muted py-4">Bấm "Lọc" để hiển thị danh sách</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="filterPagination" class="text-muted px-3 py-2" style="font-size:.8rem;"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ 3 CỘT: HÔM NAY / PHÂN LOẠI NỢ / RỦI RO ══════════════════════════ -->
+<div class="row g-3 mb-4">
+
+  <!-- HÔM NAY CẦN LÀM GÌ? -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100 shadow-sm">
+      <div class="card-header fw-bold py-2"><i class="bi bi-list-check me-2 text-success"></i>Hôm nay cần làm gì?</div>
+      <div class="card-body p-3" style="max-height:340px;overflow-y:auto;">
+        {% for t in hom_nay %}
+        <div class="task-card {% if t.muc_do == 'Cao' %}high{% elif t.muc_do == 'Trung bình' %}medium{% else %}low{% endif %}">
+          <div class="fw-semibold" style="font-size:.85rem;">{{ t.cong_viec }}</div>
+          <div class="text-muted" style="font-size:.78rem;">Số lượng: <strong>{{ t.so_luong }}</strong> — {{ t.huong_xu_ly }}</div>
+        </div>
+        {% empty %}
+        <div class="text-muted text-center py-4"><i class="bi bi-check-circle fs-3 text-success d-block mb-2"></i>Không có tác vụ khẩn cấp</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- PHÂN LOẠI NỢ -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100 shadow-sm">
+      <div class="card-header fw-bold py-2"><i class="bi bi-pie-chart me-2 text-warning"></i>Phân loại nợ</div>
+      <div class="card-body p-3">
+        {% with n=phan_loai_no %}
+        <table class="table table-sm mb-0" style="font-size:.82rem;">
+          <thead><tr><th>Nhóm</th><th class="text-end">Số món</th><th class="text-end">Dư nợ (tỷ)</th></tr></thead>
+          <tbody>
+            <tr class="table-success"><td>Nhóm 1 — Đủ tiêu chuẩn</td><td class="text-end">{{ n.nhom1_so_mon }}</td><td class="text-end">{{ n.nhom1_du_no_ty|floatformat:3 }}</td></tr>
+            <tr class="table-warning"><td>Nhóm 2 — Cần chú ý</td><td class="text-end">{{ n.nhom2_so_mon }}</td><td class="text-end">{{ n.nhom2_du_no_ty|floatformat:3 }}</td></tr>
+            <tr class="table-danger"><td>Nhóm 3 — Dưới tiêu chuẩn</td><td class="text-end">{{ n.nhom3_so_mon }}</td><td class="text-end">{{ n.nhom3_du_no_ty|floatformat:3 }}</td></tr>
+            <tr class="table-danger"><td>Nhóm 4 — Nghi ngờ</td><td class="text-end">{{ n.nhom4_so_mon }}</td><td class="text-end">{{ n.nhom4_du_no_ty|floatformat:3 }}</td></tr>
+            <tr class="table-danger"><td>Nhóm 5 — Có khả năng mất vốn</td><td class="text-end">{{ n.nhom5_so_mon }}</td><td class="text-end">{{ n.nhom5_du_no_ty|floatformat:3 }}</td></tr>
+            <tr class="fw-bold table-secondary"><td>Nợ xấu (3–5)</td><td class="text-end">{{ n.no_xau_so_mon }}</td><td class="text-end">{{ n.no_xau_du_no_ty|floatformat:3 }}</td></tr>
+          </tbody>
+        </table>
+        <div class="mt-2 text-end text-muted" style="font-size:.8rem;">Tỷ lệ nợ xấu: <strong class="text-danger">{{ n.ty_le_no_xau_phan_tram }}%</strong></div>
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RỦI RO -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100 shadow-sm">
+      <div class="card-header fw-bold py-2"><i class="bi bi-shield-half me-2 text-danger"></i>Mức độ rủi ro</div>
+      <div class="card-body p-3">
+        {% with r=rui_ro %}
+        <div class="mb-2 d-flex align-items-center justify-content-between">
+          <span><span class="badge badge-xanh me-2">Xanh</span>Bình thường</span>
+          <span class="fw-bold">{{ r.muc_xanh_so_mon }} món / {{ r.muc_xanh_du_no_ty|floatformat:1 }} tỷ</span>
+        </div>
+        <div class="mb-2 d-flex align-items-center justify-content-between">
+          <span><span class="badge badge-vang me-2">Vàng</span>Theo dõi</span>
+          <span class="fw-bold">{{ r.muc_vang_so_mon }} món / {{ r.muc_vang_du_no_ty|floatformat:1 }} tỷ</span>
+        </div>
+        <div class="mb-2 d-flex align-items-center justify-content-between">
+          <span><span class="badge badge-cam me-2">Cam</span>Cần xử lý</span>
+          <span class="fw-bold">{{ r.muc_cam_so_mon }} món / {{ r.muc_cam_du_no_ty|floatformat:1 }} tỷ</span>
+        </div>
+        <div class="mb-2 d-flex align-items-center justify-content-between">
+          <span><span class="badge badge-do me-2">Đỏ</span>Cao</span>
+          <span class="fw-bold">{{ r.muc_do_so_mon }} món / {{ r.muc_do_du_no_ty|floatformat:1 }} tỷ</span>
+        </div>
+        <div class="mb-2 d-flex align-items-center justify-content-between">
+          <span><span class="badge badge-dodam me-2">Đỏ đậm</span>Đặc biệt</span>
+          <span class="fw-bold text-danger">{{ r.muc_do_dam_so_mon }} món / {{ r.muc_do_dam_du_no_ty|floatformat:1 }} tỷ</span>
+        </div>
+        <hr class="my-2">
+        <div class="text-muted" style="font-size:.8rem;">Điểm RR TB: <strong>{{ r.diem_rr_trung_binh }}</strong> — Cao nhất: <strong>{{ r.diem_rr_cao_nhat }}</strong></div>
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ SO SÁNH KỲ ══════════════════════════ -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header py-2">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <span class="fw-bold"><i class="bi bi-bar-chart-line me-2 text-info"></i>So sánh kỳ</span>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="btn-group btn-group-sm" id="kyBtnGroup">
+          <button class="btn btn-outline-secondary active" data-ky="ngay">Ngày trước</button>
+          <button class="btn btn-outline-secondary" data-ky="tuan">Tuần trước</button>
+          <button class="btn btn-outline-secondary" data-ky="thang">Tháng trước</button>
+          <button class="btn btn-outline-secondary" data-ky="quy">Quý trước</button>
+          <button class="btn btn-outline-secondary" data-ky="nam">Năm trước</button>
+        </div>
+        <div class="input-group input-group-sm" style="width:auto;">
+          <span class="input-group-text bg-white" style="font-size:.78rem;">Chọn ngày</span>
+          <select id="snapshotSelect" class="form-select form-select-sm" style="min-width:180px;" onchange="loadSoSanhByDate(this.value)">
+            <option value="">-- Chọn từ danh sách --</option>
+          </select>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="loadSnapshots()" title="Tải danh sách ngày đã lưu">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="card-body" id="soSanhContainer">
+    <div class="text-center text-muted py-3"><i class="bi bi-arrow-clockwise me-2"></i>Đang tải...</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ TABS: CẢNH BÁO KH + TỔNG KẾT ══════════════════════════ -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header py-2">
+    <ul class="nav nav-tabs card-header-tabs" id="detailTabs">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCanhBao">Cảnh báo KH</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTongKet">Tổng kết</button></li>
+    </ul>
+  </div>
+  <div class="card-body p-3 tab-content">
+
+    <!-- Tab Cảnh báo KH -->
+    <div class="tab-pane fade show active" id="tabCanhBao">
+      <div class="section-title">Top khách hàng cần cảnh báo</div>
+      <div class="td-table-wrap">
+        <table class="table table-bordered table-hover td-table">
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Tên khách hàng</th>
+              <th>Cán bộ TD</th>
+              <th class="text-end">Dư nợ (tỷ)</th>
+              <th>Nhóm nợ</th>
+              <th class="text-end">Còn lại (ngày)</th>
+              <th class="text-end">Điểm RR</th>
+              <th>Mức RR</th>
+              <th>Lý do</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for kh in canh_bao_kh %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td class="fw-semibold">{{ kh.ten_kh }}</td>
+              <td>{{ kh.ten_cbtd }}</td>
+              <td class="text-end">{{ kh.du_no_ty|floatformat:3 }}</td>
+              <td class="text-center"><span class="badge {% if kh.nhom_no <= 1 %}bg-success{% elif kh.nhom_no == 2 %}bg-warning text-dark{% else %}bg-danger{% endif %}">N{{ kh.nhom_no }}</span></td>
+              <td class="text-end {% if kh.ngay_con_lai_mon < 0 %}text-danger fw-bold{% elif kh.ngay_con_lai_mon <= 30 %}text-warning{% endif %}">{{ kh.ngay_con_lai_mon }}</td>
+              <td class="text-end fw-bold">{{ kh.diem_rui_ro }}</td>
+              <td><span class="badge {% if kh.muc_rui_ro == 'Xanh' %}badge-xanh{% elif kh.muc_rui_ro == 'Vàng' %}badge-vang{% elif kh.muc_rui_ro == 'Cam' %}badge-cam{% elif kh.muc_rui_ro == 'Đỏ' %}badge-do{% else %}badge-dodam{% endif %}">{{ kh.muc_rui_ro }}</span></td>
+              <td>{{ kh.ly_do }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center text-muted py-4">Không có cảnh báo</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab Tổng kết văn bản -->
+    <div class="tab-pane fade" id="tabTongKet">
+      {% with tk=tong_ket %}
+      <div class="mb-4">
+        <div class="section-title">Nhận xét tổng thể</div>
+        <p>{{ tk.nhan_xet_tong_the }}</p>
+      </div>
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <div class="section-title">Các vấn đề ưu tiên</div>
+          <ul class="mb-0">
+            {% for v in tk.cac_van_de_uu_tien %}<li>{{ v }}</li>{% endfor %}
+          </ul>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="section-title">Khuyến nghị</div>
+          <ul class="mb-0">
+            {% for v in tk.khuyen_nghi %}<li>{{ v }}</li>{% endfor %}
+          </ul>
+        </div>
+      </div>
+      {% endwith %}
+    </div>
+
+  </div><!-- tab-content -->
+</div>
+
+</div><!-- container -->
+
+<!-- ══════ Modal Xuất Word ══════ -->
+<div class="modal fade" id="wordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Xuất báo cáo Word</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form method="post" action="{% url 'td_export_word' %}" id="wordExportForm">
+        {% csrf_token %}
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Chọn mẫu biểu</label>
+          <select name="template_id" class="form-select" required>
+            {% for t in word_templates %}<option value="{{ t.pk }}">{{ t.name }}</option>{% endfor %}
+            {% if not word_templates %}<option disabled>Không có mẫu biểu</option>{% endif %}
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary" {% if not word_templates %}disabled{% endif %}>
+            <i class="bi bi-download me-1"></i>Tải xuống
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+// ── So sánh kỳ ──
+let currentKy = 'ngay';
+document.querySelectorAll('#kyBtnGroup button').forEach(btn => {
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('#kyBtnGroup button').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    currentKy = this.dataset.ky;
+    // Bỏ chọn dropdown
+    document.getElementById('snapshotSelect').value = '';
+    loadSoSanh(currentKy);
+  });
+});
+
+function loadSoSanh(ky) {
+  document.getElementById('soSanhContainer').innerHTML =
+    '<div class="text-center text-muted py-3"><i class="bi bi-arrow-clockwise me-2"></i>Đang tải...</div>';
+  fetch(`{% url 'td_so_sanh_api' %}?ky=${ky}`, {headers:{'X-CSRFToken':CSRF}})
+    .then(r => r.json())
+    .then(data => renderSoSanh(data))
+    .catch(() => {
+      document.getElementById('soSanhContainer').innerHTML =
+        '<div class="text-muted p-3">Không có dữ liệu kỳ trước để so sánh.</div>';
+    });
+}
+
+function loadSoSanhByDate(dateStr) {
+  if (!dateStr) return;
+  // Bỏ active tất cả nút kỳ
+  document.querySelectorAll('#kyBtnGroup button').forEach(b => b.classList.remove('active'));
+  document.getElementById('soSanhContainer').innerHTML =
+    '<div class="text-center text-muted py-3"><i class="bi bi-arrow-clockwise me-2"></i>Đang tải...</div>';
+  fetch(`{% url 'td_so_sanh_api' %}?date=${dateStr}`, {headers:{'X-CSRFToken':CSRF}})
+    .then(r => r.json())
+    .then(data => renderSoSanh(data))
+    .catch(() => {
+      document.getElementById('soSanhContainer').innerHTML =
+        '<div class="text-muted p-3">Không thể tải dữ liệu ngày này.</div>';
+    });
+}
+
+function loadSnapshots() {
+  fetch('{% url "td_snapshots_api" %}', {headers:{'X-CSRFToken':CSRF}})
+    .then(r => r.json())
+    .then(data => {
+      const sel = document.getElementById('snapshotSelect');
+      // Giữ lại option đầu
+      sel.innerHTML = '<option value="">-- Chọn ngày cụ thể --</option>';
+      data.snapshots.forEach(s => {
+        const du_no = s.tong_du_no_ty ? ` · ${s.tong_du_no_ty} tỷ` : '';
+        const qh    = s.qua_han ? ` · QH: ${s.qua_han}` : '';
+        const label = `${s.file_date} — ${s.so_lds} món${du_no}${qh}`;
+        const opt   = document.createElement('option');
+        opt.value   = s.file_date;
+        opt.textContent = label;
+        sel.appendChild(opt);
+      });
+      if (data.snapshots.length === 0) {
+        sel.innerHTML += '<option disabled>Chưa có dữ liệu lịch sử</option>';
+      }
+    })
+    .catch(() => alert('Không tải được danh sách ngày'));
+}
+
+function renderSoSanh(data) {
+  const {delta, prev_date} = data;
+  if (!delta || Object.keys(delta).length === 0) {
+    document.getElementById('soSanhContainer').innerHTML =
+      `<div class="text-muted p-3"><i class="bi bi-info-circle me-2"></i>Không có dữ liệu ngày <b>${prev_date||'này'}</b> hoặc trước đó. Hãy upload thêm file các ngày khác.</div>`;
+    return;
+  }
+  const labels = {
+    tong_du_no_ty: 'Tổng dư nợ (tỷ)',
+    so_lds:        'Số món vay',
+    so_kh:         'Số khách hàng',
+    so_hd:         'Số hợp đồng',
+    qua_han:       'Quá hạn',
+    nhom2:         'Nhóm 2',
+    nhom35:        'Nợ xấu 3–5',
+    kh_dac_biet:   'KH đặc biệt',
+  };
+  // Màu delta: dư nợ/so_lds tăng = trung tính; quá hạn/nhóm tăng = xấu
+  const badKeys = new Set(['qua_han','nhom2','nhom35','kh_dac_biet']);
+  let html = `<div class="text-muted mb-3 d-flex align-items-center gap-2" style="font-size:.82rem;">
+    <i class="bi bi-calendar-event"></i>
+    <span>So với ngày: <strong>${prev_date || 'N/A'}</strong></span>
+    <span class="ms-3 text-success"><span style="font-size:.9rem;">▲</span> tăng</span>
+    <span class="ms-2 text-danger"><span style="font-size:.9rem;">▼</span> giảm</span>
+  </div><div class="row g-2">`;
+
+  for (const [k, info] of Object.entries(delta)) {
+    const d = info.delta;
+    const isBad = badKeys.has(k);
+    let cls = 'delta-flat', icon = '—';
+    if (d !== null && d !== undefined && d !== 0) {
+      const abs = typeof d === 'number' ? Math.abs(d).toFixed(Math.abs(d) < 1 ? 3 : 0) : Math.abs(d);
+      if (d > 0) {
+        cls  = isBad ? 'delta-down' : 'delta-up';
+        icon = `▲ ${abs}`;
+      } else {
+        cls  = isBad ? 'delta-up' : 'delta-down';
+        icon = `▼ ${abs}`;
+      }
+    } else if (d === 0) {
+      icon = '= 0';
+    }
+    html += `<div class="col-6 col-md-3 col-lg-2">
+      <div class="border rounded p-2 text-center h-100">
+        <div style="font-size:.72rem;color:#666;white-space:nowrap;">${labels[k]||k}</div>
+        <div class="fw-bold fs-5">${info.cur ?? '—'}</div>
+        <div class="${cls} fw-semibold">${icon}</div>
+        <div style="font-size:.7rem;color:#999;">Kỳ trước: ${info.pre ?? '—'}</div>
+      </div></div>`;
+  }
+  html += '</div>';
+  document.getElementById('soSanhContainer').innerHTML = html;
+}
+
+// ── Filter ──
+let filteredIds = [];
+
+function applyFilter(cbtdOverride) {
+  // cbtdOverride: truyền thẳng từ selectCBTD để tránh lỗi match dropdown
+  const cbtdVal = (cbtdOverride !== undefined && cbtdOverride !== null)
+    ? cbtdOverride
+    : document.getElementById('fCBTD').value;
+  const body = {
+    cbtd:      cbtdVal,
+    nhomno:    document.getElementById('fNhomNo').value,
+    trangthai: document.getElementById('fTrangThai').value,
+    rui_ro:    document.getElementById('fRuiRo').value,
+    goi:       document.getElementById('fGoi').value,
+    loai_kh:   document.getElementById('fLoaiKH').value,
+    top_field: document.getElementById('fTopField').value,
+    top_n:     document.getElementById('fTopN').value,
+  };
+  fetch('{% url "td_filter_api" %}', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify(body),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    renderFilterTable(data.records);
+    filteredIds = data.records.map(r => String(r.dsbsseq));
+    document.getElementById('filterResultInfo').textContent =
+      `${data.count} kết quả — ${data.total_bal_ty} tỷ`;
+    document.getElementById('filterPagination').textContent =
+      `Hiển thị tối đa 500 bản ghi, tổng ${data.count} kết quả`;
+  })
+  .catch(() => alert('Lỗi kết nối máy chủ'));
+}
+
+function resetFilter() {
+  _selectedCBTD = null;
+  document.querySelectorAll('.cbtd-row').forEach(r => r.classList.remove('selected'));
+  ['fCBTD','fNhomNo','fTrangThai','fRuiRo','fGoi','fLoaiKH','fTopField'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('fTopN').value = '20';
+  document.getElementById('filterTableBody').innerHTML =
+    '<tr><td colspan="15" class="text-center text-muted py-4">Bấm "Lọc" để hiển thị</td></tr>';
+  document.getElementById('filterResultInfo').textContent = '';
+  filteredIds = [];
+}
+
+const levelBadge = l => ({
+  'Xanh':'badge-xanh','Vàng':'badge-vang','Cam':'badge-cam','Đỏ':'badge-do','Đỏ đậm':'badge-dodam'
+}[l] || 'bg-secondary');
+
+function renderFilterTable(rows) {
+  const tbody = document.getElementById('filterTableBody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="15" class="text-center text-muted">Không có kết quả</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td class="fw-semibold">${r.custnm||''}</td>
+      <td>${r.ofcnm||''}</td>
+      <td>${r.apprseq||''}</td>
+      <td class="text-end">${Number(r.dsbsbal||0).toLocaleString('vi-VN')}</td>
+      <td class="text-end">${r.sprd||0}</td>
+      <td class="text-center"><span class="badge ${r.grpno<=1?'bg-success':r.grpno==2?'bg-warning text-dark':'bg-danger'}">N${r.grpno}</span></td>
+      <td>${r.dsbsmatdt||''}</td>
+      <td class="${r._ngay_ls<0?'text-danger fw-bold':r._ngay_ls<=7?'text-warning':''}">${r.nxtintschddt||''}</td>
+      <td class="${r._ngay_goc<0?'text-danger fw-bold':''}">${r.nxtrpmtschddt||''}</td>
+      <td>${r.udpcd1||''}</td>
+      <td class="text-end fw-bold">${r._score||0}</td>
+      <td><span class="badge ${levelBadge(r._level)}">${r._level||''}</span></td>
+      <td>${r._trangthai||''}</td>
+      <td class="text-end">${r._nim!==null&&r._nim!==undefined?r._nim.toFixed(2):'—'}</td>
+    </tr>`).join('');
+}
+
+function exportFiltered() {
+  fetch('{% url "td_export_excel" %}', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+    body: JSON.stringify({ids: filteredIds}),
+  })
+  .then(r => {
+    if (!r.ok) return r.json().then(d => { throw new Error(d.error||'Lỗi'); });
+    return r.blob();
+  })
+  .then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'danh_sach_tin_dung.xlsx'; a.click();
+    URL.revokeObjectURL(url);
+  })
+  .catch(e => alert('Lỗi xuất Excel: ' + e.message));
+}
+
+// ── Click vào row CBTD → lọc bảng chi nhánh ──
+let _selectedCBTD = null;   // lưu tên CBTD đang được chọn (bypass dropdown)
+
+function selectCBTD(row, tenCBTD) {
+  const wasSelected = row.classList.contains('selected');
+
+  // Bỏ highlight tất cả
+  document.querySelectorAll('.cbtd-row').forEach(r => r.classList.remove('selected'));
+
+  if (wasSelected) {
+    // Bấm lại lần 2 → bỏ chọn, hiện tất cả
+    _selectedCBTD = null;
+    document.getElementById('fCBTD').value = '';
+  } else {
+    row.classList.add('selected');
+    _selectedCBTD = tenCBTD;
+    // Cố gắng sync dropdown (nếu match được)
+    document.getElementById('fCBTD').value = tenCBTD;
+  }
+
+  // Reset các filter khác
+  document.getElementById('fNhomNo').value    = '';
+  document.getElementById('fTrangThai').value = '';
+  document.getElementById('fRuiRo').value     = '';
+  document.getElementById('fGoi').value       = '';
+  document.getElementById('fLoaiKH').value    = '';
+  document.getElementById('fTopField').value  = '';
+
+  // Cuộn xuống bảng chi nhánh
+  document.getElementById('filterTableWrap').scrollIntoView({behavior:'smooth', block:'start'});
+
+  // Gọi filter với giá trị cbtd trực tiếp (không phụ thuộc dropdown)
+  applyFilter(_selectedCBTD);
+}
+
+// ── Lọc bảng CBTD theo Top N ──
+function filterCBTD(topN) {
+  const rows = document.querySelectorAll('.cbtd-row');
+  const n = topN ? parseInt(topN) : rows.length;
+  rows.forEach((row, i) => {
+    row.style.display = i < n ? '' : 'none';
+  });
+}
+
+function openExportModal() {
+  exportFiltered();
+}
+
+// Tải so sánh kỳ và danh sách snapshots khi vào trang
+loadSoSanh('ngay');
+loadSnapshots();
+</script>
+{% endblock %}

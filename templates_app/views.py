@@ -1,10 +1,10 @@
 # Standard library imports
-import io
+import calendar
 import json
 import os
 import re
 import tempfile
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from urllib.parse import urlparse
 
 # Django imports
@@ -16,16 +16,18 @@ from django.db import models
 from django.db.models import Q
 from django.http import HttpResponse, Http404, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 # Third-party imports
 import mammoth
 
 # Local application imports
-from .forms import DynamicTemplateForm, CustomerForm, BusinessForm, GlobalConfigForm
+from .forms import DynamicTemplateForm, BusinessForm, GlobalConfigForm, ATMReplenishmentForm, ATMDiscrepancyForm
 from .issueby_mapping import get_issueby_name
-from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, remove_vietnamese_diacritics
+from .models import Category, Template, Variable, TemplateVariable, Customer, Business, GlobalConfig, BranchConfig, AppProgram, remove_vietnamese_diacritics, ATM, ATMManagementBoard, ATMReplenishment, ATMDiscrepancy
 from .utils import render_word_template
+from .atm_travel_claim import ATM_TRIP_CONFIG, MAX_TRIPS_PER_SHEET, build_payment_statement_rows, build_travel_log_groups, get_position_holder
 
 
 # Security helper functions
@@ -1360,6 +1362,8 @@ def variable_library_view(request):
         {'name': 'treasury_head_title', 'description': 'Chức danh Trưởng phòng KTNQ', 'example': 'Trưởng phòng'},
         {'name': 'atm_officer_name', 'description': 'Họ tên Cán bộ phụ trách ATM', 'example': 'Lê Văn E'},
         {'name': 'atm_officer_title', 'description': 'Chức danh Cán bộ phụ trách ATM', 'example': 'Cán bộ'},
+        {'name': 'board_decision_number', 'description': 'Số quyết định thành lập Ban quản lý ATM', 'example': '123/QĐ-NHNo-GR'},
+        {'name': 'board_decision_date', 'description': 'Ngày quyết định thành lập Ban quản lý ATM (dd/mm/yyyy)', 'example': '01/01/2024'},
 
         # Metadata
         {'name': 'created_by', 'description': 'Username người tạo phiếu tiếp quỹ', 'example': 'admin'},
@@ -1420,6 +1424,8 @@ def variable_library_view(request):
         {'name': 'disc_treasury_head_title', 'description': 'Chức danh Trưởng phòng KTNQ', 'example': 'Trưởng phòng'},
         {'name': 'disc_atm_officer_name', 'description': 'Họ tên Cán bộ phụ trách ATM', 'example': 'Lê Văn E'},
         {'name': 'disc_atm_officer_title', 'description': 'Chức danh Cán bộ phụ trách ATM', 'example': 'Cán bộ'},
+        {'name': 'disc_board_decision_number', 'description': 'Số quyết định thành lập Ban quản lý ATM', 'example': '123/QĐ-NHNo-GR'},
+        {'name': 'disc_board_decision_date', 'description': 'Ngày quyết định thành lập Ban quản lý ATM (dd/mm/yyyy)', 'example': '01/01/2024'},
 
         # Metadata
         {'name': 'disc_created_by', 'description': 'Username người tạo giao dịch', 'example': 'admin'},
@@ -1929,7 +1935,7 @@ def generate_document_direct(request, template_id):
                 data['d1'], data['d2'] = date_str[0], date_str[1]
                 data['m1'], data['m2'] = date_str[2], date_str[3]
                 data['y1'], data['y2'], data['y3'], data['y4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 # Invalid date format or type - set to None to avoid errors
                 data['ngay_sinh_obj'] = None
 
@@ -1945,7 +1951,7 @@ def generate_document_direct(request, template_id):
                 data['dcc1'], data['dcc2'] = date_str[0], date_str[1]
                 data['mcc1'], data['mcc2'] = date_str[2], date_str[3]
                 data['ycc1'], data['ycc2'], data['ycc3'], data['ycc4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 # Invalid date format or type - set to None to avoid errors
                 data['ngay_cap_cmnd_obj'] = None
 
@@ -1961,7 +1967,7 @@ def generate_document_direct(request, template_id):
                 data['dhh1'], data['dhh2'] = date_str[0], date_str[1]
                 data['mhh1'], data['mhh2'] = date_str[2], date_str[3]
                 data['yhh1'], data['yhh2'], data['yhh3'], data['yhh4'] = date_str[4], date_str[5], date_str[6], date_str[7]
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 # Invalid date format or type - set to None to avoid errors
                 data['ngay_het_han_cmnd_obj'] = None
 
@@ -2071,7 +2077,7 @@ def generate_document_direct(request, template_id):
 
             except Customer.DoesNotExist:
                 pass  # Customer not found, generate document without saving
-            except Exception as e:
+            except Exception:
                 pass  # Failed to update customer, continue with document generation
         else:
             # No customer_id provided - this is a new customer
@@ -2767,10 +2773,13 @@ def beautiful_number_lookup(request):
 
 def get_price_tier_from_fee(fee_vat):
     """
-    Map phí (có VAT) vào price_tier tương ứng
+    Map phí (có VAT) vào price_tier tương ứng.
+    Các ngưỡng (1.1M/3.3M/5.5M/11M/22M) khớp với fee_max_vat của từng bậc trong
+    OFFICIAL_FEE_TABLE — vì vậy PHẢI truyền `fee_max_vat` (không phải fee_min_vat),
+    nếu không 2 bậc liền kề có cùng fee_min sẽ bị gộp nhầm vào 1 tier.
 
     Args:
-        fee_vat: Phí đã bao gồm VAT
+        fee_vat: Phí tối đa (fee_max_vat) đã bao gồm VAT; dùng fee_min_vat nếu fee_max là None
 
     Returns:
         Price tier code (PRICE_500K_1M, PRICE_1M_3M, etc.)
@@ -2888,7 +2897,7 @@ def generate_and_save_beautiful_numbers(count_per_type=50, clear_existing=False)
 
                     # Xác định category và price_tier
                     category = get_category_from_generator_type(gen_type, analysis)
-                    price_tier = get_price_tier_from_fee(analysis['fee_min_vat'])
+                    price_tier = get_price_tier_from_fee(analysis['fee_max_vat'] or analysis['fee_min_vat'])
 
                     # Tạo hoặc cập nhật số trong database
                     beautiful_num, created = BeautifulNumber.objects.get_or_create(
@@ -2959,24 +2968,43 @@ def generate_beautiful_numbers_ajax(request):
 
 
 @login_required
-def beautiful_number_list(request):
+@require_http_methods(["POST"])
+def refresh_beautiful_numbers_ajax(request):
     """
-    Trang danh sách số đẹp có sẵn để khách hàng chọn.
-    Có filter theo giá và loại số đẹp. Có thể in ra.
+    AJAX endpoint để cập nhật lại category/price_tier/fee cho toàn bộ kho số đẹp
+    theo engine tính phí hiện tại (không xóa/thêm số nào).
     """
-    from .models import BeautifulNumber
-    from .beautiful_number_services import analyze_account_number
+    from .beautiful_number_generator import refresh_all_beautiful_numbers
 
-    # Lấy tham số filter từ request
+    try:
+        stats = refresh_all_beautiful_numbers(dry_run=False)
+        return JsonResponse({
+            'success': True,
+            'message': (
+                f'Đã kiểm tra {stats["total"]} số, cập nhật {stats["updated"]} số '
+                f'({stats["changed_fee"]} đổi phí, {stats["changed_tier"]} đổi bậc giá, '
+                f'{stats["changed_category"]} nâng lên Đặc biệt).'
+            ),
+            'stats': stats,
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Lỗi: {str(e)}'
+        }, status=500)
+
+
+def _filter_beautiful_numbers(request):
+    """Áp dụng các filter (category/price/available/pattern) lên BeautifulNumber, trả về (queryset, filters)"""
+    from .models import BeautifulNumber
+
     category_filter = request.GET.get('category', '')
     price_filter = request.GET.get('price', '')
     available_only = request.GET.get('available', 'true') == 'true'
     pattern_filter = request.GET.get('pattern', '').strip()
 
-    # Query base
     numbers_queryset = BeautifulNumber.objects.all()
 
-    # Apply filters
     if available_only:
         numbers_queryset = numbers_queryset.filter(is_available=True)
 
@@ -2989,8 +3017,6 @@ def beautiful_number_list(request):
     # Pattern search - convert * to regex wildcard
     # Example: "7202***777***" -> matches numbers with 777 in the middle
     if pattern_filter:
-        import re
-        # Convert pattern to regex: * matches any single digit
         regex_pattern = ''
         for char in pattern_filter:
             if char == '*':
@@ -3000,45 +3026,177 @@ def beautiful_number_list(request):
             # Ignore other characters
 
         if regex_pattern:
-            # Use regex filter on account_number
             numbers_queryset = numbers_queryset.filter(account_number__regex=f'^{regex_pattern}$')
 
-    # Order by price and category
     numbers_queryset = numbers_queryset.order_by('price_tier', 'category', 'account_number')
 
-    # IMPORTANT: Convert to list to allow attribute assignment
-    numbers = list(numbers_queryset)
+    filters = {
+        'category_filter': category_filter,
+        'price_filter': price_filter,
+        'available_only': available_only,
+        'pattern_filter': pattern_filter,
+    }
+    return numbers_queryset, filters
 
-    # Get choices for filters
+
+def _enrich_beautiful_numbers(numbers, request):
+    """
+    Gắn fee_min/fee_max (từ analyze_account_number) vào từng số, và nếu có tham số `dob`
+    (ngày sinh khách hàng), tính mệnh + gắn menh_hop_count/menh_ky_count/menh_verdict.
+    Nếu `menh_only=true`, chỉ giữ lại các số hợp mệnh (hop_count > ky_count).
+    Trả về (numbers_đã_lọc, menh_info hoặc None, dob_str, menh_only).
+    """
+    from datetime import datetime
+    from .beautiful_number_services import analyze_account_number
+    from .menh_calculator import calculate_menh, menh_verdict
+
+    dob_str = request.GET.get('dob', '').strip()
+    menh_only = request.GET.get('menh_only', '') == 'true'
+    menh_info = None
+    if dob_str:
+        try:
+            dob = datetime.strptime(dob_str, '%Y-%m-%d').date()
+            menh_info = calculate_menh(dob)
+        except ValueError:
+            dob_str = ''
+
+    result = []
+    for number in numbers:
+        analysis = analyze_account_number(number.account_number)
+        number.fee_min = int(analysis.get('fee_min_vat') or number.fee)
+        fee_max_vat = analysis.get('fee_max_vat')
+        number.fee_max = int(fee_max_vat) if fee_max_vat is not None else None
+
+        if menh_info:
+            suffix = number.account_number[4:]
+            hop_count = sum(1 for c in suffix if int(c) in menh_info['hop_digits'])
+            ky_count = sum(1 for c in suffix if int(c) in menh_info['ky_digits'])
+            number.menh_hop_count = hop_count
+            number.menh_ky_count = ky_count
+            number.menh_verdict = menh_verdict(menh_info['hanh'], hop_count, ky_count)
+            if menh_only and not (hop_count > ky_count):
+                continue
+
+        result.append(number)
+
+    return result, menh_info, dob_str, menh_only
+
+
+def _generate_menh_suggestions(menh_info, target_tier, limit=30):
+    """
+    Sinh danh sách gợi ý số hợp mệnh (chưa chắc có sẵn trong kho) theo mức phí mong muốn.
+    Loại bỏ ứng viên đã tồn tại trong kho và đã bán (is_available=False).
+    """
+    from .beautiful_number_services import analyze_account_number, generate_menh_candidates
+    from .models import BeautifulNumber
+
+    candidates = generate_menh_candidates(menh_info['hop_digits'])
+    full_numbers = ['7202' + c for c in candidates]
+
+    existing = {
+        bn.account_number: bn.is_available
+        for bn in BeautifulNumber.objects.filter(account_number__in=full_numbers)
+    }
+
+    suggestions = []
+    for full in full_numbers:
+        if existing.get(full) is False:
+            continue  # đã bán, không gợi ý
+
+        analysis = analyze_account_number(full)
+        if analysis.get('error'):
+            continue
+
+        tier = get_price_tier_from_fee(analysis['fee_max_vat'] or analysis['fee_min_vat'])
+        if target_tier and tier != target_tier:
+            continue
+
+        suggestions.append({
+            'account_number': full,
+            'description': analysis['description'],
+            'fee_min': analysis['fee_min_vat'],
+            'fee_max': analysis['fee_max_vat'],
+            'price_tier': tier,
+            'in_stock': full in existing,
+        })
+
+    suggestions.sort(key=lambda s: (s['fee_min'], s['fee_max'] or 10 ** 12), reverse=True)
+    return suggestions[:limit]
+
+
+@login_required
+def beautiful_number_list(request):
+    """
+    Trang danh sách số đẹp có sẵn để khách hàng chọn.
+    Có filter theo giá, loại số đẹp, mẫu số, và tư vấn hợp mệnh theo năm sinh. Có thể in ra / xuất CSV.
+    """
+    from .models import BeautifulNumber
+
+    numbers_queryset, filters = _filter_beautiful_numbers(request)
+    numbers, menh_info, dob_str, menh_only = _enrich_beautiful_numbers(list(numbers_queryset), request)
+
     category_choices = BeautifulNumber.CATEGORY_CHOICES
     price_choices = BeautifulNumber.PRICE_TIER_CHOICES
 
-    # Enrich numbers with fee range from analysis
     from collections import defaultdict
     numbers_by_price = defaultdict(list)
-
     for number in numbers:
-        # Phân tích để lấy fee_min và fee_max
-        analysis = analyze_account_number(number.account_number)
-
-        # Attach fee range to number object (works because numbers is a list)
-        number.fee_min = int(analysis.get('fee_min_vat', number.fee))
-        number.fee_max = int(analysis.get('fee_max_vat', number.fee))
-
         numbers_by_price[number.price_tier].append(number)
+
+    suggest_price = request.GET.get('suggest_price', '')
+    suggestions = _generate_menh_suggestions(menh_info, suggest_price) if menh_info else []
 
     context = {
         'numbers': numbers,
         'numbers_by_price': dict(numbers_by_price),
         'category_choices': category_choices,
         'price_choices': price_choices,
-        'selected_category': category_filter,
-        'selected_price': price_filter,
-        'available_only': available_only,
-        'pattern_filter': pattern_filter,
+        'selected_category': filters['category_filter'],
+        'selected_price': filters['price_filter'],
+        'available_only': filters['available_only'],
+        'pattern_filter': filters['pattern_filter'],
+        'menh_info': menh_info,
+        'dob': dob_str,
+        'menh_only': menh_only,
+        'suggestions': suggestions,
+        'suggest_price': suggest_price,
     }
 
     return render(request, 'templates_app/beautiful_number_list.html', context)
+
+
+@login_required
+def beautiful_number_list_export_csv(request):
+    """Xuất CSV danh sách số đẹp đang lọc trên trang beautiful_number_list (giữ nguyên filter hiện tại)"""
+    import csv
+
+    numbers_queryset, _filters = _filter_beautiful_numbers(request)
+    numbers, menh_info, _dob_str, _menh_only = _enrich_beautiful_numbers(list(numbers_queryset), request)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="danh_sach_so_dep.csv"'
+    response.write('﻿')  # BOM để Excel đọc đúng tiếng Việt
+
+    writer = csv.writer(response)
+    header = ['STT', 'Số tài khoản', 'Loại số đẹp', 'Phí tối thiểu (VNĐ)', 'Phí tối đa (VNĐ)', 'Trạng thái']
+    if menh_info:
+        header.append('Mức độ hợp mệnh')
+    writer.writerow(header)
+
+    for idx, number in enumerate(numbers, 1):
+        row = [
+            idx,
+            f'="{number.account_number}"',
+            number.get_category_display(),
+            number.fee_min,
+            number.fee_max if number.fee_max is not None else 'Thỏa thuận',
+            'Còn' if number.is_available else 'Hết',
+        ]
+        if menh_info:
+            row.append(getattr(number, 'menh_verdict', ''))
+        writer.writerow(row)
+
+    return response
 
 
 @login_required
@@ -3071,68 +3229,91 @@ def bank_statement_upload(request):
     if request.method == 'POST' and request.FILES.get('statement_file'):
         try:
             from .bank_statement_parser import BankStatementParser
+            from .models import Transaction
             import os
+            import uuid
             from django.conf import settings
 
-            # Lưu file upload
             uploaded_file = request.FILES['statement_file']
-            file_name = uploaded_file.name
+            original_name = uploaded_file.name
+            ext = os.path.splitext(original_name)[1].lower()
 
             # Tạo thư mục upload nếu chưa có
             upload_dir = os.path.join(settings.MEDIA_ROOT, 'bank_statements')
             os.makedirs(upload_dir, exist_ok=True)
 
-            # Lưu file tạm
-            file_path = os.path.join(upload_dir, file_name)
+            # Dùng UUID để tránh trùng tên file giữa các user
+            unique_name = f"{uuid.uuid4().hex}{ext}"
+            file_path = os.path.join(upload_dir, unique_name)
+
             with open(file_path, 'wb+') as destination:
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
 
-            # Parse file
-            parser = BankStatementParser(file_path)
+            # Xử lý file ITL tùy chọn (FXIR64)
+            itl_mapping = {}
+            itl_file = request.FILES.get('itl_file')
+            itl_path = None
+            if itl_file:
+                itl_ext = os.path.splitext(itl_file.name)[1].lower()
+                itl_path = os.path.join(upload_dir, f"itl_{uuid.uuid4().hex}{itl_ext}")
+                with open(itl_path, 'wb+') as f:
+                    for chunk in itl_file.chunks():
+                        f.write(chunk)
+                itl_mapping = BankStatementParser.parse_itl_file(itl_path)
 
-            # Validate file
-            is_valid, error_msg = parser.validate_file()
-            if not is_valid:
-                messages.error(request, f'File không hợp lệ: {error_msg}')
-                return redirect('bank_statement_upload')
+            try:
+                # Parse file
+                parser = BankStatementParser(file_path)
 
-            # Process file
-            transactions_data = parser.process()
-            summary = parser.get_summary()
+                is_valid, error_msg = parser.validate_file()
+                if not is_valid:
+                    messages.error(request, f'File không hợp lệ: {error_msg}')
+                    return redirect('bank_statement_upload')
 
-            # Tạo BankStatement
-            statement = BankStatement.objects.create(
-                file_name=file_name,
-                total_transactions=summary['total_transactions'],
-                total_debit=summary['total_debit'],
-                total_credit=summary['total_credit'],
-                final_balance=summary['final_balance'],
-                processed=True,
-                uploaded_by=request.user
-            )
+                transactions_data = parser.process(itl_mapping=itl_mapping)
+                summary = parser.get_summary()
 
-            # Lưu các transactions
-            from .models import Transaction
-            for trans_data in transactions_data:
-                Transaction.objects.create(
-                    statement=statement,
-                    stt=trans_data['stt'],
-                    transaction_date=trans_data['ngay_giao_dich'],
-                    debit_amount=trans_data['so_tien_ghi_no'],
-                    credit_amount=trans_data['so_tien_ghi_co'],
-                    balance=trans_data['so_du_sau_gd'],
-                    bank_name=trans_data['ngan_hang'],
-                    account_number=trans_data['so_tai_khoan'],
-                    beneficiary_name=trans_data['ten_nguoi'],
-                    description=trans_data['noi_dung'],
-                    transaction_type=trans_data['ghi_chu'],
-                    raw_trcdnm=trans_data['raw_trcdnm'],
-                    raw_tomgntno=trans_data['raw_tomgntno']
+                # Tạo BankStatement
+                statement = BankStatement.objects.create(
+                    file_name=original_name,
+                    total_transactions=summary['total_transactions'],
+                    total_debit=summary['total_debit'],
+                    total_credit=summary['total_credit'],
+                    final_balance=summary['final_balance'],
+                    processed=True,
+                    uploaded_by=request.user
                 )
 
-            messages.success(request, f'Đã phân tích thành công {summary["total_transactions"]} giao dịch!')
-            return redirect('bank_statement_result', statement_id=statement.id)
+                # Lưu transactions bằng bulk_create (1 query thay vì N queries)
+                Transaction.objects.bulk_create([
+                    Transaction(
+                        statement=statement,
+                        stt=t['stt'],
+                        transaction_date=t['ngay_giao_dich'],
+                        debit_amount=t['so_tien_ghi_no'],
+                        credit_amount=t['so_tien_ghi_co'],
+                        balance=t['so_du_sau_gd'],
+                        bank_name=t['ngan_hang'],
+                        account_number=t['so_tai_khoan'],
+                        beneficiary_name=t['ten_nguoi'],
+                        description=t['noi_dung'],
+                        transaction_type=t['ghi_chu'],
+                        raw_trcdnm=t['raw_trcdnm'],
+                        raw_tomgntno=t['raw_tomgntno'],
+                    )
+                    for t in transactions_data
+                ])
+
+                messages.success(request, f'Đã phân tích thành công {summary["total_transactions"]} giao dịch!')
+                return redirect('bank_statement_result', statement_id=statement.id)
+
+            finally:
+                # Luôn xóa file tạm sau khi xử lý xong (dù thành công hay lỗi)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                if itl_path and os.path.exists(itl_path):
+                    os.remove(itl_path)
 
         except Exception as e:
             messages.error(request, f'Lỗi khi xử lý file: {str(e)}')
@@ -3147,12 +3328,49 @@ def bank_statement_upload(request):
     return render(request, 'templates_app/bank_statement_upload.html', context)
 
 
+# Cụm từ ngân hàng không phải tên người — dùng chung cho result và export
+_NON_NAME_PHRASES = [
+    'CHUYEN KHOAN', 'CHUYEN TIEN', 'THANH TOAN', 'GUI TIEN',
+    'NAP TIEN', 'RUT TIEN', 'TRA GOP', 'TRA NO', 'TIEN DIEN',
+    'TIEN NUOC', 'HOA DON', 'PHI DICH VU', 'PHI SMS',
+    'NGAN HANG', 'TAI KHOAN', 'SO TK',
+    'CHUYENKHOAN', 'THANHTOAN', 'DICH VU',
+]
+
+
+def _is_proper_name(name):
+    """
+    Trả True nếu tên trông như tên người thật:
+    - > 70% ký tự chữ cái là CHỮ HOA
+    - Không chứa chữ số (loại mã giao dịch)
+    - Có ít nhất 2 từ (loại tên đơn như LE, TRAN, MOMO)
+    - Không chứa cụm từ ngân hàng
+    """
+    if not name:
+        return False
+    name = name.strip()
+    alpha_chars = [c for c in name if c.isalpha()]
+    if len(alpha_chars) < 2:
+        return False
+    if any(c.isdigit() for c in name):
+        return False
+    upper_ratio = sum(1 for c in alpha_chars if c.isupper()) / len(alpha_chars)
+    if upper_ratio <= 0.7:
+        return False
+    if len(name.split()) < 2:
+        return False
+    name_upper = name.upper()
+    if any(phrase in name_upper for phrase in _NON_NAME_PHRASES):
+        return False
+    return True
+
+
 @login_required
 def bank_statement_result(request, statement_id):
     """
     Hiển thị kết quả phân tích sao kê
     """
-    from .models import BankStatement, Transaction
+    from .models import BankStatement
     from django.core.paginator import Paginator
 
     statement = get_object_or_404(BankStatement, id=statement_id, uploaded_by=request.user)
@@ -3179,23 +3397,92 @@ def bank_statement_result(request, statement_id):
         total_credit=models.Sum('credit_amount')
     ).order_by('transaction_type')
 
-    # Danh sách các loại giao dịch để filter
+    # Tài khoản nhận tiền nhiều lần (chuyển đi, debit > 0)
+    frequent_recipients = list(
+        statement.transactions.filter(debit_amount__gt=0)
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum('debit_amount'),
+            name=models.Max('beneficiary_name'),
+        )
+        .filter(count__gte=1)
+        .order_by('-count')
+    )
+    for acc in frequent_recipients:
+        acct = acc.get('account_number', '')
+        name = acc.get('name', '') or ''
+        # STK dạng ITL: tên lấy từ ordcust (FXIR64) — tin cậy, không lọc
+        if not re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
+            if not _is_proper_name(name):
+                name = ''
+        acc['name'] = name
+
+    # Tài khoản chuyển tiền đến nhiều lần (nhận về, credit > 0)
+    frequent_senders = list(
+        statement.transactions.filter(credit_amount__gt=0)
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum('credit_amount'),
+            name=models.Max('beneficiary_name'),
+        )
+        .filter(count__gte=1)
+        .order_by('-count')
+    )
+    for acc in frequent_senders:
+        acct = acc.get('account_number', '')
+        name = acc.get('name', '') or ''
+        # STK dạng ITL: tên lấy từ ordcust (FXIR64) — tin cậy, không lọc
+        if not re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
+            if not _is_proper_name(name):
+                name = ''
+        acc['name'] = name
+
+    # Danh sách các loại giao dịch để filter — phải khớp chính xác với classify_transaction()
     filter_options = [
+        "Mở tài khoản",
         "Chuyển khoản nội bộ Agribank",
         "Nhận chuyển khoản nội bộ Agribank",
-        "Chuyển khoản liên ngân hàng",
+        "Nhận chuyển khoản từ ATM",
+        "Chuyển khoản đi khác ngân hàng",
         "Nhận chuyển khoản liên ngân hàng",
+        "Thanh toán qua MCC",
+        "Nhận thanh toán MCC",
         "Rút tiền ATM",
+        "Rút tiền ATM cùng hệ thống",
+        "Phí rút tiền ATM",
+        "Phí rút tiền ATM cùng hệ thống",
+        "Phí chuyển khoản ATM",
+        "Hủy rút tiền ATM cùng hệ thống",
+        "Hoàn phí rút tiền ATM cùng hệ thống",
+        "Rút tiền ATM khác hệ thống",
         "Rút tiền mặt",
-        "Nộp tiền ATM",
+        "Rút tiền mặt cùng hệ thống",
+        "Phí rút tiền mặt cùng hệ thống",
+        "Phí rút tiền ATM khác hệ thống",
+        "Nộp tiền tại quầy",
+        "Nộp tiền qua ATM",
+        "Nộp tiền tại Agribank",
         "Nộp tiền mặt",
         "Thanh toán thẻ",
         "Thanh toán POS",
         "Nạp tiền điện thoại",
         "Thanh toán tiền điện",
+        "Thanh toán hóa đơn",
+        "Thanh toán dịch vụ",
         "Thanh toán dịch vụ (VNPT)",
         "Phí dịch vụ",
-        "Trả lãi tiền gửi"
+        "Trả lãi tiền gửi",
+        "Trả lãi tiền gửi hàng tháng",
+        "Trả lãi tiền gửi hằng tháng",
+        "Giải ngân",
+        "Thanh toán qua PaymentHub",
+        "Nhận tiền qua PaymentHub",
+        "Chuyển tiền qua OSB",
+        "Nhận tiền qua OSB",
     ]
 
     context = {
@@ -3204,6 +3491,8 @@ def bank_statement_result(request, statement_id):
         'transaction_types': transaction_types,
         'filter_options': filter_options,
         'selected_type': transaction_type_filter,
+        'frequent_recipients': frequent_recipients,
+        'frequent_senders': frequent_senders,
     }
 
     return render(request, 'templates_app/bank_statement_result.html', context)
@@ -3325,6 +3614,99 @@ def bank_statement_export(request, statement_id):
     worksheet2.set_column('A:A', 40)
     worksheet2.set_column('B:D', 15)
 
+    # Sheet 3: Tài khoản giao dịch nhiều lần
+    worksheet3 = workbook.add_worksheet('TK giao dịch nhiều lần')
+
+    header_red = workbook.add_format({
+        'bold': True, 'bg_color': '#C00000', 'font_color': 'white',
+        'align': 'center', 'valign': 'vcenter', 'border': 1
+    })
+    header_green = workbook.add_format({
+        'bold': True, 'bg_color': '#375623', 'font_color': 'white',
+        'align': 'center', 'valign': 'vcenter', 'border': 1
+    })
+
+    # --- Bảng 1: Tài khoản nhận tiền nhiều lần (tiền ra) ---
+    worksheet3.write(0, 0, 'TÀI KHOẢN NHẬN TIỀN NHIỀU LẦN (tất cả tài khoản)', header_red)
+    worksheet3.merge_range(0, 0, 0, 5, 'TÀI KHOẢN NHẬN TIỀN NHIỀU LẦN (tất cả tài khoản)', header_red)
+
+    rec_headers = ['#', 'Ngân hàng', 'Số tài khoản', 'Tên', 'Số lần', 'Tổng tiền ra']
+    for col, h in enumerate(rec_headers):
+        worksheet3.write(1, col, h, header_format)
+
+
+    frequent_recipients_export = list(
+        statement.transactions.filter(debit_amount__gt=0)
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum('debit_amount'),
+            name=models.Max('beneficiary_name'),
+        )
+        .filter(count__gte=1)
+        .order_by('-count')
+    )
+
+    for i, acc in enumerate(frequent_recipients_export, start=1):
+        row = i + 1
+        acct = acc.get('account_number', '')
+        name = acc.get('name', '') or ''
+        if re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
+            display_name = name  # ITL: tên từ ordcust, không lọc
+        else:
+            display_name = name if _is_proper_name(name) else ''
+        worksheet3.write(row, 0, i)
+        worksheet3.write(row, 1, acc['bank_name'] or '')
+        worksheet3.write(row, 2, acct)
+        worksheet3.write(row, 3, display_name)
+        worksheet3.write(row, 4, acc['count'])
+        worksheet3.write(row, 5, float(acc['total_amount'] or 0), money_format)
+
+    # --- Bảng 2: Tài khoản chuyển tiền đến nhiều lần (tiền vào) ---
+    start_row = len(frequent_recipients_export) + 4
+
+    worksheet3.merge_range(start_row, 0, start_row, 5, 'TÀI KHOẢN CHUYỂN TIỀN ĐẾN NHIỀU LẦN (tất cả tài khoản)', header_green)
+
+    send_headers = ['#', 'Ngân hàng', 'Số tài khoản', 'Tên', 'Số lần', 'Tổng tiền vào']
+    for col, h in enumerate(send_headers):
+        worksheet3.write(start_row + 1, col, h, header_format)
+
+    frequent_senders_export = list(
+        statement.transactions.filter(credit_amount__gt=0)
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum('credit_amount'),
+            name=models.Max('beneficiary_name'),
+        )
+        .filter(count__gte=1)
+        .order_by('-count')
+    )
+
+    for i, acc in enumerate(frequent_senders_export, start=1):
+        row = start_row + 1 + i
+        acct = acc.get('account_number', '')
+        name = acc.get('name', '') or ''
+        if re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
+            display_name = name  # ITL: tên từ ordcust, không lọc
+        else:
+            display_name = name if _is_proper_name(name) else ''
+        worksheet3.write(row, 0, i)
+        worksheet3.write(row, 1, acc['bank_name'] or '')
+        worksheet3.write(row, 2, acct)
+        worksheet3.write(row, 3, display_name)
+        worksheet3.write(row, 4, acc['count'])
+        worksheet3.write(row, 5, float(acc['total_amount'] or 0), money_format)
+
+    worksheet3.set_column('A:A', 6)
+    worksheet3.set_column('B:B', 18)
+    worksheet3.set_column('C:C', 20)
+    worksheet3.set_column('D:D', 28)
+    worksheet3.set_column('E:E', 10)
+    worksheet3.set_column('F:F', 18)
+
     workbook.close()
 
     # Chuẩn bị response
@@ -3382,7 +3764,11 @@ def download_employee_template(request):
         'Nghiệp vụ',
         'Mã chứng thư số',
         'CTS từ ngày',
-        'CTS đến ngày'
+        'CTS đến ngày',
+        'Tài khoản IPCAS',
+        'Địa chỉ MAC',
+        'Địa chỉ IP',
+        'Phần mềm cấp phép'
     ]
 
     # Write headers with styling
@@ -3414,7 +3800,11 @@ def download_employee_template(request):
             'KIEM_SOAT_VIEN',
             'CTS-NV001-2024',
             '01/01/2024',
-            '31/12/2025'
+            '31/12/2025',
+            'nguyenvana_ipcas',
+            'AA:BB:CC:DD:EE:01',
+            '192.168.1.101',
+            'Phần mềm kế toán, Email nội bộ'
         ],
         [
             'tranthib',
@@ -3433,7 +3823,11 @@ def download_employee_template(request):
             'GIAO_DICH_VIEN',
             'CTS-NV002-2024',
             '15/06/2024',
-            '14/06/2025'
+            '14/06/2025',
+            'tranthib_ipcas',
+            'AA:BB:CC:DD:EE:02',
+            '192.168.1.102',
+            'Email nội bộ'
         ],
         [
             'levanc',
@@ -3452,7 +3846,11 @@ def download_employee_template(request):
             'TONG_HOP_VIEN',
             'CTS-NV003-2023',
             '01/07/2023',
-            '30/06/2024'
+            '30/06/2024',
+            '',
+            '',
+            '',
+            ''
         ],
     ]
 
@@ -3462,7 +3860,7 @@ def download_employee_template(request):
             cell.alignment = Alignment(horizontal='left', vertical='center')
 
     # Adjust column widths
-    column_widths = [15, 25, 15, 15, 12, 15, 35, 18, 15, 45, 20, 25, 25, 20, 20, 15, 15]
+    column_widths = [15, 25, 15, 15, 12, 15, 35, 18, 15, 45, 20, 25, 25, 20, 20, 15, 15, 20, 20, 18, 35]
     for col_idx, width in enumerate(column_widths, start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
 
@@ -3498,7 +3896,14 @@ def download_employee_template(request):
         ['   - CTS từ ngày: Ngày bắt đầu hiệu lực, định dạng dd/mm/yyyy'],
         ['   - CTS đến ngày: Ngày hết hạn hiệu lực, định dạng dd/mm/yyyy'],
         [''],
-        ['6. Lưu ý quan trọng:'],
+        ['6. Thông tin hệ thống (tùy chọn):'],
+        ['   - Tài khoản IPCAS: Tên đăng nhập hệ thống IPCAS (ví dụ: nguyenvana_ipcas)'],
+        ['   - Địa chỉ MAC: Định dạng XX:XX:XX:XX:XX:XX (ví dụ: AA:BB:CC:DD:EE:01)'],
+        ['   - Địa chỉ IP: Địa chỉ IPv4 (ví dụ: 192.168.1.101)'],
+        ['   - Phần mềm cấp phép: Tên các phần mềm cách nhau bằng dấu phẩy (phải khớp đúng tên trong hệ thống)'],
+        ['     Ví dụ: Phần mềm kế toán, Email nội bộ'],
+        [''],
+        ['7. Lưu ý quan trọng:'],
         ['   - Không xóa dòng tiêu đề (dòng đầu tiên)'],
         ['   - Mật khẩu mặc định cho user mới: Csi@123'],
         ['   - Nếu Username đã tồn tại, hệ thống sẽ cập nhật thông tin nhân viên'],
@@ -3669,6 +4074,21 @@ def employee_import_excel(request):
                                 except (ValueError, TypeError):
                                     pass
 
+                    # IPCAS account
+                    ipcas_value = str(data.get('IPCAS User') or data.get('Tài khoản IPCAS') or '').strip()
+                    if ipcas_value:
+                        profile.ipcas_user = ipcas_value
+
+                    # MAC address
+                    mac_value = str(data.get('MAC Address') or data.get('Địa chỉ MAC') or '').strip()
+                    if mac_value:
+                        profile.mac_address = mac_value
+
+                    # IP address
+                    ip_value = str(data.get('IP Address') or data.get('Địa chỉ IP') or '').strip()
+                    if ip_value:
+                        profile.ip_address = ip_value
+
                     # Digital Certificate fields
                     if data.get('Certificate Code') or data.get('Mã chứng thư số'):
                         cert_code = str(data.get('Certificate Code') or data.get('Mã chứng thư số', '')).strip()
@@ -3704,6 +4124,15 @@ def employee_import_excel(request):
                                     pass
 
                     profile.save()
+
+                    # App permissions (M2M) — xử lý sau save()
+                    perm_value = str(data.get('App Permissions') or data.get('Phần mềm cấp phép') or '').strip()
+                    if perm_value:
+                        from .models import AppProgram
+                        program_names = [n.strip() for n in perm_value.split(',') if n.strip()]
+                        programs = AppProgram.objects.filter(name__in=program_names)
+                        profile.app_permissions.set(programs)
+
                     success_count += 1
 
                 except Exception as e:
@@ -3747,10 +4176,11 @@ def employee_export_excel(request):
     try:
         import openpyxl
         from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-        from openpyxl.utils import get_column_letter
         from django.http import HttpResponse
         from .models import UserProfile
         from datetime import datetime
+
+        branch_display_map = dict(UserProfile.BRANCH_CHOICES)
 
         # Create workbook
         wb = openpyxl.Workbook()
@@ -3777,7 +4207,11 @@ def employee_export_excel(request):
             'Mã CTS',
             'CTS từ ngày',
             'CTS đến ngày',
-            'Trạng thái CTS'
+            'Trạng thái CTS',
+            'Tài khoản IPCAS',
+            'Địa chỉ MAC',
+            'Địa chỉ IP',
+            'Phần mềm cấp phép'
         ]
 
         # Write headers
@@ -3795,18 +4229,18 @@ def employee_export_excel(request):
             cell.alignment = header_alignment
 
         # Get all employees
-        employees = UserProfile.objects.select_related('user').all().order_by('employee_code')
+        employees = UserProfile.objects.select_related('user').prefetch_related('app_permissions').all().order_by('employee_code')
 
         # Write data
         for idx, emp in enumerate(employees, start=2):
             # Determine certificate status
             cert_status = '-'
             if emp.certificate_code:
-                if emp.is_certificate_expired:
+                if emp.is_certificate_expired():
                     cert_status = 'Hết hạn'
-                elif emp.is_certificate_expiring_soon:
-                    cert_status = f'Còn {emp.days_until_certificate_expiry} ngày'
-                elif emp.days_until_certificate_expiry and emp.days_until_certificate_expiry > 36500:
+                elif emp.is_certificate_expiring_soon():
+                    cert_status = f'Còn {emp.days_until_certificate_expiry()} ngày'
+                elif emp.days_until_certificate_expiry() and emp.days_until_certificate_expiry() > 36500:
                     cert_status = 'Vĩnh viễn'
                 else:
                     cert_status = 'Hiệu lực'
@@ -3825,14 +4259,18 @@ def employee_export_excel(request):
                 emp.id_card_number or '',
                 emp.id_card_date.strftime('%d/%m/%Y') if emp.id_card_date else '',
                 emp.id_card_place or '',
-                emp.get_branch_display() or '',
+                branch_display_map.get(emp.branch, emp.branch) or '',
                 emp.get_department_display() or '',
                 emp.get_position_display() or '',
                 emp.get_job_function_display() or '',
                 emp.certificate_code or '',
                 emp.certificate_start_date.strftime('%d/%m/%Y') if emp.certificate_start_date else '',
                 emp.certificate_end_date.strftime('%d/%m/%Y') if emp.certificate_end_date else '',
-                cert_status
+                cert_status,
+                emp.ipcas_user or '',
+                emp.mac_address or '',
+                str(emp.ip_address) if emp.ip_address else '',
+                ', '.join(ap.name for ap in emp.app_permissions.all()),
             ]
             ws.append(row_data)
 
@@ -3856,7 +4294,11 @@ def employee_export_excel(request):
             'P': 15,  # Mã CTS
             'Q': 13,  # CTS từ ngày
             'R': 13,  # CTS đến ngày
-            'S': 15   # Trạng thái CTS
+            'S': 15,  # Trạng thái CTS
+            'T': 20,  # Tài khoản IPCAS
+            'U': 20,  # Địa chỉ MAC
+            'V': 16,  # Địa chỉ IP
+            'W': 35,  # Phần mềm cấp phép
         }
 
         for col, width in column_widths.items():
@@ -3909,7 +4351,7 @@ def employee_list(request):
     from .models import UserProfile
     from datetime import date, timedelta
 
-    employees = UserProfile.objects.select_related('user').all()
+    employees = UserProfile.objects.select_related('user').prefetch_related('app_permissions').all()
 
     # Get filter parameters
     filter_department = request.GET.get('department', '')
@@ -3957,7 +4399,8 @@ def employee_list(request):
     # Get unique values for filter dropdowns
     departments = UserProfile.DEPARTMENT_CHOICES
     positions = UserProfile.POSITION_CHOICES
-    branches = UserProfile.BRANCH_CHOICES
+    branches = BranchConfig.objects.filter(is_active=True).order_by('branch_code').values_list('branch_code', 'ten_chi_nhanh')
+    app_programs = AppProgram.objects.filter(is_active=True).order_by('order', 'name')
 
     context = {
         'title': 'Quản lý nhân viên',
@@ -3969,6 +4412,7 @@ def employee_list(request):
         'departments': departments,
         'positions': positions,
         'branches': branches,
+        'app_programs': app_programs,
         'expiring_count': expiring_count,
         'expired_count': expired_count,
     }
@@ -4024,7 +4468,7 @@ def employee_create_manual(request):
         if request.POST.get('dob'):
             try:
                 profile.dob = datetime.strptime(request.POST.get('dob'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.gender = request.POST.get('gender', 'Nam')
@@ -4035,7 +4479,7 @@ def employee_create_manual(request):
         if request.POST.get('id_card_date'):
             try:
                 profile.id_card_date = datetime.strptime(request.POST.get('id_card_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.id_card_place = request.POST.get('id_card_place', '')
@@ -4044,22 +4488,35 @@ def employee_create_manual(request):
         profile.position = request.POST.get('position', '')
         profile.job_function = request.POST.get('job_function', '')
 
+        # System info
+        profile.ipcas_user = request.POST.get('ipcas_user', '')
+        profile.mac_address = request.POST.get('mac_address', '')
+        profile.ip_address = request.POST.get('ip_address') or None
+
         # Digital certificate fields
         profile.certificate_code = request.POST.get('certificate_code', '')
 
         if request.POST.get('certificate_start_date'):
             try:
                 profile.certificate_start_date = datetime.strptime(request.POST.get('certificate_start_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         if request.POST.get('certificate_end_date'):
             try:
                 profile.certificate_end_date = datetime.strptime(request.POST.get('certificate_end_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.save()
+
+        # App permissions (M2M - save after profile.save())
+        app_ids = request.POST.getlist('app_permissions')
+        if app_ids:
+            from .models import AppProgram
+            profile.app_permissions.set(AppProgram.objects.filter(id__in=app_ids))
+        else:
+            profile.app_permissions.clear()
 
         return JsonResponse({
             'success': True,
@@ -4096,7 +4553,7 @@ def employee_update_manual(request, employee_id):
         if request.POST.get('dob'):
             try:
                 profile.dob = datetime.strptime(request.POST.get('dob'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.gender = request.POST.get('gender', profile.gender)
@@ -4107,7 +4564,7 @@ def employee_update_manual(request, employee_id):
         if request.POST.get('id_card_date'):
             try:
                 profile.id_card_date = datetime.strptime(request.POST.get('id_card_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.id_card_place = request.POST.get('id_card_place', profile.id_card_place)
@@ -4116,22 +4573,33 @@ def employee_update_manual(request, employee_id):
         profile.position = request.POST.get('position', profile.position)
         profile.job_function = request.POST.get('job_function', profile.job_function)
 
+        # System info
+        profile.ipcas_user = request.POST.get('ipcas_user', profile.ipcas_user)
+        profile.mac_address = request.POST.get('mac_address', profile.mac_address)
+        ip_val = request.POST.get('ip_address', '')
+        profile.ip_address = ip_val if ip_val else None
+
         # Digital certificate fields
         profile.certificate_code = request.POST.get('certificate_code', profile.certificate_code)
 
         if request.POST.get('certificate_start_date'):
             try:
                 profile.certificate_start_date = datetime.strptime(request.POST.get('certificate_start_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         if request.POST.get('certificate_end_date'):
             try:
                 profile.certificate_end_date = datetime.strptime(request.POST.get('certificate_end_date'), '%Y-%m-%d').date()
-            except:
+            except Exception:
                 pass
 
         profile.save()
+
+        # App permissions
+        app_ids = request.POST.getlist('app_permissions')
+        from .models import AppProgram
+        profile.app_permissions.set(AppProgram.objects.filter(id__in=app_ids))
 
         return JsonResponse({
             'success': True,
@@ -4185,11 +4653,27 @@ def employee_delete_manual(request, employee_id):
 def check_elearning_manage_permission(user):
     """
     Kiểm tra quyền quản lý e-learning (tạo/sửa/xóa khóa học)
-    Chỉ Superuser và nhóm "Phòng Tổng hợp" có quyền
+    Chỉ Superuser và cán bộ có hồ sơ Phòng ban = Phòng Tổng hợp có quyền
     """
     if user.is_superuser:
         return True
-    return user.groups.filter(name='Phòng Tổng hợp').exists()
+    try:
+        return user.profile.department == 'TONG_HOP'
+    except Exception:
+        return False
+
+
+def check_elearning_search_permission(user):
+    """
+    Kiểm tra quyền tra cứu e-learning
+    Superuser, Phòng Tổng hợp và Trưởng phòng có quyền
+    """
+    if check_elearning_manage_permission(user):
+        return True
+    try:
+        return user.profile.position == 'TRUONG_PHONG'
+    except Exception:
+        return False
 
 
 @login_required
@@ -4199,7 +4683,7 @@ def course_dashboard(request):
     - Quản lý (Superuser, Phòng Tổng hợp): Xem tất cả khóa học và tất cả học viên
     - Nhân viên: Chỉ xem khóa học được giao và chỉ thấy bản thân
     """
-    from .models import Course, CourseEnrollment, UserProfile
+    from .models import Course, CourseEnrollment
 
     # Check if user has permission to manage courses (create/edit/delete)
     has_permission = check_elearning_manage_permission(request.user)
@@ -4241,6 +4725,7 @@ def course_dashboard(request):
     context = {
         'courses': courses,
         'has_permission': has_permission,
+        'can_search': check_elearning_search_permission(request.user),
     }
     return render(request, 'templates_app/course_dashboard.html', context)
 
@@ -4566,13 +5051,199 @@ def course_toggle_completion(request, enrollment_id):
         }, status=500)
 
 
+@login_required
+def course_print_not_enrolled(request, course_id):
+    """
+    Xuất file PDF danh sách nhân viên đã ghi danh nhưng chưa hoàn thành 1 khóa
+    học (không tính người chưa được ghi danh vào khóa).
+    Chỉ Superuser và Phòng Tổng hợp có quyền
+    """
+    import io
+    from unidecode import unidecode
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+
+    from .models import Course, UserProfile
+    from .cash_drawer_views import FONT_REGULAR, FONT_BOLD
+
+    if not check_elearning_manage_permission(request.user):
+        messages.error(request, 'Bạn không có quyền in danh sách này')
+        return redirect('course_dashboard')
+
+    course = get_object_or_404(Course, id=course_id)
+
+    not_completed_user_ids = course.enrollments.filter(is_completed=False).values_list('user_id', flat=True)
+    not_enrolled = UserProfile.objects.filter(
+        user_id__in=not_completed_user_ids
+    ).select_related('user').order_by('department', 'full_name')
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        topMargin=15 * mm, bottomMargin=15 * mm, leftMargin=15 * mm, rightMargin=15 * mm,
+    )
+
+    title_style = ParagraphStyle('Title', fontName=FONT_BOLD, fontSize=14, leading=18)
+    info_style = ParagraphStyle('Info', fontName=FONT_REGULAR, fontSize=10, leading=14)
+
+    elements = [
+        Paragraph('DANH SÁCH NHÂN VIÊN CHƯA HỌC', title_style),
+        Spacer(1, 4 * mm),
+        Paragraph(f"Khóa học: {course.name}", info_style),
+    ]
+    if course.description.strip():
+        elements.append(Paragraph(f"Mã khóa học: {course.description.strip()}", info_style))
+    elements += [
+        Paragraph(
+            f"Thời gian: {course.start_date.strftime('%d/%m/%Y')} — {course.end_date.strftime('%d/%m/%Y')}",
+            info_style,
+        ),
+        Paragraph(f"Tổng số nhân viên chưa hoàn thành: {not_enrolled.count()}", info_style),
+        Spacer(1, 5 * mm),
+    ]
+
+    data = [['#', 'Mã NV', 'Họ và tên', 'Chức vụ']]
+    for i, profile in enumerate(not_enrolled, start=1):
+        data.append([
+            str(i), profile.employee_code, profile.full_name, profile.get_position_display(),
+        ])
+
+    table = Table(data, colWidths=[10 * mm, 30 * mm, 90 * mm, 40 * mm], repeatRows=1)
+    table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, 0), FONT_BOLD),
+        ('FONTNAME', (0, 1), (-1, -1), FONT_REGULAR),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8B1E2D')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')]),
+    ]))
+    elements.append(table)
+
+    doc.build(elements)
+    buf.seek(0)
+
+    safe_name = ''.join(c if c.isalnum() else '_' for c in unidecode(course.name)).strip('_')
+    resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="ChuaHoc_{safe_name}.pdf"'
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return resp
+
+
+@login_required
+def course_search_by_learner(request):
+    """
+    Tra cứu khóa học theo người học
+    Superuser và Phòng Tổng hợp: tìm tất cả nhân viên
+    Trưởng phòng: chỉ tìm trong phòng ban của mình
+    """
+    from .models import UserProfile, CourseEnrollment
+    from django.db.models import Q
+
+    if not check_elearning_search_permission(request.user):
+        messages.error(request, 'Bạn không có quyền tra cứu')
+        return redirect('course_dashboard')
+
+    is_full_manager = check_elearning_manage_permission(request.user)
+    dept_filter = None
+    if not is_full_manager:
+        try:
+            dept_filter = request.user.profile.department
+        except Exception:
+            dept_filter = None
+
+    query = request.GET.get('q', '').strip()
+    results = []
+
+    if query:
+        profile_qs = UserProfile.objects.filter(
+            Q(full_name__icontains=query) | Q(employee_code__icontains=query)
+        ).select_related('user').order_by('full_name')
+
+        if dept_filter:
+            profile_qs = profile_qs.filter(department=dept_filter)
+
+        for profile in profile_qs:
+            enrollments = CourseEnrollment.objects.filter(
+                user=profile.user
+            ).select_related('course').order_by('course__start_date')
+            results.append({
+                'profile': profile,
+                'enrollments': enrollments,
+                'total': enrollments.count(),
+                'completed': enrollments.filter(is_completed=True).count(),
+            })
+
+    return render(request, 'templates_app/course_search_learner.html', {
+        'query': query,
+        'results': results,
+        'is_full_manager': is_full_manager,
+        'dept_filter': dept_filter,
+    })
+
+
+@login_required
+def course_search_by_department(request):
+    """
+    Tra cứu khóa học theo phòng ban
+    Superuser và Phòng Tổng hợp: chọn bất kỳ phòng ban nào
+    Trưởng phòng: chỉ xem được phòng ban của mình (tự động chọn)
+    """
+    from .models import UserProfile, CourseEnrollment, Course
+
+    if not check_elearning_search_permission(request.user):
+        messages.error(request, 'Bạn không có quyền tra cứu')
+        return redirect('course_dashboard')
+
+    is_full_manager = check_elearning_manage_permission(request.user)
+    dept_choices = UserProfile.DEPARTMENT_CHOICES
+
+    # Trưởng phòng bị giới hạn ở phòng ban của mình
+    locked_dept = None
+    if not is_full_manager:
+        try:
+            locked_dept = request.user.profile.department
+        except Exception:
+            locked_dept = None
+
+    selected_dept = locked_dept if locked_dept else request.GET.get('dept', '')
+    courses_data = []
+
+    if selected_dept:
+        dept_user_ids = UserProfile.objects.filter(
+            department=selected_dept
+        ).values_list('user_id', flat=True)
+
+        courses = Course.objects.all().order_by('start_date')
+        for course in courses:
+            enrollments = CourseEnrollment.objects.filter(
+                course=course,
+                user_id__in=dept_user_ids
+            ).select_related('user__profile')
+            if enrollments.exists():
+                courses_data.append({
+                    'course': course,
+                    'enrollments': enrollments,
+                    'total': enrollments.count(),
+                    'completed': enrollments.filter(is_completed=True).count(),
+                })
+
+    return render(request, 'templates_app/course_search_department.html', {
+        'dept_choices': dept_choices,
+        'selected_dept': selected_dept,
+        'courses_data': courses_data,
+        'is_full_manager': is_full_manager,
+        'locked_dept': locked_dept,
+    })
+
+
 # ============================================================================
 # ATM Management Views
 # ============================================================================
-
-from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy
-from .forms import ATMReplenishmentForm, ATMDiscrepancyForm
-
 
 @login_required
 def atm_dashboard(request):
@@ -4654,6 +5325,60 @@ def atm_replenishment_create(request):
 
 
 @login_required
+def atm_replenishment_edit(request, replenishment_id):
+    """Sửa phiếu tiếp quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    replenishment = get_object_or_404(ATMReplenishment, pk=replenishment_id)
+
+    if request.method == 'POST':
+        form = ATMReplenishmentForm(request.POST, instance=replenishment)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Đã cập nhật phiếu tiếp quỹ thành công')
+            return redirect('atm_replenishment_list')
+    else:
+        form = ATMReplenishmentForm(instance=replenishment)
+
+    management_board = {}
+    for position in ['team_leader', 'treasury_head', 'atm_officer']:
+        member = ATMManagementBoard.objects.filter(
+            position=position, is_active=True
+        ).first()
+        management_board[position] = member
+
+    context = {
+        'form': form,
+        'replenishment': replenishment,
+        'management_board': management_board,
+        'is_edit': True,
+    }
+    return render(request, 'templates_app/atm/replenishment_form.html', context)
+
+
+@login_required
+def atm_replenishment_delete(request, replenishment_id):
+    """Xóa phiếu tiếp quỹ ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    replenishment = get_object_or_404(ATMReplenishment, pk=replenishment_id)
+
+    if request.method == 'POST':
+        replenishment.delete()
+        messages.success(request, 'Đã xóa phiếu tiếp quỹ thành công')
+        return redirect('atm_replenishment_list')
+
+    context = {
+        'replenishment': replenishment,
+    }
+    return render(request, 'templates_app/atm/replenishment_confirm_delete.html', context)
+
+
+@login_required
 def atm_load_replenishment_data(request, replenishment_id, template_id):
     """Tạo và tải file Word trực tiếp từ phiếu tiếp quỹ"""
     if not request.user.is_superuser:
@@ -4680,6 +5405,15 @@ def atm_load_replenishment_data(request, replenishment_id, template_id):
         # Thêm biến chung (chi nhánh + custom variables)
         branch_config = BranchConfig.get_for_user(request.user)
         data.update(branch_config.get_all_variables())
+
+        # Thêm text_replenishment_date: "Địa danh, ngày dd tháng mm năm yyyy"
+        if replenishment.replenishment_date:
+            d = replenishment.replenishment_date
+            dia_danh = data.get('dia_danh', '')
+            if dia_danh:
+                data['text_replenishment_date'] = f"{dia_danh}, ngày {d.day:02d} tháng {d.month:02d} năm {d.year}"
+            else:
+                data['text_replenishment_date'] = f"ngày {d.day:02d} tháng {d.month:02d} năm {d.year}"
 
         # Render template Word với dữ liệu
         template_path = template.file.path
@@ -4742,62 +5476,175 @@ def atm_replenishment_list(request):
 
 @login_required
 def atm_discrepancy_list(request):
-    """Danh sách giao dịch thừa/thiếu quỹ ATM"""
+    """Danh sách giao dịch thừa/thiếu quỹ ATM (gom nhóm theo ATM + chu kỳ)"""
     if not request.user.is_superuser:
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
-    discrepancies = ATMDiscrepancy.objects.select_related(
-        'atm', 'created_by'
-    ).order_by('-audit_cycle_end', '-created_at')
+    from django.db.models import Count, Min
+    # Lấy các nhóm unique (atm, audit_cycle_start, audit_cycle_end), sắp xếp mới nhất trước
+    cycles = (
+        ATMDiscrepancy.objects
+        .values('atm_id', 'audit_cycle_start', 'audit_cycle_end')
+        .annotate(count=Count('id'), first_created=Min('created_at'))
+        .order_by('-audit_cycle_end', '-first_created')
+    )
+
+    group_rows = []
+    for cycle in cycles:
+        items = list(
+            ATMDiscrepancy.objects.filter(
+                atm_id=cycle['atm_id'],
+                audit_cycle_start=cycle['audit_cycle_start'],
+                audit_cycle_end=cycle['audit_cycle_end'],
+            ).select_related('atm', 'created_by').order_by('id')
+        )
+        if not items:
+            continue
+        rep = items[0]
+        total_surplus = sum(int(d.amount) for d in items if d.discrepancy_type == 'surplus')
+        total_deficit = sum(int(d.amount) for d in items if d.discrepancy_type == 'deficit')
+        # Key dùng cho URL Word: atm_id + start_yyyymmdd + end_yyyymmdd
+        cycle_key = f"{cycle['atm_id']}__{cycle['audit_cycle_start'].strftime('%Y%m%d')}__{cycle['audit_cycle_end'].strftime('%Y%m%d')}"
+        group_rows.append({
+            'cycle_key': cycle_key,
+            'atm_id': cycle['atm_id'],
+            'start': cycle['audit_cycle_start'],
+            'end': cycle['audit_cycle_end'],
+            'representative': rep,
+            'items': items,
+            'count': len(items),
+            'total_surplus': total_surplus,
+            'total_deficit': total_deficit,
+        })
 
     # Pagination
     from django.core.paginator import Paginator
-    paginator = Paginator(discrepancies, 20)  # 20 items per page
+    paginator = Paginator(group_rows, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Lấy danh sách templates (chỉ templates có tên chứa "ATM")
-    if request.user.is_superuser:
-        templates = Template.objects.filter(is_active=True, name__icontains='ATM').select_related('category').order_by('category__order', 'order', 'name')
-    else:
-        user_groups = request.user.groups.all()
-        templates = Template.objects.filter(
-            is_active=True,
-            name__icontains='ATM'
-        ).filter(
-            Q(allowed_groups__isnull=True) | Q(allowed_groups__in=user_groups)
-        ).distinct().select_related('category').order_by('category__order', 'order', 'name')
+    # Chỉ lấy templates liên quan đến thừa/thiếu quỹ ATM (không lấy tiếp quỹ/pin)
+    atm_templates = Template.objects.filter(
+        is_active=True,
+        category_id=6,
+    ).filter(
+        models.Q(name__icontains='hach toan') |
+        models.Q(name__icontains='Hach toan') |
+        models.Q(name__icontains='THE') |
+        models.Q(name__icontains='hoan tra')
+    ).order_by('order', 'name')
 
     context = {
         'page_obj': page_obj,
-        'templates': templates,
+        'atm_templates': atm_templates,
     }
     return render(request, 'templates_app/atm/discrepancy_list.html', context)
 
 
 @login_required
 def atm_discrepancy_create(request):
-    """Tạo giao dịch thừa/thiếu quỹ ATM mới"""
+    """Tạo giao dịch thừa/thiếu quỹ ATM mới (hỗ trợ nhiều giao dịch trong một chu kỳ)"""
     if not request.user.is_superuser:
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
     if request.method == 'POST':
-        form = ATMDiscrepancyForm(request.POST)
-        if form.is_valid():
-            discrepancy = form.save(commit=False)
-            discrepancy.created_by = request.user
-            discrepancy.save()
-            messages.success(request, 'Đã tạo giao dịch thừa/thiếu quỹ thành công')
-            return redirect('atm_discrepancy_list')
-    else:
-        form = ATMDiscrepancyForm()
+        # Lấy thông tin chung của chu kỳ
+        atm_id = request.POST.get('atm')
+        audit_cycle_start = request.POST.get('audit_cycle_start')
+        audit_cycle_end = request.POST.get('audit_cycle_end')
+        status = request.POST.get('status', 'pending')
+        notes = request.POST.get('notes', '')
 
-    context = {
-        'form': form,
-    }
-    return render(request, 'templates_app/atm/discrepancy_form.html', context)
+        # Lấy danh sách giao dịch (dạng mảng)
+        full_names = request.POST.getlist('full_name[]')
+        account_numbers = request.POST.getlist('account_number[]')
+        card_numbers = request.POST.getlist('card_number[]')
+        trace_numbers = request.POST.getlist('trace_number[]')
+        transaction_ids = request.POST.getlist('transaction_id[]')
+        discrepancy_types = request.POST.getlist('discrepancy_type[]')
+        amounts = request.POST.getlist('amount[]')
+
+        errors = []
+
+        # Validate dữ liệu chung
+        if not atm_id:
+            errors.append('Vui lòng chọn máy ATM.')
+        if not audit_cycle_start:
+            errors.append('Vui lòng nhập ngày bắt đầu chu kỳ.')
+        if not audit_cycle_end:
+            errors.append('Vui lòng nhập ngày kết thúc chu kỳ.')
+        if audit_cycle_start and audit_cycle_end and audit_cycle_end < audit_cycle_start:
+            errors.append('Ngày kết thúc chu kỳ phải sau ngày bắt đầu.')
+        if not full_names or not any(n.strip() for n in full_names):
+            errors.append('Vui lòng nhập ít nhất một giao dịch.')
+
+        if not errors:
+            try:
+                import uuid as uuid_module
+                from django.db import transaction as db_transaction
+                from .models import ATM as ATMModel
+                atm_obj = ATMModel.objects.get(pk=atm_id)
+                batch_group_id = uuid_module.uuid4()
+                saved_count = 0
+                with db_transaction.atomic():
+                    for i in range(len(full_names)):
+                        full_name = full_names[i].strip() if i < len(full_names) else ''
+                        if not full_name:
+                            continue
+                        ATMDiscrepancy.objects.create(
+                            atm=atm_obj,
+                            full_name=full_name,
+                            account_number=account_numbers[i].strip() if i < len(account_numbers) else '',
+                            card_number=card_numbers[i].strip() if i < len(card_numbers) else '',
+                            trace_number=trace_numbers[i].strip() if i < len(trace_numbers) else '',
+                            transaction_id=transaction_ids[i].strip() if i < len(transaction_ids) else '',
+                            discrepancy_type=discrepancy_types[i] if i < len(discrepancy_types) else 'deficit',
+                            amount=amounts[i] if i < len(amounts) else 0,
+                            audit_cycle_start=audit_cycle_start,
+                            audit_cycle_end=audit_cycle_end,
+                            status=status,
+                            notes=notes,
+                            created_by=request.user,
+                            group_id=batch_group_id,
+                        )
+                        saved_count += 1
+                messages.success(request, f'Đã tạo {saved_count} giao dịch thừa/thiếu quỹ thành công')
+                return redirect('atm_discrepancy_list')
+            except Exception as e:
+                errors.append(f'Lỗi khi lưu dữ liệu: {str(e)}')
+
+        import json
+        post_rows = []
+        for i in range(len(full_names)):
+            post_rows.append({
+                'full_name': full_names[i] if i < len(full_names) else '',
+                'account_number': account_numbers[i] if i < len(account_numbers) else '',
+                'card_number': card_numbers[i] if i < len(card_numbers) else '',
+                'trace_number': trace_numbers[i] if i < len(trace_numbers) else '',
+                'transaction_id': transaction_ids[i] if i < len(transaction_ids) else '',
+                'discrepancy_type': discrepancy_types[i] if i < len(discrepancy_types) else 'deficit',
+                'amount': amounts[i] if i < len(amounts) else '',
+            })
+        from .models import ATM as ATMModel
+        context = {
+            'atm_list': ATMModel.objects.filter(is_active=True),
+            'status_choices': ATMDiscrepancy.STATUS_CHOICES,
+            'discrepancy_types': ATMDiscrepancy.DISCREPANCY_TYPES,
+            'errors': errors,
+            'post_data': request.POST,
+            'post_rows_json': json.dumps(post_rows),
+        }
+        return render(request, 'templates_app/atm/discrepancy_create_multi.html', context)
+    else:
+        from .models import ATM as ATMModel
+        context = {
+            'atm_list': ATMModel.objects.filter(is_active=True),
+            'status_choices': ATMDiscrepancy.STATUS_CHOICES,
+            'discrepancy_types': ATMDiscrepancy.DISCREPANCY_TYPES,
+        }
+    return render(request, 'templates_app/atm/discrepancy_create_multi.html', context)
 
 
 @login_required
@@ -4847,6 +5694,749 @@ def atm_discrepancy_delete(request, discrepancy_id):
 
 
 @login_required
+def atm_discrepancy_group_word(request, atm_id, start_date, end_date):
+    """Tự động tạo file Word cho tất cả giao dịch trong cùng chu kỳ (ATM + start + end)"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    from datetime import datetime as dt
+    try:
+        start_dt = dt.strptime(start_date, '%Y%m%d').date()
+        end_dt = dt.strptime(end_date, '%Y%m%d').date()
+    except ValueError:
+        messages.error(request, 'Ngày không hợp lệ')
+        return redirect('atm_discrepancy_list')
+
+    # atm_id ở đây là machine_id (string PK của ATM)
+    discrepancies = ATMDiscrepancy.objects.filter(
+        atm__machine_id=atm_id,
+        audit_cycle_start=start_dt,
+        audit_cycle_end=end_dt,
+    ).select_related('atm', 'created_by').order_by('id')
+
+    if not discrepancies.exists():
+        messages.error(request, 'Không tìm thấy nhóm giao dịch này')
+        return redirect('atm_discrepancy_list')
+
+    try:
+        from docx import Document
+        from docx.shared import Pt, Cm
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from io import BytesIO
+
+        first = discrepancies.first()
+        atm = first.atm
+
+        # Lấy thông tin ban quản lý ATM
+        team_leader = ATMManagementBoard.objects.filter(position='team_leader', is_active=True).first()
+        treasury_head = ATMManagementBoard.objects.filter(position='treasury_head', is_active=True).first()
+        atm_officer = ATMManagementBoard.objects.filter(position='atm_officer', is_active=True).first()
+
+        # Lấy thông tin chi nhánh
+        branch_config = BranchConfig.get_for_user(request.user)
+        branch_vars = branch_config.get_all_variables()
+        dia_danh = branch_vars.get('dia_danh', '')
+        ten_don_vi = branch_vars.get('ten_don_vi', '')
+
+        doc = Document()
+
+        # Thiết lập margin
+        for section in doc.sections:
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2)
+
+        def set_font(run, size=11, bold=False):
+            run.font.size = Pt(size)
+            run.font.bold = bold
+            run.font.name = 'Times New Roman'
+
+        def add_paragraph(text='', bold=False, size=11, align=WD_ALIGN_PARAGRAPH.LEFT):
+            p = doc.add_paragraph()
+            p.alignment = align
+            run = p.add_run(text)
+            set_font(run, size, bold)
+            return p
+
+        # Tiêu đề
+        if ten_don_vi:
+            p = add_paragraph(ten_don_vi.upper(), bold=True, size=12, align=WD_ALIGN_PARAGRAPH.CENTER)
+        add_paragraph('', size=10)
+
+        disc_type_display = 'THỪA/THIẾU QUỸ' if discrepancies.filter(discrepancy_type='surplus').exists() and discrepancies.filter(discrepancy_type='deficit').exists() \
+            else ('THỪA QUỸ' if discrepancies.first().discrepancy_type == 'surplus' else 'THIẾU QUỸ')
+        p = add_paragraph(f'BÁO CÁO GIAO DỊCH {disc_type_display} ATM', bold=True, size=14, align=WD_ALIGN_PARAGRAPH.CENTER)
+
+        # Thông tin chung
+        add_paragraph('')
+        p = doc.add_paragraph()
+        p.add_run('Máy ATM: ').bold = True
+        run = p.add_run(f'{atm.machine_id} - {atm.address}')
+        set_font(run)
+
+        p = doc.add_paragraph()
+        r = p.add_run('Chu kỳ kiểm quỹ: ')
+        r.bold = True
+        set_font(r, bold=True)
+        run = p.add_run(f'{first.audit_cycle_start.strftime("%d/%m/%Y")} đến {first.audit_cycle_end.strftime("%d/%m/%Y")}')
+        set_font(run)
+
+        p = doc.add_paragraph()
+        r = p.add_run('Trạng thái: ')
+        r.bold = True
+        set_font(r, bold=True)
+        run = p.add_run(first.get_status_display())
+        set_font(run)
+
+        if first.notes:
+            p = doc.add_paragraph()
+            r = p.add_run('Ghi chú: ')
+            r.bold = True
+            set_font(r, bold=True)
+            run = p.add_run(first.notes)
+            set_font(run)
+
+        add_paragraph('')
+
+        # Bảng danh sách giao dịch
+        headers = ['STT', 'Họ tên', 'Số TK', 'Số thẻ', 'Số trace', 'ID giao dịch', 'Loại', 'Số tiền (đ)']
+        table = doc.add_table(rows=1, cols=len(headers))
+        table.style = 'Table Grid'
+
+        # Header row
+        hdr_cells = table.rows[0].cells
+        for i, h in enumerate(headers):
+            hdr_cells[i].text = h
+            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            hdr_cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+            hdr_cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+            hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        total_surplus = 0
+        total_deficit = 0
+        for idx, disc in enumerate(discrepancies, 1):
+            row_cells = table.add_row().cells
+            type_str = 'Thừa' if disc.discrepancy_type == 'surplus' else 'Thiếu'
+            amt = int(disc.amount)
+            if disc.discrepancy_type == 'surplus':
+                total_surplus += amt
+            else:
+                total_deficit += amt
+            values = [
+                str(idx),
+                disc.full_name,
+                disc.account_number,
+                disc.card_number,
+                disc.trace_number,
+                disc.transaction_id,
+                type_str,
+                f"{amt:,}",
+            ]
+            for i, val in enumerate(values):
+                row_cells[i].text = val
+                row_cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+                row_cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+                if i in (0, 6, 7):
+                    row_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Dòng tổng cộng
+        total_row = table.add_row().cells
+        total_row[0].merge(total_row[5])
+        total_row[0].text = 'Tổng cộng'
+        total_row[0].paragraphs[0].runs[0].bold = True
+        total_row[0].paragraphs[0].runs[0].font.size = Pt(10)
+        total_row[0].paragraphs[0].runs[0].font.name = 'Times New Roman'
+        total_row[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        total_row[6].text = f"Thừa: {total_surplus:,}\nThiếu: {total_deficit:,}"
+        total_row[6].paragraphs[0].runs[0].font.size = Pt(10)
+        total_row[6].paragraphs[0].runs[0].font.name = 'Times New Roman'
+
+        add_paragraph('')
+
+        # Chữ ký
+        sig_table = doc.add_table(rows=2, cols=3)
+        sig_positions = [
+            ('TRƯỞNG BAN', team_leader),
+            ('TRƯỞNG PHÒNG KTNQ', treasury_head),
+            ('CÁN BỘ PHỤ TRÁCH ATM', atm_officer),
+        ]
+        for col_idx, (title, member) in enumerate(sig_positions):
+            cell = sig_table.rows[0].cells[col_idx]
+            p = cell.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            r = p.add_run(title)
+            r.bold = True
+            r.font.size = Pt(11)
+            r.font.name = 'Times New Roman'
+
+            cell2 = sig_table.rows[1].cells[col_idx]
+            p2 = cell2.paragraphs[0]
+            p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            name_text = member.full_name if member else '...........................'
+            run2 = p2.add_run(name_text)
+            run2.font.size = Pt(11)
+            run2.font.name = 'Times New Roman'
+
+        # Ngày ký
+        add_paragraph('')
+        if dia_danh:
+            date_str = f"{dia_danh}, ngày {first.audit_cycle_end.day:02d} tháng {first.audit_cycle_end.month:02d} năm {first.audit_cycle_end.year}"
+        else:
+            date_str = f"Ngày {first.audit_cycle_end.day:02d} tháng {first.audit_cycle_end.month:02d} năm {first.audit_cycle_end.year}"
+        add_paragraph(date_str, align=WD_ALIGN_PARAGRAPH.RIGHT)
+
+        output = BytesIO()
+        doc.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        disc_type_fn = 'ThuaThieu' if disc_type_display == 'THỪA/THIẾU QUỸ' else ('Thua' if 'THỪA' in disc_type_display else 'Thieu')
+        filename = f"BaoCao_{disc_type_fn}_ATM_{atm.machine_id}_{first.audit_cycle_end.strftime('%Y%m%d')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('atm_discrepancy_list')
+
+
+def _parse_travel_claim_dates(request):
+    """Lấy start_date/end_date từ GET, mặc định là tháng hiện tại"""
+    today = date.today()
+    default_start = today.replace(day=1)
+    default_end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
+
+    start_str = request.GET.get('start_date', '')
+    end_str = request.GET.get('end_date', '')
+    try:
+        start_date = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else default_start
+    except ValueError:
+        start_date = default_start
+    try:
+        end_date = datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else default_end
+    except ValueError:
+        end_date = default_end
+
+    return start_date, end_date
+
+
+@login_required
+def vehicle_duty_schedule(request):
+    """Trang chọn/lưu lịch trực xe theo tháng (mỗi ngày 1 tài xế trực)"""
+    from .models import Person, VehicleDutySchedule
+
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    today = date.today()
+    try:
+        year = int(request.GET.get('year', today.year))
+    except (ValueError, TypeError):
+        year = today.year
+    try:
+        month = int(request.GET.get('month', today.month))
+    except (ValueError, TypeError):
+        month = today.month
+    try:
+        date(year, month, 1)  # validate kết hợp year/month hợp lệ
+    except ValueError:
+        year, month = today.year, today.month
+
+    drivers = list(Person.objects.filter(person_type='driver', is_active=True).order_by('id'))
+
+    if request.method == 'POST':
+        try:
+            year = int(request.POST.get('year', year))
+            month = int(request.POST.get('month', month))
+        except (ValueError, TypeError):
+            pass
+
+        num_days = calendar.monthrange(year, month)[1]
+        driver_by_id = {d.id: d for d in drivers}
+        for day in range(1, num_days + 1):
+            d = date(year, month, day)
+            driver_id = request.POST.get(f'driver_{d.isoformat()}', '')
+            if driver_id and driver_id.isdigit() and int(driver_id) in driver_by_id:
+                VehicleDutySchedule.objects.update_or_create(
+                    date=d, defaults={'driver_id': int(driver_id)}
+                )
+            else:
+                VehicleDutySchedule.objects.filter(date=d).delete()
+
+        messages.success(request, f'Đã lưu lịch trực xe tháng {month}/{year}.')
+        return redirect(f"{reverse('vehicle_duty_schedule')}?year={year}&month={month}")
+
+    num_days = calendar.monthrange(year, month)[1]
+    existing = {
+        s.date: s.driver_id
+        for s in VehicleDutySchedule.objects.filter(date__year=year, date__month=month)
+    }
+
+    weekday_names = ['Th 2', 'Th 3', 'Th 4', 'Th 5', 'Th 6', 'Th 7', 'CN']
+    days = []
+    for day in range(1, num_days + 1):
+        d = date(year, month, day)
+        if d in existing:
+            selected_driver_id = existing[d]
+        elif drivers:
+            # Mặc định xen kẽ theo ngày trong tháng, chỉ mang tính gợi ý ban đầu
+            selected_driver_id = drivers[(day - 1) % len(drivers)].id
+        else:
+            selected_driver_id = None
+        days.append({
+            'date': d,
+            'weekday': weekday_names[d.weekday()],
+            'selected_driver_id': selected_driver_id,
+        })
+
+    prev_month_date = date(year, month, 1) - timedelta(days=1)
+    next_month_date = date(year, month, num_days) + timedelta(days=1)
+
+    context = {
+        'year': year,
+        'month': month,
+        'days': days,
+        'drivers': drivers,
+        'prev_year': prev_month_date.year,
+        'prev_month': prev_month_date.month,
+        'next_year': next_month_date.year,
+        'next_month': next_month_date.month,
+    }
+    return render(request, 'templates_app/atm/vehicle_duty_schedule.html', context)
+
+
+@login_required
+def atm_travel_claim(request):
+    """Trang xem trước Bảng kê thanh toán + Giấy đi đường Ban quản lý ATM theo khoảng ngày"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    start_date, end_date = _parse_travel_claim_dates(request)
+
+    rows, totals = build_payment_statement_rows(start_date, end_date)
+    sheets = build_travel_log_groups(start_date, end_date)
+
+    sheets_summary = {}
+    for s in sheets:
+        key = (s['machine_id'], s['driver_name'])
+        sheets_summary[key] = sheets_summary.get(key, 0) + 1
+
+    context = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'rows': rows,
+        'totals': totals,
+        'sheets': sheets,
+        'sheets_summary': sheets_summary,
+        'sheet_count': len(sheets),
+        'atm_trip_config': ATM_TRIP_CONFIG,
+    }
+    return render(request, 'templates_app/atm/travel_claim.html', context)
+
+
+@login_required
+def atm_payment_statement_word(request):
+    """Xuất file Word Bảng kê thanh toán công tác phí Ban quản lý ATM"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    start_date, end_date = _parse_travel_claim_dates(request)
+
+    try:
+        from datetime import date as date_cls
+        from docx import Document
+        from docx.shared import Pt, Cm
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from io import BytesIO
+        from .models import num_to_vietnamese_words
+
+        rows, totals = build_payment_statement_rows(start_date, end_date)
+
+        branch_config = BranchConfig.get_for_user(request.user)
+        branch_vars = branch_config.get_all_variables()
+        dia_danh = branch_vars.get('dia_danh', '') or ''
+        ten_chi_nhanh = branch_vars.get('ten_chi_nhanh', '') or ''
+        ten_chi_nhanh_hoa = branch_vars.get('ten_chi_nhanh_hoa', '') or ''
+        HEADER_TABLE_WIDTH = Cm(18.5)
+        LEFT_COL_WIDTH = Cm(8.5)
+        RIGHT_COL_WIDTH = Cm(10)
+
+        declarant = get_position_holder('atm_officer', end_date)
+        declarant_name = declarant.full_name if declarant else ''
+
+        doc = Document()
+        for section in doc.sections:
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2)
+
+        def set_font(run, size=11, bold=False, italic=False, underline=False):
+            run.font.size = Pt(size)
+            run.font.bold = bold
+            run.font.italic = italic
+            run.font.underline = underline
+            run.font.name = 'Times New Roman'
+
+        def add_paragraph(text='', bold=False, size=11, align=WD_ALIGN_PARAGRAPH.LEFT, italic=False,
+                           space_before=0, space_after=0):
+            p = doc.add_paragraph()
+            p.alignment = align
+            p.paragraph_format.space_before = Pt(space_before)
+            p.paragraph_format.space_after = Pt(space_after)
+            run = p.add_run(text)
+            set_font(run, size, bold, italic)
+            return p
+
+        def cell_paragraph(cell, text, bold=False, size=11, underline=False, italic=False,
+                            align=WD_ALIGN_PARAGRAPH.CENTER, first=False):
+            p = cell.paragraphs[0] if first else cell.add_paragraph()
+            p.alignment = align
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after = Pt(0)
+            run = p.add_run(text)
+            set_font(run, size, bold, italic=italic, underline=underline)
+            return p
+
+        # Letterhead 2 cột: tên ngân hàng (trái) / quốc hiệu (phải), rộng 18.5cm
+        header_table = doc.add_table(rows=1, cols=2)
+        header_table.autofit = False
+        header_table.width = HEADER_TABLE_WIDTH
+        left_cell, right_cell = header_table.rows[0].cells
+        left_cell.width = LEFT_COL_WIDTH
+        right_cell.width = RIGHT_COL_WIDTH
+
+        cell_paragraph(left_cell, 'NGÂN HÀNG NÔNG NGHIỆP', size=11, first=True)
+        cell_paragraph(left_cell, 'VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM', size=11)
+        if ten_chi_nhanh_hoa:
+            cell_paragraph(left_cell, f'CHI NHÁNH {ten_chi_nhanh_hoa}', bold=True, size=11)
+
+        cell_paragraph(right_cell, 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', bold=True, size=12, first=True)
+        cell_paragraph(right_cell, 'Độc lập - Tự do - Hạnh phúc', bold=True, size=12, underline=True)
+
+        add_paragraph('BẢNG KÊ THANH TOÁN', bold=True, size=14, align=WD_ALIGN_PARAGRAPH.CENTER, space_before=6, space_after=6)
+
+        atm04_label = ATM_TRIP_CONFIG['7202ATM04']['label']
+        atm06_label = ATM_TRIP_CONFIG['7202ATM06']['label']
+        period_text = (
+            f"từ ngày {start_date.day:02d} tháng {start_date.month:02d} năm {start_date.year} "
+            f"đến ngày {end_date.day:02d} tháng {end_date.month:02d} năm {end_date.year}"
+        )
+        intro = doc.add_paragraph()
+        intro.paragraph_format.first_line_indent = Cm(1)
+        intro.paragraph_format.space_after = Pt(6)
+        r = intro.add_run('Tôi tên: ')
+        set_font(r)
+        r = intro.add_run(declarant_name)
+        set_font(r, bold=True)
+        r = intro.add_run(
+            f", là cán bộ thuộc phòng Kế toán – Ngân quỹ của Agribank Chi nhánh {ten_chi_nhanh}. "
+            f"Nay tôi đề nghị thanh toán tiền phụ cấp trách nhiệm của Ban tiếp quỹ ATM04( {atm04_label} ), "
+            f"ATM06 ( {atm06_label} ) {period_text}. Cụ thể như sau ( Kèm GĐĐ ):"
+        )
+        set_font(r)
+
+        headers = ['TT', 'Họ và tên', 'Chức vụ',
+                   'Số\nchuyến', f'ATM\n( Đặt tại\n{atm06_label} )',
+                   'Số\nchuyến', f'ATM\n( Đặt tại\n{atm04_label} )',
+                   'Số tiền\nTT', 'Tài khoản']
+        table = doc.add_table(rows=1, cols=len(headers))
+        table.style = 'Table Grid'
+        hdr_cells = table.rows[0].cells
+        for i, h in enumerate(headers):
+            hdr_cells[i].text = h
+            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            hdr_cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+            hdr_cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+            hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        for idx, row in enumerate(rows, 1):
+            cells = table.add_row().cells
+            unit_atm06 = ATM_TRIP_CONFIG['7202ATM06']['unit_price']
+            unit_atm04 = ATM_TRIP_CONFIG['7202ATM04']['unit_price']
+            values = [
+                str(idx),
+                row['full_name'],
+                row['position_display'],
+                str(row['trips_atm06']) if row['trips_atm06'] else '',
+                f"{unit_atm06:,}" if row['trips_atm06'] else '',
+                str(row['trips_atm04']) if row['trips_atm04'] else '',
+                f"{unit_atm04:,}" if row['trips_atm04'] else '',
+                f"{row['total']:,}",
+                row['account_number'],
+            ]
+            for i, val in enumerate(values):
+                cells[i].text = val
+                cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+                cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+                if i in (0, 3, 4, 5, 6, 7):
+                    cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        total_row = table.add_row().cells
+        total_row[0].merge(total_row[6])
+        total_row[0].text = 'Tổng cộng'
+        total_row[0].paragraphs[0].runs[0].bold = True
+        total_row[0].paragraphs[0].runs[0].font.size = Pt(10)
+        total_row[0].paragraphs[0].runs[0].font.name = 'Times New Roman'
+        total_row[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        total_row[7].text = f"{totals['total']:,}"
+        total_row[7].paragraphs[0].runs[0].bold = True
+        total_row[7].paragraphs[0].runs[0].font.size = Pt(10)
+        total_row[7].paragraphs[0].runs[0].font.name = 'Times New Roman'
+        total_row[7].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(6)
+        r = p.add_run('Số tiền bằng chữ: ')
+        set_font(r)
+        r = p.add_run(num_to_vietnamese_words(totals['total']) + '.')
+        set_font(r, bold=True, italic=True)
+
+        add_paragraph(
+            f"Đề nghị BGĐ và phòng KTNQ Agribank Chi nhánh {ten_chi_nhanh} thanh toán các khoản tiền nói trên."
+        )
+
+        today = date_cls.today()
+        date_str = f"{dia_danh}, ngày {today.day:02d} tháng {today.month:02d} năm {today.year}" if dia_danh \
+            else f"Ngày {today.day:02d} tháng {today.month:02d} năm {today.year}"
+        add_paragraph(date_str, align=WD_ALIGN_PARAGRAPH.RIGHT, space_before=6)
+
+        sig_table = doc.add_table(rows=2, cols=3)
+        sig_titles = ['DUYỆT CỦA GIÁM ĐỐC', 'TP.KTNQ', 'NGƯỜI THANH TOÁN']
+        for col_idx, title in enumerate(sig_titles):
+            cell_paragraph(sig_table.rows[0].cells[col_idx], title, bold=True, first=True)
+        sig_table.rows[1].height = Cm(2)
+
+        output = BytesIO()
+        doc.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        filename = f"BangKeThanhToan_ATM_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('atm_travel_claim')
+
+
+@login_required
+def atm_travel_log_word(request):
+    """Xuất file .zip chứa các tờ Giấy đi đường (mỗi tờ 1 file .docx riêng)"""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    start_date, end_date = _parse_travel_claim_dates(request)
+
+    try:
+        from docx import Document
+        from docx.shared import Pt, Cm
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_ROW_HEIGHT_RULE
+        from io import BytesIO
+        import zipfile
+
+        sheets = build_travel_log_groups(start_date, end_date)
+
+        if not sheets:
+            messages.error(request, 'Không có chuyến tiếp quỹ nào trong khoảng ngày đã chọn')
+            return redirect('atm_travel_claim')
+
+        branch_config = BranchConfig.get_for_user(request.user)
+        branch_vars = branch_config.get_all_variables()
+        dia_danh = branch_vars.get('dia_danh', '') or ''
+        ten_chi_nhanh = branch_vars.get('ten_chi_nhanh', '') or ''
+        ten_chi_nhanh_hoa = branch_vars.get('ten_chi_nhanh_hoa', '') or ''
+        dots = '.' * 24
+        HEADER_TABLE_WIDTH = Cm(18.5)
+        LEFT_COL_WIDTH = Cm(8.5)
+        RIGHT_COL_WIDTH = Cm(10)
+        ROW_HEIGHT = Cm(4.52)
+
+        def set_font(run, size=11, bold=False, italic=False, underline=False):
+            run.font.size = Pt(size)
+            run.font.bold = bold
+            run.font.italic = italic
+            run.font.underline = underline
+            run.font.name = 'Times New Roman'
+
+        def build_sheet_doc(sheet):
+            doc = Document()
+            for section in doc.sections:
+                section.top_margin = Cm(2)
+                section.bottom_margin = Cm(2)
+                section.left_margin = Cm(2.5)
+                section.right_margin = Cm(2)
+
+            def add_paragraph(text='', bold=False, size=11, align=WD_ALIGN_PARAGRAPH.LEFT, italic=False,
+                               space_before=0, space_after=0):
+                p = doc.add_paragraph()
+                p.alignment = align
+                p.paragraph_format.space_before = Pt(space_before)
+                p.paragraph_format.space_after = Pt(space_after)
+                run = p.add_run(text)
+                set_font(run, size, bold, italic)
+                return p
+
+            def cell_paragraph(cell, text, bold=False, size=11, underline=False, italic=False,
+                               align=WD_ALIGN_PARAGRAPH.CENTER, first=False):
+                p = cell.paragraphs[0] if first else cell.add_paragraph()
+                p.alignment = align
+                p.paragraph_format.space_before = Pt(0)
+                p.paragraph_format.space_after = Pt(0)
+                run = p.add_run(text)
+                set_font(run, size, bold, italic=italic, underline=underline)
+                return p
+
+            # Letterhead 2 cột: tên ngân hàng (trái) / quốc hiệu (phải), rộng 18.5cm
+            header_table = doc.add_table(rows=1, cols=2)
+            header_table.autofit = False
+            header_table.width = HEADER_TABLE_WIDTH
+            left_cell, right_cell = header_table.rows[0].cells
+            left_cell.width = LEFT_COL_WIDTH
+            right_cell.width = RIGHT_COL_WIDTH
+
+            cell_paragraph(left_cell, 'NGÂN HÀNG NÔNG NGHIỆP', size=11, first=True)
+            cell_paragraph(left_cell, 'VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM', size=11)
+            if ten_chi_nhanh_hoa:
+                cell_paragraph(left_cell, f'CHI NHÁNH {ten_chi_nhanh_hoa}', bold=True, size=11)
+
+            cell_paragraph(right_cell, 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', bold=True, size=12, first=True)
+            cell_paragraph(right_cell, 'Độc lập - Tự do - Hạnh phúc', bold=True, size=12, underline=True)
+
+            add_paragraph('Số: …./GĐĐ-NHNoGR')
+            add_paragraph('GIẤY ĐI ĐƯỜNG', bold=True, size=14, align=WD_ALIGN_PARAGRAPH.CENTER)
+
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(0)
+            r = p.add_run('Cấp cho Ông (Bà): ')
+            set_font(r)
+            for idx, recipient in enumerate(sheet['recipients']):
+                if idx > 0:
+                    r_sep = p.add_run('; ')
+                    set_font(r_sep)
+                r_name = p.add_run(recipient['name'])
+                set_font(r_name, bold=True)
+                r_role = p.add_run(f" ({recipient['role']})")
+                set_font(r_role)
+
+            add_paragraph(f'Chức vụ, đơn vị công tác: Ban quản lý ATM Agribank chi nhánh {ten_chi_nhanh}')
+            add_paragraph('Theo văn bản cử đi công tác số:')
+
+            first_trip = sheet['trips'][0]
+            last_trip = sheet['trips'][-1]
+            add_paragraph(
+                f"Từ ngày {first_trip.replenishment_date.day:02d} tháng {first_trip.replenishment_date.month:02d} năm {first_trip.replenishment_date.year} "
+                f"đến ngày {last_trip.replenishment_date.day:02d} tháng {last_trip.replenishment_date.month:02d} năm {last_trip.replenishment_date.year}",
+            )
+
+            # Khối "Địa danh, ngày... / GIÁM ĐỐC" canh giữa với nhau, nằm bên phải trang
+            date_str = f"{dia_danh}, Ngày ..... tháng ..... năm {last_trip.replenishment_date.year}" if dia_danh \
+                else f"Ngày ..... tháng ..... năm {last_trip.replenishment_date.year}"
+            sign_date_table = doc.add_table(rows=1, cols=2)
+            sign_date_table.autofit = False
+            sign_date_table.width = HEADER_TABLE_WIDTH
+            blank_cell, sign_cell = sign_date_table.rows[0].cells
+            blank_cell.width = LEFT_COL_WIDTH
+            sign_cell.width = RIGHT_COL_WIDTH
+            cell_paragraph(sign_cell, date_str, italic=True, size=11, first=True)
+            cell_paragraph(sign_cell, 'GIÁM ĐỐC', bold=True, size=11)
+
+            add_paragraph('Tiền ứng trước:')
+            add_paragraph(f'Lương:{dots}đ')
+            add_paragraph(f'Công tác phí:{dots}đ')
+            add_paragraph(f'Cộng:{dots}đ')
+
+            headers = ['Nơi đi, nơi đến', 'Ngày', 'Phương tiện', 'Số ngày\ncông tác', 'Lý do lưu trú', 'Chứng nhận của cơ quan\nnơi đến (ký tên đóng dấu)']
+            table = doc.add_table(rows=1, cols=len(headers))
+            table.style = 'Table Grid'
+            hdr_cells = table.rows[0].cells
+            for i, h in enumerate(headers):
+                hdr_cells[i].text = h
+                hdr_cells[i].paragraphs[0].runs[0].bold = True
+                hdr_cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+                hdr_cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+                hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            noi_di = f"Agribank {ten_chi_nhanh}" if ten_chi_nhanh else 'Agribank'
+            place = ATM_TRIP_CONFIG[sheet['machine_id']]['destination']
+            for row_idx in range(MAX_TRIPS_PER_SHEET):
+                row = table.add_row()
+                row.height = ROW_HEIGHT
+                row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
+                cells = row.cells
+                trip = sheet['trips'][row_idx] if row_idx < len(sheet['trips']) else None
+                if trip:
+                    noi_di_noi_den = f"Nơi đi:{noi_di}.\n\nNơi đến : {place}"
+                    values = [noi_di_noi_den, trip.replenishment_date.strftime('%d/%m/%Y'), '', '', 'Tiếp quỹ ATM', '']
+                else:
+                    values = [f"Nơi đi:{noi_di}.\n\nNơi đến : ", '', '', '', '', '']
+                for i, val in enumerate(values):
+                    cells[i].text = val
+                    cells[i].paragraphs[0].runs[0].font.size = Pt(10)
+                    cells[i].paragraphs[0].runs[0].font.name = 'Times New Roman'
+
+            add_paragraph('Phần thanh toán ( lập bảng kê chi tiết kèm theo nếu cần thiết )', italic=True)
+            add_paragraph(f'1.Tiền chi phí đi lại:{dots}đ')
+            add_paragraph(f'2.Tiền phòng ở:{dots}đ')
+            add_paragraph(f'3.Phụ cấp lưu trú:{dots}đ')
+            add_paragraph(f'4.Phụ cấp trách nhiệm:{dots}đ')
+
+            # Khối "Ngày.../ Duyệt / Số tiền được thanh toán" canh giữa với nhau, nằm bên phải trang
+            payout_table = doc.add_table(rows=1, cols=2)
+            payout_table.autofit = False
+            payout_table.width = HEADER_TABLE_WIDTH
+            blank_cell2, payout_cell = payout_table.rows[0].cells
+            blank_cell2.width = LEFT_COL_WIDTH
+            payout_cell.width = RIGHT_COL_WIDTH
+            cell_paragraph(payout_cell, f"Ngày ..... tháng ..... năm {last_trip.replenishment_date.year}", first=True)
+            cell_paragraph(payout_cell, 'Duyệt')
+            cell_paragraph(payout_cell, 'Số tiền được thanh toán là:' + '.' * 20 + 'đ')
+
+            sig_table = doc.add_table(rows=1, cols=3)
+            sig_titles = ['Người đi công tác', 'Phụ trách bộ phận', 'Kế toán trưởng']
+            for col_idx, title in enumerate(sig_titles):
+                cell_paragraph(sig_table.rows[0].cells[col_idx], title, bold=True, first=True)
+
+            stream = BytesIO()
+            doc.save(stream)
+            stream.seek(0)
+            return stream
+
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for sheet in sheets:
+                stream = build_sheet_doc(sheet)
+                safe_name = remove_vietnamese_diacritics(sheet['driver_name']).replace(' ', '')
+                machine_short = sheet['machine_id'].replace('7202', '')
+                filename = f"GDD_{machine_short}_{safe_name}_to{sheet['sheet_index']}.docx"
+                zf.writestr(filename, stream.read())
+        zip_buffer.seek(0)
+
+        response = HttpResponse(zip_buffer.read(), content_type='application/zip')
+        zip_filename = f"GiayDiDuong_ATM_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.zip"
+        response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Giấy đi đường: {str(e)}")
+        return redirect('atm_travel_claim')
+
+
+@login_required
 def atm_load_discrepancy_data(request, discrepancy_id, template_id):
     """Tạo và tải file Word trực tiếp từ giao dịch thừa/thiếu quỹ"""
     if not request.user.is_superuser:
@@ -4885,6 +6475,149 @@ def atm_load_discrepancy_data(request, discrepancy_id, template_id):
         filename = f"{template.name}_ATM_{discrepancy.atm.machine_id}_{disc_type}_{discrepancy.audit_cycle_end.strftime('%Y%m%d')}.docx"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Lỗi khi tạo file Word: {str(e)}")
+        return redirect('atm_discrepancy_list')
+
+
+@login_required
+def atm_load_discrepancy_cycle_template(request, atm_id, start_date, end_date, template_id):
+    """Render Word template cho toàn bộ chu kỳ. Mẫu 04: mỗi GD một trang. Mẫu 03: tất cả KH trên 1 trang."""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    from datetime import datetime as dt
+    from io import BytesIO
+    from copy import deepcopy
+    from docx import Document as DocxDocument
+    from docx.oxml.ns import qn as oxml_qn
+    from docx.oxml import OxmlElement as OxmlEl
+
+    try:
+        start_dt = dt.strptime(start_date, '%Y%m%d').date()
+        end_dt = dt.strptime(end_date, '%Y%m%d').date()
+    except ValueError:
+        messages.error(request, 'Ngày không hợp lệ')
+        return redirect('atm_discrepancy_list')
+
+    discrepancies = list(ATMDiscrepancy.objects.filter(
+        atm__machine_id=atm_id,
+        audit_cycle_start=start_dt,
+        audit_cycle_end=end_dt,
+    ).select_related('atm', 'created_by').order_by('id'))
+
+    if not discrepancies:
+        messages.error(request, 'Không tìm thấy nhóm giao dịch này')
+        return redirect('atm_discrepancy_list')
+
+    template = get_object_or_404(Template, id=template_id, is_active=True)
+    if not template.user_has_access(request.user):
+        raise Http404("Bạn không có quyền truy cập mẫu biểu này")
+
+    branch_config = BranchConfig.get_for_user(request.user)
+
+    # Mẫu 04 dùng multi-page (1 trang/GD), Mẫu 03 dùng single-page (thêm dòng KH)
+    is_multi_page = 'Mau_04' in template.file.name or '04_THE' in template.file.name
+
+    try:
+        if len(discrepancies) == 1:
+            data = discrepancies[0].get_data_dict()
+            data.update(branch_config.get_all_variables())
+            output_stream = render_word_template(template.file.path, data)
+
+        elif is_multi_page:
+            # Render từng GD, ghép thành 1 file với page break
+            rendered_docs = []
+            for disc in discrepancies:
+                data = disc.get_data_dict()
+                data.update(branch_config.get_all_variables())
+                stream = render_word_template(template.file.path, data)
+                rendered_docs.append(DocxDocument(stream))
+
+            combined = rendered_docs[0]
+            for next_doc in rendered_docs[1:]:
+                pg_p = OxmlEl('w:p')
+                pg_r = OxmlEl('w:r')
+                pg_br = OxmlEl('w:br')
+                pg_br.set(oxml_qn('w:type'), 'page')
+                pg_r.append(pg_br)
+                pg_p.append(pg_r)
+
+                body = combined.element.body
+                sect_pr = body.find(oxml_qn('w:sectPr'))
+                if sect_pr is not None:
+                    sect_pr.addprevious(pg_p)
+                else:
+                    body.append(pg_p)
+
+                for elem in next_doc.element.body:
+                    if elem.tag.endswith('}sectPr'):
+                        continue
+                    new_elem = deepcopy(elem)
+                    if sect_pr is not None:
+                        sect_pr.addprevious(new_elem)
+                    else:
+                        body.append(new_elem)
+
+            output_stream = BytesIO()
+            combined.save(output_stream)
+            output_stream.seek(0)
+
+        else:
+            # Mẫu 03: render với GD đầu tiên, chèn thêm dòng KH cho các GD sau
+            data = discrepancies[0].get_data_dict()
+            data.update(branch_config.get_all_variables())
+            # Nếu có nhiều GD: ghi đè disc_amount và disc_amount_words bằng TỔNG
+            if len(discrepancies) > 1:
+                from .models import num_to_vietnamese_words
+                total = sum(int(d.amount) for d in discrepancies)
+                data['disc_amount'] = f"{total:,}"
+                data['disc_amount_words'] = num_to_vietnamese_words(total)
+            stream = render_word_template(template.file.path, data)
+
+            doc = DocxDocument(stream)
+
+            kh_para = None
+            for para in doc.paragraphs:
+                if para.text.strip().startswith('KH:'):
+                    kh_para = para
+                    break
+
+            if kh_para is not None:
+                last_p = kh_para._p
+                for disc in discrepancies[1:]:
+                    kh_text = (
+                        f"KH: {disc.full_name} STK: {disc.account_number},"
+                        f" SO THE: {disc.card_number}, ID: {disc.transaction_id},"
+                        f" TRACE: {disc.trace_number}, Số tiền: {disc.amount:,}đ"
+                    )
+                    new_p = deepcopy(kh_para._p)
+                    runs = new_p.findall(oxml_qn('w:r'))
+                    if runs:
+                        t_el = runs[0].find(oxml_qn('w:t'))
+                        if t_el is None:
+                            t_el = OxmlEl('w:t')
+                            runs[0].append(t_el)
+                        t_el.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+                        t_el.text = kh_text
+                        for r in runs[1:]:
+                            new_p.remove(r)
+                    last_p.addnext(new_p)
+                    last_p = new_p
+
+            output_stream = BytesIO()
+            doc.save(output_stream)
+            output_stream.seek(0)
+
+        response = HttpResponse(
+            output_stream.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        filename = f"{template.name}_ATM_{atm_id}_{end_dt.strftime('%Y%m%d')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
     except Exception as e:
@@ -5498,6 +7231,156 @@ def get_user_permissions_detail(request, user_id):
             'success': False,
             'error': f'Lỗi khi lấy thông tin: {str(e)}'
         }, status=500)
+
+
+
+# ==============================================================================
+# CALCULATOR
+# ==============================================================================
+
+@login_required
+def calculator_view(request):
+    return render(request, 'templates_app/calculator.html')
+
+
+# ==============================================================================
+# PDF TOOLS (Tách / Ghép PDF)
+# ==============================================================================
+
+@login_required
+def pdf_tools_view(request):
+    return render(request, 'templates_app/pdf_tools.html')
+
+
+@login_required
+@require_http_methods(['POST'])
+def pdf_split_view(request):
+    """
+    Tách PDF theo lựa chọn:
+    - mode=all  → tách từng trang thành file riêng, trả về ZIP
+    - mode=pages → trích trang theo phạm vi, trả về PDF
+    """
+    from .pdf_tools_service import validate_pdf, split_to_zip, extract_pages, parse_page_ranges
+
+    uploaded = request.FILES.get('pdf_file')
+    if not uploaded:
+        return JsonResponse({'error': 'Vui lòng chọn file PDF.'}, status=400)
+
+    is_valid, err = validate_pdf(uploaded)
+    if not is_valid:
+        return JsonResponse({'error': err}, status=400)
+
+    pdf_bytes = uploaded.read()
+    mode = request.POST.get('mode', 'all')
+    stem = uploaded.name.rsplit('.', 1)[0]
+
+    try:
+        if mode == 'all':
+            zip_bytes, total = split_to_zip(pdf_bytes)
+            response = HttpResponse(zip_bytes, content_type='application/zip')
+            response['Content-Disposition'] = f'attachment; filename="tach_{stem}_{total}trang.zip"'
+            return response
+        else:
+            ranges_str = request.POST.get('page_ranges', '')
+            from pypdf import PdfReader
+            import io as _io
+            total_pages = len(PdfReader(_io.BytesIO(pdf_bytes)).pages)
+            page_numbers = parse_page_ranges(ranges_str, total_pages)
+            pdf_out = extract_pages(pdf_bytes, page_numbers)
+            response = HttpResponse(
+                pdf_out,
+                content_type='application/pdf',
+            )
+            response['Content-Disposition'] = f'attachment; filename="trich_{stem}.pdf"'
+            return response
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Lỗi xử lý: {str(e)}'}, status=500)
+
+
+@login_required
+@require_http_methods(['POST'])
+def pdf_merge_view(request):
+    """
+    Ghép nhiều file PDF thành một.
+    """
+    from .pdf_tools_service import validate_pdf, merge_pdfs, MAX_MERGE_FILES
+
+    files = request.FILES.getlist('pdf_files')
+    if len(files) < 2:
+        return JsonResponse({'error': 'Cần ít nhất 2 file PDF để ghép.'}, status=400)
+    if len(files) > MAX_MERGE_FILES:
+        return JsonResponse({'error': f'Tối đa {MAX_MERGE_FILES} file mỗi lần ghép.'}, status=400)
+
+    pdf_bytes_list = []
+    for f in files:
+        is_valid, err = validate_pdf(f)
+        if not is_valid:
+            return JsonResponse({'error': f'{f.name}: {err}'}, status=400)
+        pdf_bytes_list.append(f.read())
+
+    try:
+        merged = merge_pdfs(pdf_bytes_list)
+    except Exception as e:
+        return JsonResponse({'error': f'Lỗi ghép PDF: {str(e)}'}, status=500)
+
+    response = HttpResponse(merged, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="gop_pdf.pdf"'
+    return response
+
+
+# ==============================================================================
+# OCR TOOL
+# ==============================================================================
+
+@login_required
+def ocr_tool_view(request):
+    """
+    Công cụ OCR: nhận file ảnh hoặc PDF, trích xuất văn bản,
+    trả về file Word (.docx) có thể chỉnh sửa.
+    POST được gọi bằng fetch (AJAX) — lỗi trả JSON, thành công trả file.
+    """
+    from .ocr_service import MAX_FILE_SIZE_MB, MAX_PDF_PAGES, validate_file, process_file, build_docx
+    ctx = {'max_size': MAX_FILE_SIZE_MB, 'max_pages': MAX_PDF_PAGES}
+
+    if request.method == 'GET':
+        return render(request, 'templates_app/ocr_tool.html', ctx)
+
+    def json_error(msg):
+        return JsonResponse({'error': msg}, status=400)
+
+    uploaded_file = request.FILES.get('ocr_file')
+    if not uploaded_file:
+        return json_error('Vui lòng chọn file trước khi gửi.')
+
+    is_valid, error_msg = validate_file(uploaded_file)
+    if not is_valid:
+        return json_error(error_msg)
+
+    original_name = uploaded_file.name
+    ext = os.path.splitext(original_name)[1].lower()
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_file_path = os.path.join(tmp_dir, f'input{ext}')
+            with open(tmp_file_path, 'wb+') as f:
+                for chunk in uploaded_file.chunks():
+                    f.write(chunk)
+            page_texts = process_file(tmp_file_path, ext)
+        docx_bytes = build_docx(page_texts, original_name)
+    except Exception as e:
+        return json_error(f'Lỗi khi xử lý file: {str(e)}')
+
+    stem = os.path.splitext(original_name)[0]
+    output_filename = f'OCR_{stem}.docx'
+
+    response = HttpResponse(
+        docx_bytes,
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{output_filename}"'
+    return response
 
 
 # ==============================================================================

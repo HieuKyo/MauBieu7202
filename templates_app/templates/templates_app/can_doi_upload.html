@@ -1,0 +1,199 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Đọc Cân đối - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 2px dashed #007934;
+        border-radius: 10px;
+        padding: 3rem;
+        text-align: center;
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+    .upload-area:hover {
+        background-color: #e9ecef;
+        border-color: #005a26;
+    }
+    .upload-icon {
+        font-size: 4rem;
+        color: #007934;
+        margin-bottom: 1rem;
+    }
+    .upload-card {
+        transition: transform 0.2s;
+    }
+    .upload-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-agribank">
+                <i class="bi bi-file-earmark-bar-graph"></i>
+                Đọc Cân đối tài khoản
+            </h2>
+            <p class="text-muted">Upload file Cân đối tài khoản (Excel) để tính số liệu cốt yếu doanh thu phí dịch vụ</p>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="uploadForm">
+                        {% csrf_token %}
+                        <div class="upload-area" id="uploadArea">
+                            <i class="bi bi-cloud-upload upload-icon"></i>
+                            <h5>Kéo thả file hoặc click để chọn</h5>
+                            <p class="text-muted">Chấp nhận file .xls hoặc .xlsx</p>
+                            <input type="file"
+                                   class="form-control d-none"
+                                   id="can_doi_file"
+                                   name="can_doi_file"
+                                   accept=".xls,.xlsx"
+                                   required>
+                            <button type="button" class="btn btn-agribank mt-3" onclick="document.getElementById('can_doi_file').click()">
+                                <i class="bi bi-folder2-open"></i> Chọn file
+                            </button>
+                        </div>
+                        <div id="fileInfo" class="mt-3 d-none">
+                            <div class="alert alert-info">
+                                <i class="bi bi-file-earmark-check"></i>
+                                <strong>File đã chọn:</strong> <span id="fileName"></span>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
+                                <i class="bi bi-gear-fill"></i> Đọc File
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Hướng dẫn
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>File phải là file Cân đối tài khoản (.xls hoặc .xlsx) xuất từ hệ thống</li>
+                        <li>File phải chứa các cột: <code>acctcd</code>, <code>afterbal_dr</code>, <code>afterbal_cr</code></li>
+                        <li>Hệ thống tự động tính các chỉ tiêu doanh thu phí dịch vụ theo Mẫu DV/KHCL, dựa trên số dư cuối kỳ của từng tài khoản</li>
+                        <li>Do file Cân đối tài khoản không phân biệt khách hàng Cá nhân/Doanh nghiệp, kết quả chỉ hiển thị tổng gộp toàn chi nhánh</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if uploads %}
+    <div class="row">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="bi bi-clock-history"></i> Đã đọc gần đây
+            </h4>
+        </div>
+        {% for upload in uploads %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card upload-card h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-file-earmark-text text-agribank"></i>
+                        {{ upload.file_name|truncatechars:30 }}
+                    </h6>
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-calendar3"></i> {{ upload.uploaded_at|date:"d/m/Y H:i" }}
+                    </p>
+                    <div class="mb-2">
+                        <span class="badge bg-info">Tổng DT: {{ upload.tong_doanh_thu|intcomma }}</span>
+                    </div>
+                    <a href="{% url 'can_doi_result' upload.id %}" class="btn btn-sm btn-agribank">
+                        <i class="bi bi-eye"></i> Xem
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('can_doi_file');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadArea = document.getElementById('uploadArea');
+
+    fileInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            const validExtensions = ['.xls', '.xlsx'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validExtensions.includes(fileExtension)) {
+                alert('Vui lòng chọn file Excel (.xls hoặc .xlsx)');
+                this.value = '';
+                fileInfo.classList.add('d-none');
+                submitBtn.disabled = true;
+                return;
+            }
+
+            fileName.textContent = file.name;
+            fileInfo.classList.remove('d-none');
+            submitBtn.disabled = false;
+        }
+    });
+
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.style.borderColor = '#005a26';
+        this.style.backgroundColor = '#e9ecef';
+    });
+
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.style.borderColor = '#007934';
+        this.style.backgroundColor = '#f8f9fa';
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.style.borderColor = '#007934';
+        this.style.backgroundColor = '#f8f9fa';
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            fileName.textContent = files[0].name;
+            fileInfo.classList.remove('d-none');
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

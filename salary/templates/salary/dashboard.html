@@ -153,65 +153,6 @@
     </div>
 </div>
 
-<!-- Recent History -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Lịch sử xử lý gần đây</h5>
-                {% if request.user|has_any_group:"Admins" %}
-                <a href="{% url 'salary:history' %}" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-list-ul"></i> Xem tất cả
-                </a>
-                {% endif %}
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Thời gian</th>
-                                <th>File</th>
-                                <th>Loại</th>
-                                <th>Số bản ghi</th>
-                                <th>Tổng tiền</th>
-                                <th>Trạng thái</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for history in recent_histories %}
-                            <tr>
-                                <td>{{ history.processed_at|date:"d/m/Y H:i" }}</td>
-                                <td><a href="{% url 'salary:processing_detail' history.id %}">{{ history.filename }}</a></td>
-                                <td>{{ history.get_transaction_type_display }}</td>
-                                <td>{{ history.total_records }}</td>
-                                <td>{{ history.total_amount|intcomma }} VNĐ</td>
-                                <td>
-                                    {% if history.status == 'SUCCESS' %}
-                                    <span class="badge bg-success">Thành công</span>
-                                    {% else %}
-                                    <span class="badge bg-danger">Lỗi</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    <p class="text-muted mb-2">Chưa có lịch sử xử lý</p>
-                                    <a href="{% url 'salary:upload' %}" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-upload"></i> Upload file đầu tiên
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- CSS for hover effect -->
 <style>
     .card.border-primary:hover,

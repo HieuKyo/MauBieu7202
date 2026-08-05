@@ -280,14 +280,14 @@ def main():
         json.dump(chuyen_doi, f, ensure_ascii=False, indent=2)
 
     # Also save individual province file
-    province_file = os.path.join(data_dir, f'tỉnh_vĩnh_long_dia_danh.json')
+    province_file = os.path.join(data_dir, 'tỉnh_vĩnh_long_dia_danh.json')
     with open(province_file, 'w', encoding='utf-8') as f:
         json.dump({new_province: dia_danh[new_province]}, f, ensure_ascii=False, indent=2)
 
     print(f"Processing {new_province}...")
     print(f"  - {mappings_count} conversion mappings")
     print(f"\nTotal new mappings: {mappings_count}")
-    print(f"\nFinal totals:")
+    print("\nFinal totals:")
     print(f"  - dia_danh provinces: {len(dia_danh)}")
     print(f"  - chuyen_doi mappings: {len(chuyen_doi)}")
 
