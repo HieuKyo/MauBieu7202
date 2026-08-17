@@ -22,7 +22,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from .models import BranchConfig, HDVImportRecord, HDVRegistration, UserProfile
+from .models import BranchConfig, GlobalConfig, HDVImportRecord, HDVRegistration, UserProfile
 from .report_views import _find_col, _hdv_clean_str, _hdv_remove_leading_zeros, _hdv_to_float
 
 
@@ -409,6 +409,7 @@ def hdv_registration_list_view(request):
         },
         'branch_choices': _branch_choices(),
         'ky_han_choices': HDVRegistration.KY_HAN_CHOICES,
+        'loai_giao_dich_choices': HDVRegistration.LOAI_GIAO_DICH_CHOICES,
         'ma_cb_default': ma_cb_default,
         'ten_cb_default': ten_cb_default,
         'chi_nhanh_default': chi_nhanh_default,
@@ -416,6 +417,142 @@ def hdv_registration_list_view(request):
         'hdv_cho_add_count': _pgd_status_counts(request.user)[1],
     }
     return render(request, 'templates_app/hdv/registration_list.html', context)
+
+
+@login_required
+def hdv_registration_print_view(request):
+    """Xuất PDF Mẫu 01/KĐKH-HĐV — Bảng đăng ký khách hàng gửi tiền có kỳ hạn —
+    cho các đăng ký của user hiện tại trong 1 ngày (mặc định hôm nay, theo
+    ngày gửi đăng ký). Khổ A4 ngang."""
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+    from .cash_drawer_views import FONT_REGULAR, FONT_BOLD, FONT_OBLIQUE
+
+    ngay_str = request.GET.get('ngay', '').strip()
+    try:
+        ngay = date.fromisoformat(ngay_str) if ngay_str else date.today()
+    except ValueError:
+        ngay = date.today()
+
+    qs = HDVRegistration.objects.filter(
+        user_dk=request.user,
+        ngay_gui_dk__date=ngay,
+    ).order_by('ngay_gui_dk')
+
+    ten_chi_nhanh = GlobalConfig.get_instance().ten_chi_nhanh
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=landscape(A4),
+        topMargin=10 * mm, bottomMargin=10 * mm, leftMargin=12 * mm, rightMargin=12 * mm,
+    )
+
+    header_style = ParagraphStyle('Header', fontName=FONT_BOLD, fontSize=11, leading=14, alignment=TA_CENTER)
+    mau_so_style = ParagraphStyle('MauSo', fontName=FONT_OBLIQUE, fontSize=10, leading=13, alignment=TA_RIGHT)
+    title_style = ParagraphStyle('Title', fontName=FONT_BOLD, fontSize=15, leading=19, alignment=TA_CENTER)
+    sub_style = ParagraphStyle('Sub', fontName=FONT_BOLD, fontSize=11, leading=14, alignment=TA_CENTER)
+    unit_style = ParagraphStyle('Unit', fontName=FONT_OBLIQUE, fontSize=9, leading=12, alignment=TA_RIGHT)
+    th_style = ParagraphStyle('TH', fontName=FONT_BOLD, fontSize=8.5, leading=10.5, alignment=TA_CENTER)
+    cell_style = ParagraphStyle('Cell', fontName=FONT_REGULAR, fontSize=8.5, leading=10.5)
+    cell_center_style = ParagraphStyle('CellCenter', fontName=FONT_REGULAR, fontSize=8.5, leading=10.5, alignment=TA_CENTER)
+    footer_style = ParagraphStyle('Footer', fontName=FONT_REGULAR, fontSize=9.5, leading=13, alignment=TA_CENTER)
+    sign_style = ParagraphStyle('Sign', fontName=FONT_BOLD, fontSize=10, leading=13, alignment=TA_CENTER)
+
+    header_tbl = Table(
+        [[
+            Paragraph(
+                'NGÂN HÀNG NÔNG NGHIỆP<br/>VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM<br/>'
+                f'CHI NHÁNH {ten_chi_nhanh.upper()}<br/>PHÒNG: KẾ TOÁN NGÂN QUỸ',
+                header_style,
+            ),
+            Paragraph('Mẫu số 01/KĐKH-HĐV: Dùng cho cá nhân', mau_so_style),
+        ]],
+        colWidths=[180 * mm, 93 * mm],
+    )
+    header_tbl.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+
+    elements = [
+        header_tbl,
+        Spacer(1, 4 * mm),
+        Paragraph('BẢNG ĐĂNG KÝ KHÁCH HÀNG GỬI TIỀN CÓ KỲ HẠN', title_style),
+        Paragraph(f"NGÀY {ngay.strftime('%d/%m/%Y')}", sub_style),
+        Spacer(1, 3 * mm),
+        Paragraph('Đơn vị tính: Triệu đồng', unit_style),
+        Spacer(1, 2 * mm),
+    ]
+
+    header_row0 = [
+        Paragraph('TT', th_style), Paragraph('HỌ TÊN KHÁCH HÀNG', th_style),
+        Paragraph('MÃ SỐ KH/CMND/SỐ ĐIỆN THOẠI', th_style), Paragraph('ĐỊA CHỈ', th_style),
+        Paragraph('SỐ TIỀN<br/>DỰ KIẾN GỬI', th_style), Paragraph('KỲ HẠN', th_style),
+        Paragraph('PHẦN QUYẾT TOÁN', th_style), '',
+        Paragraph('GHI CHÚ<br/>(Dự kiến ngày gửi)', th_style),
+    ]
+    header_row1 = [
+        '', '', '', '', '', '',
+        Paragraph('ST Thực gửi', th_style), Paragraph('Ngày gửi', th_style),
+        '',
+    ]
+    data = [header_row0, header_row1]
+
+    for i, reg in enumerate(qs, start=1):
+        ma_so = reg.cccd
+        if reg.sdt:
+            ma_so = f"{reg.cccd}<br/>SĐT: {reg.sdt}"
+        data.append([
+            Paragraph(str(i), cell_center_style),
+            Paragraph(reg.ten_kh, cell_style),
+            Paragraph(ma_so, cell_style),
+            Paragraph(reg.dia_chi, cell_style),
+            Paragraph(_format_trieu(reg.so_tien), cell_center_style),
+            Paragraph(_ky_han_display(reg.ky_han), cell_center_style),
+            '', '',
+            Paragraph(reg.ngay_dk_huy_dong.strftime('%d/%m/%Y'), cell_center_style),
+        ])
+
+    col_widths = [8 * mm, 45 * mm, 35 * mm, 48 * mm, 25 * mm, 15 * mm, 28 * mm, 28 * mm, 35 * mm]
+    table = Table(data, colWidths=col_widths, repeatRows=2)
+    table.setStyle(TableStyle([
+        ('SPAN', (0, 0), (0, 1)),
+        ('SPAN', (1, 0), (1, 1)),
+        ('SPAN', (2, 0), (2, 1)),
+        ('SPAN', (3, 0), (3, 1)),
+        ('SPAN', (4, 0), (4, 1)),
+        ('SPAN', (5, 0), (5, 1)),
+        ('SPAN', (6, 0), (7, 0)),
+        ('SPAN', (8, 0), (8, 1)),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (4, 0), (-1, -1), 'CENTER'),
+    ]))
+    elements.append(table)
+
+    now_local = timezone.localtime(timezone.now())
+    lap_luc_text = now_local.strftime("Lập lúc %H giờ %M phút, ngày %d tháng %m năm %Y")
+    lap_luc_blank = now_local.strftime("Lập lúc ... giờ ... phút, ngày %d tháng %m năm %Y")
+
+    elements += [
+        Spacer(1, 6 * mm),
+        Table(
+            [
+                [Paragraph(lap_luc_text, footer_style), Paragraph(lap_luc_blank, footer_style)],
+                [Paragraph('CÁN BỘ HUY ĐỘNG VỐN', sign_style), Paragraph('LÃNH ĐẠO PHÒNG', sign_style)],
+            ],
+            colWidths=[136.5 * mm, 136.5 * mm],
+        ),
+    ]
+
+    doc.build(elements)
+    buf.seek(0)
+
+    resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="Mau01_KDKH_HDV_{ngay.isoformat()}.pdf"'
+    return resp
 
 
 def _hdv_form_data(request):
@@ -437,6 +574,7 @@ def _hdv_form_data(request):
         'ky_han': request.POST.get('ky_han', '').strip(),
         'so_tien': so_tien,
         'loai_tien': request.POST.get('loai_tien', 'VND').strip() or 'VND',
+        'loai_giao_dich': request.POST.get('loai_giao_dich', 'GUI_MOI').strip() or 'GUI_MOI',
         'ma_can_bo': request.POST.get('ma_can_bo', '').strip(),
         'ten_can_bo': request.POST.get('ten_can_bo', '').strip(),
         'chi_nhanh': request.POST.get('chi_nhanh', '').strip(),
@@ -594,6 +732,7 @@ def hdv_add_chi_tieu_list_view(request):
         'trang_thai': trang_thai,
         'hdv_cho_duyet_count': _pgd_status_counts(request.user)[0],
         'hdv_cho_add_count': _pgd_status_counts(request.user)[1],
+        'loai_giao_dich_choices': HDVRegistration.LOAI_GIAO_DICH_CHOICES,
     }
     return render(request, 'templates_app/hdv/add_chi_tieu_list.html', context)
 
@@ -612,17 +751,45 @@ def hdv_add_chi_tieu_view(request, pk):
         messages.info(request, f"Đăng ký này đã được add chỉ tiêu bởi {reg.nguoi_add_chi_tieu}.")
         return redirect('hdv_add_chi_tieu_list')
 
+    loai_giao_dich = request.POST.get('loai_giao_dich', '').strip()
+    if loai_giao_dich in dict(HDVRegistration.LOAI_GIAO_DICH_CHOICES):
+        reg.loai_giao_dich = loai_giao_dich
+
     reg.nguoi_add_chi_tieu = request.user
     reg.ngay_add_chi_tieu = timezone.now()
-    reg.save(update_fields=['nguoi_add_chi_tieu', 'ngay_add_chi_tieu'])
+    reg.save(update_fields=['loai_giao_dich', 'nguoi_add_chi_tieu', 'ngay_add_chi_tieu'])
     messages.success(request, f"Đã xác nhận add chỉ tiêu cho {reg.ten_kh}.")
     return redirect('hdv_add_chi_tieu_list')
 
 
+def _ky_han_display(code):
+    if not code:
+        return ''
+    if code == 'KKH':
+        return 'KKH'
+    return code[:-1] if code.endswith('T') else code
+
+
+def _format_trieu(so_tien):
+    trieu = so_tien / 1_000_000
+    text = f"{trieu:,.2f}".rstrip('0').rstrip('.')
+    return text
+
+
 @login_required
 def hdv_add_chi_tieu_print_view(request):
-    """Danh sách các đăng ký mà user hiện tại đã tick 'Add chỉ tiêu' trong 1
-    ngày (mặc định hôm nay) — để in cuối ngày."""
+    """Xuất PDF Mẫu 03/QT ĐKKH-HĐV — Bảng quyết toán đăng ký huy động vốn —
+    cho các đăng ký mà user hiện tại đã tick 'Add chỉ tiêu' trong 1 ngày
+    (mặc định hôm nay). Khổ A4 ngang."""
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+    from .cash_drawer_views import FONT_REGULAR, FONT_BOLD, FONT_OBLIQUE
+
     ngay_str = request.GET.get('ngay', '').strip()
     try:
         ngay = date.fromisoformat(ngay_str) if ngay_str else date.today()
@@ -634,12 +801,122 @@ def hdv_add_chi_tieu_print_view(request):
         ngay_add_chi_tieu__date=ngay,
     ).order_by('ngay_add_chi_tieu')
 
-    context = {
-        'ngay': ngay.isoformat(),
-        'registrations': qs,
-        'tong_tien': qs.aggregate(t=Sum('so_tien'))['t'] or 0,
-    }
-    return render(request, 'templates_app/hdv/add_chi_tieu_print.html', context)
+    ten_chi_nhanh = GlobalConfig.get_instance().ten_chi_nhanh
+    ten_gdv = request.user.get_full_name() or request.user.username
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=landscape(A4),
+        topMargin=10 * mm, bottomMargin=10 * mm, leftMargin=12 * mm, rightMargin=12 * mm,
+    )
+
+    header_style = ParagraphStyle('Header', fontName=FONT_BOLD, fontSize=11, leading=14, alignment=TA_CENTER)
+    mau_so_style = ParagraphStyle('MauSo', fontName=FONT_OBLIQUE, fontSize=10, leading=13, alignment=TA_RIGHT)
+    title_style = ParagraphStyle('Title', fontName=FONT_BOLD, fontSize=15, leading=19, alignment=TA_CENTER)
+    sub_style = ParagraphStyle('Sub', fontName=FONT_REGULAR, fontSize=11, leading=14, alignment=TA_CENTER)
+    unit_style = ParagraphStyle('Unit', fontName=FONT_OBLIQUE, fontSize=9, leading=12, alignment=TA_RIGHT)
+    th_style = ParagraphStyle('TH', fontName=FONT_BOLD, fontSize=8.5, leading=10.5, alignment=TA_CENTER)
+    cell_style = ParagraphStyle('Cell', fontName=FONT_REGULAR, fontSize=8.5, leading=10.5)
+    cell_center_style = ParagraphStyle('CellCenter', fontName=FONT_REGULAR, fontSize=8.5, leading=10.5, alignment=TA_CENTER)
+    footer_style = ParagraphStyle('Footer', fontName=FONT_REGULAR, fontSize=9.5, leading=13, alignment=TA_CENTER)
+    sign_style = ParagraphStyle('Sign', fontName=FONT_BOLD, fontSize=10, leading=13, alignment=TA_CENTER)
+    sign_name_style = ParagraphStyle('SignName', fontName=FONT_OBLIQUE, fontSize=10, leading=13, alignment=TA_CENTER)
+
+    header_tbl = Table(
+        [[
+            Paragraph(
+                'NGÂN HÀNG NÔNG NGHIỆP<br/>VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM<br/>'
+                f'CHI NHÁNH {ten_chi_nhanh.upper()}<br/>PHÒNG KẾ TOÁN - NGÂN QUỸ',
+                header_style,
+            ),
+            Paragraph('Mẫu số 03/QT ĐKKH-HĐV', mau_so_style),
+        ]],
+        colWidths=[180 * mm, 93 * mm],
+    )
+    header_tbl.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+
+    elements = [
+        header_tbl,
+        Spacer(1, 4 * mm),
+        Paragraph('BẢNG QUYẾT TOÁN ĐĂNG KÝ HUY ĐỘNG VỐN', title_style),
+        Paragraph(f"Ngày {ngay.strftime('%d/%m/%Y')}", sub_style),
+        Spacer(1, 3 * mm),
+        Paragraph('Đơn vị tính: Triệu đồng', unit_style),
+        Spacer(1, 2 * mm),
+    ]
+
+    header_row0 = [
+        Paragraph('TT', th_style), Paragraph('HỌ TÊN KHÁCH HÀNG', th_style),
+        Paragraph('MÃ SỐ KH/CMND', th_style), Paragraph('ĐỊA CHỈ', th_style),
+        Paragraph('PHẦN QUYẾT TOÁN', th_style), '', '',
+        Paragraph('TÊN CB HUY ĐỘNG', th_style),
+        Paragraph('GHI CHÚ - ADD Cho CBHĐ', th_style), '',
+    ]
+    header_row1 = [
+        '', '', '', '',
+        Paragraph('ST Thực gửi', th_style), Paragraph('Ngày gửi', th_style), Paragraph('Kỳ hạn gửi', th_style),
+        '',
+        Paragraph('Đổi, Nhập, gửi thêm sổ', th_style), Paragraph('Gửi mới', th_style),
+    ]
+    data = [header_row0, header_row1]
+
+    tong_tien = 0
+    for i, reg in enumerate(qs, start=1):
+        tong_tien += reg.so_tien
+        x_doi_nhap = 'x' if reg.loai_giao_dich == 'DOI_NHAP_GUI_THEM' else ''
+        x_moi = 'x' if reg.loai_giao_dich != 'DOI_NHAP_GUI_THEM' else ''
+        data.append([
+            Paragraph(str(i), cell_center_style),
+            Paragraph(reg.ten_kh, cell_style),
+            Paragraph(reg.cccd, cell_style),
+            Paragraph(reg.dia_chi, cell_style),
+            Paragraph(_format_trieu(reg.so_tien), cell_center_style),
+            Paragraph(reg.ngay_dk_huy_dong.strftime('%d/%m/%Y'), cell_center_style),
+            Paragraph(_ky_han_display(reg.ky_han), cell_center_style),
+            Paragraph(reg.ten_can_bo, cell_style),
+            Paragraph(x_doi_nhap, cell_center_style),
+            Paragraph(x_moi, cell_center_style),
+        ])
+
+    col_widths = [8 * mm, 45 * mm, 25 * mm, 45 * mm, 25 * mm, 22 * mm, 15 * mm, 35 * mm, 28 * mm, 25 * mm]
+    table = Table(data, colWidths=col_widths, repeatRows=2)
+    table.setStyle(TableStyle([
+        ('SPAN', (0, 0), (0, 1)),
+        ('SPAN', (1, 0), (1, 1)),
+        ('SPAN', (2, 0), (2, 1)),
+        ('SPAN', (3, 0), (3, 1)),
+        ('SPAN', (4, 0), (6, 0)),
+        ('SPAN', (7, 0), (7, 1)),
+        ('SPAN', (8, 0), (9, 0)),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (4, 0), (-1, -1), 'CENTER'),
+    ]))
+    elements.append(table)
+
+    elements.append(Spacer(1, 5 * mm))
+
+    now_local = timezone.localtime(timezone.now())
+    lap_luc_text = now_local.strftime("Lập lúc %H giờ %M phút, ngày %d tháng %m năm %Y")
+
+    sign_tbl = Table(
+        [
+            [Paragraph(lap_luc_text, footer_style), '', ''],
+            [Spacer(1, 3 * mm), '', ''],
+            [Paragraph('GIAO DỊCH VIÊN', sign_style), Paragraph('TP. KTNQ', sign_style), Paragraph('GIÁM ĐỐC', sign_style)],
+            [Spacer(1, 16 * mm), Spacer(1, 16 * mm), Spacer(1, 16 * mm)],
+            [Paragraph(ten_gdv, sign_name_style), '', ''],
+        ],
+        colWidths=[91 * mm, 91 * mm, 91 * mm],
+    )
+    elements.append(sign_tbl)
+
+    doc.build(elements)
+    buf.seek(0)
+
+    resp = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="Mau03_QT_DKKH_HDV_{ngay.isoformat()}.pdf"'
+    return resp
 
 
 # ---------------------------------------------------------------------------

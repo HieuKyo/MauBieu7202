@@ -2698,7 +2698,10 @@ class ATMReplenishment(models.Model):
             'atm_officer_name': atm_officer.full_name if atm_officer else '',
             'atm_officer_title': atm_officer.title if atm_officer else '',
             'board_decision_number': team_leader.decision_number if team_leader else '',
-            'board_decision_date': team_leader.decision_date.strftime('%d/%m/%Y') if (team_leader and team_leader.decision_date) else '',
+            'board_decision_date': (
+                f"ngày {team_leader.decision_date.day:02d} tháng {team_leader.decision_date.month:02d} năm {team_leader.decision_date.year}"
+                if (team_leader and team_leader.decision_date) else ''
+            ),
 
             # Thông tin người tạo
             'created_by': self.created_by.username,
@@ -2885,7 +2888,10 @@ class ATMDiscrepancy(models.Model):
             'disc_atm_officer_name': atm_officer.full_name if atm_officer else '',
             'disc_atm_officer_title': atm_officer.title if atm_officer else '',
             'disc_board_decision_number': team_leader.decision_number if team_leader else '',
-            'disc_board_decision_date': team_leader.decision_date.strftime('%d/%m/%Y') if (team_leader and team_leader.decision_date) else '',
+            'disc_board_decision_date': (
+                f"ngày {team_leader.decision_date.day:02d} tháng {team_leader.decision_date.month:02d} năm {team_leader.decision_date.year}"
+                if (team_leader and team_leader.decision_date) else ''
+            ),
 
             # Thông tin người tạo
             'disc_created_by': self.created_by.username,
@@ -3214,6 +3220,11 @@ class HDVRegistration(models.Model):
         ('36T', '36 tháng'),
     ]
 
+    LOAI_GIAO_DICH_CHOICES = [
+        ('GUI_MOI', 'Gửi mới'),
+        ('DOI_NHAP_GUI_THEM', 'Đổi/Nhập/gửi thêm sổ'),
+    ]
+
     ten_kh      = models.CharField(max_length=200, verbose_name="Tên KH/Tên KHPN")
     sdt         = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại")
     cccd        = models.CharField(
@@ -3227,6 +3238,10 @@ class HDVRegistration(models.Model):
     )
     so_tien     = models.BigIntegerField(verbose_name="Số tiền")
     loai_tien   = models.CharField(max_length=10, default='VND', verbose_name="Loại tiền")
+    loai_giao_dich = models.CharField(
+        max_length=20, choices=LOAI_GIAO_DICH_CHOICES, default='GUI_MOI',
+        verbose_name="Loại giao dịch",
+    )
     ma_can_bo   = models.CharField(max_length=30, db_index=True, verbose_name="Mã cán bộ")
     ten_can_bo  = models.CharField(max_length=200, blank=True, verbose_name="Tên cán bộ")
     chi_nhanh   = models.CharField(max_length=20, blank=True, verbose_name="Chi nhánh")

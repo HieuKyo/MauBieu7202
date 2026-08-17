@@ -1363,7 +1363,7 @@ def variable_library_view(request):
         {'name': 'atm_officer_name', 'description': 'Họ tên Cán bộ phụ trách ATM', 'example': 'Lê Văn E'},
         {'name': 'atm_officer_title', 'description': 'Chức danh Cán bộ phụ trách ATM', 'example': 'Cán bộ'},
         {'name': 'board_decision_number', 'description': 'Số quyết định thành lập Ban quản lý ATM', 'example': '123/QĐ-NHNo-GR'},
-        {'name': 'board_decision_date', 'description': 'Ngày quyết định thành lập Ban quản lý ATM (dd/mm/yyyy)', 'example': '01/01/2024'},
+        {'name': 'board_decision_date', 'description': 'Ngày quyết định thành lập Ban quản lý ATM', 'example': 'ngày 01 tháng 01 năm 2024'},
 
         # Metadata
         {'name': 'created_by', 'description': 'Username người tạo phiếu tiếp quỹ', 'example': 'admin'},
@@ -1425,7 +1425,7 @@ def variable_library_view(request):
         {'name': 'disc_atm_officer_name', 'description': 'Họ tên Cán bộ phụ trách ATM', 'example': 'Lê Văn E'},
         {'name': 'disc_atm_officer_title', 'description': 'Chức danh Cán bộ phụ trách ATM', 'example': 'Cán bộ'},
         {'name': 'disc_board_decision_number', 'description': 'Số quyết định thành lập Ban quản lý ATM', 'example': '123/QĐ-NHNo-GR'},
-        {'name': 'disc_board_decision_date', 'description': 'Ngày quyết định thành lập Ban quản lý ATM (dd/mm/yyyy)', 'example': '01/01/2024'},
+        {'name': 'disc_board_decision_date', 'description': 'Ngày quyết định thành lập Ban quản lý ATM', 'example': 'ngày 01 tháng 01 năm 2024'},
 
         # Metadata
         {'name': 'disc_created_by', 'description': 'Username người tạo giao dịch', 'example': 'admin'},

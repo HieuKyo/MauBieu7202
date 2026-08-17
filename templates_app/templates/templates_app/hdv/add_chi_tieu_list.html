@@ -62,11 +62,10 @@
                             </td>
                             <td>
                                 {% if not reg.ngay_add_chi_tieu %}
-                                <form method="post" action="{% url 'hdv_add_chi_tieu' reg.id %}" class="d-inline"
-                                      onsubmit="return confirm('Xác nhận đã add chỉ tiêu cho {{ reg.ten_kh|escapejs }}?');">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-plus-square"></i> Add chỉ tiêu</button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        onclick="openAddChiTieuModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.loai_giao_dich|escapejs }}')">
+                                    <i class="bi bi-plus-square"></i> Add chỉ tiêu
+                                </button>
                                 {% else %}
                                 <span class="text-muted">—</span>
                                 {% endif %}
@@ -93,4 +92,45 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Xác nhận Add chỉ tiêu — chọn loại giao dịch để tích x đúng cột trên Mẫu 03 -->
+<div class="modal fade" id="addChiTieuModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="addChiTieuForm" method="post">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận Add chỉ tiêu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Xác nhận đã add chỉ tiêu cho <strong id="addChiTieuTenKh"></strong>.</p>
+                <p class="text-muted small mb-2">Chọn loại giao dịch — sẽ tích "x" đúng cột trên Mẫu 03/QT ĐKKH-HĐV khi in:</p>
+                {% for code, label in loai_giao_dich_choices %}
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="loai_giao_dich" id="loaiGiaoDich_{{ code }}" value="{{ code }}">
+                    <label class="form-check-label" for="loaiGiaoDich_{{ code }}">{{ label }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-danger">Xác nhận</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openAddChiTieuModal(id, tenKh, currentLoaiGiaoDich) {
+    const form = document.getElementById('addChiTieuForm');
+    form.action = `/hdv/add-chi-tieu/${id}/`;
+    document.getElementById('addChiTieuTenKh').textContent = tenKh;
+    form.querySelectorAll('input[name=loai_giao_dich]').forEach(function (radio) {
+        radio.checked = radio.value === currentLoaiGiaoDich || (radio.value === 'GUI_MOI' && !currentLoaiGiaoDich);
+    });
+    new bootstrap.Modal(document.getElementById('addChiTieuModal')).show();
+}
+</script>
 {% endblock %}

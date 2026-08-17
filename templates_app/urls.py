@@ -180,6 +180,7 @@ urlpatterns = [
     path('hdv/bao-cao/', hdv_reg_views.hdv_reports_view, name='hdv_reports'),
     path('hdv/bao-cao/export/', hdv_reg_views.hdv_reports_export_view, name='hdv_reports_export'),
     path('hdv/dang-ky/', hdv_reg_views.hdv_registration_list_view, name='hdv_registration_list'),
+    path('hdv/dang-ky/in/', hdv_reg_views.hdv_registration_print_view, name='hdv_registration_print'),
     path('hdv/dang-ky/create/', hdv_reg_views.hdv_registration_create_view, name='hdv_registration_create'),
     path('hdv/dang-ky/<int:pk>/update/', hdv_reg_views.hdv_registration_update_view, name='hdv_registration_update'),
     path('hdv/dang-ky/<int:pk>/delete/', hdv_reg_views.hdv_registration_delete_view, name='hdv_registration_delete'),

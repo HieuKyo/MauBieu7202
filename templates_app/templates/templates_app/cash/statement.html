@@ -95,7 +95,7 @@
                                 <tr>
                                     <td>Khác</td>
                                     <td colspan="2">
-                                        <input type="number" min="0" class="form-control form-control-sm"
+                                        <input type="text" inputmode="numeric" class="form-control form-control-sm money-input"
                                                name="khac_thanh_tien" id="khacThanhTien" value="0" placeholder="Số tiền (không quy đổi mệnh giá)">
                                     </td>
                                 </tr>
@@ -114,7 +114,7 @@
                     </form>
 
                     <!-- Form Đề nghị tiếp quỹ -->
-                    <form method="post" action="{% url 'cash_de_nghi_submit' %}" class="mode-panel d-none" data-mode="de-nghi">
+                    <form method="post" action="{% url 'cash_de_nghi_submit' %}" class="mode-panel d-none" data-mode="de-nghi" id="deNghiForm">
                         {% csrf_token %}
                         <div class="alert alert-info small">
                             Chỉ cần nhập <strong>tổng số tiền</strong> muốn đề nghị — mệnh giá cụ thể do thủ quỹ chính
@@ -124,7 +124,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Tổng số tiền đề nghị</label>
-                            <input type="number" min="1" class="form-control" name="tong_tien_de_nghi" required>
+                            <input type="text" inputmode="numeric" class="form-control money-input" name="tong_tien_de_nghi" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Ghi chú</label>
@@ -206,6 +206,23 @@
         return n.toLocaleString('en-US') + ' đ';
     }
 
+    function formatMoneyValue(raw) {
+        const digits = String(raw).replace(/[^\d]/g, '');
+        if (!digits) return '';
+        return Number(digits).toLocaleString('en-US');
+    }
+
+    document.querySelectorAll('.money-input').forEach(function (inp) {
+        inp.addEventListener('input', function () {
+            this.value = formatMoneyValue(this.value);
+        });
+    });
+
+    document.getElementById('deNghiForm').addEventListener('submit', function () {
+        const inp = this.querySelector('[name=tong_tien_de_nghi]');
+        inp.value = inp.value.replace(/,/g, '');
+    });
+
     function recalc() {
         let tong = 0;
         document.querySelectorAll('.so-to-input').forEach(function (input) {
@@ -215,7 +232,7 @@
             tong += thanhTien;
             document.querySelector(`.thanh-tien[data-menh-gia="${mg}"]`).textContent = formatMoney(thanhTien);
         });
-        tong += parseInt(document.getElementById('khacThanhTien').value, 10) || 0;
+        tong += parseInt((document.getElementById('khacThanhTien').value || '').replace(/,/g, ''), 10) || 0;
         document.getElementById('tongCong').textContent = formatMoney(tong);
     }
 
@@ -254,6 +271,10 @@
     document.getElementById('bangKeSelect').addEventListener('change', syncBangKe);
     document.getElementById('trangGiaoDich').addEventListener('change', syncBangKe);
     document.getElementById('statementForm').addEventListener('submit', syncBangKe);
+    document.getElementById('statementForm').addEventListener('submit', function () {
+        const khac = document.getElementById('khacThanhTien');
+        khac.value = khac.value.replace(/,/g, '');
+    });
     syncBangKe();
 </script>
 {% endblock %}

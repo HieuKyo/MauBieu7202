@@ -129,7 +129,7 @@ def _parse_chi_tiet(request):
         if so_to > 0:
             chi_tiet[str(mg)] = so_to
 
-    raw_khac = request.POST.get('khac_thanh_tien', '0').strip()
+    raw_khac = request.POST.get('khac_thanh_tien', '0').strip().replace(',', '')
     try:
         khac = int(float(raw_khac)) if raw_khac else 0
     except ValueError:
@@ -252,7 +252,7 @@ def cash_statement_submit_view(request):
 def cash_de_nghi_submit_view(request):
     """Đề nghị tiếp quỹ — chỉ cần tổng số tiền muốn nhận, KHÔNG rõ mệnh giá trước
     (do thủ quỹ chính quyết định khi xuất), nên không cập nhật tồn quỹ ở bước này."""
-    raw = request.POST.get('tong_tien_de_nghi', '').strip()
+    raw = request.POST.get('tong_tien_de_nghi', '').strip().replace(',', '')
     try:
         tong_tien = int(float(raw)) if raw else 0
     except ValueError:
@@ -312,7 +312,7 @@ def cash_statement_edit_submit_view(request, pk):
     ghi_chu = request.POST.get('ghi_chu', '').strip()
 
     if statement.loai == 'DE_NGHI':
-        raw = request.POST.get('tong_tien_de_nghi', '').strip()
+        raw = request.POST.get('tong_tien_de_nghi', '').strip().replace(',', '')
         try:
             tong_tien = int(float(raw)) if raw else 0
         except ValueError:
@@ -687,15 +687,15 @@ def _draw_de_nghi_tiep_quy_pdf(buf, statement, config):
 
     y = page_h - margin - 6 * mm
     c.setFont(FONT_BOLD, body_fs)
-    c.drawString(X(margin), Y(y), 'NGÂN HÀNG NÔNG NGHIỆP')
+    c.drawCentredString(X(page_w * 0.26), Y(y), 'NGÂN HÀNG NÔNG NGHIỆP')
     c.drawCentredString(X(page_w * 0.72), Y(y), 'CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM')
     y -= 4.5 * mm
-    c.drawString(X(margin), Y(y), 'VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM')
+    c.drawCentredString(X(page_w * 0.26), Y(y), 'VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM')
     c.setFont(FONT_OBLIQUE, body_fs)
     c.drawCentredString(X(page_w * 0.72), Y(y), 'Độc lập - Tự do - Hạnh phúc')
     y -= 4.5 * mm
     c.setFont(FONT_REGULAR, body_fs)
-    c.drawString(X(margin), Y(y), f"Chi nhánh: {ten_chi_nhanh}")
+    c.drawCentredString(X(page_w * 0.26), Y(y), f"CHI NHÁNH {ten_chi_nhanh.upper()}")
 
     y -= 8 * mm
     c.drawString(X(margin), Y(y), 'Số: ........................')
@@ -715,8 +715,10 @@ def _draw_de_nghi_tiep_quy_pdf(buf, statement, config):
     c.drawString(X(margin), Y(y), 'Đề nghị tiếp quỹ tiền mặt như sau:')
 
     ten_gdv = statement.user.get_full_name() or statement.user.username
+    profile = getattr(statement.user, 'profile', None)
+    user_ipcas = (profile.ipcas_user if profile and profile.ipcas_user else statement.user.username).upper()
     y -= 6 * mm
-    c.drawString(X(margin), Y(y), f"- Người đề nghị: {ten_gdv}      User ID: {statement.user.username.upper()}")
+    c.drawString(X(margin), Y(y), f"- Người đề nghị: {ten_gdv}      User IPCAS: {user_ipcas}")
     y -= 6 * mm
     c.drawString(X(margin), Y(y), f"- Người nhận: {ten_gdv}      Phòng/Tổ: KTNQ")
     y -= 6 * mm

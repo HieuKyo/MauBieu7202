@@ -16,13 +16,13 @@
 
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <form method="post" action="{% url 'cash_statement_edit_submit' statement.id %}">
+            <form method="post" action="{% url 'cash_statement_edit_submit' statement.id %}" id="editStatementForm">
                 {% csrf_token %}
 
                 {% if statement.loai == 'DE_NGHI' %}
                 <div class="mb-3">
                     <label class="form-label">Tổng số tiền đề nghị</label>
-                    <input type="number" min="1" class="form-control" name="tong_tien_de_nghi"
+                    <input type="text" inputmode="numeric" class="form-control money-input" name="tong_tien_de_nghi"
                            value="{{ statement.tong_tien|stringformat:'d' }}" required>
                 </div>
                 {% else %}
@@ -47,7 +47,7 @@
                         <tr>
                             <td>Khác</td>
                             <td>
-                                <input type="number" min="0" class="form-control form-control-sm"
+                                <input type="text" inputmode="numeric" class="form-control form-control-sm money-input"
                                        name="khac_thanh_tien" value="{{ khac_tien|stringformat:'d' }}">
                             </td>
                         </tr>
@@ -68,4 +68,27 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function formatMoneyValue(raw) {
+        const digits = String(raw).replace(/[^\d]/g, '');
+        if (!digits) return '';
+        return Number(digits).toLocaleString('en-US');
+    }
+
+    document.querySelectorAll('.money-input').forEach(function (inp) {
+        inp.value = formatMoneyValue(inp.value);
+        inp.addEventListener('input', function () {
+            this.value = formatMoneyValue(this.value);
+        });
+    });
+
+    document.getElementById('editStatementForm').addEventListener('submit', function () {
+        this.querySelectorAll('.money-input').forEach(function (inp) {
+            inp.value = inp.value.replace(/,/g, '');
+        });
+    });
+</script>
 {% endblock %}

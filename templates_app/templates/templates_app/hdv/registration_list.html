@@ -53,6 +53,9 @@
                 <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#uploadRegModal">
                     <i class="bi bi-upload"></i> Upload đăng ký HĐV
                 </button>
+                <a href="{% url 'hdv_registration_print' %}" class="btn btn-outline-danger btn-sm" target="_blank">
+                    <i class="bi bi-printer"></i> In danh sách đăng ký hôm nay
+                </a>
             </div>
         </div>
     </div>
@@ -110,7 +113,7 @@
                                 <span class="text-muted small">Đã duyệt — khóa sửa/xóa</span>
                                 {% else %}
                                 <button type="button" class="btn btn-sm btn-outline-primary" title="Sửa"
-                                        onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.sdt|escapejs }}', '{{ reg.cccd|escapejs }}', '{{ reg.dia_chi|escapejs }}', '{{ reg.ngay_dk_huy_dong|date:'Y-m-d' }}', '{{ reg.ky_han|escapejs }}', {{ reg.so_tien|stringformat:'d' }}, '{{ reg.loai_tien|escapejs }}', '{{ reg.ma_can_bo|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.chi_nhanh|escapejs }}')">
+                                        onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.sdt|escapejs }}', '{{ reg.cccd|escapejs }}', '{{ reg.dia_chi|escapejs }}', '{{ reg.ngay_dk_huy_dong|date:'Y-m-d' }}', '{{ reg.ky_han|escapejs }}', {{ reg.so_tien|stringformat:'d' }}, '{{ reg.loai_tien|escapejs }}', '{{ reg.loai_giao_dich|escapejs }}', '{{ reg.ma_can_bo|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.chi_nhanh|escapejs }}')">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
@@ -193,6 +196,14 @@
                         <input type="text" class="form-control" name="loai_tien" value="VND">
                     </div>
                 </div>
+                <div class="mb-2">
+                    <label class="form-label">Loại giao dịch</label>
+                    <select class="form-select" name="loai_giao_dich">
+                        {% for code, label in loai_giao_dich_choices %}
+                        <option value="{{ code }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="row">
                     <div class="col-6 mb-2">
                         <label class="form-label">Mã cán bộ <span class="text-danger">*</span></label>
@@ -271,6 +282,14 @@
                         <label class="form-label">Loại tiền</label>
                         <input type="text" class="form-control" name="loai_tien">
                     </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Loại giao dịch</label>
+                    <select class="form-select" name="loai_giao_dich">
+                        {% for code, label in loai_giao_dich_choices %}
+                        <option value="{{ code }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="row">
                     <div class="col-6 mb-2">
@@ -424,7 +443,7 @@ document.getElementById('addRegForm').addEventListener('submit', function (e) {
 
 let editRegId = null;
 
-function openEditModal(id, tenKh, sdt, cccd, diaChi, ngayDk, kyHan, soTien, loaiTien, maCb, tenCb, chiNhanh) {
+function openEditModal(id, tenKh, sdt, cccd, diaChi, ngayDk, kyHan, soTien, loaiTien, loaiGiaoDich, maCb, tenCb, chiNhanh) {
     editRegId = id;
     const form = document.getElementById('editRegForm');
     form.elements['ten_kh'].value = tenKh;
@@ -435,6 +454,7 @@ function openEditModal(id, tenKh, sdt, cccd, diaChi, ngayDk, kyHan, soTien, loai
     form.elements['ky_han'].value = kyHan;
     form.elements['so_tien'].value = formatMoneyValue(soTien);
     form.elements['loai_tien'].value = loaiTien;
+    form.elements['loai_giao_dich'].value = loaiGiaoDich;
     form.elements['ma_can_bo'].value = maCb;
     form.elements['ten_can_bo'].value = tenCb;
     form.elements['chi_nhanh'].value = chiNhanh;
