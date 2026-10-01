@@ -6,6 +6,8 @@
 {% block extra_head %}
 <!-- Address Selector Component -->
 <script src="{% static 'js/address_selector_component.js' %}"></script>
+<!-- jsQR: giải mã QR CCCD từ webcam (bản local, chạy offline) -->
+<script src="{% static 'js/jsQR.min.js' %}"></script>
 {% endblock %}
 
 {% block extra_css %}
@@ -148,12 +150,24 @@
                             <!-- Search results dropdown -->
                             <div id="search-results" class="list-group mt-2" style="display:none; max-height:200px; overflow-y:auto;"></div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <label class="form-label small">Import từ AGRIBANK</label>
                             <button type="button" class="btn btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#dashboardImportAgribankModal">
                                 <i class="bi bi-bank"></i> Paste từ AGRIBANK
                             </button>
                             <small class="text-muted d-block mt-1">Copy dữ liệu từ AGRIBANK và paste trực tiếp (nhanh nhất!)</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Quét QR CCCD / Căn cước</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-success flex-fill" data-bs-toggle="modal" data-bs-target="#cccdQrModal">
+                                    <i class="bi bi-qr-code-scan"></i> Quét QR
+                                </button>
+                                <button type="button" class="btn btn-outline-primary flex-fill" data-bs-toggle="modal" data-bs-target="#cccdPhotoModal">
+                                    <i class="bi bi-camera"></i> Chụp 2 mặt
+                                </button>
+                            </div>
+                            <small class="text-muted d-block mt-1">Quét QR để điền form · Chụp 2 mặt để in kèm (A5)</small>
                         </div>
                     </div>
                 </div>
@@ -778,6 +792,123 @@
     </div>
 </div>
 
+<!-- Modal: Chụp CCCD 2 mặt để in kèm (A5 ngang: trái mặt trước, phải mặt sau) -->
+<div class="modal fade" id="cccdPhotoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-camera"></i> Chụp CCCD 2 mặt để in kèm</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                    <select class="form-select" id="cccdPhotoCameraSelect" onchange="startCccdPhotoCamera(this.value)"></select>
+                </div>
+                <!-- Video hiển thị đúng tỉ lệ gốc (height:auto) để khung hướng dẫn khớp vùng cắt ảnh -->
+                <div class="position-relative bg-dark rounded overflow-hidden">
+                    <video id="cccdPhotoVideo" playsinline muted style="width:100%; height:auto; display:block; min-height:200px;"></video>
+                    <div id="cccdPhotoGuide" class="position-absolute border border-4 border-warning rounded" style="box-shadow:0 0 0 2000px rgba(0,0,0,.45); pointer-events:none;"></div>
+                    <div id="cccdPhotoGuideLabel" class="position-absolute top-0 start-50 translate-middle-x mt-2 badge bg-warning text-dark fs-6"></div>
+                </div>
+                <div id="cccdPhotoStatus" class="small text-muted mt-2"></div>
+                <div id="cccdPhotoHelp"></div>
+
+                <button type="button" class="btn btn-primary btn-lg w-100 mt-2" id="cccdPhotoShootBtn" onclick="shootCccdPhoto()">
+                    <i class="bi bi-camera-fill"></i> <span id="cccdPhotoShootText">Chụp mặt trước</span>
+                </button>
+
+                <div class="row g-2 mt-2">
+                    <div class="col-6">
+                        <div class="small fw-bold text-center mb-1">Mặt trước</div>
+                        <div class="cccd-photo-slot border rounded bg-light d-flex align-items-center justify-content-center" data-side="front" onclick="retakeCccdPhoto('front')" title="Bấm để chụp lại" style="aspect-ratio:85.6/54; cursor:pointer;">
+                            <span class="text-muted small">Chưa chụp</span>
+                        </div>
+                        <div class="d-flex gap-1 mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="document.getElementById('cccdPhotoFile-front').click()">
+                                <i class="bi bi-folder2-open"></i> Tải ảnh
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCccdPhoto('front')">
+                                <i class="bi bi-arrow-clockwise"></i> Xoay
+                            </button>
+                        </div>
+                        <input type="file" id="cccdPhotoFile-front" accept="image/*" class="d-none" onchange="uploadCccdPhoto('front', this)">
+                    </div>
+                    <div class="col-6">
+                        <div class="small fw-bold text-center mb-1">Mặt sau</div>
+                        <div class="cccd-photo-slot border rounded bg-light d-flex align-items-center justify-content-center" data-side="back" onclick="retakeCccdPhoto('back')" title="Bấm để chụp lại" style="aspect-ratio:85.6/54; cursor:pointer;">
+                            <span class="text-muted small">Chưa chụp</span>
+                        </div>
+                        <div class="d-flex gap-1 mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="document.getElementById('cccdPhotoFile-back').click()">
+                                <i class="bi bi-folder2-open"></i> Tải ảnh
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCccdPhoto('back')">
+                                <i class="bi bi-arrow-clockwise"></i> Xoay
+                            </button>
+                        </div>
+                        <input type="file" id="cccdPhotoFile-back" accept="image/*" class="d-none" onchange="uploadCccdPhoto('back', this)">
+                    </div>
+                </div>
+                <div class="small text-muted text-center mt-1">Bấm vào ảnh để chụp lại · Có sẵn file ảnh thì bấm "Tải ảnh" · Đóng cửa sổ sẽ xóa ảnh</div>
+
+                <div class="input-group input-group-sm mt-3">
+                    <span class="input-group-text">Địa danh</span>
+                    <input type="text" class="form-control" id="cccdPhotoDiaDanh" value="{{ dia_danh }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-success btn-lg" id="cccdPhotoPrintBtn" onclick="printCccdPhotos()" disabled>
+                    <i class="bi bi-printer"></i> In A5
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Quét QR CCCD / Căn cước bằng Webcam -->
+<div class="modal fade" id="cccdQrModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-qr-code-scan"></i> Quét QR CCCD / Căn cước</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                    <select class="form-select" id="cccdQrCameraSelect" onchange="startCccdQrScan(this.value)"></select>
+                </div>
+                <div class="position-relative bg-dark rounded overflow-hidden text-center">
+                    <video id="cccdQrVideo" playsinline muted style="width:100%; min-height:200px; max-height:420px; object-fit:contain;"></video>
+                    <div id="cccdQrSuccess" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center text-white" style="background:rgba(25,135,84,.93);">
+                        <i class="bi bi-check-circle-fill" style="font-size:72px;"></i>
+                        <div class="fs-3 fw-bold">QUÉT THÀNH CÔNG</div>
+                        <div class="fs-5" id="cccdQrSuccessName"></div>
+                    </div>
+                </div>
+                <div id="cccdQrStatus" class="small text-muted mt-2">
+                    <i class="bi bi-hourglass-split"></i> Đang khởi động camera...
+                </div>
+
+                <!-- Hướng dẫn xử lý lỗi camera (theo trình duyệt), do renderCameraHelp() tạo -->
+                <div id="cccdQrHelp"></div>
+                <hr>
+                <label class="form-label small mb-1">Hoặc dùng máy quét QR cầm tay / dán chuỗi QR:</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace" id="cccdQrManualInput"
+                           placeholder="012345678901|123456789|Nguyễn Văn A|01011990|Nam|Địa chỉ...|01012022"
+                           onkeydown="if (event.key === 'Enter') { event.preventDefault(); applyCccdQr(this.value); }">
+                    <button type="button" class="btn btn-outline-success" onclick="applyCccdQr(document.getElementById('cccdQrManualInput').value)">
+                        <i class="bi bi-arrow-down-circle"></i> Điền
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -1199,6 +1330,582 @@ function fillFormFromAgribank() {
         console.error('AGRIBANK import error:', error);
     }
 }
+
+// ============================================
+// Quét QR CCCD / Căn cước bằng Webcam
+// Định dạng QR: SốCCCD|SốCMND|Họ tên|NgàySinh(ddmmyyyy)|Giới tính|Địa chỉ|NgàyCấp(ddmmyyyy)|...
+// ============================================
+
+let cccdQrStream = null;
+let cccdQrTimer = null;
+let cccdQrModalOpen = false;
+const cccdQrCanvas = document.createElement('canvas');
+
+// Ngày hết hạn theo Luật Căn cước: đổi thẻ khi đủ 14, 25, 40, 60 tuổi;
+// thẻ cấp trong vòng 2 năm trước mốc tuổi thì có giá trị đến mốc tiếp theo; từ 58 tuổi trở đi không thời hạn.
+function tinhNgayHetHanCccd(ngaySinh, ngayCap) {
+    if (!ngaySinh || !ngayCap) return '';
+    const namSinh = parseInt(ngaySinh.slice(0, 4), 10);
+    const thangNgay = ngaySinh.slice(4); // "-mm-dd"
+    for (const tuoi of [14, 25, 40, 60]) {
+        if (ngayCap < `${namSinh + tuoi - 2}${thangNgay}`) return `${namSinh + tuoi}${thangNgay}`;
+    }
+    return '';
+}
+
+// ---- Đổi địa chỉ cũ trên CCCD sang địa chỉ mới (dữ liệu chuyen_doi.json) ----
+// Địa chỉ trên QR thường không có tiền tố: "Ấp Béc Hen Nhỏ, Long Thạnh, Vĩnh Lợi, Bạc Liêu"
+// → so khớp bỏ dấu, bỏ tiền tố (Ấp/Xã/Huyện/Tỉnh...), thử có huyện trước rồi bỏ huyện (từ 7/2025 không còn cấp huyện).
+let addrConvIndex = null;
+
+function normAddrPart(s) {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').toLowerCase()
+        .replace(/^(ap|khom|xa|phuong|thi tran|huyen|quan|thi xa|thanh pho|tinh|tp\.?)\s+/, '')
+        .replace(/\b0+(\d)/g, '$1').replace(/\s+/g, ' ').trim();
+}
+
+// Bỏ "(mới)" và cấp huyện trong địa chỉ mới
+function cleanNewAddr(addr) {
+    const parts = addr.replace(/\s*\(mới\)\s*$/, '').split(',').map(s => s.trim()).filter(Boolean);
+    return parts.filter((p, i) => i === parts.length - 1 || !/^(Huyện|Quận|Thị xã|Thành phố) /.test(p));
+}
+
+function buildAddrConvIndex() {
+    const hamlet = new Map(), ward = new Map();
+    const add = (map, key, val) => { if (!map.has(key)) map.set(key, new Set()); map.get(key).add(val); };
+    for (const [oldAddr, newAddr] of Object.entries(addressConversionData)) {
+        const o = oldAddr.split(',').map(s => s.trim());
+        const n = cleanNewAddr(newAddr);
+        if (o.length === 4 && o[0]) {
+            const [h, w, d, p] = o.map(normAddrPart);
+            add(hamlet, `${h}|${w}|${d}|${p}`, n.join(', '));
+            add(hamlet, `${h}|${w}|${p}`, n.join(', '));
+            add(ward, `${w}|${d}|${p}`, n.slice(1).join(', '));
+            add(ward, `${w}|${p}`, n.slice(1).join(', '));
+        } else if (o.length >= 3) {
+            const [w, d, p] = o.slice(-3).map(normAddrPart);
+            add(ward, `${w}|${d}|${p}`, n.join(', '));
+            add(ward, `${w}|${p}`, n.join(', '));
+        }
+    }
+    return { hamlet, ward };
+}
+
+// Trả về địa chỉ mới, hoặc null nếu không có trong dữ liệu chuyển đổi
+function convertToNewAddress(addr) {
+    if (!addrConvIndex && Object.keys(addressConversionData).length) addrConvIndex = buildAddrConvIndex();
+    if (!addrConvIndex || !addr) return null;
+
+    const parts = addr.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length < 3) return null;
+    // Chỉ dùng kết quả khi duy nhất (tránh trùng tên như "Phường 1" ở nhiều huyện)
+    const get = (map, key) => { const s = map.get(key); return s && s.size === 1 ? [...s][0] : null; };
+    const [p, d, w] = [parts[parts.length - 1], parts[parts.length - 2], parts[parts.length - 3]].map(normAddrPart);
+
+    if (parts.length >= 4) {
+        const h = normAddrPart(parts[parts.length - 4]);
+        const full = get(addrConvIndex.hamlet, `${h}|${w}|${d}|${p}`) || get(addrConvIndex.hamlet, `${h}|${w}|${p}`);
+        if (full) return [...parts.slice(0, -4), full].join(', ');
+    }
+    // Không có ấp/khóm trong dữ liệu → giữ ấp/số nhà như trên thẻ, đổi xã/tỉnh
+    const newWard = get(addrConvIndex.ward, `${w}|${d}|${p}`) || get(addrConvIndex.ward, `${w}|${p}`);
+    if (newWard) return [...parts.slice(0, -3), newWard].join(', ');
+    return null;
+}
+
+function parseCccdQr(text) {
+    const p = (text || '').trim().split('|').map(s => s.trim());
+    if (p.length < 7 || !/^\d{12}$/.test(p[0])) return null;
+
+    const toIsoDate = s => /^\d{8}$/.test(s) ? `${s.slice(4, 8)}-${s.slice(2, 4)}-${s.slice(0, 2)}` : '';
+    const ngaySinh = toIsoDate(p[3]);
+    const ngayCap = toIsoDate(p[6]);
+    const diaChiMoi = convertToNewAddress(p[5]);
+
+    return {
+        so_cmnd: p[0],
+        cmnd_cu: p[1],
+        ho_ten: p[2],
+        ngay_sinh: ngaySinh,
+        gioi_tinh: p[4].toLowerCase() === 'nam' ? 'Nam' : 'Nữ',
+        dia_chi: diaChiMoi || p[5],
+        dia_chi_tren_the: p[5],
+        da_doi_dia_chi: !!diaChiMoi,
+        ngay_cap_cmnd: ngayCap,
+        ngay_het_han_cmnd: tinhNgayHetHanCccd(ngaySinh, ngayCap),
+        // Căn cước mẫu mới (từ 01/07/2024) do Bộ Công an cấp
+        noi_cap_cmnd: ngayCap >= '2024-07-01' ? 'Bộ Công An' : 'Cục CSQLHC về TTXH',
+    };
+}
+
+function setCccdQrStatus(html, cls = 'text-muted') {
+    const el = document.getElementById('cccdQrStatus');
+    el.className = `small mt-2 ${cls}`;
+    el.innerHTML = html;
+}
+
+// Trả về true nếu chuỗi là QR CCCD hợp lệ và đã điền vào form
+function applyCccdQr(text) {
+    const data = parseCccdQr(text);
+    if (!data) {
+        setCccdQrStatus('<i class="bi bi-exclamation-triangle"></i> Mã QR không phải CCCD/Căn cước. Vui lòng quét mã QR ở <strong>mặt trước</strong> thẻ.', 'text-danger');
+        return false;
+    }
+
+    stopCccdQrScan();
+    fillFormWithData(data);
+    updateAutoCalcCard();
+    document.getElementById('cccdQrManualInput').value = '';
+
+    const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+
+    // Báo thành công ngay trên khung camera (kèm tiếng bíp), 1.5 giây sau tự đóng
+    document.getElementById('cccdQrSuccessName').textContent = data.ho_ten;
+    document.getElementById('cccdQrSuccess').classList.replace('d-none', 'd-flex');
+    beepCccdQr();
+    setTimeout(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('cccdQrModal'));
+        if (modal) modal.hide();
+    }, 1500);
+
+    const diaChiHtml = data.da_doi_dia_chi
+        ? `<li>Địa chỉ trên thẻ: <span class="text-decoration-line-through">${esc(data.dia_chi_tren_the)}</span><br>
+               → Đã đổi sang địa chỉ mới: <strong>${esc(data.dia_chi)}</strong></li>`
+        : `<li class="text-danger">Địa chỉ: <strong>${esc(data.dia_chi)}</strong><br>
+               <i class="bi bi-exclamation-triangle"></i> Chưa có dữ liệu đổi sang địa chỉ mới → vui lòng kiểm tra và sửa tay nếu cần.</li>`;
+
+    // Thông báo trên form: giữ đến khi GDV tự đóng, chỉ giữ 1 thông báo QR
+    document.getElementById('cccdQrResultAlert')?.remove();
+    const alertDiv = document.createElement('div');
+    alertDiv.id = 'cccdQrResultAlert';
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <div class="fs-5"><i class="bi bi-check-circle-fill"></i> <strong>QUÉT QR CCCD THÀNH CÔNG!</strong> Vui lòng kiểm tra lại thông tin.</div>
+        <ul class="mb-0 mt-2">
+            <li>Họ tên: <strong>${esc(data.ho_ten)}</strong></li>
+            <li>Số CCCD: <strong>${data.so_cmnd}</strong>${data.cmnd_cu ? ` (CMND cũ: ${esc(data.cmnd_cu)})` : ''}</li>
+            <li>Ngày hết hạn: <strong>${data.ngay_het_han_cmnd ? data.ngay_het_han_cmnd.split('-').reverse().join('/') : 'Không thời hạn'}</strong></li>
+            ${diaChiHtml}
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    const form = document.getElementById('customerForm');
+    form.insertBefore(alertDiv, form.firstChild);
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return true;
+}
+
+function beepCccdQr() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.frequency.value = 1000;
+        osc.connect(ctx.destination);
+        osc.onended = () => ctx.close();
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+}
+
+function cccdBrowser() {
+    const ua = navigator.userAgent;
+    return /Firefox\//.test(ua) ? 'firefox' : /Edg\//.test(ua) ? 'edge' : 'chrome';
+}
+
+const CAMERA_WAIT_HTML = '<i class="bi bi-hourglass-split"></i> Đang mở camera... Nếu trình duyệt hỏi quyền dùng camera, bấm <strong>Cho phép (Allow)</strong>.';
+
+// Hướng dẫn xử lý lỗi camera cho GDV, theo từng trình duyệt (Chrome / Edge / Firefox)
+// kind: insecure (mở bằng http://IP) | denied (bị từ chối quyền) | notfound (không có camera) | busy (camera đang bận)
+function renderCameraHelp(containerId, kind, retryJs) {
+    const browser = cccdBrowser();
+    const name = { chrome: 'Chrome', edge: 'Edge', firefox: 'Firefox' }[browser];
+    const copyBtn = (text, label) =>
+        `<button type="button" class="btn btn-sm btn-primary" onclick="copyCccdQrText('${text}', this)"><i class="bi bi-clipboard"></i> ${label}</button>`;
+    const keys = (...k) => k.map(x => `<kbd>${x}</kbd>`).join('+');
+    const winPrivacy = `Vẫn không được: mở <strong>Settings (Cài đặt) của Windows → Privacy &amp; security → Camera</strong> → bật
+        <strong>Camera access</strong> và <strong>Let desktop apps access your camera</strong>`;
+    let title, steps;
+
+    if (kind === 'insecure') {
+        title = `${name} đang chặn camera vì trang mở bằng địa chỉ <code>${location.host}</code>. Bật cho máy này (chỉ làm 1 lần):`;
+        steps = browser === 'firefox' ? [
+            `Bấm ${copyBtn('about:config', 'Sao chép 1')} → ${keys('Ctrl', 'T')} (mở tab mới) → ${keys('Ctrl', 'V')} → ${keys('Enter')} → bấm nút <strong>Accept the Risk and Continue</strong>`,
+            `Bấm ${copyBtn('media.devices.insecure.enabled', 'Sao chép 2')} → bấm vào ô tìm kiếm trên cùng → ${keys('Ctrl', 'V')} → bấm <strong>đúp chuột</strong> vào dòng hiện ra để chữ <strong>false</strong> đổi thành <strong>true</strong>`,
+            `Bấm ${copyBtn('media.getusermedia.insecure.enabled', 'Sao chép 3')} → xóa chữ trong ô tìm kiếm → ${keys('Ctrl', 'V')} → bấm <strong>đúp chuột</strong> để đổi thành <strong>true</strong>`,
+            `Tắt hẳn Firefox rồi mở lại trang này → khi Firefox hỏi quyền camera, bấm <strong>Allow</strong> (Firefox có thể hỏi lại mỗi lần mở camera)`,
+        ] : [
+            `Bấm ${copyBtn(`${browser}://flags/#unsafely-treat-insecure-origin-as-secure`, 'Sao chép 1')} → ${keys('Ctrl', 'T')} (mở tab mới) → ${keys('Ctrl', 'V')} → ${keys('Enter')}`,
+            `Bấm ${copyBtn(location.origin, 'Sao chép 2')} → trong tab mới, bấm vào <strong>ô trống</strong> của dòng được tô vàng → ${keys('Ctrl', 'V')}`,
+            `Bên phải dòng đó: đổi <strong>Disabled</strong> thành <strong>Enabled</strong>`,
+            `Bấm nút <strong>${browser === 'edge' ? 'Restart' : 'Relaunch'}</strong> ở góc dưới bên phải → ${name} tự mở lại → khi được hỏi quyền camera, bấm <strong>Cho phép (Allow)</strong>`,
+        ];
+    } else if (kind === 'denied') {
+        title = 'Quyền dùng camera đang bị từ chối. Cho phép lại như sau:';
+        steps = browser === 'firefox' ? [
+            'Bấm vào <strong>biểu tượng camera bị gạch chéo</strong> ở đầu thanh địa chỉ',
+            'Bấm dấu <strong>✕</strong> cạnh dòng <strong>Blocked Temporarily / Blocked</strong> (Đã chặn) để bỏ chặn',
+            `Bấm ${keys('F5')} để tải lại trang → mở lại cửa sổ này → khi Firefox hỏi, bấm <strong>Allow</strong>`,
+            winPrivacy,
+        ] : [
+            'Bấm vào <strong>biểu tượng camera có dấu ✕ đỏ</strong> ở cuối thanh địa chỉ (hoặc chữ <strong>Không bảo mật / Not secure</strong> ở đầu thanh địa chỉ)',
+            `Ở mục <strong>Camera</strong>, chọn <strong>${browser === 'edge' ? 'Allow (Cho phép)' : 'Luôn cho phép / Always allow'}</strong> → bấm <strong>Xong / Done</strong>`,
+            `Bấm ${keys('F5')} để tải lại trang → mở lại cửa sổ này`,
+            winPrivacy,
+        ];
+    } else if (kind === 'notfound') {
+        title = 'Không tìm thấy webcam nào trên máy này:';
+        steps = [
+            'Kiểm tra dây USB của webcam đã cắm chặt',
+            'Rút webcam ra, đợi 5 giây, cắm vào <strong>cổng USB khác</strong> (ưu tiên cổng phía sau thùng máy)',
+            'Bấm nút <strong>Thử lại</strong> bên dưới. Nếu có nhiều camera, chọn đúng webcam ở ô <strong>Camera</strong> phía trên',
+            winPrivacy,
+        ];
+    } else {
+        title = 'Không mở được camera — thường do camera đang bị chương trình khác sử dụng:';
+        steps = [
+            'Tắt các chương trình đang gọi video: <strong>Zalo, Teams, Zoom, Skype</strong>…',
+            `Đóng các tab/cửa sổ ${name} khác đang mở camera (kể cả cửa sổ Quét QR / Chụp 2 mặt ở tab khác)`,
+            'Bấm nút <strong>Thử lại</strong> bên dưới. Vẫn lỗi: rút webcam ra cắm lại',
+            winPrivacy,
+        ];
+    }
+
+    document.getElementById(containerId).innerHTML = `
+        <div class="alert alert-warning mt-2 mb-0" style="font-size:16px;">
+            <div class="fw-bold mb-2"><i class="bi bi-camera-video-off"></i> ${title}</div>
+            <ol class="mb-2 ps-3">${steps.map(x => `<li class="mb-2">${x}</li>`).join('')}</ol>
+            ${kind === 'insecure' ? '' : `<button type="button" class="btn btn-warning" onclick="${retryJs}"><i class="bi bi-arrow-clockwise"></i> Thử lại</button>`}
+        </div>`;
+}
+
+// navigator.clipboard không dùng được trên http://IP → dùng execCommand('copy')
+function copyCccdQrText(text, btn) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    btn.closest('.modal').appendChild(ta); // trong modal để không bị focus-trap của Bootstrap chặn
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+
+    const old = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Đã sao chép';
+    btn.classList.replace('btn-primary', 'btn-success');
+    setTimeout(() => { btn.innerHTML = old; btn.classList.replace('btn-success', 'btn-primary'); }, 2000);
+}
+
+function stopCccdQrScan() {
+    clearInterval(cccdQrTimer);
+    cccdQrTimer = null;
+    if (cccdQrStream) {
+        cccdQrStream.getTracks().forEach(t => t.stop());
+        cccdQrStream = null;
+    }
+}
+
+// Mở camera vào thẻ <video> và nạp danh sách camera vào <select>.
+// Nhớ camera đã chọn (dùng chung cho Quét QR và Chụp 2 mặt). Lỗi → ném Error('insecure'|'denied'|'notfound'|'busy').
+async function openCameraInto(videoId, selectId, deviceId, width, height) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('insecure');
+    let stream;
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: Object.assign(
+                { width: { ideal: width }, height: { ideal: height } },
+                deviceId ? { deviceId: { exact: deviceId } } : {}
+            )
+        });
+    } catch (error) {
+        // Camera đã lưu không còn cắm → dùng camera mặc định
+        if (deviceId && error.name === 'OverconstrainedError') return openCameraInto(videoId, selectId, null, width, height);
+        throw new Error(error.name === 'NotAllowedError' || error.name === 'SecurityError' ? 'denied'
+                      : error.name === 'NotFoundError' ? 'notfound'
+                      : 'busy');
+    }
+
+    const activeId = stream.getVideoTracks()[0].getSettings().deviceId;
+    try { localStorage.setItem('cccdQrCameraId', activeId); } catch (e) {}
+
+    const video = document.getElementById(videoId);
+    video.srcObject = stream;
+    await video.play();
+
+    // Danh sách camera (chỉ có tên sau khi đã cấp quyền)
+    const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    const select = document.getElementById(selectId);
+    select.innerHTML = '';
+    cameras.forEach((cam, i) => {
+        const opt = new Option(cam.label || `Camera ${i + 1}`, cam.deviceId);
+        opt.selected = cam.deviceId === activeId;
+        select.appendChild(opt);
+    });
+    return stream;
+}
+
+function savedCameraId() {
+    try { return localStorage.getItem('cccdQrCameraId'); } catch (e) { return null; }
+}
+
+async function startCccdQrScan(deviceId) {
+    stopCccdQrScan();
+    document.getElementById('cccdQrHelp').innerHTML = '';
+    setCccdQrStatus(CAMERA_WAIT_HTML);
+    let stream;
+    try {
+        stream = await openCameraInto('cccdQrVideo', 'cccdQrCameraSelect', deviceId, 1280, 720);
+    } catch (error) {
+        setCccdQrStatus('<i class="bi bi-x-circle"></i> Chưa dùng được camera — làm theo hướng dẫn bên dưới, hoặc dùng ô dán chuỗi QR.', 'text-danger');
+        renderCameraHelp('cccdQrHelp', error.message, 'startCccdQrScan(savedCameraId())');
+        return;
+    }
+
+    // Modal đã đóng trong lúc chờ quyền camera
+    if (!cccdQrModalOpen) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+    }
+    cccdQrStream = stream;
+
+    setCccdQrStatus('<i class="bi bi-qr-code-scan"></i> Đang quét... Đưa mã QR mặt trước thẻ vào giữa khung hình, giữ yên 1-2 giây.', 'text-success');
+    cccdQrTimer = setInterval(scanCccdQrFrame, 250);
+}
+
+function scanCccdQrFrame() {
+    const video = document.getElementById('cccdQrVideo');
+    if (!cccdQrStream || video.readyState < video.HAVE_ENOUGH_DATA) return;
+
+    cccdQrCanvas.width = video.videoWidth;
+    cccdQrCanvas.height = video.videoHeight;
+    const ctx = cccdQrCanvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0);
+    const image = ctx.getImageData(0, 0, cccdQrCanvas.width, cccdQrCanvas.height);
+    const code = jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' });
+    if (code && code.data) applyCccdQr(code.data);
+}
+
+document.getElementById('cccdQrModal').addEventListener('shown.bs.modal', () => {
+    cccdQrModalOpen = true;
+    document.getElementById('cccdQrSuccess').classList.replace('d-flex', 'd-none');
+    startCccdQrScan(savedCameraId());
+});
+document.getElementById('cccdQrModal').addEventListener('hidden.bs.modal', () => {
+    cccdQrModalOpen = false;
+    stopCccdQrScan();
+});
+
+// ============================================
+// Chụp CCCD 2 mặt → in A5 ngang (trái mặt trước, phải mặt sau)
+// Chỉ cắt vùng trong khung hướng dẫn (tỉ lệ thẻ 85.6 x 54mm) → 2 ảnh cùng kích thước, in đúng cỡ thẻ thật
+// ============================================
+
+const CCCD_RATIO = 85.6 / 54;
+const CCCD_OUT_W = 1012, CCCD_OUT_H = 638;   // ~300 dpi ở cỡ thẻ thật
+let cccdPhotoStream = null;
+let cccdPhotoModalOpen = false;
+let cccdPhotoCrop = null;                     // vùng cắt theo pixel gốc của video
+const cccdPhotos = { front: null, back: null };       // ảnh đã chuẩn hóa (dataURL) để in
+const cccdPhotoSources = { front: null, back: null }; // ảnh gốc (canvas) để xoay không bị mờ
+
+function stopCccdPhotoCamera() {
+    if (cccdPhotoStream) {
+        cccdPhotoStream.getTracks().forEach(t => t.stop());
+        cccdPhotoStream = null;
+    }
+}
+
+// Khung hướng dẫn: rộng 80% khung hình (tối đa cao 85%), đúng tỉ lệ thẻ, nằm giữa
+function layoutCccdPhotoGuide() {
+    const video = document.getElementById('cccdPhotoVideo');
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return;
+    let w = vw * 0.8, h = w / CCCD_RATIO;
+    if (h > vh * 0.85) { h = vh * 0.85; w = h * CCCD_RATIO; }
+    cccdPhotoCrop = { x: (vw - w) / 2, y: (vh - h) / 2, w, h };
+
+    const guide = document.getElementById('cccdPhotoGuide');
+    guide.style.left = `${cccdPhotoCrop.x / vw * 100}%`;
+    guide.style.top = `${cccdPhotoCrop.y / vh * 100}%`;
+    guide.style.width = `${w / vw * 100}%`;
+    guide.style.height = `${h / vh * 100}%`;
+}
+
+function nextCccdSide() {
+    return !cccdPhotos.front ? 'front' : !cccdPhotos.back ? 'back' : null;
+}
+
+function refreshCccdPhotoUi() {
+    const side = nextCccdSide();
+    const label = side === 'front' ? 'MẶT TRƯỚC' : side === 'back' ? 'MẶT SAU' : '';
+    document.getElementById('cccdPhotoGuideLabel').textContent = label ? `Đặt ${label} thẻ vừa khung vàng` : 'Đã chụp đủ 2 mặt';
+    document.getElementById('cccdPhotoShootText').textContent = label ? `Chụp ${label.toLowerCase()}` : 'Đã chụp đủ 2 mặt';
+    document.getElementById('cccdPhotoShootBtn').disabled = !side || !cccdPhotoStream;
+    document.getElementById('cccdPhotoPrintBtn').disabled = !(cccdPhotos.front && cccdPhotos.back);
+
+    document.querySelectorAll('#cccdPhotoModal .cccd-photo-slot').forEach(slot => {
+        const src = cccdPhotos[slot.dataset.side];
+        slot.innerHTML = src
+            ? `<img src="${src}" class="w-100 h-100 rounded" style="object-fit:cover;">`
+            : '<span class="text-muted small">Chưa chụp</span>';
+    });
+}
+
+async function startCccdPhotoCamera(deviceId) {
+    stopCccdPhotoCamera();
+    const status = document.getElementById('cccdPhotoStatus');
+    status.className = 'small text-muted mt-2';
+    status.innerHTML = CAMERA_WAIT_HTML;
+    document.getElementById('cccdPhotoHelp').innerHTML = '';
+    let stream;
+    try {
+        stream = await openCameraInto('cccdPhotoVideo', 'cccdPhotoCameraSelect', deviceId, 1920, 1080);
+    } catch (error) {
+        status.className = 'small text-danger mt-2';
+        status.textContent = 'Chưa dùng được camera — làm theo hướng dẫn bên dưới, hoặc bấm "Tải ảnh" nếu đã có sẵn file ảnh.';
+        renderCameraHelp('cccdPhotoHelp', error.message, 'startCccdPhotoCamera(savedCameraId())');
+        refreshCccdPhotoUi();
+        return;
+    }
+    if (!cccdPhotoModalOpen) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+    }
+    cccdPhotoStream = stream;
+    layoutCccdPhotoGuide();
+    status.textContent = 'Đặt thẻ trên nền phẳng, đủ sáng, vừa khít khung vàng rồi bấm Chụp (hoặc phím Space).';
+    refreshCccdPhotoUi();
+}
+
+function shootCccdPhoto() {
+    const side = nextCccdSide();
+    const video = document.getElementById('cccdPhotoVideo');
+    if (!side || !cccdPhotoStream || !cccdPhotoCrop) return;
+
+    const c = cccdPhotoCrop;
+    const src = document.createElement('canvas');
+    src.width = Math.round(c.w);
+    src.height = Math.round(c.h);
+    src.getContext('2d').drawImage(video, c.x, c.y, c.w, c.h, 0, 0, src.width, src.height);
+    setCccdPhotoSource(side, src);
+    beepCccdQr();
+}
+
+// Đưa ảnh gốc vào khung chuẩn 1012x638 (tỉ lệ thẻ): giữ nguyên toàn bộ ảnh, phần thừa để nền trắng
+function setCccdPhotoSource(side, src) {
+    cccdPhotoSources[side] = src;
+    const out = document.createElement('canvas');
+    out.width = CCCD_OUT_W;
+    out.height = CCCD_OUT_H;
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, CCCD_OUT_W, CCCD_OUT_H);
+    const scale = Math.min(CCCD_OUT_W / src.width, CCCD_OUT_H / src.height);
+    const w = src.width * scale, h = src.height * scale;
+    ctx.drawImage(src, (CCCD_OUT_W - w) / 2, (CCCD_OUT_H - h) / 2, w, h);
+    cccdPhotos[side] = out.toDataURL('image/jpeg', 0.92);
+    refreshCccdPhotoUi();
+}
+
+function rotateCccdPhoto(side) {
+    const src = cccdPhotoSources[side];
+    if (!src) return;
+    const rotated = document.createElement('canvas');
+    rotated.width = src.height;
+    rotated.height = src.width;
+    const ctx = rotated.getContext('2d');
+    ctx.translate(rotated.width, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(src, 0, 0);
+    setCccdPhotoSource(side, rotated);
+}
+
+// GĐV có sẵn file ảnh (scan / chụp điện thoại): ảnh dọc tự xoay ngang, sai chiều thì bấm "Xoay"
+function uploadCccdPhoto(side, input) {
+    const file = input.files[0];
+    input.value = '';   // cho phép chọn lại cùng file
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+        const src = document.createElement('canvas');
+        src.width = img.naturalWidth;
+        src.height = img.naturalHeight;
+        src.getContext('2d').drawImage(img, 0, 0);
+        URL.revokeObjectURL(img.src);
+        setCccdPhotoSource(side, src);
+        if (src.height > src.width) rotateCccdPhoto(side);
+    };
+    img.onerror = () => alert('Không đọc được file ảnh. Vui lòng chọn file JPG hoặc PNG.');
+    img.src = URL.createObjectURL(file);
+}
+
+function retakeCccdPhoto(side) {
+    // Chụp lại 1 mặt: xóa mặt đó (nếu xóa mặt trước khi đã có mặt sau thì mặt trước sẽ được chụp tiếp theo)
+    cccdPhotos[side] = cccdPhotoSources[side] = null;
+    refreshCccdPhotoUi();
+}
+
+function printCccdPhotos() {
+    if (!cccdPhotos.front || !cccdPhotos.back) return;
+    const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+    const diaDanh = esc(document.getElementById('cccdPhotoDiaDanh').value.trim() || '..................');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>CCCD 2 mặt</title><style>
+        @page { size: A5 landscape; margin: 0; }
+        html, body { margin: 0; }
+        /* Toàn bộ nội dung canh giữa trang A5 (ngang và dọc) */
+        body { width: 210mm; height: 148mm; overflow: hidden; display: flex; flex-direction: column;
+               align-items: center; justify-content: center;
+               font-family: "Times New Roman", serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cards { display: flex; gap: 10mm; }
+        .cards img { width: 85.6mm; height: 54mm; display: block; border: 0.3mm solid #555; border-radius: 3mm; }
+        .note { margin-top: 10mm; text-align: center; font-size: 13pt; line-height: 1.7; }
+        .sign-space { height: 20mm; }   /* chỗ ký của người đối chiếu */
+    </style></head><body>
+        <div class="cards"><img src="${cccdPhotos.front}"><img src="${cccdPhotos.back}"></div>
+        <div class="note">
+            <div><b>ĐÃ ĐỐI CHIẾU KHỚP ĐÚNG VỚI BẢN GỐC</b></div>
+            <div><i>${diaDanh}, ngày ...... tháng ...... năm ........</i></div>
+            <div><b>Người đối chiếu</b></div>
+            <div class="sign-space"></div>
+        </div>
+    </body></html>`;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    Promise.all([...doc.images].map(img => img.decode())).then(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => iframe.remove(), 1000);
+    });
+}
+
+const cccdPhotoModalEl = document.getElementById('cccdPhotoModal');
+cccdPhotoModalEl.addEventListener('shown.bs.modal', () => {
+    cccdPhotoModalOpen = true;
+    refreshCccdPhotoUi();
+    startCccdPhotoCamera(savedCameraId());
+});
+cccdPhotoModalEl.addEventListener('hidden.bs.modal', () => {
+    // Xóa ảnh khi đóng để không in nhầm ảnh của khách trước cho khách sau
+    cccdPhotoModalOpen = false;
+    stopCccdPhotoCamera();
+    cccdPhotos.front = cccdPhotos.back = null;
+    cccdPhotoSources.front = cccdPhotoSources.back = null;
+});
+// Phím Space = Chụp. Chặn cả keyup để Space không "bấm" thêm nút đang được focus (tránh chụp 2 lần / bấm nhầm Đóng)
+const isCccdShootKey = e => e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT';
+cccdPhotoModalEl.addEventListener('keydown', e => {
+    if (!isCccdShootKey(e)) return;
+    e.preventDefault();
+    if (!e.repeat) shootCccdPhoto();
+});
+cccdPhotoModalEl.addEventListener('keyup', e => { if (isCccdShootKey(e)) e.preventDefault(); });
+document.getElementById('cccdPhotoVideo').addEventListener('loadedmetadata', layoutCccdPhotoGuide);
 
 // Validation functions
 function validatePhoneNumber(phone) {
