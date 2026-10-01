@@ -316,6 +316,47 @@ def _read_excel_safe(file_obj, **kwargs):
         return pd.read_excel(wb, **kwargs)
 
 
+def _read_csv_robust(file_obj, usecols=None):
+    """
+    Đọc file .csv thử qua nhiều encoding (file xuất từ IPCAS thường là Windows-1258/ANSI
+    tiếng Việt, không phải UTF-8) kết hợp dấu phẩy/tab làm dấu phân cách — ưu tiên kết quả
+    đọc ra nhiều hơn 1 cột. Tự giải mã bytes → text trước để tránh lỗi nội bộ của pandas khi
+    kết hợp tự dò encoding/delimiter trực tiếp trên file object nhị phân.
+    """
+    raw = file_obj.read() if hasattr(file_obj, 'read') else file_obj
+    if isinstance(raw, str):
+        raw = raw.encode('utf-8')
+
+    best = None
+    last_err = None
+    for encoding in ('utf-8', 'utf-8-sig', 'cp1258', 'latin1'):
+        try:
+            text = raw.decode(encoding)
+        except UnicodeDecodeError as e:
+            last_err = e
+            continue
+        for sep in (',', '\t'):
+            try:
+                df = pd.read_csv(io.StringIO(text), sep=sep)
+            except pd.errors.ParserError as e:
+                last_err = e
+                continue
+            if df.shape[1] > 1:
+                df.columns = [str(c).strip() for c in df.columns]
+                return df[usecols] if usecols else df
+            if best is None:
+                best = df
+    if best is not None:
+        best.columns = [str(c).strip() for c in best.columns]
+        return best[usecols] if usecols else best
+    raise last_err
+
+
+def _strip_text_marker(series):
+    """Bỏ dấu ' ở đầu giá trị (marker buộc kiểu text khi export CSV từ IPCAS) và khoảng trắng dư."""
+    return series.astype(str).str.strip().str.lstrip("'").str.strip()
+
+
 def _read_atm_normalized(data_file, start_date_str, end_date_str, pgd_user_map):
     """
     Đọc file ATM (cấu trúc mới), lọc theo ngày và PGD.
@@ -671,8 +712,7 @@ _TKTL_LABELS = {
 }
 
 # Chỉ đọc các cột cần thiết để giảm bộ nhớ với file lớn
-_TG_COLS   = ['Acctcd', 'Customer_No', 'Customer_Name', 'Cust_Name', 'DP_TypeName',
-              'Account_Number', 'Month_Term', 'Tr_Office_Name', 'acc_st']
+_RT13_COLS = ['MA_KH', 'TEN_KH', 'SO_TK_TIEN_GUI', 'LOAI_KY_HAN', 'TEN_LOAI_KH', 'MA_CN']
 _DPDA08_COLS = ['idxacno', 'custseq', 'custnm', 'termdptp', 'altacctno']
 
 
@@ -709,37 +749,34 @@ def tiet_kiem_tra_lai_view(request):
     dp_file = request.FILES.get('dp_file')
 
     if not tg_file or not dp_file:
-        messages.error(request, 'Vui lòng tải lên cả 2 file (TG và DPDA08).')
+        messages.error(request, 'Vui lòng tải lên cả 2 file (RT13 và DPDA08).')
         return render(request, 'templates_app/reports/tiet_kiem_tra_lai.html', context)
 
     try:
-        # Đọc chỉ các cột cần thiết — giảm bộ nhớ đáng kể với file 30MB
-        df_tg = _read_excel_safe(tg_file, usecols=_TG_COLS)
+        # RT13 là file .csv; DPDA08 vẫn là Excel như cũ
+        df_tg = _read_csv_robust(tg_file, usecols=_RT13_COLS)
         df_dp = _read_excel_safe(dp_file, usecols=_DPDA08_COLS)
 
-        df_tg.columns = df_tg.columns.str.strip()
         df_dp.columns = df_dp.columns.str.strip()
 
-        # Chuẩn hóa cột tg
+        # Chuẩn hóa cột RT13 — các cột text có dấu ' ở đầu (marker ép kiểu text khi xuất CSV)
+        df_tg['_custno'] = _strip_text_marker(df_tg['MA_KH'])
+        df_tg['Customer_Name'] = df_tg['TEN_KH'].astype(str).str.strip()
+        df_tg['Account_Number'] = _strip_text_marker(df_tg['SO_TK_TIEN_GUI'])
+        df_tg['_cust_name'] = _strip_text_marker(df_tg['TEN_LOAI_KH'])
+        df_tg['Tr_Office_Name'] = _strip_text_marker(df_tg['MA_CN'])
+        # LOAI_KY_HAN tương đương Month_Term của file TG cũ: > 0 là tiết kiệm (có kỳ hạn), = 0 là TK thanh toán
         df_tg['_month_term'] = pd.to_numeric(
-            df_tg['Month_Term'].astype(str).str.strip().str.split().str[0],
-            errors='coerce'
+            _strip_text_marker(df_tg['LOAI_KY_HAN']), errors='coerce'
         ).fillna(0)
-        df_tg['_acctcd'] = pd.to_numeric(df_tg['Acctcd'], errors='coerce').fillna(0).astype(int)
-        df_tg['_custno'] = df_tg['Customer_No'].astype(str).str.strip()
-        df_tg['_cust_name'] = df_tg['Cust_Name'].astype(str).str.strip()
-        df_tg['_acc_st'] = df_tg['acc_st'].astype(str).str.strip()
-        df_tg['_dp_type_name'] = df_tg['DP_TypeName'].astype(str).str.strip()
 
         # Debug: Hiển thị các giá trị unique của các cột quan trọng
         import logging
         logger = logging.getLogger(__name__)
-        logger.info("=== DEBUG TG FILE ===")
-        logger.info(f"Total rows in TG: {len(df_tg)}")
-        logger.info(f"Unique Cust_Name values: {df_tg['_cust_name'].unique()[:20]}")
-        logger.info(f"Unique acc_st values: {df_tg['_acc_st'].unique()}")
-        logger.info(f"Unique DP_TypeName values: {df_tg['_dp_type_name'].unique()[:20]}")
-        logger.info(f"Month_Term = 0 count: {(df_tg['_month_term'] == 0).sum()}")
+        logger.info("=== DEBUG RT13 FILE ===")
+        logger.info(f"Total rows in RT13: {len(df_tg)}")
+        logger.info(f"Unique TEN_LOAI_KH values: {df_tg['_cust_name'].unique()[:20]}")
+        logger.info(f"LOAI_KY_HAN = 0 count: {(df_tg['_month_term'] == 0).sum()}")
         logger.info("=====================")
 
         # Chuẩn hóa cột dp
@@ -753,13 +790,12 @@ def tiet_kiem_tra_lai_view(request):
         _store_detail(request, 'tong_kh', df_tong_kh,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
 
-        # ── 2. TK tiết kiệm: Acctcd 423101 hoặc Month_Term > 0 ───────────
-        is_savings = (df_tg['_acctcd'] == 423101) | (df_tg['_month_term'] > 0)
+        # ── 2. TK tiết kiệm: LOAI_KY_HAN > 0 (tương đương Month_Term > 0 của file TG cũ) ───
+        is_savings = df_tg['_month_term'] > 0
         df_savings = df_tg[is_savings].copy()
         _store_detail(request, 'tk_tiet_kiem', df_savings,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
-                       'Account_Number': 'Số TK', 'DP_TypeName': 'Loại TG',
-                       'Tr_Office_Name': 'Đơn vị'})
+                       'Account_Number': 'Số TK', 'Tr_Office_Name': 'Đơn vị'})
 
         # ── 2b. KH tiết kiệm (unique) ─────────────────────────────────────
         df_kh_tietkiem = df_savings.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
@@ -810,11 +846,12 @@ def tiet_kiem_tra_lai_view(request):
                        '_termdptp': 'Hình thức'})
 
         # ── 5. Tổng số khách hàng trên 15 tuổi có tài khoản ─────────────────
-        # Lọc: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)" ở DP_TypeName
+        # Lọc: LOAI_KY_HAN = 0 (TK thanh toán), TEN_LOAI_KH = "Cá nhân"
+        # (RT13 không có cột trạng thái TK như acc_st của file TG cũ — xem như mọi dòng
+        # trong RT13 đều là TK đang hoạt động, nên không lọc thêm điều kiện trạng thái)
         df_kh_15_tuoi = df_tg[
             (df_tg['_month_term'] == 0) &
-            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
-            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
+            (df_tg['_cust_name'].str.lower() == 'cá nhân')
         ].copy()
         logger.info(f"DEBUG: KH 15+ tuổi có TK - Before dedup: {len(df_kh_15_tuoi)} rows")
         df_kh_15_tuoi_unique = df_kh_15_tuoi.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
@@ -823,70 +860,45 @@ def tiet_kiem_tra_lai_view(request):
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
 
         # ── 6. Tổng số khách hàng trên 15 tuổi có tài khoản đang hoạt động ─────
-        # Lọc: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)" ở DP_TypeName, acc_st = "Normal"
-        df_kh_15_tuoi_hoatdong = df_tg[
-            (df_tg['_month_term'] == 0) &
-            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
-            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
-            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
-        ].copy()
-        logger.info(f"DEBUG: KH 15+ tuổi hoạt động - Before dedup: {len(df_kh_15_tuoi_hoatdong)} rows")
-        df_kh_15_tuoi_hoatdong_unique = df_kh_15_tuoi_hoatdong.drop_duplicates('_custno')[['_custno', 'Customer_Name']]
-        logger.info(f"DEBUG: KH 15+ tuổi hoạt động - After dedup: {len(df_kh_15_tuoi_hoatdong_unique)} unique customers")
+        # RT13 không phân biệt được trạng thái TK — dùng chung kết quả với mục 5
+        df_kh_15_tuoi_hoatdong_unique = df_kh_15_tuoi_unique
         _store_detail(request, 'kh_15_tuoi_hoatdong', df_kh_15_tuoi_hoatdong_unique,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH'})
 
         # ── 7. Tổng số lượng tài khoản thanh toán ─────────────────────────────
-        # Khách hàng cá nhân: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)"
+        # Khách hàng cá nhân: LOAI_KY_HAN = 0, TEN_LOAI_KH = "Cá nhân"
         df_tk_tt_ca_nhan = df_tg[
             (df_tg['_month_term'] == 0) &
-            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
-            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
+            (df_tg['_cust_name'].str.lower() == 'cá nhân')
         ].copy()
         logger.info(f"DEBUG: TK thanh toán cá nhân: {len(df_tk_tt_ca_nhan)} accounts")
         _store_detail(request, 'tk_tt_ca_nhan', df_tk_tt_ca_nhan,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
-                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
-                       'Tr_Office_Name': 'Đơn vị'})
+                       'Account_Number': 'Số TK', 'Tr_Office_Name': 'Đơn vị'})
 
-        # Khách hàng tổ chức: Month_Term = 0, Bỏ Cust_Name = "Cá Nhân", "Hộ gia đình", Bỏ "TG TK KHONG KY HAN" và "(Blanks)"
+        # Khách hàng tổ chức: LOAI_KY_HAN = 0, bỏ "Cá nhân"/"Hộ gia đình"
         df_tk_tt_to_chuc = df_tg[
             (df_tg['_month_term'] == 0) &
-            (~df_tg['_cust_name'].str.strip().str.lower().isin(['cá nhân', 'hộ gia đình'])) &
-            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', '']))
+            (~df_tg['_cust_name'].str.lower().isin(['cá nhân', 'hộ gia đình']))
         ].copy()
         logger.info(f"DEBUG: TK thanh toán tổ chức: {len(df_tk_tt_to_chuc)} accounts")
         _store_detail(request, 'tk_tt_to_chuc', df_tk_tt_to_chuc,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
-                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
-                       'Tr_Office_Name': 'Đơn vị', '_cust_name': 'Loại KH'})
+                       'Account_Number': 'Số TK', 'Tr_Office_Name': 'Đơn vị',
+                       '_cust_name': 'Loại KH'})
 
         # ── 8. Tổng số lượng tài khoản thanh toán đang hoạt động ───────────────
-        # Khách hàng cá nhân: Month_Term = 0, Cust_Name = "Cá Nhân", Bỏ "TG TK KHONG KY HAN" và "(Blanks)", acc_st = "Normal"
-        df_tk_tt_ca_nhan_hoatdong = df_tg[
-            (df_tg['_month_term'] == 0) &
-            (df_tg['_cust_name'].str.strip().str.lower() == 'cá nhân') &
-            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
-            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
-        ].copy()
-        logger.info(f"DEBUG: TK thanh toán cá nhân hoạt động: {len(df_tk_tt_ca_nhan_hoatdong)} accounts")
+        # RT13 không phân biệt được trạng thái TK — dùng chung kết quả với mục 7
+        df_tk_tt_ca_nhan_hoatdong = df_tk_tt_ca_nhan
         _store_detail(request, 'tk_tt_ca_nhan_hoatdong', df_tk_tt_ca_nhan_hoatdong,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
-                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
-                       'Tr_Office_Name': 'Đơn vị'})
+                       'Account_Number': 'Số TK', 'Tr_Office_Name': 'Đơn vị'})
 
-        # Khách hàng tổ chức: Month_Term = 0, Bỏ Cust_Name = "Cá Nhân", "Hộ gia đình", Bỏ "TG TK KHONG KY HAN" và "(Blanks)", acc_st = "Normal"
-        df_tk_tt_to_chuc_hoatdong = df_tg[
-            (df_tg['_month_term'] == 0) &
-            (~df_tg['_cust_name'].str.strip().str.lower().isin(['cá nhân', 'hộ gia đình'])) &
-            (~df_tg['_dp_type_name'].str.strip().str.upper().isin(['TG TK KHONG KY HAN', '(BLANKS)', ''])) &
-            (df_tg['_acc_st'].str.strip().str.upper() == 'NORMAL')
-        ].copy()
-        logger.info(f"DEBUG: TK thanh toán tổ chức hoạt động: {len(df_tk_tt_to_chuc_hoatdong)} accounts")
+        df_tk_tt_to_chuc_hoatdong = df_tk_tt_to_chuc
         _store_detail(request, 'tk_tt_to_chuc_hoatdong', df_tk_tt_to_chuc_hoatdong,
                       {'_custno': 'Mã KH', 'Customer_Name': 'Tên KH',
-                       'Account_Number': 'Số TK', '_dp_type_name': 'Loại TG',
-                       'Tr_Office_Name': 'Đơn vị', '_cust_name': 'Loại KH'})
+                       'Account_Number': 'Số TK', 'Tr_Office_Name': 'Đơn vị',
+                       '_cust_name': 'Loại KH'})
 
         context['result'] = {
             'tong_kh':              len(df_tong_kh),

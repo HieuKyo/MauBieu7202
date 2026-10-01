@@ -4490,6 +4490,7 @@ def employee_create_manual(request):
 
         # System info
         profile.ipcas_user = request.POST.get('ipcas_user', '')
+        profile.csp_cuser = request.POST.get('csp_cuser', '')
         profile.mac_address = request.POST.get('mac_address', '')
         profile.ip_address = request.POST.get('ip_address') or None
 
@@ -4575,6 +4576,7 @@ def employee_update_manual(request, employee_id):
 
         # System info
         profile.ipcas_user = request.POST.get('ipcas_user', profile.ipcas_user)
+        profile.csp_cuser = request.POST.get('csp_cuser', profile.csp_cuser)
         profile.mac_address = request.POST.get('mac_address', profile.mac_address)
         ip_val = request.POST.get('ip_address', '')
         profile.ip_address = ip_val if ip_val else None

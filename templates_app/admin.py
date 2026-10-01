@@ -11,6 +11,7 @@ from .models import (
     UserProfile, Course, CourseEnrollment,
     ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy,
     VehicleDutySchedule,
+    SPDVKpiRecord, SPDVKpiTarget,
     Promotion,
 )
 from .import_helpers import (
@@ -997,6 +998,24 @@ class VehicleDutyScheduleAdmin(admin.ModelAdmin):
     search_fields = ['driver__full_name']
     ordering = ['-date']
     date_hierarchy = 'date'
+
+
+@admin.register(SPDVKpiRecord)
+class SPDVKpiRecordAdmin(admin.ModelAdmin):
+    """Admin cho Kết quả chỉ tiêu SPDV"""
+    list_display = ['user', 'metric_type', 'month', 'year', 'quantity', 'updated_at']
+    list_filter = ['metric_type', 'year', 'month']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name']
+    ordering = ['-year', '-month']
+
+
+@admin.register(SPDVKpiTarget)
+class SPDVKpiTargetAdmin(admin.ModelAdmin):
+    """Admin cho Chỉ tiêu SPDV"""
+    list_display = ['user', 'metric_type', 'month', 'year', 'target_quantity', 'updated_at']
+    list_filter = ['metric_type', 'year', 'month']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name']
+    ordering = ['-year', '-month']
 
 
 @admin.register(ATMDiscrepancy)

@@ -10,7 +10,7 @@
                 <i class="bi bi-piggy-bank"></i> BÁO CÁO KHÁCH HÀNG, TIẾT KIỆM
             </h2>
             <p class="text-center fw-semibold mb-0">PHÂN TÍCH KHÁCH HÀNG VÀ TIẾT KIỆM</p>
-            <p class="text-center text-muted small">Phân tích từ file TG và file DPDA08</p>
+            <p class="text-center text-muted small">Phân tích từ file RT13 và file DPDA08</p>
         </div>
     </div>
 
@@ -42,10 +42,10 @@
                         <div class="mb-3">
                             <label class="form-label fw-semibold">
                                 <i class="bi bi-file-earmark-excel text-success me-1"></i>
-                                File TG (tg........)
+                                File RT13
                             </label>
-                            <input type="file" class="form-control" name="tg_file" accept=".xlsx,.xls" required>
-                            <div class="form-text">Hỗ trợ XLS (file gốc) và XLSX</div>
+                            <input type="file" class="form-control" name="tg_file" accept=".csv" required>
+                            <div class="form-text">File .csv (cột MA_KH, TEN_KH, SO_TK_TIEN_GUI, LOAI_KY_HAN, TEN_LOAI_KH, MA_CN)</div>
                         </div>
                         <div class="mb-4">
                             <label class="form-label fw-semibold">
@@ -90,7 +90,7 @@
 
                             {% include "templates_app/reports/_tktl_row.html" with metric="tong_kh" label="Tổng số KH có tài khoản (TK tiết kiệm + TK thanh toán)" count=result.tong_kh level=0 style="table-secondary fw-semibold" icon="bi-people-fill" %}
 
-                            {% include "templates_app/reports/_tktl_row.html" with metric="tk_tiet_kiem" label="Tổng số TK tiết kiệm (Acctcd 423101 + Month_Term > 0)" count=result.tong_tk_tiet_kiem level=1 style="" icon="bi-archive" %}
+                            {% include "templates_app/reports/_tktl_row.html" with metric="tk_tiet_kiem" label="Tổng số TK tiết kiệm (LOAI_KY_HAN > 0)" count=result.tong_tk_tiet_kiem level=1 style="" icon="bi-archive" %}
 
                             {% include "templates_app/reports/_tktl_row.html" with metric="kh_tiet_kiem" label="Số KH gửi tiết kiệm" count=result.so_kh_tiet_kiem level=0 style="table-light fw-semibold" icon="bi-person-check-fill text-success" %}
 
@@ -129,7 +129,7 @@
                 <div class="card-body d-flex flex-column align-items-center justify-content-center text-muted py-5">
                     <i class="bi bi-upload" style="font-size:4rem; opacity:0.3;"></i>
                     <p class="mt-3 mb-0">Tải lên 2 file để xem kết quả phân tích.</p>
-                    <p class="small">File TG + File DPDA08</p>
+                    <p class="small">File RT13 + File DPDA08</p>
                 </div>
             </div>
             {% endif %}

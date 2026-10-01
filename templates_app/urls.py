@@ -10,6 +10,7 @@ from . import hdv_reg_views
 from . import qr_reg_views
 from . import cash_drawer_views
 from . import can_doi_views
+from . import spdv_kpi_views
 
 urlpatterns = [
     # Authentication
@@ -202,6 +203,13 @@ urlpatterns = [
     path('qr/dang-ky/mau-tai-ve/', qr_reg_views.qr_registration_template_download_view, name='qr_registration_template_download'),
     path('qr/dang-ky/upload/', qr_reg_views.qr_registration_import_view, name='qr_registration_import'),
     path('hdv/import/', hdv_reg_views.hdv_import_upload_view, name='hdv_import_upload'),
+
+    # Thống kê chỉ tiêu Sản phẩm dịch vụ (Kế toán Ngân quỹ)
+    path('spdv-kpi/', spdv_kpi_views.spdv_kpi_dashboard, name='spdv_kpi_dashboard'),
+    path('spdv-kpi/import/', spdv_kpi_views.spdv_kpi_import, name='spdv_kpi_import'),
+    path('spdv-kpi/targets/', spdv_kpi_views.spdv_kpi_target_set, name='spdv_kpi_target_set'),
+    path('spdv-kpi/detail/<int:user_id>/<str:metric_type>/', spdv_kpi_views.spdv_kpi_gdv_detail, name='spdv_kpi_gdv_detail'),
+    path('spdv-kpi/detail/<int:user_id>/<str:metric_type>/export/', spdv_kpi_views.spdv_kpi_gdv_detail_export, name='spdv_kpi_gdv_detail_export'),
 
     # Bảng kê tiền mặt (Kế toán Ngân quỹ)
     path('cash/bang-ke/', cash_drawer_views.cash_statement_view, name='cash_statement'),

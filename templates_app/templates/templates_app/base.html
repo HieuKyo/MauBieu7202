@@ -111,6 +111,8 @@
                                 <li><a class="dropdown-item" href="{% url 'cash_print_config' %}"><i class="bi bi-gear me-2"></i>Cấu hình in bảng kê</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'can_doi_upload' %}"><i class="bi bi-file-earmark-bar-graph me-2"></i>Đọc Cân đối</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'spdv_kpi_dashboard' %}"><i class="bi bi-bar-chart-line me-2"></i>Thống kê chỉ tiêu SPDV</a></li>
                             </ul>
                         </li>
                         {% if user.is_superuser %}

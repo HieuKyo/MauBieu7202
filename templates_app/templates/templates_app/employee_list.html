@@ -367,19 +367,25 @@
 
                     <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-pc-display"></i> Thông tin hệ thống</h6>
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Tài khoản IPCAS</label>
                                 <input type="text" class="form-control" name="ipcas_user" placeholder="VD: nguyenvana">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Tài khoản phát hành thẻ CSP</label>
+                                <input type="text" class="form-control" name="csp_cuser" placeholder="VD: 7202chieutt">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Địa chỉ MAC</label>
                                 <input type="text" class="form-control" name="mac_address" placeholder="XX:XX:XX:XX:XX:XX">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Địa chỉ IP</label>
                                 <input type="text" class="form-control" name="ip_address" placeholder="192.168.1.100">
@@ -588,19 +594,25 @@
 
                     <h6 class="mt-4 mb-3 text-primary"><i class="bi bi-pc-display"></i> Thông tin hệ thống</h6>
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Tài khoản IPCAS</label>
                                 <input type="text" class="form-control" id="edit_ipcas_user" name="ipcas_user">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Tài khoản phát hành thẻ CSP</label>
+                                <input type="text" class="form-control" id="edit_csp_cuser" name="csp_cuser" placeholder="VD: 7202chieutt">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Địa chỉ MAC</label>
                                 <input type="text" class="form-control" id="edit_mac_address" name="mac_address" placeholder="XX:XX:XX:XX:XX:XX">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Địa chỉ IP</label>
                                 <input type="text" class="form-control" id="edit_ip_address" name="ip_address" placeholder="192.168.1.100">
@@ -710,6 +722,7 @@ const employeeData = {
         branch_display: "{{ emp.branch|default:'-'|escapejs }}",
         job_function_display: "{{ emp.get_job_function_display|default:'-'|escapejs }}",
         ipcas_user: "{{ emp.ipcas_user|default:''|escapejs }}",
+        csp_cuser: "{{ emp.csp_cuser|default:''|escapejs }}",
         mac_address: "{{ emp.mac_address|default:''|escapejs }}",
         ip_address: "{{ emp.ip_address|default:''|escapejs }}",
         app_permissions: [{% for app in emp.app_permissions.all %}{{ app.id }}{% if not forloop.last %},{% endif %}{% endfor %}],
@@ -817,6 +830,7 @@ function viewEmployee(employeeId) {
                 <h6 class="text-primary mt-3"><i class="bi bi-pc-display"></i> Thông tin hệ thống</h6>
                 <table class="table table-sm">
                     <tr><th width="40%">Tài khoản IPCAS:</th><td>${emp.ipcas_user || '-'}</td></tr>
+                    <tr><th>Tài khoản phát hành thẻ CSP:</th><td>${emp.csp_cuser || '-'}</td></tr>
                     <tr><th>Địa chỉ MAC:</th><td>${emp.mac_address || '-'}</td></tr>
                     <tr><th>Địa chỉ IP:</th><td>${emp.ip_address || '-'}</td></tr>
                 </table>
@@ -872,6 +886,7 @@ function editEmployee(employeeId) {
 
     // System info
     document.getElementById('edit_ipcas_user').value = emp.ipcas_user || '';
+    document.getElementById('edit_csp_cuser').value = emp.csp_cuser || '';
     document.getElementById('edit_mac_address').value = emp.mac_address || '';
     document.getElementById('edit_ip_address').value = emp.ip_address || '';
 
