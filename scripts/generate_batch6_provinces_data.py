@@ -458,7 +458,7 @@ def main():
     with open(chuyen_doi_path, 'w', encoding='utf-8') as f:
         json.dump(existing_chuyen_doi, f, ensure_ascii=False, indent=2)
 
-    print(f"\nFinal totals:")
+    print("\nFinal totals:")
     print(f"  - dia_danh provinces: {len(existing_dia_danh)}")
     print(f"  - chuyen_doi mappings: {len(existing_chuyen_doi)}")
 

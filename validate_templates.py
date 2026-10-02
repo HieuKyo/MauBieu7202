@@ -3,7 +3,6 @@
 Script validation để kiểm tra templates có bị corrupt không
 Chạy script này để tìm và fix templates bị lỗi
 """
-import os
 import sys
 from pathlib import Path
 
@@ -114,7 +113,7 @@ def scan_directory(directory):
 
     # Summary
     print("=" * 80)
-    print(f"\n📊 SUMMARY:")
+    print("\n📊 SUMMARY:")
     print(f"   Total files:   {results['total']}")
     print(f"   ✅ Valid:      {results['valid']}")
     print(f"   ❌ Invalid:    {results['invalid']}")
@@ -124,7 +123,7 @@ def scan_directory(directory):
         print("   These templates will cause 'We can't open...' errors")
         print("   → Replace them with valid .docx files")
     else:
-        print(f"\n✨ All templates are valid!")
+        print("\n✨ All templates are valid!")
 
     return results
 
@@ -193,11 +192,11 @@ Examples:
         is_valid, message = validate_template(path)
 
         if is_valid:
-            print(f"✅ Valid template")
+            print("✅ Valid template")
             print(f"   {message}")
             sys.exit(0)
         else:
-            print(f"❌ Invalid template")
+            print("❌ Invalid template")
             print(f"   {message}")
             sys.exit(1)
 
@@ -210,7 +209,7 @@ Examples:
 
         # Fix mode
         if args.fix and results['invalid'] > 0:
-            print(f"\n⚠️  FIX MODE ENABLED")
+            print("\n⚠️  FIX MODE ENABLED")
             print("=" * 80)
 
             for file_info in results['files']:

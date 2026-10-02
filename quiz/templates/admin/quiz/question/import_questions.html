@@ -1,0 +1,36 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div id="content-main">
+    <p class="help">
+        File Excel phải có định dạng: <br>
+        <strong>Cột A</strong>: Số thứ tự &nbsp;|&nbsp;
+        <strong>Cột B</strong>: Nội dung câu hỏi &nbsp;|&nbsp;
+        <strong>Cột C-F</strong>: 4 lựa chọn A, B, C, D &nbsp;|&nbsp;
+        <strong>Cột G</strong>: Chỉ số đáp án đúng (1-4) &nbsp;|&nbsp;
+        <strong>Cột H</strong>: Diễn giải (tùy chọn)
+    </p>
+    <form action="" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div>
+            <fieldset class="module aligned">
+                <h2>{{ title }}</h2>
+                <div class="form-row">
+                    {{ form.quiz.errors }}
+                    <label for="id_quiz" class="required">{{ form.quiz.label }}:</label>
+                    {{ form.quiz }}
+                </div>
+                <div class="form-row">
+                    {{ form.file.errors }}
+                    <label for="id_file" class="required">{{ form.file.label }}:</label>
+                    {{ form.file }}
+                </div>
+            </fieldset>
+            <div class="submit-row">
+                <input type="submit" value="Bắt đầu Import" class="default">
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

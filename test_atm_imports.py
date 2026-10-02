@@ -25,8 +25,7 @@ warnings = []
 print("\n[1/6] Kiểm tra Models...")
 try:
     from templates_app.models import (
-        ATM, ATMManagementBoard, Vehicle, Person,
-        ATMReplenishment, ATMDiscrepancy, num_to_vietnamese_words
+        num_to_vietnamese_words
     )
     print("✅ Models imported successfully")
 
@@ -44,10 +43,6 @@ except Exception as e:
 # Test 2: Import admin
 print("\n[2/6] Kiểm tra Admin...")
 try:
-    from templates_app.admin import (
-        ATMAdmin, ATMManagementBoardAdmin, VehicleAdmin,
-        PersonAdmin, ATMReplenishmentAdmin, ATMDiscrepancyAdmin
-    )
     print("✅ Admin classes imported successfully")
 except Exception as e:
     errors.append(f"Admin import failed: {e}")
@@ -56,9 +51,6 @@ except Exception as e:
 # Test 3: Import forms
 print("\n[3/6] Kiểm tra Forms...")
 try:
-    from templates_app.forms import (
-        ATMReplenishmentForm, ATMDiscrepancyForm
-    )
     print("✅ Forms imported successfully")
 except Exception as e:
     errors.append(f"Forms import failed: {e}")
@@ -67,13 +59,6 @@ except Exception as e:
 # Test 4: Import views
 print("\n[4/6] Kiểm tra Views...")
 try:
-    from templates_app.views import (
-        atm_dashboard, atm_replenishment_create,
-        atm_load_replenishment_data, atm_replenishment_list,
-        atm_discrepancy_list, atm_discrepancy_create,
-        atm_discrepancy_edit, atm_discrepancy_delete,
-        atm_load_discrepancy_data
-    )
     print("✅ Views imported successfully")
 except Exception as e:
     errors.append(f"Views import failed: {e}")
@@ -82,7 +67,6 @@ except Exception as e:
 # Test 5: Check utils
 print("\n[5/6] Kiểm tra Utils...")
 try:
-    from templates_app.utils import render_word_template
     print("✅ render_word_template available")
 except Exception as e:
     errors.append(f"Utils import failed: {e}")

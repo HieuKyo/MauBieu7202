@@ -4,66 +4,136 @@
 {% block title %}Báo cáo Điện lực{% endblock %}
 
 {% block extra_head %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="{% static 'vendor/xlsx/xlsx.full.min.js' %}"></script>
 <style>
-    .report-container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 800px; margin: 20px auto; }
-    .report-container label { font-weight: bold; display: block; margin-top: 1.5em; color: #444; }
-    .report-container input[type="file"], .report-container input[type="date"], .report-container input[type="month"] { display: block; width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; }
-    .report-container button { display: block; width: 100%; padding: 12px; margin-top: 25px; border: none; border-radius: 4px; background-color: var(--agri-red); color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
-    .report-container button:hover { background-color: #7d1c23; }
-    .report-container button.btn-success { background-color: #28a745; }
-    .report-container button.btn-success:hover { background-color: #218838; }
-    .divider { border-top: 2px solid #dee2e6; margin: 30px 0; padding-top: 20px; }
-    .section-title { font-size: 1.2em; color: var(--agri-red); font-weight: bold; margin-bottom: 15px; }
+    .section-title { font-size: 1.1em; color: var(--agri-red); font-weight: bold; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
             <h2 class="text-center mb-3" style="color: var(--agri-red);">
                 <i class="bi bi-lightning-charge"></i> BÁO CÁO ĐIỆN LỰC
             </h2>
-            <p class="text-center text-muted">In bảng kê giao dịch điện lực</p>
         </div>
     </div>
 
-    <div class="row justify-content-center">
+    {% if messages %}
+    <div class="row justify-content-center mb-3">
         <div class="col-md-10">
-            <div class="report-container">
-                <div class="section-title">
-                    <i class="bi bi-calendar-day"></i> IN THEO NGÀY
+            {% for msg in messages %}
+            <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4 align-items-start">
+
+        <!-- CỘT TRÁI: Bảng kê thanh toán hoá đơn tiền điện (server-side Excel) -->
+        <div class="col-md-6">
+            <div class="card shadow h-100">
+                <div class="card-header fw-semibold text-white"
+                     style="background:linear-gradient(90deg,#AE1C3F,#8a1230);">
+                    <i class="bi bi-file-earmark-excel me-2"></i>Bảng Kê Thanh Toán Hoá Đơn Tiền Điện
                 </div>
-
-                <label for="fileInput">1. Chọn file số liệu Excel:</label>
-                <input type="file" id="fileInput" accept=".xlsx,.xls" required />
-
-                <label for="reportDate">2. Chọn ngày báo cáo:</label>
-                <input type="date" id="reportDate" required>
-
-                <button id="printButton">
-                    <i class="bi bi-printer"></i> 3. Xem & In Báo Cáo
-                </button>
-
-                <div class="divider"></div>
-
-                <div class="section-title">
-                    <i class="bi bi-calendar-month"></i> IN THEO THÁNG
+                <div class="card-body d-flex flex-column">
+                    <p class="text-muted small mb-3">Xuất file Excel bảng kê tổng hợp theo ngày trong khoảng thời gian.</p>
+                    <form method="post" action="{% url 'process_dien_luc' %}" enctype="multipart/form-data" class="flex-grow-1 d-flex flex-column">
+                        {% csrf_token %}
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-calendar"></i> Từ ngày
+                                </label>
+                                <input type="date" class="form-control" name="start_date" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-calendar"></i> Đến ngày
+                                </label>
+                                <input type="date" class="form-control" name="end_date" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-file-earmark-excel text-success me-1"></i>
+                                File dữ liệu thu hộ tiền điện
+                            </label>
+                            <input type="file" class="form-control" name="dien_luc_file" accept=".xlsx,.xls" required>
+                            <div class="form-text">
+                                Cột cần có: <code>NGAY_NOP</code>, <code>TONG_NOP</code>
+                            </div>
+                        </div>
+                        <div class="mt-auto d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-file-earmark-excel"></i> Xuất Excel Bảng Kê
+                            </button>
+                            <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
                 </div>
-
-                <label for="reportMonth">1. Chọn tháng báo cáo:</label>
-                <input type="month" id="reportMonth" required>
-
-                <button id="printMonthButton" class="btn-success">
-                    <i class="bi bi-printer-fill"></i> 2. In Tất Cả Các Ngày Trong Tháng
-                </button>
-
-                <a href="{% url 'report_hub' %}" class="btn btn-secondary mt-3 w-100">
-                    <i class="bi bi-arrow-left"></i> Quay lại
-                </a>
             </div>
         </div>
+
+        <!-- CỘT PHẢI: In bảng kê theo ngày / tháng (client-side) -->
+        <div class="col-md-6">
+            <div class="card shadow h-100">
+                <div class="card-header fw-semibold text-white"
+                     style="background:linear-gradient(90deg,#1a6e35,#145a2b);">
+                    <i class="bi bi-printer me-2"></i>In Bảng Kê Giao Dịch
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <p class="text-muted small mb-3">In bảng kê giao dịch phát sinh có theo ngày hoặc toàn bộ tháng.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-file-earmark-excel text-primary me-1"></i>
+                            Chọn file số liệu Excel
+                        </label>
+                        <input type="file" class="form-control" id="fileInput" accept=".xlsx,.xls">
+                    </div>
+
+                    <hr class="my-2">
+
+                    <div class="section-title mb-2">
+                        <i class="bi bi-calendar-day"></i> In theo ngày
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Chọn ngày báo cáo</label>
+                        <input type="date" class="form-control" id="reportDate">
+                    </div>
+                    <div class="d-grid mb-3">
+                        <button id="printButton" class="btn btn-danger btn-lg">
+                            <i class="bi bi-printer"></i> Xem & In Theo Ngày
+                        </button>
+                    </div>
+
+                    <hr class="my-2">
+
+                    <div class="section-title mb-2">
+                        <i class="bi bi-calendar-month"></i> In theo tháng
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Chọn tháng báo cáo</label>
+                        <input type="month" class="form-control" id="reportMonth">
+                    </div>
+                    <div class="mt-auto d-grid">
+                        <button id="printMonthButton" class="btn btn-success btn-lg">
+                            <i class="bi bi-printer-fill"></i> In Tất Cả Các Ngày Trong Tháng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 

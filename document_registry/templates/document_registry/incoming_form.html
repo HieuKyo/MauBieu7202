@@ -1,0 +1,132 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .section-card { border-left: 4px solid #1a6e2c; }
+    .section-card .card-header { background: rgba(26,110,44,0.07); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container" style="max-width:820px;">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h3 class="fw-bold mb-0" style="color:#1a6e2c;">
+            <i class="bi bi-inbox"></i> {{ title }}
+        </h3>
+        <a href="{% url 'document_registry:incoming_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Quay lại danh sách
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for msg in messages %}
+        <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+            {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <!-- SECTION 1: Thông tin nhận -->
+        <div class="card border-0 shadow-sm section-card mb-4">
+            <div class="card-header fw-semibold py-2">
+                <i class="bi bi-calendar-check"></i> Thông tin nhận văn bản
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Ngày đến <span class="text-danger">*</span></label>
+                        {{ form.ngay_den }}
+                        {% if form.ngay_den.errors %}<div class="text-danger small mt-1">{{ form.ngay_den.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Số đến <span class="text-danger">*</span></label>
+                        {{ form.so_den }}
+                        {% if form.so_den.errors %}<div class="text-danger small mt-1">{{ form.so_den.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Tác giả <span class="text-danger">*</span></label>
+                        {{ form.tac_gia }}
+                        {% if form.tac_gia.errors %}<div class="text-danger small mt-1">{{ form.tac_gia.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: Thông tin văn bản gốc -->
+        <div class="card border-0 shadow-sm section-card mb-4">
+            <div class="card-header fw-semibold py-2">
+                <i class="bi bi-file-earmark-text"></i> Thông tin văn bản gốc
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Số, ký hiệu văn bản <span class="text-danger">*</span></label>
+                        {{ form.so_ky_hieu }}
+                        {% if form.so_ky_hieu.errors %}<div class="text-danger small mt-1">{{ form.so_ky_hieu.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Ngày tháng văn bản <span class="text-danger">*</span></label>
+                        {{ form.ngay_van_ban }}
+                        {% if form.ngay_van_ban.errors %}<div class="text-danger small mt-1">{{ form.ngay_van_ban.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Tên loại và trích yếu nội dung văn bản <span class="text-danger">*</span></label>
+                        {{ form.ten_loai_trich_yeu }}
+                        {% if form.ten_loai_trich_yeu.errors %}<div class="text-danger small mt-1">{{ form.ten_loai_trich_yeu.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: Phân phối -->
+        <div class="card border-0 shadow-sm section-card mb-4">
+            <div class="card-header fw-semibold py-2">
+                <i class="bi bi-people"></i> Phân phối và chuyển giao
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Đơn vị hoặc người nhận <span class="text-danger">*</span></label>
+                        {{ form.don_vi_nguoi_nhan }}
+                        {% if form.don_vi_nguoi_nhan.errors %}<div class="text-danger small mt-1">{{ form.don_vi_nguoi_nhan.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Ngày chuyển <span class="text-danger">*</span></label>
+                        {{ form.ngay_chuyen }}
+                        {% if form.ngay_chuyen.errors %}<div class="text-danger small mt-1">{{ form.ngay_chuyen.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Ký nhận</label>
+                        {{ form.ky_nhan }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Ghi chú</label>
+                        {{ form.ghi_chu }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'document_registry:incoming_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Hủy
+            </a>
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-save"></i> {% if action == 'create' %}Lưu văn bản đến{% else %}Cập nhật{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

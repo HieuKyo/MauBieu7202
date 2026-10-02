@@ -2,87 +2,101 @@
 {% load static %}
 {% load l10n %}
 
-{% block title %}Dashboard Tính KPI Ngân hàng - Agribank{% endblock %}
+{% block title %}Quyết Toán KPI Tháng - Agribank{% endblock %}
 
 {% block extra_css %}
 <style>
     .upload-area {
         border: 2px dashed #dee2e6;
         border-radius: 8px;
-        padding: 20px;
+        padding: 18px 12px;
         text-align: center;
-        transition: all 0.3s;
+        transition: all 0.25s;
         background-color: #f8f9fa;
+        cursor: pointer;
     }
-    .upload-area:hover {
+    .upload-area:hover, .upload-area.drag-over {
         border-color: var(--agribank-green);
         background-color: #e7f3e7;
     }
-    .upload-area.drag-over {
-        border-color: var(--agribank-green);
+    .upload-area.has-file {
+        border-color: #28a745;
         background-color: #d4edda;
     }
     .file-info {
         display: none;
-        margin-top: 10px;
-        padding: 10px;
+        margin-top: 8px;
+        padding: 8px 12px;
         background-color: #d1ecf1;
         border-radius: 5px;
+        font-size: 0.875rem;
     }
-    .file-info.show {
-        display: block;
+    .file-info.show { display: block; }
+    .required-badge {
+        font-size: 0.7rem;
+        background: #dc3545;
+        color: #fff;
+        padding: 1px 6px;
+        border-radius: 10px;
+        vertical-align: middle;
     }
-    .coef-input {
-        width: 80px;
+    .optional-badge {
+        font-size: 0.7rem;
+        background: #6c757d;
+        color: #fff;
+        padding: 1px 6px;
+        border-radius: 10px;
+        vertical-align: middle;
     }
-    /* Prevent number formatting in select dropdowns */
-    select option {
-        font-variant-numeric: tabular-nums;
-        font-feature-settings: "tnum";
-    }
+    .metric-list li { margin-bottom: 4px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+
     <!-- Header -->
-    <div class="card shadow-sm mb-4" style="background: linear-gradient(135deg, var(--agribank-red) 0%, #8a1230 100%); color: white;">
-        <div class="card-body py-4">
-            <h2 class="mb-2"><i class="bi bi-graph-up-arrow"></i> Dashboard Tính KPI Ngân hàng</h2>
-            <p class="mb-0">Công cụ tự động hóa tính điểm KPI hàng ngày cho Giao dịch viên (GDV)</p>
+    <div class="card shadow-sm mb-4"
+         style="background: linear-gradient(135deg, var(--agribank-red) 0%, #8a1230 100%); color: white;">
+        <div class="card-body py-3">
+            <h2 class="mb-1"><i class="bi bi-graph-up-arrow"></i> Quyết Toán KPI Tháng</h2>
+            <p class="mb-0 opacity-75">Tự động tổng hợp số liệu KPI theo ngày cho Giao dịch viên</p>
         </div>
     </div>
 
-    <!-- Main Form -->
     <form id="kpiForm" enctype="multipart/form-data">
         {% csrf_token %}
-        
-        <div class="row">
-            <!-- Left Column - Configuration -->
+
+        <div class="row g-3">
+
+            <!-- ── Cột trái: Cấu hình ────────────────────────────── -->
             <div class="col-md-4">
-                <!-- Configuration Card -->
+
+                <!-- Tháng / Năm / GDV -->
                 <div class="card shadow-sm mb-3">
                     <div class="card-header" style="background-color: var(--agribank-green); color: white;">
-                        <h5 class="mb-0"><i class="bi bi-gear"></i> Cấu hình</h5>
+                        <h6 class="mb-0"><i class="bi bi-gear"></i> Cấu hình</h6>
                     </div>
                     <div class="card-body">
-                        <!-- Month/Year -->
+
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Tháng/Năm báo cáo</label>
-                            <div class="row">
+                            <label class="form-label fw-bold">Tháng / Năm báo cáo</label>
+                            <div class="row g-2">
                                 <div class="col-6">
-                                    <select class="form-select" name="month" required>
+                                    <select class="form-select form-select-sm" name="month" required>
                                         {% for m in "123456789101112" %}
-                                        <option value="{{ forloop.counter }}" {% if forloop.counter == current_month %}selected{% endif %}>
+                                        <option value="{{ forloop.counter }}"
+                                            {% if forloop.counter == current_month %}selected{% endif %}>
                                             Tháng {{ forloop.counter }}
                                         </option>
                                         {% endfor %}
                                     </select>
                                 </div>
                                 <div class="col-6">
-                                    <select class="form-select" name="year" required>
+                                    <select class="form-select form-select-sm" name="year" required>
                                         {% for year in year_range %}
-                                        <option value="{{ year|unlocalize }}" {% if year == current_year %}selected{% endif %}>
+                                        <option value="{{ year|unlocalize }}"
+                                            {% if year == current_year %}selected{% endif %}>
                                             {{ year|unlocalize }}
                                         </option>
                                         {% endfor %}
@@ -91,10 +105,9 @@
                             </div>
                         </div>
 
-                        <!-- User ID -->
-                        <div class="mb-3">
+                        <div class="mb-0">
                             <label class="form-label fw-bold">Mã GDV</label>
-                            <select class="form-select" name="user_id" id="userIdSelect" required>
+                            <select class="form-select form-select-sm" name="user_id" id="userIdSelect">
                                 <option value="">-- Chọn GDV --</option>
                                 {% for gdv in gdv_list %}
                                 <option value="{{ gdv }}">{{ gdv }}</option>
@@ -102,254 +115,304 @@
                             </select>
                         </div>
 
-                        <!-- Coefficients (Collapsible) -->
-                        <div class="accordion" id="coefficientAccordion">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#coefficients">
-                                        <i class="bi bi-calculator me-2"></i> Hệ số KPI
-                                    </button>
-                                </h2>
-                                <div id="coefficients" class="accordion-collapse collapse">
-                                    <div class="accordion-body">
-                                        <table class="table table-sm">
-                                            <tr>
-                                                <td>Phát hành thẻ</td>
-                                                <td><input type="number" step="0.1" name="coef_card" value="{{ coefficients.card }}" class="form-control form-control-sm coef-input"></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Quét chữ ký</td>
-                                                <td><input type="number" step="0.1" name="coef_signature" value="{{ coefficients.signature }}" class="form-control form-control-sm coef-input"></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Đăng ký SMS</td>
-                                                <td><input type="number" step="0.1" name="coef_sms" value="{{ coefficients.sms }}" class="form-control form-control-sm coef-input"></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Lưu trữ hồ sơ</td>
-                                                <td><input type="number" step="0.1" name="coef_archive" value="{{ coefficients.archive }}" class="form-control form-control-sm coef-input"></td>
-                                            </tr>
-                                            <tr>
-                                                <td>CIF mới</td>
-                                                <td><input type="number" step="0.1" name="coef_cif" value="{{ coefficients.cif }}" class="form-control form-control-sm coef-input"></td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
-                <!-- Instructions Card -->
+                <!-- Mô tả chỉ tiêu -->
                 <div class="card shadow-sm">
                     <div class="card-header bg-info text-white">
-                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Hướng dẫn</h6>
+                        <h6 class="mb-0"><i class="bi bi-list-check"></i> Chỉ tiêu xuất báo cáo</h6>
                     </div>
-                    <div class="card-body">
-                        <ol class="ps-3 mb-0 small">
-                            <li>Chọn Tháng/Năm và Mã GDV</li>
-                            <li>Upload File KPI Mẫu (bắt buộc)</li>
-                            <li>Upload ít nhất 1 file dữ liệu</li>
-                            <li>Nhấn "Tính KPI & Xuất Báo cáo"</li>
-                            <li>Tải xuống file Excel kết quả</li>
+                    <div class="card-body p-3">
+                        <ol class="metric-list ps-3 mb-0 small">
+                            <li><strong>Đăng ký KH Cá Nhân</strong> – File CIF</li>
+                            <li><strong>Đăng ký KH Tổ Chức</strong> – File CIF</li>
+                            <li><strong>Quét chữ ký KH</strong> – (CN+TC)×2</li>
+                            <li><strong>Lưu Trữ HS Mở TK, PH Thẻ, SMS, E-Banking</strong></li>
+                            <li><strong>Phát hành Thẻ</strong> – File Thẻ</li>
+                            <li><strong>Kích hoạt Thẻ</strong> <span class="badge bg-warning text-dark" style="font-size:0.65rem;">GRATHIEU</span></li>
+                            <li><strong>Quản lý POS</strong> <span class="badge bg-warning text-dark" style="font-size:0.65rem;">GRATHIEU</span></li>
+                            <li><strong>Quản lý vốn Điện lực EVN</strong> <span class="badge bg-warning text-dark" style="font-size:0.65rem;">GRATHIEU</span></li>
+                            <li><strong>Đăng ký SMS Banking</strong></li>
+                            <li><strong>Đăng ký E-Mobile Banking</strong></li>
+                            <li><strong>Hạch toán Billpayment TM, CK</strong> – File Bảng kê GD</li>
+                            <li><strong>Sắp xếp chứng từ giao Hậu kiểm</strong></li>
+                            <li><strong>Lập báo cáo</strong> – Ngày 1/15/cuối tháng</li>
+                            <li><strong>Quản lý ATM</strong> <span class="badge bg-warning text-dark" style="font-size:0.65rem;">GRATHIEU</span></li>
+                            <li><strong>Tiếp quỹ ATM</strong> <span class="badge bg-warning text-dark" style="font-size:0.65rem;">GRATHIEU</span></li>
+                            <li><strong>Sắp xếp Báo Nợ, Báo có, In sổ phụ</strong> <span class="badge bg-warning text-dark" style="font-size:0.65rem;">GRATHIEU</span><br>
+                                <span class="text-muted">random(350–370)×2 + random(78–85)</span></li>
                         </ol>
                     </div>
                 </div>
+
             </div>
 
-            <!-- Right Column - File Uploads -->
+            <!-- ── Cột phải: Upload file ──────────────────────────── -->
             <div class="col-md-8">
                 <div class="card shadow-sm">
                     <div class="card-header" style="background-color: var(--agribank-red); color: white;">
                         <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> Upload File Dữ liệu</h5>
                     </div>
                     <div class="card-body">
-                        <!-- Template File -->
+
+                        <!-- CIF File (bắt buộc) -->
                         <div class="mb-4">
-                            <label class="form-label fw-bold">1. File KPI Mẫu <span class="text-danger">*</span></label>
-                            <div class="upload-area" id="templateUploadArea">
-                                <i class="bi bi-file-earmark-excel fs-1 text-success"></i>
-                                <p class="mb-2">Click hoặc kéo thả file Excel vào đây</p>
-                                <input type="file" class="form-control" name="template_file" id="templateFile" accept=".xlsx,.xls" required style="display:none">
-                                <button type="button" class="btn btn-sm btn-outline-success" onclick="document.getElementById('templateFile').click()">
-                                    <i class="bi bi-folder"></i> Chọn File
-                                </button>
+                            <label class="form-label fw-bold">
+                                1. File CIF – Mở tài khoản
+                                <span class="required-badge">Bắt buộc</span>
+                                <span class="text-muted fw-normal" style="font-size:0.82rem;">(Menu DPDA19)</span>
+                            </label>
+                            <div class="upload-area" id="cifUploadArea"
+                                 onclick="document.getElementById('cifFile').click()">
+                                <i class="bi bi-person-vcard fs-2 text-success"></i>
+                                <p class="mb-1 small">Click hoặc kéo thả file vào đây</p>
+                                <p class="mb-0 text-muted" style="font-size:0.78rem;">
+                                    Cột cần có: <code>opndt</code>, <code>tellernm</code>, <code>locdpnm</code>
+                                </p>
+                                <input type="file" name="cif_file" id="cifFile"
+                                       accept=".xlsx,.xls,.csv" required style="display:none">
                             </div>
-                            <div class="file-info" id="templateInfo"></div>
+                            <div class="file-info" id="cifInfo"></div>
                         </div>
 
                         <!-- Card File -->
                         <div class="mb-4">
-                            <label class="form-label fw-bold">2. File Dữ liệu Thẻ</label>
-                            <div class="upload-area" id="cardUploadArea">
-                                <i class="bi bi-credit-card fs-1 text-primary"></i>
-                                <p class="mb-2">File Excel/CSV chứa dữ liệu thẻ</p>
-                                <input type="file" class="form-control" name="card_file" id="cardFile" accept=".xlsx,.xls,.csv" style="display:none">
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('cardFile').click()">
-                                    <i class="bi bi-folder"></i> Chọn File
-                                </button>
+                            <label class="form-label fw-bold">
+                                2. File Thẻ – Phát hành thẻ
+                                <span class="optional-badge">Tuỳ chọn</span>
+                                <span class="text-muted fw-normal" style="font-size:0.82rem;">(Màn hình Phát hành thẻ CSP)</span>
+                            </label>
+                            <div class="upload-area" id="cardUploadArea"
+                                 onclick="document.getElementById('cardFile').click()">
+                                <i class="bi bi-credit-card fs-2 text-primary"></i>
+                                <p class="mb-1 small">Click hoặc kéo thả file vào đây</p>
+                                <p class="mb-0 text-muted" style="font-size:0.78rem;">
+                                    Cột cần có: <code>CUSER</code>, <code>CDATE</code>
+                                </p>
+                                <input type="file" name="card_file" id="cardFile"
+                                       accept=".xlsx,.xls,.csv" style="display:none">
                             </div>
                             <div class="file-info" id="cardInfo"></div>
                         </div>
 
                         <!-- SMS File -->
                         <div class="mb-4">
-                            <label class="form-label fw-bold">3. File Dữ liệu SMS</label>
-                            <div class="upload-area" id="smsUploadArea">
-                                <i class="bi bi-chat-dots fs-1 text-warning"></i>
-                                <p class="mb-2">File Excel/CSV chứa dữ liệu SMS</p>
-                                <input type="file" class="form-control" name="sms_file" id="smsFile" accept=".xlsx,.xls,.csv" style="display:none">
-                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="document.getElementById('smsFile').click()">
-                                    <i class="bi bi-folder"></i> Chọn File
-                                </button>
+                            <label class="form-label fw-bold">
+                                3. File SMS – Đăng ký SMS Banking
+                                <span class="optional-badge">Tuỳ chọn</span>
+                                <span class="text-muted fw-normal" style="font-size:0.82rem;">(Menu EISM60)</span>
+                            </label>
+                            <div class="upload-area" id="smsUploadArea"
+                                 onclick="document.getElementById('smsFile').click()">
+                                <i class="bi bi-chat-dots fs-2 text-warning"></i>
+                                <p class="mb-1 small">Click hoặc kéo thả file vào đây</p>
+                                <p class="mb-0 text-muted" style="font-size:0.78rem;">
+                                    Cột cần có: <code>entydt</code>, <code>crtusr</code>
+                                </p>
+                                <input type="file" name="sms_file" id="smsFile"
+                                       accept=".xlsx,.xls,.csv" style="display:none">
                             </div>
                             <div class="file-info" id="smsInfo"></div>
                         </div>
 
+                        <!-- Billpayment File -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                4. File Billpayment – Hạch toán TM, CK
+                                <span class="optional-badge">Tuỳ chọn</span>
+                                <span class="text-muted fw-normal" style="font-size:0.82rem;">(Billpayment → Thanh toán đơn → Thống kê GD → chọn User)</span>
+                            </label>
+                            <div class="upload-area" id="billpaymentUploadArea"
+                                 onclick="document.getElementById('billpaymentFile').click()">
+                                <i class="bi bi-receipt fs-2 text-secondary"></i>
+                                <p class="mb-1 small">Click hoặc kéo thả file vào đây</p>
+                                <p class="mb-0 text-muted" style="font-size:0.78rem;">
+                                    Bảng kê chứng từ GD chi tiết — cột <code>Ngày GD</code> (yyyymmddHHMMSS)
+                                </p>
+                                <input type="file" name="billpayment_file" id="billpaymentFile"
+                                       accept=".xlsx,.xls,.csv" style="display:none">
+                            </div>
+                            <div class="file-info" id="billpaymentInfo"></div>
+                        </div>
+
                         <!-- E-Mobile File -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">4. File Dữ liệu E-Mobile Banking</label>
-                            <div class="upload-area" id="emobileUploadArea">
-                                <i class="bi bi-phone fs-1 text-info"></i>
-                                <p class="mb-2">File Excel/CSV chứa dữ liệu E-Mobile</p>
-                                <input type="file" class="form-control" name="emobile_file" id="emobileFile" accept=".xlsx,.xls,.csv" style="display:none">
-                                <button type="button" class="btn btn-sm btn-outline-info" onclick="document.getElementById('emobileFile').click()">
-                                    <i class="bi bi-folder"></i> Chọn File
-                                </button>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                5. File E-Mobile Banking
+                                <span class="optional-badge">Tuỳ chọn</span>
+                                <span class="text-muted fw-normal" style="font-size:0.82rem;">(Menu EIMB60)</span>
+                            </label>
+                            <div class="upload-area" id="emobileUploadArea"
+                                 onclick="document.getElementById('emobileFile').click()">
+                                <i class="bi bi-phone fs-2 text-info"></i>
+                                <p class="mb-1 small">Click hoặc kéo thả file vào đây</p>
+                                <p class="mb-0 text-muted" style="font-size:0.78rem;">
+                                    Cột cần có: <code>entydt</code>, <code>crtusr</code>
+                                </p>
+                                <input type="file" name="emobile_file" id="emobileFile"
+                                       accept=".xlsx,.xls,.csv" style="display:none">
                             </div>
                             <div class="file-info" id="emobileInfo"></div>
                         </div>
 
-                        <!-- Submit Button -->
-                        <div class="d-grid gap-2 mt-4">
-                            <button type="submit" class="btn btn-lg" style="background-color: var(--agribank-green); color: white;">
-                                <i class="bi bi-calculator"></i> Tính KPI & Xuất Báo cáo
+                        <!-- Submit -->
+                        <div class="d-grid mt-2">
+                            <button type="submit" class="btn btn-lg fw-bold"
+                                    style="background-color: var(--agribank-green); color: white;">
+                                <i class="bi bi-file-earmark-excel"></i> Xuất Báo Cáo KPI
                             </button>
                         </div>
 
-                        <!-- Progress/Result Area -->
+                        <!-- Progress -->
                         <div id="progressArea" class="mt-3" style="display:none;">
                             <div class="progress">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                     role="progressbar" style="width:100%">
                                     Đang xử lý...
                                 </div>
                             </div>
                         </div>
+
                         <div id="resultArea" class="mt-3"></div>
+
                     </div>
                 </div>
             </div>
+
         </div>
     </form>
 </div>
 
+<!-- ── Modal cảnh báo chưa chọn GDV ──────────────────────────── -->
+<div class="modal fade" id="gdvWarningModal" tabindex="-1" aria-labelledby="gdvWarningModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header" style="background-color: #c00000; color: white;">
+                <h5 class="modal-title" id="gdvWarningModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Chưa chọn Mã GDV
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-person-x" style="font-size:3rem; color:#c00000;"></i>
+                <p class="mt-3 mb-1 fs-5 fw-bold">Vui lòng chọn Mã GDV</p>
+                <p class="text-muted mb-0">Bạn cần chọn Mã GDV trước khi tiến hành quyết toán KPI.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-danger px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-arrow-left-circle me-1"></i> Quay lại chọn GDV
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal cảnh báo chưa upload file CIF ───────────────────── -->
+<div class="modal fade" id="cifWarningModal" tabindex="-1" aria-labelledby="cifWarningModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header" style="background-color: #c00000; color: white;">
+                <h5 class="modal-title" id="cifWarningModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Chưa upload File CIF
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-file-earmark-x" style="font-size:3rem; color:#c00000;"></i>
+                <p class="mt-3 mb-1 fs-5 fw-bold">File CIF là bắt buộc</p>
+                <p class="text-muted mb-0">Vui lòng upload File CIF (dữ liệu mở tài khoản) trước khi xuất báo cáo KPI.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-danger px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-arrow-left-circle me-1"></i> Quay lại upload file
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-// Hệ số KPI mặc định cho từng GDV
-const gdvCoefficients = {
-    'GRATHIEU': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
-    'GRATNNHI': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
-    'GRACACHI': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
-    'GRANSINH': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
-    'GRALTHUC': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
-    'GRATTHAO': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
-    'GRANTHAO': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 },
-    'GRASHANH': { card: 3.0, signature: 3.0, sms: 4.0, archive: 0.5, cif: 3.0 }
-};
-
-// Load hệ số KPI khi chọn GDV
-document.getElementById('userIdSelect').addEventListener('change', function(e) {
-    const selectedGdv = e.target.value;
-    if (selectedGdv && gdvCoefficients[selectedGdv]) {
-        const coef = gdvCoefficients[selectedGdv];
-        document.querySelector('input[name="coef_card"]').value = coef.card;
-        document.querySelector('input[name="coef_signature"]').value = coef.signature;
-        document.querySelector('input[name="coef_sms"]').value = coef.sms;
-        document.querySelector('input[name="coef_archive"]').value = coef.archive;
-        document.querySelector('input[name="coef_cif"]').value = coef.cif;
-
-        // Mở accordion để người dùng thấy hệ số đã được load
-        const coefficientsCollapse = document.getElementById('coefficients');
-        if (coefficientsCollapse && !coefficientsCollapse.classList.contains('show')) {
-            const bsCollapse = new bootstrap.Collapse(coefficientsCollapse, {
-                show: true
-            });
-        }
-    }
-});
-
-// File upload handlers
-const fileInputs = [
-    {id: 'templateFile', infoId: 'templateInfo', areaId: 'templateUploadArea'},
-    {id: 'cardFile', infoId: 'cardInfo', areaId: 'cardUploadArea'},
-    {id: 'smsFile', infoId: 'smsInfo', areaId: 'smsUploadArea'},
-    {id: 'emobileFile', infoId: 'emobileInfo', areaId: 'emobileUploadArea'}
+// ── File upload: click + drag & drop ───────────────────────────
+const uploadConfigs = [
+    { fileId: 'cifFile',         infoId: 'cifInfo',         areaId: 'cifUploadArea'         },
+    { fileId: 'cardFile',        infoId: 'cardInfo',        areaId: 'cardUploadArea'         },
+    { fileId: 'smsFile',         infoId: 'smsInfo',         areaId: 'smsUploadArea'          },
+    { fileId: 'billpaymentFile', infoId: 'billpaymentInfo', areaId: 'billpaymentUploadArea'  },
+    { fileId: 'emobileFile',     infoId: 'emobileInfo',     areaId: 'emobileUploadArea'      },
 ];
 
-fileInputs.forEach(({id, infoId, areaId}) => {
-    const input = document.getElementById(id);
-    const info = document.getElementById(infoId);
-    const area = document.getElementById(areaId);
+uploadConfigs.forEach(({ fileId, infoId, areaId }) => {
+    const input = document.getElementById(fileId);
+    const info  = document.getElementById(infoId);
+    const area  = document.getElementById(areaId);
 
-    input.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            info.innerHTML = `<i class="bi bi-check-circle text-success"></i> <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
-            info.classList.add('show');
-        }
+    function showFile(file) {
+        info.innerHTML = `<i class="bi bi-check-circle text-success"></i>
+            <strong>${file.name}</strong>
+            <span class="text-muted ms-1">(${(file.size / 1024).toFixed(1)} KB)</span>`;
+        info.classList.add('show');
+        area.classList.add('has-file');
+    }
+
+    input.addEventListener('change', e => {
+        if (e.target.files[0]) showFile(e.target.files[0]);
     });
 
-    // Drag & Drop
-    area.addEventListener('dragover', (e) => {
+    area.addEventListener('dragover', e => {
         e.preventDefault();
         area.classList.add('drag-over');
     });
-
-    area.addEventListener('dragleave', () => {
-        area.classList.remove('drag-over');
-    });
-
-    area.addEventListener('drop', (e) => {
+    area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+    area.addEventListener('drop', e => {
         e.preventDefault();
         area.classList.remove('drag-over');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            input.files = files;
+        if (e.dataTransfer.files.length > 0) {
+            input.files = e.dataTransfer.files;
             input.dispatchEvent(new Event('change'));
         }
     });
 });
 
-// Form submission
-document.getElementById('kpiForm').addEventListener('submit', async function(e) {
+// ── Form submit ────────────────────────────────────────────────
+document.getElementById('kpiForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
-    const formData = new FormData(this);
-    const progressArea = document.getElementById('progressArea');
-    const resultArea = document.getElementById('resultArea');
+    // Kiểm tra đã chọn Mã GDV chưa
+    if (!document.getElementById('userIdSelect').value) {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('gdvWarningModal')).show();
+        return;
+    }
 
-    // Show progress
+    // Kiểm tra đã upload file CIF chưa (bắt buộc)
+    if (!document.getElementById('cifFile').files.length) {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('cifWarningModal')).show();
+        return;
+    }
+
+    const progressArea = document.getElementById('progressArea');
+    const resultArea   = document.getElementById('resultArea');
+
     progressArea.style.display = 'block';
     resultArea.innerHTML = '';
 
     try {
         const response = await fetch('{% url "kpi_process" %}', {
             method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
+            body: new FormData(this),
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
         });
 
         progressArea.style.display = 'none';
 
-        if (response.ok && response.headers.get('content-type').includes('application/vnd.openxmlformats')) {
-            // Success - download file
+        const ct = response.headers.get('content-type') || '';
+        if (response.ok && ct.includes('application/vnd.openxmlformats')) {
             const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = response.headers.get('content-disposition').split('filename=')[1].replace(/"/g, '');
+            const url  = window.URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = response.headers.get('content-disposition')
+                             .split('filename=')[1].replace(/"/g, '');
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -357,25 +420,24 @@ document.getElementById('kpiForm').addEventListener('submit', async function(e) 
 
             resultArea.innerHTML = `
                 <div class="alert alert-success">
-                    <i class="bi bi-check-circle"></i> <strong>Thành công!</strong> File KPI đã được tải xuống.
-                </div>
-            `;
+                    <i class="bi bi-check-circle-fill"></i>
+                    <strong>Thành công!</strong> File báo cáo KPI đã được tải xuống.
+                </div>`;
         } else {
-            // Error
-            const error = await response.json();
+            const err = await response.json();
             resultArea.innerHTML = `
                 <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle"></i> <strong>Lỗi:</strong> ${error.error || 'Có lỗi xảy ra'}
-                </div>
-            `;
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Lỗi:</strong> ${err.error || 'Có lỗi xảy ra, vui lòng thử lại.'}
+                </div>`;
         }
-    } catch (error) {
+    } catch (err) {
         progressArea.style.display = 'none';
         resultArea.innerHTML = `
             <div class="alert alert-danger">
-                <i class="bi bi-exclamation-triangle"></i> <strong>Lỗi:</strong> ${error.message}
-            </div>
-        `;
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>Lỗi kết nối:</strong> ${err.message}
+            </div>`;
     }
 });
 </script>

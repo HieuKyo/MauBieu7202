@@ -1,37 +1,19 @@
 """
-Beautiful Number Analysis and Fee Lookup Services - Version 2.8 (Sửa lỗi Tam hoa & Sảnh tiến)
+Beautiful Number Analysis and Fee Lookup Services - Version 3.0
 
-Dịch vụ phân tích số tài khoản đẹp và tra cứu phí theo logic mới:
-- Sửa lỗi 1: Tam hoa (XXX-YYY-ZZZ) phải là (9, NORMAL) 27.5M.
-- Sửa lỗi 2: Sảnh tiến (12345) phải là (5, SPECIAL) 3.3M.
-- TH1 (Chọn 9 số): 7202 + [9 số] -> Phí sàn 1.1M
-- TH2 (Chọn 6 số): 7202 + 236 + [6 số] -> Phí sàn 550k
-- Logic tính phí cao nhất vẫn được áp dụng.
+Engine nhận diện mẫu số đẹp + tính phí, port từ bộ luật đầy đủ theo Phụ lục 02
+QĐ 479/QĐ-NHNo-TCKT (tham khảo "Tra_Cuu_Phi_TK_So_Dep_Agribank_V2.2.html").
+
+Cấu trúc số tài khoản Agribank Giá Rai: 7202 + 9 số chọn (nhóm X).
+- TH1 (chọn đủ 9 số): phân tích cả 9 số + mẫu vắt qua ranh giới mã chi nhánh "7202", sàn phí 1.1M.
+- TH2 (chọn 6 số, 9 số bắt đầu bằng mã PGD phụ "236"): chỉ phân tích 6 số cuối, sàn phí 550k.
+Mức phí hiển thị đã cộng 10% VAT (giữ nguyên quy ước cũ của chi nhánh).
 """
 
 from decimal import Decimal
 from django.contrib.humanize.templatetags.humanize import intcomma
 from .models import OnRequestFeeTier
 
-
-# ========== BẢNG PHÍ GỐC (THEO PDF) ==========
-FEE_TABLE = {
-    # (số_lượng, loại) -> (phí_min, phí_max)
-    (3, 'SPECIAL'): (500_000, 1_000_000), # Phí sàn 550k
-    (4, 'NORMAL'): (500_000, 1_000_000), # Phí sàn 550k
-    (4, 'SPECIAL'): (1_000_000, 3_000_000),
-    (5, 'NORMAL'): (1_000_000, 3_000_000), # Phí sàn 1.1M (9 số)
-    (5, 'SPECIAL'): (3_000_000, 5_000_000), # <<< SẢNH TIẾN 12345 SẼ VÀO ĐÂY (3.3M)
-    (6, 'NORMAL'): (3_000_000, 5_000_000),
-    (6, 'SPECIAL'): (8_000_000, 10_000_000),
-    (7, 'NORMAL'): (8_000_000, 10_000_000),
-    (7, 'SPECIAL'): (10_000_000, 20_000_000),
-    (8, 'NORMAL'): (10_000_000, 20_000_000),
-    (8, 'SPECIAL'): (25_000_000, 40_000_000),
-    (9, 'NORMAL'): (25_000_000, 40_000_000), # <<< TAM HOA SẼ VÀO ĐÂY (27.5M)
-    (9, 'SPECIAL'): (40_000_000, 80_000_000),
-    (10, 'NORMAL'): (100_000_000, None),
-}
 
 VAT_RATE = Decimal('1.10')
 
@@ -43,143 +25,326 @@ def apply_vat(amount):
     return int(Decimal(amount) * VAT_RATE)
 
 
-# ========== CÁC HÀM KIỂM TRA MẪU (V2.7) ==========
-
-def is_pure_repeat(s):
-    """Kiểm tra lặp thuần túy (VD: '777')"""
-    if not s: return False
-    return len(set(s)) == 1
-
-def is_sanh_tien(s):
-    """Kiểm tra sảnh tiến liền kề (VD: '2345', '678')"""
-    if not s or len(s) < 2: return False
-    for i in range(len(s) - 1):
-        if int(s[i+1]) != int(s[i]) + 1:
-            return False
-    return True
-
-def is_sanh_lap(s):
-    """Kiểm tra sảnh lặp tăng dần (VD: '223344', '55667788')"""
-    if not s or len(s) % 2 != 0 or len(s) < 4: return False
-    # Kiểm tra cặp đầu tiên
-    if s[0] != s[1]: return False
-    # Kiểm tra các cặp tiếp theo
-    for i in range(2, len(s), 2):
-        # Phải là lặp
-        if s[i] != s[i+1]: return False
-        # Phải tăng dần
-        if int(s[i]) != int(s[i-1]) + 1: return False
-    return True
-
-def is_lap_kep(s):
-    """Kiểm tra lặp kép (VD: '8484', '112112')"""
-    if not s or len(s) % 2 != 0 or len(s) < 4: return False
-    half = len(s) // 2
-    return s[:half] == s[half:]
-
-# ========== KẾT THÚC HÀM KIỂM TRA ==========
+# ========== BẢNG PHÍ CHÍNH THỨC THEO QĐ 479 (chưa VAT), Phụ lục 01 ==========
+# count -> {False: (min,max) loại thường, True: (min,max) loại đặc biệt}
+OFFICIAL_FEE_TABLE = {
+    2: {False: (300_000, 500_000), True: (300_000, 500_000)},
+    3: {False: (300_000, 500_000), True: (500_000, 1_000_000)},
+    4: {False: (500_000, 1_000_000), True: (1_000_000, 3_000_000)},
+    5: {False: (1_000_000, 3_000_000), True: (3_000_000, 5_000_000)},
+    6: {False: (3_000_000, 5_000_000), True: (8_000_000, 10_000_000)},
+    7: {False: (8_000_000, 10_000_000), True: (10_000_000, 20_000_000)},
+    8: {False: (10_000_000, 20_000_000), True: (25_000_000, 40_000_000)},
+    9: {False: (25_000_000, 40_000_000), True: (40_000_000, 80_000_000)},
+}
 
 
-# ========== [START] CẬP NHẬT V2.8 (Sửa lỗi Tam hoa) ==========
-def check_uniform_9_digit_structure(digits):
+def official_fee(count, special):
+    """Khung phí (min,max) theo số lượng chữ số đẹp `count` và cờ `special` (loại đặc biệt)"""
+    if count >= 10:
+        return (100_000_000, None)
+    row = OFFICIAL_FEE_TABLE[max(2, min(count, 9))]
+    return row[bool(special)]
+
+
+def _fee_sort_key(pattern):
+    """So sánh 2 mẫu: ưu tiên khung phí cao hơn (max rồi min), giống feeKey() trong bản JS"""
+    fee_min, fee_max = official_fee(pattern['length'], pattern['special'])
+    return ((fee_max if fee_max is not None else 10**12), fee_min)
+
+
+def _digit_range(start, end):
+    return list(range(start, end + 1))
+
+
+# ========== NHẬN DIỆN MẪU TRÊN 1 DÃY SỐ (9 số cuối, hoặc 6 số với TH2) ==========
+
+LUCKY_PAIRS = [
+    ('6', '8', 'Lộc phát (6 & 8)', True),
+    ('7', '9', 'Thần tài (7 & 9)', False),
+    ('8', '9', 'Trường cửu phát (8 & 9)', False),
+    ('6', '9', 'Trường cửu lộc (6 & 9)', False),
+]
+
+SPECIAL_TAILS = [
+    ('1368', 'Sinh tài lộc phát'),
+    ('68368', 'Phát tài phát lộc'),
+    ('151618', 'Mỗi năm mỗi lộc mỗi phát'),
+    ('4078', 'Đuôi đẹp 4078 (bốn mùa không thất bát)'),
+    ('1102', 'Đuôi đẹp 1102 (độc nhất vô nhị)'),
+    ('2204', 'Đuôi đẹp 2204'),
+]
+
+
+def detect_patterns(s):
     """
-    Bước 1: Kiểm tra cấu trúc 9 số đồng nhất
+    Nhận diện mọi loại mẫu số đẹp trong dãy số `s` (chuỗi chữ số).
+    Trả về list dict {'name', 'length', 'special'} — length dùng làm `count` tra official_fee.
     """
-    if len(digits) != 9:
-        return None
+    out = []
+    n = len(s)
+    if n == 0:
+        return out
+    d = [int(c) for c in s]
 
-    # 1. Lặp thuần 9 số (888888888)
-    if is_pure_repeat(digits):
-        return (9, 'SPECIAL', 'Lặp 9 số giống nhau')
+    def add(name, length, special=False):
+        out.append({'name': name, 'length': length, 'special': bool(special)})
 
-    part1, part2, part3 = digits[0:3], digits[3:6], digits[6:9]
+    # 1. Số lặp (chuỗi cùng chữ số, >=3)
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and s[j + 1] == s[i]:
+            j += 1
+        length = j - i + 1
+        if length >= 3:
+            end = (j == n - 1)
+            add(f'Số lặp {"cuối" if end else "giữa"} {length} số ({s[i:j+1]})', length, end)
+        i = j + 1
 
-    # 2. Sảnh tiến (111222333) HOẶC Tam hoa (555666888, 555666555)
-    #    Miễn là 3 cụm lặp thuần, đều là (9, NORMAL)
-    if (is_pure_repeat(part1) and
-        is_pure_repeat(part2) and
-        is_pure_repeat(part3)):
+    # 2. Số tiến liền nhau (tăng dần 1 đơn vị, >=3)
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and d[j + 1] == d[j] + 1:
+            j += 1
+        length = j - i + 1
+        if length >= 3:
+            end = (j == n - 1)
+            add(f'Số tiến liền nhau {"cuối" if end else "giữa"} {length} số ({s[i:j+1]})', length, end)
+        i = j + 1
 
-        # Kiểm tra tăng dần (để hiển thị mô tả)
-        if (int(part1[0]) + 1 == int(part2[0]) and
-            int(part2[0]) + 1 == int(part3[0])):
-            description = f'Sảnh tiến tam: {part1}-{part2}-{part3}'
-        else:
-            description = f'Tam hoa (3 cụm): {part1}-{part2}-{part3}'
-            
-        return (9, 'NORMAL', description) # Trả về (9, NORMAL) cho cả 2 trường hợp
+    # 2b. Số tiến chẵn / lẻ (bước 2, >=3)
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and d[j + 1] == d[j] + 2:
+            j += 1
+        length = j - i + 1
+        if length >= 3:
+            kind = 'chẵn' if d[i] % 2 == 0 else 'lẻ'
+            add(f'Số tiến {kind} {length} số ({s[i:j+1]})', length, False)
+        i = j + 1
 
-    # 3. Lặp tam 3-3-3 (236236236)
-    if part1 == part2 == part3:
-        return (9, 'NORMAL', f'Lặp tam: {part1}-{part2}-{part3}')
+    # 3. Cặp số may mắn: Lộc phát 6-8, Thần tài 7-9, Trường cửu phát 8-9, Trường cửu lộc 6-9
+    for a, b, label, is_loc_phat in LUCKY_PAIRS:
+        i = 0
+        while i < n:
+            if s[i] not in (a, b):
+                i += 1
+                continue
+            j = i
+            while j + 1 < n and s[j + 1] in (a, b):
+                j += 1
+            length = j - i + 1
+            seg = s[i:j + 1]
+            has_both = a in seg and b in seg
+            if has_both:
+                end = (j == n - 1)
+                if end and length >= 2:
+                    add(f'{label} cuối {length} số ({seg})', length, is_loc_phat)
+                elif not end and length >= 3:
+                    add(f'{label} trong dãy {length} số ({seg})', length, False)
+            i = j + 1
 
-    return None
-# ========== [END] CẬP NHẬT V2.8 (Sửa lỗi Tam hoa) ==========
+    # 4. Tam hoa kép aaabbb (a!=b) và 3 cặp tam hoa aaabbbccc
+    for i in range(n - 5):
+        a, b = s[i], s[i + 3]
+        if a != b and s[i + 1] == a and s[i + 2] == a and s[i + 4] == b and s[i + 5] == b:
+            end = (i + 5 == n - 1)
+            add(f'Tam hoa kép {"cuối" if end else "giữa"} ({s[i:i+6]})', 6, False)
+    if n == 9:
+        a, b, c = s[0], s[3], s[6]
+        if s[1] == a and s[2] == a and s[4] == b and s[5] == b and s[7] == c and s[8] == c and len({a, b, c}) > 1:
+            add(f'3 cặp tam hoa ({a}{a}{a}{b}{b}{b}{c}{c}{c})', 9, False)
+
+    # 5. Tài khoản gánh aaaa x aaaa (4 đầu = 4 cuối cùng chữ số, dạng 0000x0000)
+    if n == 9:
+        q1, q2 = s[0:4], s[5:9]
+        if len(set(q1)) == 1 and q1 == q2:
+            add(f'Tài khoản gánh ({q1} {s[4]} {q2})', 8, False)
+
+    # 6. Tứ quý kép aaaabbbb (a!=b)
+    for i in range(n - 7):
+        a, b = s[i], s[i + 4]
+        if a != b and s[i:i + 4] == a * 4 and s[i + 4:i + 8] == b * 4:
+            add(f'Tứ quý kép ({a * 4}{b * 4})', 8, False)
+
+    # 7. Đối xứng abab / ababab / abababab, lặp 3 số 2/3 lần
+    def scan_rep(unit, times, label):
+        length = unit * times
+        for i in range(0, n - length + 1):
+            seg = s[i:i + length]
+            u = seg[:unit]
+            if len(set(u)) < 2:
+                continue
+            if all(seg[k * unit:(k + 1) * unit] == u for k in range(1, times)):
+                end = (i + length == n)
+                add(f'{label} {"cuối" if end else "giữa"} ({seg})', length, False)
+
+    scan_rep(2, 4, '4 cặp abababab')
+    scan_rep(2, 3, '3 cặp ababab')
+    scan_rep(2, 2, '2 cặp abab')
+    scan_rep(3, 3, 'Lặp 3 số 3 lần')
+    scan_rep(3, 2, 'Lặp 3 số 2 lần')
+
+    # 8. Số đảo: abba cuối; abccba cuối
+    if n >= 4:
+        t = s[-4:]
+        if t[0] == t[3] and t[1] == t[2] and t[0] != t[1]:
+            add(f'Cặp 2 số đảo cuối ({t})', 4, False)
+    if n >= 6:
+        t = s[-6:]
+        if t[0] == t[5] and t[1] == t[4] and t[2] == t[3] and len(set(t)) >= 2 and not (t[0] == t[1] == t[2]):
+            add(f'Cặp 3 số đảo cuối ({t})', 6, False)
+
+    # 9. Kép từng đôi một aabbcc... (>=2 cặp, các cặp liền kề khác nhau)
+    i = 0
+    while i < n - 3:
+        pairs = 0
+        j = i
+        while j + 1 < n and s[j] == s[j + 1] and (pairs == 0 or s[j] != s[j - 2]):
+            pairs += 1
+            j += 2
+        if pairs >= 2:
+            seg = s[i:i + pairs * 2]
+            if len(set(seg)) >= 2:
+                end = (i + pairs * 2 == n)
+                add(f'Kép từng đôi một {"cuối" if end else "giữa"} {pairs} cặp ({seg})', pairs * 2, False)
+            i = j - 1
+        i += 1
+
+    # 10. Cặp 2 số tiến bước 1/2/5/10 (nhóm 2 chữ số: 1213, 1315, 0510, 1020...)
+    for step in (1, 2, 5, 10):
+        found = False
+        for k in range(4, 1, -1):
+            if found:
+                break
+            length = k * 2
+            if length > n:
+                continue
+            for i in range(n - length, -1, -1):
+                if found:
+                    break
+                seg = s[i:i + length]
+                nums = [int(seg[x:x + 2]) for x in range(0, length, 2)]
+                ok = all(nums[x] - nums[x - 1] == step for x in range(1, len(nums)))
+                if ok and step == 5:
+                    ok = all(x % 5 == 0 for x in nums)
+                if ok and step == 10:
+                    ok = all(x % 10 == 0 for x in nums)
+                if ok and len(set(seg)) >= 2:
+                    end = (i + length == n)
+                    add(f'Cặp {k} số tiến {step} đơn vị {"cuối" if end else "giữa"} ({seg})', length, False)
+                    found = True
+
+    # 11. Đuôi đặc biệt
+    for tail, label in SPECIAL_TAILS:
+        if s.endswith(tail):
+            add(f'{label} — đuôi {tail}', len(tail), False)
+
+    return out
 
 
-def find_best_sub_pattern(digits_to_scan):
+# ========== NHẬN DIỆN MẪU VẮT QUA RANH GIỚI MÃ CHI NHÁNH ==========
+
+def detect_combos(branch, suffix):
     """
-    Bước 2: Quét tất cả mẫu con HỢP LỆ (2 đến 8 chữ số) và tìm bậc phí cao nhất.
+    Tìm mẫu số đẹp vắt qua ranh giới mã chi nhánh (branch, 4 số) + 9 số chọn (suffix).
+    `length` trả về là TỔNG chiều dài (gồm cả phần mã chi nhánh), dùng làm `count`.
     """
-    best_fee_min = 0
-    best_classification = None
-    best_description = "Không tìm thấy mẫu con"
+    full = branch + suffix
+    out = []
+    seen = set()
 
-    max_len = min(8, len(digits_to_scan)) 
-    
-    for length in range(max_len, 1, -1):
-        for i in range(len(digits_to_scan) - length + 1):
-            substring = digits_to_scan[i:i+length]
-            fee_type = None
-            description = ""
+    def push(label, start, end, min_len, special):
+        length = end - start + 1
+        if length < min_len or start > 3 or end < 4:
+            return
+        key = (label, start, end)
+        if key in seen:
+            return
+        seen.add(key)
+        out.append({'name': f'{label} {length} số ({full[start:end+1]}) — kết hợp mã chi nhánh',
+                    'length': length, 'special': bool(special)})
 
-            # ========== [START] CẬP NHẬT V2.8 (Sửa lỗi Sảnh tiến) ==========
-            
-            # 1. Kiểm tra mẫu 'SPECIAL' (Lặp thuần túy)
-            if is_pure_repeat(substring):
-                fee_type = 'SPECIAL' if length >= 3 else 'NORMAL' # '22' là normal
-                description = f'Lặp {length} số "{substring[0]}"'
-            
-            # 2. Kiểm tra mẫu 'SPECIAL' (Sảnh tiến)
-            # "số tiến liền nhau" được xếp vào loại đặc biệt
-            elif is_sanh_tien(substring):
-                fee_type = 'SPECIAL'
-                description = f'Sảnh tiến {length} số: {substring}'
+    # 1. Số lặp vắt qua ranh giới (từ 3 số)
+    i = 0
+    while i < 13:
+        j = i
+        while j + 1 < 13 and full[j + 1] == full[i]:
+            j += 1
+        push('Số lặp', i, j, 3, True)
+        i = j + 1
 
-            # 3. Kiểm tra các mẫu 'NORMAL' (Sảnh lặp, Lặp kép)
-            elif is_sanh_lap(substring):
-                fee_type = 'NORMAL'
-                description = f'Sảnh lặp {length} số: {substring}'
-            elif is_lap_kep(substring):
-                fee_type = 'NORMAL'
-                description = f'Lặp kép {length} số: {substring}'
-            
-            # ========== [END] CẬP NHẬT V2.8 (Sửa lỗi Sảnh tiến) ==========
+    # 2. Số tiến liền nhau vắt qua ranh giới (từ 3 số)
+    i = 0
+    while i < 13:
+        j = i
+        while j + 1 < 13 and ord(full[j + 1]) == ord(full[j]) + 1:
+            j += 1
+        push('Số tiến liền nhau', i, j, 3, True)
+        i = j + 1
 
-            # 4. Nếu là mẫu hợp lệ (fee_type != None), tra cứu phí
-            if fee_type:
-                classification = (length, fee_type)
-                base_fee = FEE_TABLE.get(classification)
+    # 3. Cặp số may mắn vắt qua ranh giới (từ 2 số, phải chứa cả 2 chữ số)
+    for a, b, label, is_loc_phat in LUCKY_PAIRS:
+        i = 0
+        while i < 13:
+            if full[i] not in (a, b):
+                i += 1
+                continue
+            j = i
+            while j + 1 < 13 and full[j + 1] in (a, b):
+                j += 1
+            seg = full[i:j + 1]
+            if a in seg and b in seg:
+                push(label, i, j, 2, is_loc_phat)
+            i = j + 1
 
-                if base_fee:
-                    # Chọn mức phí cao hơn
-                    if base_fee[0] > best_fee_min:
-                        best_fee_min = base_fee[0]
-                        best_classification = classification
-                        best_description = description
+    # 4. Cặp 2 số tiến bước 1/2/5/10 vắt qua ranh giới (từ 2 cặp)
+    for step in (1, 2, 5, 10):
+        found = False
+        for k in range(6, 1, -1):
+            if found:
+                break
+            length = 2 * k
+            for i in range(0, 13 - length + 1):
+                if found:
+                    break
+                if i > 3 or i + length - 1 < 4:
+                    continue
+                seg = full[i:i + length]
+                nums = [int(seg[x:x + 2]) for x in range(0, length, 2)]
+                ok = all(nums[x] - nums[x - 1] == step for x in range(1, len(nums)))
+                if ok and step == 5:
+                    ok = all(x % 5 == 0 for x in nums)
+                if ok and step == 10:
+                    ok = all(x % 10 == 0 for x in nums)
+                if ok and len(set(seg)) >= 2:
+                    push(f'Cặp {k} số tiến {step} đơn vị', i, i + length - 1, 4, False)
+                    found = True
 
-    if best_classification:
-        return (best_classification[0], best_classification[1], best_description)
+    return out
 
-    return None
+
+def _best_pattern(patterns, default_length, default_fee):
+    """Chọn mẫu có khung phí cao nhất trong `patterns`; so với mức sàn mặc định, lấy cái cao hơn"""
+    best_length, best_special, best_name, best_fee = default_length, False, 'Số thường (phí tối thiểu)', default_fee
+
+    if patterns:
+        top = max(patterns, key=_fee_sort_key)
+        fee = official_fee(top['length'], top['special'])
+        if fee[0] > best_fee[0]:
+            best_length, best_special, best_name, best_fee = top['length'], top['special'], top['name'], fee
+
+    return best_length, best_special, best_name, best_fee
 
 
 def analyze_account_number(account_number):
     """
-    Phân tích số tài khoản Agribank Giá Rai (Loại 13 số / Chọn 9 số).
+    Phân tích số tài khoản Agribank Giá Rai (loại 13 số / chọn 9 số).
     Phân biệt trường hợp 6-số (sàn 550k) và 9-số (sàn 1.1M).
     """
-    # Chuẩn hóa số tài khoản về string
     account_str = str(account_number).strip()
     digits = ''.join(c for c in account_str if c.isdigit())
 
@@ -201,107 +366,49 @@ def analyze_account_number(account_number):
             'error': 'Số tài khoản Agribank Giá Rai phải bắt đầu bằng 7202'
         }
 
-    selectable_part = digits[4:] # 9 số cuối
-    best_result = {}
-
-    # ========== [START] LOGIC V2.5 (6-số vs 9-số) ==========
-    
+    branch = digits[:4]
+    selectable_part = digits[4:]  # 9 số cuối
     BANK_SUB_PREFIX = "236"
-    
+
     if selectable_part.startswith(BANK_SUB_PREFIX):
-        # --- TH 2: Khách chọn 6 số (Phí sàn 550k) ---
-        analysis_part = selectable_part[3:] # Lấy 6 số cuối
-        
-        # Phí sàn cho 6-số là 550k (gốc 500k)
-        key_default = (4, 'NORMAL') # (3, 'SPECIAL') cũng là 500k
-        fee_min_base_default, fee_max_base_default = FEE_TABLE.get(key_default, (500_000, 1_000_000))
-        best_result = {
-            'quantity': 4, 'is_special': False, 'pattern_type': 'DEFAULT_6_DIGIT',
-            'description': 'Số thường (phí tối thiểu 6 số)',
-            'fee_min_base': fee_min_base_default, 'fee_max_base': fee_max_base_default
-        }
-
-        # Quét mẫu con trong 6 số (ĐÃ SỬA V2.8)
-        sub_pattern_result = find_best_sub_pattern(analysis_part) # Chỉ quét 6 số
-        if sub_pattern_result:
-            quantity, pattern_type, description = sub_pattern_result
-            key = (quantity, pattern_type)
-            fee_min_base, fee_max_base = FEE_TABLE.get(key, (0, 0))
-
-            # So sánh phí mẫu con với phí sàn 550k
-            if fee_min_base > best_result['fee_min_base']:
-                best_result = {
-                    'quantity': quantity, 'is_special': pattern_type == 'SPECIAL',
-                    'pattern_type': pattern_type, 'description': description,
-                    'fee_min_base': fee_min_base, 'fee_max_base': fee_max_base
-                }
-    
+        # --- TH2: khách chọn 6 số (sàn 550k) ---
+        analysis_part = selectable_part[3:]  # 6 số cuối
+        default_fee = (500_000, 1_000_000)
+        patterns = detect_patterns(analysis_part)
+        length, is_special, description, (fee_min_base, fee_max_base) = _best_pattern(
+            patterns, 4, default_fee
+        )
+        if fee_min_base == default_fee[0] and description == 'Số thường (phí tối thiểu)':
+            description = 'Số thường (phí tối thiểu 6 số)'
+        quantity = length
     else:
-        # --- TH 1: Khách chọn 9 số (Phí sàn 1.1M) ---
-        analysis_part = selectable_part # Phân tích tất cả 9 số
-        
-        # Phí sàn cho 9-số là 1.1M (gốc 1M)
-        key_default = (5, 'NORMAL')
-        fee_min_base_default, fee_max_base_default = FEE_TABLE.get(key_default, (1_000_000, 3_000_000))
-        best_result = {
-            'quantity': 5, 'is_special': False, 'pattern_type': 'DEFAULT_9_DIGIT',
-            'description': 'Số thường (phí tối thiểu 9 số)',
-            'fee_min_base': fee_min_base_default, 'fee_max_base': fee_max_base_default
-        }
+        # --- TH1: khách chọn 9 số (sàn 1.1M) ---
+        analysis_part = selectable_part
+        default_fee = (1_000_000, 3_000_000)
+        patterns = detect_patterns(analysis_part) + detect_combos(branch, analysis_part)
+        length, is_special, description, (fee_min_base, fee_max_base) = _best_pattern(
+            patterns, 5, default_fee
+        )
+        if fee_min_base == default_fee[0] and description == 'Số thường (phí tối thiểu)':
+            description = 'Số thường (phí tối thiểu 9 số)'
+        quantity = length
 
-        # BƯỚC 1: KIỂM TRA 9 SỐ ĐỒNG NHẤT (ĐÃ SỬA V2.8)
-        uniform_result = check_uniform_9_digit_structure(analysis_part)
-        if uniform_result:
-            quantity, pattern_type, description = uniform_result
-            key = (quantity, pattern_type)
-            fee_min_base, fee_max_base = FEE_TABLE.get(key, (0, 0))
-            if fee_min_base > best_result['fee_min_base']:
-                best_result = {
-                    'quantity': quantity, 'is_special': pattern_type == 'SPECIAL',
-                    'pattern_type': pattern_type, 'description': description,
-                    'fee_min_base': fee_min_base, 'fee_max_base': fee_max_base
-                }
-
-        # BƯỚC 2: QUÉT MẪU CON (trong 9 số) (ĐÃ SỬA V2.8)
-        
-        # Kiểm tra xem B1 có tìm thấy (9, SPECIAL) 40M không
-        is_highest_tier = (uniform_result and uniform_result[0] == 9 and uniform_result[1] == 'SPECIAL')
-
-        if not is_highest_tier:
-            sub_pattern_result = find_best_sub_pattern(analysis_part)
-            if sub_pattern_result:
-                quantity, pattern_type, description = sub_pattern_result
-                key = (quantity, pattern_type)
-                fee_min_base, fee_max_base = FEE_TABLE.get(key, (0, 0))
-                if fee_min_base > best_result['fee_min_base']:
-                    best_result = {
-                        'quantity': quantity, 'is_special': pattern_type == 'SPECIAL',
-                        'pattern_type': pattern_type, 'description': description,
-                        'fee_min_base': fee_min_base, 'fee_max_base': fee_max_base
-                    }
-
-    # ========== [END] LOGIC MỚI V2.8 ==========
-
-    # Trả về kết quả tốt nhất
     return {
-        'quantity': best_result['quantity'],
-        'is_special': best_result['is_special'],
-        'pattern_type': best_result['pattern_type'],
-        'description': best_result['description'],
+        'quantity': quantity,
+        'is_special': is_special,
+        'pattern_type': 'SPECIAL' if is_special else 'NORMAL',
+        'description': description,
         'full_account': digits,
         'selectable_part': selectable_part,
-        'fee_min_base': best_result['fee_min_base'],
-        'fee_max_base': best_result['fee_max_base'],
-        'fee_min_vat': apply_vat(best_result['fee_min_base']),
-        'fee_max_vat': apply_vat(best_result['fee_max_base']),
+        'fee_min_base': fee_min_base,
+        'fee_max_base': fee_max_base,
+        'fee_min_vat': apply_vat(fee_min_base),
+        'fee_max_vat': apply_vat(fee_max_base),
     }
 
 
 def get_detailed_fee(account_number):
-    """
-    Tra cứu phí theo biểu phí chi tiết (Bảng 1).
-    (Giữ nguyên code của bạn)
-    """
+    """Tra cứu phí theo biểu phí chi tiết (Bảng 1)."""
     analysis = analyze_account_number(account_number)
 
     if analysis.get('error'):
@@ -313,14 +420,13 @@ def get_detailed_fee(account_number):
 
     min_fee = analysis['fee_min_vat']
     max_fee = analysis['fee_max_vat']
-    
-    # Format hiển thị phí
+
     if max_fee:
         fee_display = f"{intcomma(min_fee)} - {intcomma(max_fee)} VNĐ"
     elif min_fee > 0:
         fee_display = f"Từ {intcomma(min_fee)} VNĐ (Thỏa thuận)"
     else:
-        fee_display = "Không tính phí" # Trường hợp lỗi (không nên xảy ra)
+        fee_display = "Không tính phí"
 
     return {
         'analysis': analysis, 'fee_tier': None,
@@ -330,10 +436,7 @@ def get_detailed_fee(account_number):
 
 
 def get_on_request_fee(quantity):
-    """
-    Tra cứu phí chọn số theo yêu cầu (Bảng 2).
-    (Giữ nguyên code của bạn)
-    """
+    """Tra cứu phí chọn số theo yêu cầu (Bảng 2)."""
     if not isinstance(quantity, int) or quantity < 2:
         return {
             'fee_tier': None, 'min_fee': 0, 'max_fee': 0,
@@ -356,3 +459,62 @@ def get_on_request_fee(quantity):
             'fee_display': 'Chưa có biểu phí',
             'error': f'Không tìm thấy bậc phí cho {quantity} số đẹp'
         }
+
+
+def generate_menh_candidates(hop_digits):
+    """
+    Sinh các dãy 9 số ứng viên (nhóm X) từ các chữ số hợp mệnh `hop_digits`,
+    dùng cho tính năng "gợi ý số hợp mệnh theo yêu cầu" — số chưa chắc có sẵn trong kho,
+    cần tự kiểm tra IPCAS trước khi cấp cho khách.
+    """
+    digits = sorted({str(d) for d in hop_digits})
+    if not digits:
+        return set()
+
+    cands = set()
+    for a in digits:
+        cands.add(a * 9)
+
+    for a in digits:
+        for b in digits:
+            if a == b:
+                continue
+            cands.add(a * 4 + b + a * 4)          # gánh aaaa b aaaa
+            cands.add((a + b) * 4 + a)             # ababababa
+            cands.add(a * 6 + b * 3)               # aaaaaabbb
+            cands.add(a * 3 + b * 6)               # aaabbbbbb
+            cands.add(a * 5 + b * 4)               # aaaaabbbb
+            cands.add(a * 4 + b * 5)               # aaaabbbbb
+            cands.add(a + b * 8)                   # lặp cuối 8
+            cands.add(a * 2 + b * 7)               # lặp cuối 7
+            cands.add(a * 3 + b * 3 + a * 3)       # tam hoa xen kẽ
+            cands.add(a + b + a + b + b * 5)
+
+    for a in digits:
+        for b in digits:
+            for c in digits:
+                if a == b or b == c or a == c:
+                    continue
+                cands.add(a * 3 + b * 3 + c * 3)   # 3 cặp tam hoa
+                cands.add((a + b + c) * 3)         # lặp 3 số 3 lần
+
+    # Số lặp ngắn (3-8 số) ở đầu hoặc cuối dãy + phần đệm không lặp, để phủ đủ các bậc phí thấp/vừa
+    filler_pool = '0123456789'
+
+    def filler(exclude_digit, length):
+        seq = []
+        i = 0
+        while len(seq) < length:
+            d = filler_pool[i % 10]
+            if d != exclude_digit and (not seq or seq[-1] != d):
+                seq.append(d)
+            i += 1
+        return ''.join(seq)
+
+    for a in digits:
+        for length in range(3, 9):
+            pad = filler(a, 9 - length)
+            cands.add(pad + a * length)  # lặp cuối `length` số -> đặc biệt
+            cands.add(a * length + pad)  # lặp giữa `length` số -> thường
+
+    return cands

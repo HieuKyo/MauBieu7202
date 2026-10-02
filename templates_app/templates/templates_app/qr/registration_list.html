@@ -1,0 +1,333 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Đăng ký bảng QR{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-qr-code"></i> ĐĂNG KÝ BẢNG QR</h2>
+        </div>
+    </div>
+
+    {% include 'templates_app/qr/_nav.html' with active='dang_ky' %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6><i class="bi bi-funnel"></i> Bộ lọc tìm kiếm</h6>
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Tên khách hàng</label>
+                    <input type="text" class="form-control" name="ten_kh" value="{{ filters.ten_kh }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Số tài khoản</label>
+                    <input type="text" class="form-control" name="so_tai_khoan" value="{{ filters.so_tai_khoan }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Tên cửa hàng</label>
+                    <input type="text" class="form-control" name="ten_cua_hang" value="{{ filters.ten_cua_hang }}">
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-search"></i> Lọc</button>
+                    <button type="button" class="btn btn-danger flex-grow-1" data-bs-toggle="modal" data-bs-target="#addQrModal">
+                        <i class="bi bi-qr-code-scan"></i> Đăng ký
+                    </button>
+                </div>
+            </form>
+            <div class="mt-2 d-flex gap-2">
+                <a href="{% url 'qr_registration_template_download' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-download"></i> Tải file mẫu
+                </a>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#uploadQrModal">
+                    <i class="bi bi-upload"></i> Upload đăng ký QR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Tên khách hàng</th>
+                            <th>Số tài khoản</th>
+                            <th>Tên cửa hàng</th>
+                            <th>Tên cán bộ đăng ký</th>
+                            <th>Phòng giao dịch</th>
+                            <th>Ngày đăng ký</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg in page_obj %}
+                        <tr>
+                            <td>{{ reg.ten_kh }}</td>
+                            <td>{{ reg.so_tai_khoan }}</td>
+                            <td>{{ reg.ten_cua_hang }}</td>
+                            <td>{{ reg.ten_can_bo }}</td>
+                            <td><span class="badge text-bg-secondary">{{ reg.phong_giao_dich|default:"—" }}</span></td>
+                            <td>{{ reg.ngay_dang_ky|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="Sửa"
+                                        onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.so_tai_khoan|escapejs }}', '{{ reg.ten_cua_hang|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.phong_giao_dich|escapejs }}')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
+                                        onclick="openDeleteModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center text-muted">Bạn chưa có đăng ký QR nào</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}&ten_kh={{ filters.ten_kh }}&so_tai_khoan={{ filters.so_tai_khoan }}&ten_cua_hang={{ filters.ten_cua_hang }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Thêm đăng ký -->
+<div class="modal fade" id="addQrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="addQrForm">
+            <div class="modal-header">
+                <h5 class="modal-title">Đăng ký bảng QR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addQrError" class="alert alert-danger d-none"></div>
+                <div class="mb-2">
+                    <label class="form-label">Tên khách hàng <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="ten_kh" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Số tài khoản <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="so_tai_khoan" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cửa hàng (nếu có)</label>
+                    <input type="text" class="form-control" name="ten_cua_hang" placeholder="Quét mã QR để chuyển khoản">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cán bộ đăng ký</label>
+                    <input type="text" class="form-control" name="ten_can_bo" value="{{ ten_cb_default }}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Phòng giao dịch</label>
+                    <input type="text" class="form-control" value="{{ pgd_default }}" disabled>
+                    <div class="form-text">Tự động lấy theo hồ sơ của bạn.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-danger">Đăng ký</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Sửa đăng ký -->
+<div class="modal fade" id="editQrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="editQrForm">
+            <div class="modal-header">
+                <h5 class="modal-title">Sửa đăng ký QR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="editQrError" class="alert alert-danger d-none"></div>
+                <div class="mb-2">
+                    <label class="form-label">Tên khách hàng <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="ten_kh" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Số tài khoản <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="so_tai_khoan" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cửa hàng (nếu có)</label>
+                    <input type="text" class="form-control" name="ten_cua_hang" placeholder="Quét mã QR để chuyển khoản">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cán bộ đăng ký</label>
+                    <input type="text" class="form-control" name="ten_can_bo">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Phòng giao dịch</label>
+                    <input type="text" class="form-control" id="editPgdDisplay" disabled>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Upload đăng ký QR hàng loạt -->
+<div class="modal fade" id="uploadQrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" action="{% url 'qr_registration_import' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">Upload đăng ký QR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    File phải có các cột: Tên khách hàng, Số tài khoản, Tên cửa hàng (nếu có). Bấm
+                    <a href="{% url 'qr_registration_template_download' %}">tải file mẫu</a> nếu chưa có.
+                    Tên cán bộ và Phòng giao dịch sẽ lấy theo hồ sơ của bạn.
+                </p>
+                <div class="mb-2">
+                    <label class="form-label">Chọn file (.xlsx) <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control" name="import_file" accept=".xlsx,.xls" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-danger">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Xóa đăng ký -->
+<div class="modal fade" id="deleteQrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Xóa đăng ký QR của <strong id="deleteQrName"></strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteQrBtn">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function csrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+document.getElementById('addQrModal').addEventListener('show.bs.modal', function () {
+    document.getElementById('addQrForm').reset();
+    document.getElementById('addQrError').classList.add('d-none');
+});
+
+document.getElementById('addQrForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const errBox = document.getElementById('addQrError');
+    errBox.classList.add('d-none');
+    fetch('{% url "qr_registration_create" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+        body: new FormData(this),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                errBox.textContent = data.error || 'Đã xảy ra lỗi';
+                errBox.classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            errBox.textContent = 'Lỗi kết nối máy chủ';
+            errBox.classList.remove('d-none');
+        });
+});
+
+let editQrId = null;
+
+function openEditModal(id, tenKh, soTaiKhoan, tenCuaHang, tenCanBo, phongGiaoDich) {
+    editQrId = id;
+    const form = document.getElementById('editQrForm');
+    form.elements['ten_kh'].value = tenKh;
+    form.elements['so_tai_khoan'].value = soTaiKhoan;
+    form.elements['ten_cua_hang'].value = tenCuaHang;
+    form.elements['ten_can_bo'].value = tenCanBo;
+    document.getElementById('editPgdDisplay').value = phongGiaoDich;
+    document.getElementById('editQrError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('editQrModal')).show();
+}
+
+document.getElementById('editQrForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const errBox = document.getElementById('editQrError');
+    errBox.classList.add('d-none');
+    fetch(`/qr/dang-ky/${editQrId}/update/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+        body: new FormData(this),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                errBox.textContent = data.error || 'Đã xảy ra lỗi';
+                errBox.classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            errBox.textContent = 'Lỗi kết nối máy chủ';
+            errBox.classList.remove('d-none');
+        });
+});
+
+let deleteQrId = null;
+
+function openDeleteModal(id, tenKh) {
+    deleteQrId = id;
+    document.getElementById('deleteQrName').textContent = tenKh;
+    new bootstrap.Modal(document.getElementById('deleteQrModal')).show();
+}
+
+document.getElementById('confirmDeleteQrBtn').addEventListener('click', function () {
+    fetch(`/qr/dang-ky/${deleteQrId}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.error || 'Đã xảy ra lỗi');
+            }
+        })
+        .catch(() => alert('Lỗi kết nối máy chủ'));
+});
+</script>
+{% endblock %}

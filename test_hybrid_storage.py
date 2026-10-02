@@ -11,8 +11,8 @@ sys.path.insert(0, '/home/user/MauBieu7202')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wordgen.settings')
 django.setup()
 
-from templates_app.storage import HybridTemplateStorage
-from pathlib import Path
+from templates_app.storage import HybridTemplateStorage  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 def test_hybrid_storage():
     """Test HybridTemplateStorage functionality"""

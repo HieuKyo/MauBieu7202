@@ -4,7 +4,7 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wordgen.settings')
 django.setup()
 
-from templates_app.models import Variable
+from templates_app.models import Variable  # noqa: E402
 
 expected_vars = [
     'ten_nguoi_nop_thue',
@@ -39,7 +39,7 @@ for var_name in expected_vars:
         print(f'✗ {var_name}: THIẾU')
         missing.append(var_name)
 
-print(f'\n=== KẾT QUẢ ===')
+print('\n=== KẾT QUẢ ===')
 print(f'Tìm thấy: {found}/15')
 print(f'Thiếu: {len(missing)}/15')
 

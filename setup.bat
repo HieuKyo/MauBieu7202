@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 REM =====================================================
 REM Setup Script - Cai dat ung dung MauBieu7202
 REM Ho tro cai dat OFFLINE (khong can Internet)

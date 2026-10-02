@@ -61,22 +61,30 @@
                                         <small class="text-muted">{{ rep.created_at|date:"d/m/Y H:i" }}</small>
                                     </td>
                                     <td class="text-center">
-                                        <div class="dropdown">
-                                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                <i class="bi bi-file-earmark-text"></i>
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                {% for template in templates %}
-                                                <li>
-                                                    <a class="dropdown-item" href="{% url 'atm_load_replenishment_data' rep.pk template.id %}">
-                                                        {{ template.category.name }} - {{ template.name }}
-                                                    </a>
-                                                </li>
-                                                {% endfor %}
-                                                {% if not templates %}
-                                                <li><span class="dropdown-item text-muted">Chưa có mẫu biểu</span></li>
-                                                {% endif %}
-                                            </ul>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'atm_replenishment_edit' rep.pk %}" class="btn btn-sm btn-outline-primary" title="Sửa phiếu">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Tạo mẫu biểu">
+                                                    <i class="bi bi-file-earmark-text"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    {% for template in templates %}
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'atm_load_replenishment_data' rep.pk template.id %}">
+                                                            {{ template.category.name }} - {{ template.name }}
+                                                        </a>
+                                                    </li>
+                                                    {% endfor %}
+                                                    {% if not templates %}
+                                                    <li><span class="dropdown-item text-muted">Chưa có mẫu biểu</span></li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                            <a href="{% url 'atm_replenishment_delete' rep.pk %}" class="btn btn-sm btn-outline-danger" title="Xóa phiếu">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>

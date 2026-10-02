@@ -1,0 +1,349 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Thống kê chỉ tiêu SPDV{% endblock %}
+
+{% block extra_css %}
+<style>
+    .spdv-card { border: 1px solid var(--agri-red); border-radius: 8px; overflow: hidden; }
+    .spdv-card .card-header {
+        background: linear-gradient(90deg, var(--agri-red) 0%, var(--agri-red-dark) 100%);
+        color: #fff;
+        border-bottom: 3px solid var(--agri-gold);
+        font-size: 1.05rem;
+    }
+    .spdv-table.table thead th {
+        background-color: var(--agri-red) !important;
+        color: #fff;
+        border-color: var(--agri-red-dark);
+        vertical-align: middle;
+    }
+    .spdv-table.table thead tr:first-child th {
+        border-bottom: 2px solid var(--agri-gold);
+    }
+    .spdv-table.table,
+    .spdv-table.table th,
+    .spdv-table.table td {
+        border: 1px solid #dee2e6;
+    }
+    .spdv-table .spdv-divider {
+        border-left: 3px solid var(--agri-gold) !important;
+    }
+    .spdv-table tbody tr:nth-child(even) { background-color: #fbf3f5; }
+    .spdv-table tfoot .spdv-group-total td {
+        background-color: #f3d9c3;
+        color: var(--agri-red-dark);
+        font-weight: 700;
+        border-top: 2px solid var(--agri-red);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-bar-chart-line"></i> THỐNG KÊ CHỈ TIÊU SẢN PHẨM DỊCH VỤ</h2>
+            <p class="text-muted mb-0">Số lượng thẻ (CSP + Visa phát hành mới), Agribank Plus (E-Mobile Banking), Mobile Banking (E-Mobile + SMS Banking), Tài khoản Plus và Đăng ký OTT (E-Mobile đối chiếu file SPDV quý) theo GDV/phòng ban. Khách hàng đang vay được loại trừ khỏi mọi chỉ tiêu.</p>
+        </div>
+    </div>
+
+    <div class="row g-3 align-items-end mb-4">
+        <div class="col-md-8">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Năm</label>
+                    <select name="year" class="form-select">
+                        {% for y in year_range %}
+                        <option value="{{ y|stringformat:"d" }}" {% if y == year %}selected{% endif %}>{{ y|stringformat:"d" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Tháng</label>
+                    <select name="month" class="form-select">
+                        <option value="1" {% if month == 1 and not quarter %}selected{% endif %}>Tháng 1</option>
+                        <option value="2" {% if month == 2 and not quarter %}selected{% endif %}>Tháng 2</option>
+                        <option value="3" {% if month == 3 and not quarter %}selected{% endif %}>Tháng 3</option>
+                        <option value="4" {% if month == 4 and not quarter %}selected{% endif %}>Tháng 4</option>
+                        <option value="5" {% if month == 5 and not quarter %}selected{% endif %}>Tháng 5</option>
+                        <option value="6" {% if month == 6 and not quarter %}selected{% endif %}>Tháng 6</option>
+                        <option value="7" {% if month == 7 and not quarter %}selected{% endif %}>Tháng 7</option>
+                        <option value="8" {% if month == 8 and not quarter %}selected{% endif %}>Tháng 8</option>
+                        <option value="9" {% if month == 9 and not quarter %}selected{% endif %}>Tháng 9</option>
+                        <option value="10" {% if month == 10 and not quarter %}selected{% endif %}>Tháng 10</option>
+                        <option value="11" {% if month == 11 and not quarter %}selected{% endif %}>Tháng 11</option>
+                        <option value="12" {% if month == 12 and not quarter %}selected{% endif %}>Tháng 12</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Hoặc xem theo quý</label>
+                    <select name="quarter" class="form-select">
+                        <option value="">— Xem theo tháng —</option>
+                        <option value="1" {% if quarter == 1 %}selected{% endif %}>Quý 1</option>
+                        <option value="2" {% if quarter == 2 %}selected{% endif %}>Quý 2</option>
+                        <option value="3" {% if quarter == 3 %}selected{% endif %}>Quý 3</option>
+                        <option value="4" {% if quarter == 4 %}selected{% endif %}>Quý 4</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Xem</button>
+                </div>
+            </form>
+        </div>
+        {% if can_manage_any %}
+        <div class="col-md-4 text-md-end">
+            <button type="button" class="btn btn-outline-danger me-2" data-bs-toggle="modal" data-bs-target="#importModal">
+                <i class="bi bi-upload"></i> Import dữ liệu
+            </button>
+            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#targetModal">
+                <i class="bi bi-flag"></i> Đặt chỉ tiêu
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    {% for group in groups %}
+    <div class="card shadow-sm mb-4 spdv-card">
+        <div class="card-header">
+            <strong><i class="bi bi-building"></i> {{ group.name }}</strong>
+        </div>
+        <div class="card-body p-0">
+            {% if group.gdv_rows %}
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered mb-0 align-middle text-center spdv-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="text-start align-middle">Giao dịch viên</th>
+                            {% for metric_key, metric_label in metric_choices %}
+                            <th colspan="3" class="spdv-divider">{{ metric_label }}</th>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            {% for metric_key, metric_label in metric_choices %}
+                            <th class="spdv-divider">Thực hiện</th><th>Chỉ tiêu</th><th>Còn thiếu</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in group.gdv_rows %}
+                        <tr>
+                            <td class="text-start">{{ row.profile.full_name }}</td>
+                            {% for m in row.metrics_list %}
+                            <td class="spdv-divider">
+                                <a href="{% url 'spdv_kpi_gdv_detail' row.user_id m.key %}?year={{ year|stringformat:"d" }}{% if quarter %}&quarter={{ quarter|stringformat:"d" }}{% else %}&month={{ month|stringformat:"d" }}{% endif %}">{{ m.actual }}</a>
+                            </td>
+                            <td>{{ m.target }}</td>
+                            <td>
+                                {% if m.remaining > 0 %}
+                                <span class="badge bg-warning text-dark">{{ m.remaining }}</span>
+                                {% else %}
+                                <span class="badge bg-success">Đạt</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="spdv-group-total">
+                            <td class="text-start">TỔNG CỘNG PHÒNG</td>
+                            {% for m in group.totals_list %}
+                            <td class="spdv-divider">{{ m.actual }}</td>
+                            <td>{{ m.target }}</td>
+                            <td>
+                                {% if m.remaining > 0 %}
+                                <span class="badge bg-warning text-dark">{{ m.remaining }}</span>
+                                {% else %}
+                                <span class="badge bg-success">Đạt</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted p-3 mb-0">Chưa có giao dịch viên nào trong phòng này (UserProfile.job_function = Giao dịch viên).</p>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-warning">Bạn không thuộc phòng ban nào được xem báo cáo này.</div>
+    {% endfor %}
+</div>
+
+{% if can_manage_any %}
+<!-- Modal: Import dữ liệu -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{% url 'spdv_kpi_import' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-upload"></i> Import dữ liệu chỉ tiêu SPDV</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-4">
+                            <label class="form-label small mb-0">Tháng</label>
+                            <select name="month" id="importMonth" class="form-select">
+                                <option value="1" {% if month == 1 %}selected{% endif %}>Tháng 1</option>
+                                <option value="2" {% if month == 2 %}selected{% endif %}>Tháng 2</option>
+                                <option value="3" {% if month == 3 %}selected{% endif %}>Tháng 3</option>
+                                <option value="4" {% if month == 4 %}selected{% endif %}>Tháng 4</option>
+                                <option value="5" {% if month == 5 %}selected{% endif %}>Tháng 5</option>
+                                <option value="6" {% if month == 6 %}selected{% endif %}>Tháng 6</option>
+                                <option value="7" {% if month == 7 %}selected{% endif %}>Tháng 7</option>
+                                <option value="8" {% if month == 8 %}selected{% endif %}>Tháng 8</option>
+                                <option value="9" {% if month == 9 %}selected{% endif %}>Tháng 9</option>
+                                <option value="10" {% if month == 10 %}selected{% endif %}>Tháng 10</option>
+                                <option value="11" {% if month == 11 %}selected{% endif %}>Tháng 11</option>
+                                <option value="12" {% if month == 12 %}selected{% endif %}>Tháng 12</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small mb-0">Hoặc cả quý</label>
+                            <select name="quarter" id="importQuarter" class="form-select">
+                                <option value="">— Theo tháng —</option>
+                                <option value="1" {% if quarter == 1 %}selected{% endif %}>Quý 1</option>
+                                <option value="2" {% if quarter == 2 %}selected{% endif %}>Quý 2</option>
+                                <option value="3" {% if quarter == 3 %}selected{% endif %}>Quý 3</option>
+                                <option value="4" {% if quarter == 4 %}selected{% endif %}>Quý 4</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small mb-0">Năm</label>
+                            <select name="year" class="form-select">
+                                {% for y in year_range %}
+                                <option value="{{ y|stringformat:"d" }}" {% if y == year %}selected{% endif %}>{{ y|stringformat:"d" }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-text mb-3">Chọn Quý nếu file xuất ra phủ cả 3 tháng — hệ thống sẽ tự tách số liệu về đúng từng tháng theo ngày giao dịch. Nếu chọn Quý thì Tháng sẽ bị bỏ qua.</div>
+                    <div class="mb-3">
+                        <label class="form-label small mb-0">File Thẻ CSP (cột CUSER, CDATE — tính cả phát hành mới lẫn phát hành lại)</label>
+                        <input type="file" class="form-control" name="csp_file" accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small mb-0">File Thẻ Visa (cột dlvrydt, dlvryusrid, isutycd)</label>
+                        <input type="file" class="form-control" name="visa_file" accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small mb-0">File E-Mobile Banking / Agribank Plus (cột entydt, crtusr, uptdtm)</label>
+                        <input type="file" class="form-control" name="emobile_file" accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small mb-0">File SMS Banking (cột entydt, crtusr, uptdtm — cộng vào chỉ tiêu Mobile Banking cùng E-Mobile)</label>
+                        <input type="file" class="form-control" name="sms_file" accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small mb-0">File SPDV quý (cột MA_KH, TK_OSB, DK_AGRIBANK_PLUS_OTT — dùng để tính chỉ tiêu Tài khoản Plus và Đăng ký OTT, phải có kèm file E-Mobile Banking ở trên)</label>
+                        <input type="file" class="form-control" name="spdv_quarter_file" accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label small mb-0">File danh sách khách hàng vay — MSIT80 (tùy chọn, để loại trừ khỏi mọi chỉ tiêu)</label>
+                        <input type="file" class="form-control" name="msit80_file" accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div class="form-text">Chỉ cần chọn file nào có — import lại sẽ ghi đè số liệu tháng đó (không cộng dồn). Nếu có file khách hàng vay, hệ thống sẽ tự loại các giao dịch của khách hàng đang vay khỏi file Thẻ CSP, E-Mobile và SMS Banking.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-upload"></i> Import</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Đặt chỉ tiêu -->
+<div class="modal fade" id="targetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form method="post" action="{% url 'spdv_kpi_target_set' %}">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-flag"></i> Đặt chỉ tiêu SPDV theo tháng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-4">
+                            <label class="form-label small mb-0">Tháng</label>
+                            <select name="month" class="form-select">
+                                <option value="1" {% if month == 1 %}selected{% endif %}>Tháng 1</option>
+                                <option value="2" {% if month == 2 %}selected{% endif %}>Tháng 2</option>
+                                <option value="3" {% if month == 3 %}selected{% endif %}>Tháng 3</option>
+                                <option value="4" {% if month == 4 %}selected{% endif %}>Tháng 4</option>
+                                <option value="5" {% if month == 5 %}selected{% endif %}>Tháng 5</option>
+                                <option value="6" {% if month == 6 %}selected{% endif %}>Tháng 6</option>
+                                <option value="7" {% if month == 7 %}selected{% endif %}>Tháng 7</option>
+                                <option value="8" {% if month == 8 %}selected{% endif %}>Tháng 8</option>
+                                <option value="9" {% if month == 9 %}selected{% endif %}>Tháng 9</option>
+                                <option value="10" {% if month == 10 %}selected{% endif %}>Tháng 10</option>
+                                <option value="11" {% if month == 11 %}selected{% endif %}>Tháng 11</option>
+                                <option value="12" {% if month == 12 %}selected{% endif %}>Tháng 12</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small mb-0">Hoặc cả quý</label>
+                            <select name="quarter" class="form-select">
+                                <option value="">— Theo tháng —</option>
+                                <option value="1" {% if quarter == 1 %}selected{% endif %}>Quý 1</option>
+                                <option value="2" {% if quarter == 2 %}selected{% endif %}>Quý 2</option>
+                                <option value="3" {% if quarter == 3 %}selected{% endif %}>Quý 3</option>
+                                <option value="4" {% if quarter == 4 %}selected{% endif %}>Quý 4</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small mb-0">Năm</label>
+                            <select name="year" class="form-select">
+                                {% for y in year_range %}
+                                <option value="{{ y|stringformat:"d" }}" {% if y == year %}selected{% endif %}>{{ y|stringformat:"d" }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-text mb-2">Nếu chọn Quý: số nhập là chỉ tiêu cho CẢ QUÝ, hệ thống tự chia đều cho 3 tháng (Tháng sẽ bị bỏ qua). Để trống ô nào thì giữ nguyên chỉ tiêu cũ của ô đó.</div>
+                    {% for group in groups %}
+                        {% if group.can_manage %}
+                        <h6 class="mt-3">{{ group.name }}</h6>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Giao dịch viên</th>
+                                    {% for metric_key, metric_label in metric_choices %}
+                                    <th style="width:140px">Chỉ tiêu {{ metric_label }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in group.gdv_rows %}
+                                <tr>
+                                    <td>{{ row.profile.full_name }}</td>
+                                    {% for m in row.metrics_list %}
+                                    <td>
+                                        <input type="number" min="0" class="form-control form-control-sm"
+                                               name="target_{{ m.key }}_{{ row.profile.user_id }}"
+                                               placeholder="{{ m.target }}">
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-warning"><i class="bi bi-save"></i> Lưu chỉ tiêu</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

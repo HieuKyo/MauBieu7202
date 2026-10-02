@@ -1,0 +1,308 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Máy tính cầm tay - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calc-wrapper {
+        display: flex;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+    .calc {
+        background: #1c1c1e;
+        border-radius: 20px;
+        padding: 24px;
+        width: 320px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .calc-display {
+        background: #1c1c1e;
+        border-radius: 10px;
+        padding: 12px 8px 4px;
+        margin-bottom: 16px;
+        min-height: 90px;
+        text-align: right;
+    }
+    .calc-expression {
+        color: #888;
+        font-size: 1rem;
+        min-height: 22px;
+        word-break: break-all;
+        font-family: 'Courier New', monospace;
+    }
+    .calc-result {
+        color: #fff;
+        font-size: 2.6rem;
+        font-weight: 300;
+        line-height: 1.1;
+        word-break: break-all;
+        font-family: 'Courier New', monospace;
+    }
+    .calc-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+    .btn-calc {
+        border: none;
+        border-radius: 50%;
+        width: 64px;
+        height: 64px;
+        font-size: 1.3rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.1s, filter 0.1s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        user-select: none;
+    }
+    .btn-calc:active {
+        filter: brightness(0.75);
+    }
+    .btn-func   { background: #a5a5a5; color: #000; }
+    .btn-op     { background: #007934; color: #fff; }
+    .btn-num    { background: #333333; color: #fff; }
+    .btn-zero   { background: #333333; color: #fff; border-radius: 32px; width: 138px; padding-left: 24px; justify-content: flex-start; }
+    .btn-eq     { background: #005a26; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container">
+    <div class="row mb-3">
+        <div class="col">
+            <h2 class="text-agribank">
+                <i class="bi bi-calculator-fill"></i> Máy tính cầm tay
+            </h2>
+        </div>
+    </div>
+
+    <div class="calc-wrapper">
+        <div class="calc">
+            <!-- Màn hình -->
+            <div class="calc-display">
+                <div class="calc-expression" id="expression"></div>
+                <div class="calc-result" id="result">0</div>
+            </div>
+
+            <!-- Bàn phím -->
+            <div class="calc-grid">
+                <!-- Hàng 1 -->
+                <button class="btn-calc btn-func" data-action="clear">C</button>
+                <button class="btn-calc btn-func" data-action="sign">+/−</button>
+                <button class="btn-calc btn-func" data-action="percent">%</button>
+                <button class="btn-calc btn-op"   data-action="op" data-op="÷">÷</button>
+
+                <!-- Hàng 2 -->
+                <button class="btn-calc btn-num" data-action="digit" data-digit="7">7</button>
+                <button class="btn-calc btn-num" data-action="digit" data-digit="8">8</button>
+                <button class="btn-calc btn-num" data-action="digit" data-digit="9">9</button>
+                <button class="btn-calc btn-op"  data-action="op" data-op="×">×</button>
+
+                <!-- Hàng 3 -->
+                <button class="btn-calc btn-num" data-action="digit" data-digit="4">4</button>
+                <button class="btn-calc btn-num" data-action="digit" data-digit="5">5</button>
+                <button class="btn-calc btn-num" data-action="digit" data-digit="6">6</button>
+                <button class="btn-calc btn-op"  data-action="op" data-op="−">−</button>
+
+                <!-- Hàng 4 -->
+                <button class="btn-calc btn-num" data-action="digit" data-digit="1">1</button>
+                <button class="btn-calc btn-num" data-action="digit" data-digit="2">2</button>
+                <button class="btn-calc btn-num" data-action="digit" data-digit="3">3</button>
+                <button class="btn-calc btn-op"  data-action="op" data-op="+">+</button>
+
+                <!-- Hàng 5 -->
+                <button class="btn-calc btn-zero" data-action="digit" data-digit="0" style="grid-column: span 2;">0</button>
+                <button class="btn-calc btn-num" data-action="dot">.</button>
+                <button class="btn-calc btn-eq"  data-action="equals">=</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    let state = {
+        current: '0',
+        prev: null,
+        op: null,
+        justEvaled: false,
+        newOperand: false,  // true = lần bấm số tiếp theo bắt đầu số mới
+    };
+
+    const displayResult = document.getElementById('result');
+    const displayExpr   = document.getElementById('expression');
+
+    /**
+     * Format số để hiển thị:
+     * - Dấu phẩy (,) cho hàng nghìn:  20,520
+     * - Dấu chấm (.) cho thập phân:   1.5
+     * - Xử lý "Lỗi" và NaN an toàn
+     */
+    function formatNumber(numStr) {
+        if (numStr === 'Lỗi') return 'Lỗi';
+        const neg = numStr.startsWith('-');
+        const abs = neg ? numStr.slice(1) : numStr;
+        const [intPart, decPart] = abs.split('.');
+        const intVal = parseInt(intPart || '0', 10);
+        if (isNaN(intVal)) return numStr;
+        // Dấu phẩy nghìn theo en-US (20,520 dễ đọc hơn 20.520)
+        const intFmt = intVal.toLocaleString('en-US');
+        const sign = neg ? '-' : '';
+        return decPart !== undefined
+            ? sign + intFmt + '.' + decPart
+            : sign + intFmt;
+    }
+
+    /**
+     * Thực hiện phép tính, làm tròn để tránh floating point imprecision.
+     * Ví dụ: 0.1 + 0.2 → 0.3 (không phải 0.30000000000000004)
+     */
+    function applyOp(a, op, b) {
+        if (a === 'Lỗi' || b === 'Lỗi') return 'Lỗi';
+        const fa = parseFloat(a), fb = parseFloat(b);
+        let result;
+        switch (op) {
+            case '+': result = fa + fb; break;
+            case '−': result = fa - fb; break;
+            case '×': result = fa * fb; break;
+            case '÷':
+                if (fb === 0) return 'Lỗi';
+                result = fa / fb;
+                break;
+            default: return a;
+        }
+        // Làm tròn đến 10 chữ số có nghĩa để loại bỏ nhiễu float
+        if (isFinite(result) && result !== 0) {
+            result = parseFloat(result.toPrecision(10));
+        }
+        return String(result);
+    }
+
+    function render() {
+        const txt = formatNumber(state.current);
+        displayResult.textContent = txt;
+        // Thu nhỏ chữ nếu số quá dài
+        displayResult.style.fontSize = txt.length > 12 ? '1.6rem' : '2.6rem';
+    }
+
+    function handleAction(action, data) {
+        switch (action) {
+            case 'clear':
+                state = { current: '0', prev: null, op: null, justEvaled: false, newOperand: false };
+                displayExpr.textContent = '';
+                break;
+
+            case 'digit':
+                if (state.current === 'Lỗi' || state.justEvaled) {
+                    // Sau lỗi hoặc sau = : bắt đầu tính toán mới hoàn toàn
+                    state = { current: data === '0' ? '0' : data, prev: null, op: null, justEvaled: false, newOperand: false };
+                    break;
+                }
+                if (state.newOperand) {
+                    // Sau phép tính: bắt đầu số mới, giữ nguyên prev và op
+                    state.current = data === '0' ? '0' : data;
+                    state.newOperand = false;
+                } else {
+                    if (state.current === '0' && data !== '0') {
+                        state.current = data;
+                    } else if (state.current !== '0' && state.current.replace(/[-.]/, '').length < 12) {
+                        state.current += data;
+                    }
+                    // '0' bấm thêm '0' → giữ nguyên
+                }
+                break;
+
+            case 'dot':
+                if (state.current === 'Lỗi' || state.justEvaled || state.newOperand) {
+                    state.current = '0';
+                    state.newOperand = false;
+                    state.justEvaled = false;
+                }
+                if (!state.current.includes('.')) state.current += '.';
+                break;
+
+            case 'sign':
+                if (state.current !== '0' && state.current !== 'Lỗi') {
+                    state.current = state.current.startsWith('-')
+                        ? state.current.slice(1)
+                        : '-' + state.current;
+                    state.newOperand = false;
+                }
+                break;
+
+            case 'percent':
+                if (state.current !== 'Lỗi') {
+                    const v = parseFloat(state.current) / 100;
+                    state.current = String(parseFloat(v.toPrecision(10)));
+                    state.newOperand = false;
+                }
+                break;
+
+            case 'op':
+                // Chain: chỉ tính khi người dùng đã nhập số mới (không phải đổi phép tính liền)
+                if (state.op && state.prev !== null && !state.newOperand) {
+                    state.current = applyOp(state.prev, state.op, state.current);
+                }
+                if (state.current !== 'Lỗi') {
+                    state.prev = state.current;
+                    state.op = data;
+                    state.justEvaled = false;
+                    state.newOperand = true;  // số tiếp theo sẽ bắt đầu mới
+                    displayExpr.textContent = formatNumber(state.prev) + ' ' + data;
+                } else {
+                    state = { current: '0', prev: null, op: null, justEvaled: false, newOperand: false };
+                    displayExpr.textContent = '';
+                }
+                break;
+
+            case 'equals':
+                if (state.op && state.prev !== null) {
+                    const res = applyOp(state.prev, state.op, state.current);
+                    displayExpr.textContent =
+                        formatNumber(state.prev) + ' ' + state.op +
+                        ' ' + formatNumber(state.current) + ' =';
+                    state.current = res;
+                    state.prev = null;
+                    state.op = null;
+                    state.justEvaled = true;
+                    state.newOperand = false;
+                }
+                break;
+        }
+        render();
+    }
+
+    document.querySelectorAll('.btn-calc').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            handleAction(this.dataset.action, this.dataset.digit || this.dataset.op || '');
+        });
+    });
+
+    // Bàn phím vật lý
+    const keyMap = {
+        '0':'digit:0','1':'digit:1','2':'digit:2','3':'digit:3','4':'digit:4',
+        '5':'digit:5','6':'digit:6','7':'digit:7','8':'digit:8','9':'digit:9',
+        '.':'dot', ',':'dot',
+        '+':'op:+', '-':'op:−', '*':'op:×', '/':'op:÷',
+        'Enter':'equals', '=':'equals',
+        'Backspace':'clear', 'Escape':'clear',
+        '%':'percent',
+    };
+    document.addEventListener('keydown', function (e) {
+        const mapped = keyMap[e.key];
+        if (!mapped) return;
+        e.preventDefault();
+        if (mapped.startsWith('digit:'))   handleAction('digit', mapped.split(':')[1]);
+        else if (mapped.startsWith('op:')) handleAction('op', mapped.split(':')[1]);
+        else                               handleAction(mapped, '');
+    });
+})();
+</script>
+{% endblock %}

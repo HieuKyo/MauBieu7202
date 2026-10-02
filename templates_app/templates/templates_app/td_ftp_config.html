@@ -1,0 +1,289 @@
+{% extends "templates_app/base.html" %}
+{% block title %}Cấu hình FTP & NIM{% endblock %}
+
+{% block extra_head %}
+<style>
+.cach-tinh-hint { font-size:.78rem; color:#666; margin-top:4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0"><i class="bi bi-gear me-2 text-secondary"></i>Cấu hình FTP & NIM theo gói ưu đãi</h4>
+      <small class="text-muted">FTP (Fund Transfer Price) là lãi suất vốn nội bộ dùng để tính NIM cho từng khoản vay</small>
+    </div>
+    <div>
+      <button class="btn btn-primary btn-sm" onclick="openForm()">
+        <i class="bi bi-plus-circle me-1"></i>Thêm gói mới
+      </button>
+      <a href="{% url 'td_dashboard' %}" class="btn btn-outline-secondary btn-sm ms-2">
+        <i class="bi bi-arrow-left me-1"></i>Về Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Alert -->
+  <div id="alertBox" style="display:none;" class="alert mb-3"></div>
+
+  <!-- Bảng danh sách -->
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover mb-0" style="font-size:.85rem;">
+          <thead class="table-dark">
+            <tr>
+              <th>Mã gói</th>
+              <th>Tên gói</th>
+              <th class="text-end">FTP (%)</th>
+              <th class="text-end">Biên độ (%)</th>
+              <th>Cách tính NIM</th>
+              <th class="text-end">NIM cố định (%)</th>
+              <th>Loại KH</th>
+              <th class="text-center">Mặc định</th>
+              <th class="text-center">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="configTableBody">
+            {% for cfg in configs %}
+            <tr id="row-{{ cfg.pk }}"
+                data-ma="{{ cfg.ma_goi }}"
+                data-ten="{{ cfg.ten_goi }}"
+                data-ftp="{{ cfg.ftp_pct }}"
+                data-bd="{{ cfg.bien_do_pct }}"
+                data-ct="{{ cfg.cach_tinh }}"
+                data-nim="{{ cfg.nim_co_dinh_pct }}"
+                data-lkh="{{ cfg.loai_kh }}"
+                data-def="{{ cfg.is_default|yesno:'1,0' }}">
+              <td class="fw-semibold">{{ cfg.ma_goi }}</td>
+              <td>{{ cfg.ten_goi }}</td>
+              <td class="text-end">{{ cfg.ftp_pct }}</td>
+              <td class="text-end">{{ cfg.bien_do_pct }}</td>
+              <td>{{ cfg.get_cach_tinh_display }}</td>
+              <td class="text-end">{{ cfg.nim_co_dinh_pct }}</td>
+              <td>{{ cfg.loai_kh }}</td>
+              <td class="text-center">
+                {% if cfg.is_default %}<span class="badge bg-success">Mặc định</span>{% endif %}
+              </td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="editRow({{ cfg.pk }})" title="Sửa">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                {% if not cfg.is_default %}
+                <button class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" onclick="deleteRow({{ cfg.pk }}, '{{ cfg.ma_goi }}')" title="Xóa">
+                  <i class="bi bi-trash"></i>
+                </button>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center text-muted py-4">Chưa có cấu hình nào</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Giải thích công thức -->
+  <div class="card mt-4 border-0 bg-light">
+    <div class="card-body">
+      <div class="fw-semibold mb-2"><i class="bi bi-calculator me-2 text-info"></i>Giải thích công thức tính NIM</div>
+      <div class="row g-3" style="font-size:.85rem;">
+        <div class="col-12 col-md-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="fw-semibold text-primary mb-1">NIM = Lãi suất - FTP + Biên độ</div>
+            <div class="text-muted">Áp dụng khi gói ưu đãi có biên độ dương (khoản vay ưu đãi tốt hơn)</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="fw-semibold text-warning mb-1">NIM = Lãi suất - FTP - Biên độ</div>
+            <div class="text-muted">Áp dụng khi gói ưu đãi có biên độ âm (khách hàng được giảm lãi)</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="fw-semibold text-secondary mb-1">NIM = Lãi suất - FTP</div>
+            <div class="text-muted">Tính thuần không có biên độ điều chỉnh</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="fw-semibold text-success mb-1">NIM cố định</div>
+            <div class="text-muted">NIM đã được thỏa thuận trước, không phụ thuộc lãi suất</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════ Modal Form ══════ -->
+<div class="modal fade" id="formModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="formModalTitle">Thêm gói FTP mới</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="ftpForm">
+          <input type="hidden" id="fPk" name="pk">
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Mã gói ưu đãi <span class="text-danger">*</span></label>
+              <input type="text" id="fMaGoi" name="ma_goi" class="form-control" placeholder="VD: GOI_UU_DAI_001">
+              <div class="form-text">Khớp với cột udpcd1 trong file MSIT80</div>
+            </div>
+            <div class="col-12 col-md-8">
+              <label class="form-label fw-semibold">Tên gói <span class="text-danger">*</span></label>
+              <input type="text" id="fTenGoi" name="ten_goi" class="form-control" placeholder="VD: Gói vay ưu đãi mua nhà 2025">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">FTP bán (%/năm)</label>
+              <input type="number" id="fFtp" name="ftp_pct" class="form-control" value="5.0" step="0.01" min="0" max="30">
+              <div class="form-text">Lãi suất vốn nội bộ AGRIBANK áp dụng</div>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Biên độ ưu đãi (%)</label>
+              <input type="number" id="fBienDo" name="bien_do_pct" class="form-control" value="0.0" step="0.01">
+              <div class="form-text">Biên độ điều chỉnh (âm hoặc dương)</div>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">NIM cố định (%) <small class="text-muted">(nếu cách tính = cố định)</small></label>
+              <input type="number" id="fNimCoDinh" name="nim_co_dinh_pct" class="form-control" value="0.0" step="0.01">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Cách tính NIM</label>
+              <select id="fCachTinh" name="cach_tinh" class="form-select" onchange="updateHint()">
+                <option value="SPRD-FTP+DIEU_CHINH">NIM = Lãi suất - FTP + Biên độ</option>
+                <option value="SPRD-FTP-DIEU_CHINH">NIM = Lãi suất - FTP - Biên độ</option>
+                <option value="SPRD-FTP">NIM = Lãi suất - FTP (không biên độ)</option>
+                <option value="NIM_CO_DINH">NIM cố định</option>
+              </select>
+              <div class="cach-tinh-hint" id="cachTinhHint"></div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Loại khách hàng áp dụng</label>
+              <select id="fLoaiKH" name="loai_kh" class="form-select">
+                <option value="Tất cả">Tất cả</option>
+                <option value="Cá nhân">Cá nhân</option>
+                <option value="Tổ chức">Tổ chức</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fIsDefault" name="is_default">
+                <label class="form-check-label" for="fIsDefault">
+                  Đặt làm <strong>cấu hình mặc định</strong> (áp dụng khi khoản vay không có mã gói ưu đãi)
+                </label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button class="btn btn-primary" onclick="submitForm()">
+          <i class="bi bi-save me-1"></i>Lưu cấu hình
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const modal = new bootstrap.Modal(document.getElementById('formModal'));
+
+const hints = {
+  'SPRD-FTP+DIEU_CHINH': 'NIM = Lãi suất vay (sprd) - FTP + Biên độ ưu đãi',
+  'SPRD-FTP-DIEU_CHINH': 'NIM = Lãi suất vay (sprd) - FTP - Biên độ ưu đãi',
+  'SPRD-FTP':            'NIM = Lãi suất vay (sprd) - FTP (bỏ qua biên độ)',
+  'NIM_CO_DINH':         'Sử dụng giá trị NIM cố định đã nhập ở trên',
+};
+
+function updateHint() {
+  const v = document.getElementById('fCachTinh').value;
+  document.getElementById('cachTinhHint').textContent = hints[v] || '';
+}
+
+function openForm() {
+  document.getElementById('formModalTitle').textContent = 'Thêm gói FTP mới';
+  document.getElementById('ftpForm').reset();
+  document.getElementById('fPk').value = '';
+  document.getElementById('fFtp').value = '5.0';
+  document.getElementById('fBienDo').value = '0.0';
+  document.getElementById('fNimCoDinh').value = '0.0';
+  updateHint();
+  modal.show();
+}
+
+function editRow(pk) {
+  const row = document.getElementById('row-' + pk);
+  document.getElementById('formModalTitle').textContent = 'Sửa cấu hình FTP';
+  document.getElementById('fPk').value = pk;
+  document.getElementById('fMaGoi').value = row.dataset.ma;
+  document.getElementById('fTenGoi').value = row.dataset.ten;
+  document.getElementById('fFtp').value = row.dataset.ftp;
+  document.getElementById('fBienDo').value = row.dataset.bd;
+  document.getElementById('fCachTinh').value = row.dataset.ct;
+  document.getElementById('fNimCoDinh').value = row.dataset.nim;
+  document.getElementById('fLoaiKH').value = row.dataset.lkh;
+  document.getElementById('fIsDefault').checked = row.dataset.def === '1';
+  updateHint();
+  modal.show();
+}
+
+function submitForm() {
+  const form = document.getElementById('ftpForm');
+  const data = new FormData(form);
+
+  fetch('{% url "td_ftp_config" %}', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF },
+    body: data,
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.error) {
+      showAlert(res.error, 'danger');
+      return;
+    }
+    modal.hide();
+    showAlert(res.message, 'success');
+    setTimeout(() => location.reload(), 900);
+  })
+  .catch(() => showAlert('Lỗi kết nối máy chủ', 'danger'));
+}
+
+function deleteRow(pk, name) {
+  if (!confirm(`Xóa gói "${name}"? Thao tác không thể hoàn tác.`)) return;
+  fetch(`/tin-dung/ftp-config/${pk}/delete/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF },
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.error) { showAlert(res.error, 'danger'); return; }
+    document.getElementById('row-' + pk)?.remove();
+    showAlert('Đã xóa gói cấu hình', 'success');
+  })
+  .catch(() => showAlert('Lỗi kết nối', 'danger'));
+}
+
+function showAlert(msg, type) {
+  const box = document.getElementById('alertBox');
+  box.className = `alert alert-${type}`;
+  box.textContent = msg;
+  box.style.display = 'block';
+  setTimeout(() => { box.style.display = 'none'; }, 4000);
+}
+
+updateHint();
+</script>
+{% endblock %}

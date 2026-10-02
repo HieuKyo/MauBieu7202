@@ -1,0 +1,380 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Hộp thư - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .msg-item {
+        cursor: pointer;
+        border-left: 4px solid transparent;
+        transition: background 0.15s;
+    }
+    .msg-item:hover { background: #f0f7f3; }
+    .msg-item.unread {
+        border-left-color: #007934;
+        background: #f0f7f3;
+        font-weight: 600;
+    }
+    .msg-preview {
+        color: #666; font-size: .85rem;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .msg-time { font-size: .78rem; color: #999; white-space: nowrap; }
+    .avatar {
+        width: 38px; height: 38px; border-radius: 50%;
+        background: #007934; color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1rem; flex-shrink: 0;
+    }
+    #detailPanel { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-3" style="max-width:1400px;">
+
+    <div class="row mb-3 align-items-center">
+        <div class="col">
+            <h2 class="text-agribank mb-0">
+                <i class="bi bi-envelope-fill"></i> Hộp thư nội bộ
+                {% if unread_count %}
+                <span class="badge bg-danger ms-1">{{ unread_count }}</span>
+                {% endif %}
+            </h2>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-agribank" data-bs-toggle="modal" data-bs-target="#composeModal">
+                <i class="bi bi-pencil-square"></i> Soạn tin nhắn
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- ── DANH SÁCH TIN ── -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header p-0">
+                    <ul class="nav nav-tabs card-header-tabs">
+                        <li class="nav-item">
+                            <button class="nav-link active px-4" data-tab="inbox">
+                                <i class="bi bi-inbox"></i> Nhận
+                                {% if unread_count %}<span class="badge bg-danger ms-1">{{ unread_count }}</span>{% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link px-4" data-tab="sent">
+                                <i class="bi bi-send"></i> Đã gửi
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-0">
+
+                    <!-- Tab Nhận -->
+                    <div id="tab-inbox">
+                        {% if inbox_items %}
+                            {% for item in inbox_items %}
+                            <div class="msg-item p-3 d-flex gap-3 border-bottom {% if not item.is_read %}unread{% endif %}"
+                                 data-id="{{ item.msg.id }}"
+                                 data-from="{{ item.msg.sender.get_full_name|default:item.msg.sender.username|escapejs }}"
+                                 data-subject="{{ item.msg.subject|escapejs }}"
+                                 data-content="{{ item.msg.content|escapejs }}"
+                                 data-time="{{ item.msg.created_at|date:'d/m/Y H:i' }}"
+                                 data-read="{% if item.is_read %}1{% else %}0{% endif %}">
+                                <div class="avatar">{{ item.msg.sender.username|first|upper }}</div>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-semibold">{{ item.msg.sender.get_full_name|default:item.msg.sender.username }}</span>
+                                        <span class="msg-time">{{ item.msg.created_at|date:"d/m H:i" }}</span>
+                                    </div>
+                                    {% if item.msg.subject %}
+                                    <div class="small {% if not item.is_read %}text-dark fw-bold{% else %}text-muted{% endif %}">{{ item.msg.subject }}</div>
+                                    {% endif %}
+                                    <div class="msg-preview">{{ item.msg.content }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-inbox" style="font-size:3rem;"></i>
+                                <p class="mt-2">Hộp thư trống</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tab Đã gửi -->
+                    <div id="tab-sent" class="d-none">
+                        {% if sent %}
+                            {% for msg in sent %}
+                            <div class="msg-item p-3 d-flex gap-3 border-bottom"
+                                 data-id="{{ msg.id }}"
+                                 data-from="Bạn → {{ msg.display_recipient|escapejs }}"
+                                 data-subject="{{ msg.subject|escapejs }}"
+                                 data-content="{{ msg.content|escapejs }}"
+                                 data-time="{{ msg.created_at|date:'d/m/Y H:i' }}"
+                                 data-read="1">
+                                <div class="avatar" style="background:#6c757d;">{{ request.user.username|first|upper }}</div>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-semibold">→ {{ msg.display_recipient }}</span>
+                                        <span class="msg-time">{{ msg.created_at|date:"d/m H:i" }}</span>
+                                    </div>
+                                    {% if msg.subject %}<div class="small text-muted">{{ msg.subject }}</div>{% endif %}
+                                    <div class="msg-preview">{{ msg.content }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-send" style="font-size:3rem;"></i>
+                                <p class="mt-2">Chưa gửi tin nhắn nào</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ── CHI TIẾT TIN NHẮN ── -->
+        <div class="col-lg-7" id="detailPanel">
+            <div class="card shadow-sm" style="min-height:400px;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0" id="detailFrom"></h6>
+                        <small class="text-muted" id="detailTime"></small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" id="closeDetailBtn">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="card-body overflow-auto" style="max-height:60vh;">
+                    <h5 id="detailSubject" class="text-agribank mb-3"></h5>
+                    <div id="detailContent" style="white-space: pre-wrap; line-height: 1.9; font-size:1rem;"></div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-agribank btn-sm" id="replyBtn">
+                        <i class="bi bi-reply"></i> Trả lời
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Placeholder khi chưa chọn -->
+        <div class="col-lg-7 d-flex align-items-center justify-content-center text-muted" id="emptyDetail" style="min-height:300px;">
+            <div class="text-center">
+                <i class="bi bi-envelope-open" style="font-size:4rem; opacity:.3;"></i>
+                <p class="mt-2">Chọn tin nhắn để xem nội dung</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── MODAL SOẠN TIN NHẮN ── -->
+<div class="modal fade" id="composeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Soạn tin nhắn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="recipientType" id="rtUser" value="user" checked>
+                        <label class="btn btn-outline-success" for="rtUser">
+                            <i class="bi bi-person"></i> Gửi cho người dùng
+                        </label>
+                        <input type="radio" class="btn-check" name="recipientType" id="rtGroup" value="group">
+                        <label class="btn btn-outline-success" for="rtGroup">
+                            <i class="bi bi-people"></i> Thông báo nhóm/phòng ban
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-3" id="userSelect">
+                    <label class="form-label">Người nhận</label>
+                    <select class="form-select" id="recipientId">
+                        <option value="">-- Chọn người dùng --</option>
+                        {% for u in users %}
+                        <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }} (@{{ u.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3 d-none" id="groupSelect">
+                    <label class="form-label">Nhóm / Phòng ban</label>
+                    <select class="form-select" id="groupId">
+                        <option value="">-- Chọn nhóm --</option>
+                        {% for g in groups %}
+                        <option value="{{ g.pk }}">{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Tất cả thành viên của nhóm sẽ nhận được thông báo.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tiêu đề <small class="text-muted">(tùy chọn)</small></label>
+                    <input type="text" class="form-control" id="msgSubject" placeholder="Tiêu đề tin nhắn...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nội dung <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="msgContent" rows="7" placeholder="Nhập nội dung..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-agribank" id="sendBtn">
+                    <i class="bi bi-send"></i> Gửi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alert nhỏ -->
+<div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div id="alertIcon" style="font-size:2.5rem;" class="mb-2"></div>
+                <p id="alertMsg" class="mb-0"></p>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pt-0">
+                <button class="btn btn-agribank btn-sm" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SEND_URL = "{% url 'messaging:send' %}";
+const CSRF     = "{{ csrf_token }}";
+
+// ── Tab switching ──
+document.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.addEventListener('click', function () {
+        document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById('tab-inbox').classList.toggle('d-none', this.dataset.tab !== 'inbox');
+        document.getElementById('tab-sent').classList.toggle('d-none', this.dataset.tab !== 'sent');
+    });
+});
+
+// ── Recipient type toggle ──
+document.querySelectorAll('[name="recipientType"]').forEach(r => {
+    r.addEventListener('change', function () {
+        document.getElementById('userSelect').classList.toggle('d-none', this.value !== 'user');
+        document.getElementById('groupSelect').classList.toggle('d-none', this.value !== 'group');
+    });
+});
+
+// ── Click on message item (delegated, reads data-* attributes) ──
+document.addEventListener('click', function (e) {
+    const item = e.target.closest('.msg-item');
+    if (!item) return;
+
+    const id      = item.dataset.id;
+    const from    = item.dataset.from    || '';
+    const subject = item.dataset.subject || '';
+    const content = item.dataset.content || '';
+    const time    = item.dataset.time    || '';
+    const isRead  = item.dataset.read === '1';
+
+    // Điền vào panel chi tiết
+    document.getElementById('detailFrom').textContent    = from;
+    document.getElementById('detailTime').textContent    = time;
+    document.getElementById('detailSubject').textContent = subject || '(Không có tiêu đề)';
+    document.getElementById('detailContent').textContent = content;
+
+    // Hiện panel, ẩn placeholder
+    document.getElementById('detailPanel').style.display = 'block';
+    document.getElementById('emptyDetail').style.display = 'none';
+
+    // Mark read nếu chưa đọc
+    if (!isRead) {
+        fetch('/messaging/' + id + '/read/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF }
+        }).then(() => {
+            item.classList.remove('unread');
+            item.dataset.read = '1';
+            updateLocalBadge(-1);
+        });
+    }
+});
+
+// ── Đóng panel chi tiết ──
+document.getElementById('closeDetailBtn').addEventListener('click', function () {
+    document.getElementById('detailPanel').style.display = 'none';
+    document.getElementById('emptyDetail').style.display = '';
+});
+
+// ── Trả lời ──
+document.getElementById('replyBtn').addEventListener('click', function () {
+    const subject = document.getElementById('detailSubject').textContent;
+    document.getElementById('rtUser').checked = true;
+    document.getElementById('userSelect').classList.remove('d-none');
+    document.getElementById('groupSelect').classList.add('d-none');
+    document.getElementById('msgSubject').value = subject ? 'Re: ' + subject : '';
+    new bootstrap.Modal(document.getElementById('composeModal')).show();
+});
+
+// ── Gửi tin nhắn ──
+document.getElementById('sendBtn').addEventListener('click', function () {
+    const type    = document.querySelector('[name="recipientType"]:checked').value;
+    const content = document.getElementById('msgContent').value.trim();
+    const subject = document.getElementById('msgSubject').value.trim();
+
+    if (!content) { showAlert('error', 'Vui lòng nhập nội dung.'); return; }
+
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('recipient_type', type);
+    fd.append('content', content);
+    fd.append('subject', subject);
+
+    if (type === 'user') {
+        const rid = document.getElementById('recipientId').value;
+        if (!rid) { showAlert('error', 'Vui lòng chọn người nhận.'); return; }
+        fd.append('recipient_id', rid);
+    } else {
+        const gid = document.getElementById('groupId').value;
+        if (!gid) { showAlert('error', 'Vui lòng chọn nhóm.'); return; }
+        fd.append('group_id', gid);
+    }
+
+    this.disabled = true;
+    fetch(SEND_URL, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('composeModal')).hide();
+                document.getElementById('msgContent').value = '';
+                document.getElementById('msgSubject').value = '';
+                showAlert('success', 'Đã gửi tin nhắn thành công!');
+            } else {
+                showAlert('error', data.error || 'Gửi thất bại.');
+            }
+        })
+        .catch(() => showAlert('error', 'Lỗi kết nối.'))
+        .finally(() => { this.disabled = false; });
+});
+
+function showAlert(type, msg) {
+    const icons = { success: '✅', error: '❌' };
+    document.getElementById('alertIcon').textContent = icons[type] || 'ℹ️';
+    document.getElementById('alertMsg').textContent  = msg;
+    new bootstrap.Modal(document.getElementById('alertModal')).show();
+}
+
+function updateLocalBadge(delta) {
+    const b = document.getElementById('msgNavBadge');
+    if (!b) return;
+    const next = Math.max(0, (parseInt(b.textContent) || 0) + delta);
+    b.textContent = next;
+    b.style.display = next === 0 ? 'none' : 'inline-block';
+}
+</script>
+{% endblock %}

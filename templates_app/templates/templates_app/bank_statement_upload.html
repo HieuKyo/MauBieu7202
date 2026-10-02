@@ -94,6 +94,23 @@
                                 <strong>File đã chọn:</strong> <span id="fileName"></span>
                             </div>
                         </div>
+                        <!-- File ITL tùy chọn -->
+                        <div class="mt-4 p-3 border rounded bg-light">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-file-earmark-plus"></i>
+                                File ITL <span class="text-muted fw-normal">(tùy chọn — FXIR64: Lấy số liệu ITL)</span>
+                            </label>
+                            <div class="text-muted small mb-2">
+                                Nếu có file này, hệ thống sẽ tự động điền <strong>tên người chuyển</strong>
+                                cho các giao dịch chuyển khoản nội bộ khác chi nhánh (ITL).
+                            </div>
+                            <input type="file"
+                                   class="form-control"
+                                   id="itl_file"
+                                   name="itl_file"
+                                   accept=".xls,.xlsx,.txt,.csv">
+                        </div>
+
                         <div class="text-center mt-3">
                             <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
                                 <i class="bi bi-gear-fill"></i> Phân tích File
