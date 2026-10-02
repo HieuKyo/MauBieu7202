@@ -803,7 +803,7 @@
             <div class="modal-body">
                 <div class="input-group input-group-sm mb-2">
                     <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
-                    <select class="form-select" id="cccdPhotoCameraSelect" onchange="startCccdPhotoCamera(this.value)"></select>
+                    <select class="form-select" id="cccdPhotoCameraSelect" onchange="startCccdPhotoCamera(this.value, true)"></select>
                 </div>
                 <!-- Video hiển thị đúng tỉ lệ gốc (height:auto) để khung hướng dẫn khớp vùng cắt ảnh -->
                 <div class="position-relative bg-dark rounded overflow-hidden">
@@ -878,7 +878,7 @@
             <div class="modal-body">
                 <div class="input-group input-group-sm mb-2">
                     <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
-                    <select class="form-select" id="cccdQrCameraSelect" onchange="startCccdQrScan(this.value)"></select>
+                    <select class="form-select" id="cccdQrCameraSelect" onchange="startCccdQrScan(this.value, true)"></select>
                 </div>
                 <div class="position-relative bg-dark rounded overflow-hidden text-center">
                     <video id="cccdQrVideo" playsinline muted style="width:100%; min-height:200px; max-height:420px; object-fit:contain;"></video>
@@ -1512,16 +1512,24 @@ function cccdBrowser() {
     return /Firefox\//.test(ua) ? 'firefox' : /Edg\//.test(ua) ? 'edge' : 'chrome';
 }
 
-const CAMERA_WAIT_HTML = '<i class="bi bi-hourglass-split"></i> Đang mở camera... Nếu trình duyệt hỏi quyền dùng camera, bấm <strong>Cho phép (Allow)</strong>.';
+function cameraWaitHtml() {
+    return '<i class="bi bi-hourglass-split"></i> Đang mở camera... Nếu trình duyệt hỏi quyền dùng camera, '
+        + (cccdBrowser() === 'firefox' ? 'chọn đúng webcam (vd. FaceX1000, <u>không</u> chọn CyberLink Webcam Splitter) ở ô danh sách trong khung hỏi rồi bấm <strong>Allow</strong>.' : 'bấm <strong>Cho phép (Allow)</strong>.');
+}
 
 // Hướng dẫn xử lý lỗi camera cho GDV, theo từng trình duyệt (Chrome / Edge / Firefox)
 // kind: insecure (mở bằng http://IP) | denied (bị từ chối quyền) | notfound (không có camera) | busy (camera đang bận)
-function renderCameraHelp(containerId, kind, retryJs) {
+function renderCameraHelp(containerId, kind, retryJs, detail) {
     const browser = cccdBrowser();
     const name = { chrome: 'Chrome', edge: 'Edge', firefox: 'Firefox' }[browser];
     const copyBtn = (text, label) =>
         `<button type="button" class="btn btn-sm btn-primary" onclick="copyCccdQrText('${text}', this)"><i class="bi bi-clipboard"></i> ${label}</button>`;
     const keys = (...k) => k.map(x => `<kbd>${x}</kbd>`).join('+');
+    const pickReal = 'Ở ô <strong>Camera</strong> phía trên, chọn <strong>webcam thật</strong> (vd. FaceX1000). <u>Không</u> chọn <strong>CyberLink Webcam Splitter</strong> hoặc dòng có chữ "(camera ảo)"';
+    const cyberlink = 'Máy có cài <strong>CyberLink YouCam</strong> (sinh ra "CyberLink Webcam Splitter"): tắt YouCam ở khay đồng hồ, hoặc gỡ trong <strong>Settings → Apps → CyberLink YouCam → Uninstall</strong>, rồi khởi động lại máy';
+    const useEdge = browser === 'firefox'
+        ? `Firefox trên một số máy không nhận được webcam → mở trang này bằng <strong>Microsoft Edge</strong>: bấm ${copyBtn(location.href, 'Sao chép địa chỉ')} → mở Edge → ${keys('Ctrl', 'V')} → ${keys('Enter')}`
+        : null;
     const winPrivacy = `Vẫn không được: mở <strong>Settings (Cài đặt) của Windows → Privacy &amp; security → Camera</strong> → bật
         <strong>Camera access</strong> và <strong>Let desktop apps access your camera</strong>`;
     let title, steps;
@@ -1555,17 +1563,20 @@ function renderCameraHelp(containerId, kind, retryJs) {
     } else if (kind === 'notfound') {
         title = 'Không tìm thấy webcam nào trên máy này:';
         steps = [
-            'Kiểm tra dây USB của webcam đã cắm chặt',
-            'Rút webcam ra, đợi 5 giây, cắm vào <strong>cổng USB khác</strong> (ưu tiên cổng phía sau thùng máy)',
-            'Bấm nút <strong>Thử lại</strong> bên dưới. Nếu có nhiều camera, chọn đúng webcam ở ô <strong>Camera</strong> phía trên',
+            pickReal,
+            'Kiểm tra dây USB của webcam đã cắm chặt. Rút webcam ra, đợi 5 giây, cắm vào <strong>cổng USB khác</strong> (ưu tiên cổng phía sau thùng máy) → bấm <strong>Thử lại</strong>',
+            cyberlink,
+            useEdge,
             winPrivacy,
         ];
     } else {
         title = 'Không mở được camera — thường do camera đang bị chương trình khác sử dụng:';
         steps = [
+            pickReal,
             'Tắt các chương trình đang gọi video: <strong>Zalo, Teams, Zoom, Skype</strong>…',
-            `Đóng các tab/cửa sổ ${name} khác đang mở camera (kể cả cửa sổ Quét QR / Chụp 2 mặt ở tab khác)`,
-            'Bấm nút <strong>Thử lại</strong> bên dưới. Vẫn lỗi: rút webcam ra cắm lại',
+            `Đóng các tab/cửa sổ trình duyệt khác đang mở camera (kể cả cửa sổ Quét QR / Chụp 2 mặt ở tab khác) → bấm <strong>Thử lại</strong>. Vẫn lỗi: rút webcam ra cắm lại`,
+            cyberlink,
+            useEdge,
             winPrivacy,
         ];
     }
@@ -1573,8 +1584,9 @@ function renderCameraHelp(containerId, kind, retryJs) {
     document.getElementById(containerId).innerHTML = `
         <div class="alert alert-warning mt-2 mb-0" style="font-size:16px;">
             <div class="fw-bold mb-2"><i class="bi bi-camera-video-off"></i> ${title}</div>
-            <ol class="mb-2 ps-3">${steps.map(x => `<li class="mb-2">${x}</li>`).join('')}</ol>
+            <ol class="mb-2 ps-3">${steps.filter(Boolean).map(x => `<li class="mb-2">${x}</li>`).join('')}</ol>
             ${kind === 'insecure' ? '' : `<button type="button" class="btn btn-warning" onclick="${retryJs}"><i class="bi bi-arrow-clockwise"></i> Thử lại</button>`}
+            ${detail ? `<div class="small text-muted mt-2">Thông tin kỹ thuật (chụp màn hình gửi IT nếu vẫn lỗi): <code>${detail.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)}</code></div>` : ''}
         </div>`;
 }
 
@@ -1604,42 +1616,103 @@ function stopCccdQrScan() {
     }
 }
 
-// Mở camera vào thẻ <video> và nạp danh sách camera vào <select>.
-// Nhớ camera đã chọn (dùng chung cho Quét QR và Chụp 2 mặt). Lỗi → ném Error('insecure'|'denied'|'notfound'|'busy').
-async function openCameraInto(videoId, selectId, deviceId, width, height) {
+// Camera ảo (CyberLink YouCam "Webcam Splitter", OBS, ManyCam...) hay chiếm camera thật hoặc cho hình kém → tự tránh
+const VIRTUAL_CAMERA_RE = /splitter|virtual|youcam|cyberlink|manycam|\bobs\b|xsplit|snap camera/i;
+
+async function listCameras() {
+    try {
+        return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    } catch (e) {
+        return [];
+    }
+}
+
+function fillCameraSelect(selectId, cameras, activeId) {
+    const select = document.getElementById(selectId);
+    select.innerHTML = '';
+    cameras.forEach((cam, i) => {
+        const label = (cam.label || `Camera ${i + 1}`) + (VIRTUAL_CAMERA_RE.test(cam.label) ? ' (camera ảo)' : '');
+        const opt = new Option(label, cam.deviceId);
+        opt.selected = cam.deviceId === activeId;
+        select.appendChild(opt);
+    });
+}
+
+// Mở camera vào thẻ <video> và nạp danh sách camera vào <select> (dùng chung cho Quét QR và Chụp 2 mặt).
+// manual = GĐV tự chọn ở ô Camera → dùng đúng camera đó, không tự đổi.
+// autoPick = lần thử do hệ thống tự chọn camera → không thử tiếp / không tự đổi nữa (tránh vòng lặp).
+// Lỗi → ném Error('insecure'|'denied'|'notfound'|'busy'), kèm error.detail (tên lỗi + danh sách camera) để gửi IT.
+async function openCameraInto(videoId, selectId, deviceId, width, height, manual = false, autoPick = false) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('insecure');
+    const isDenied = e => e.name === 'NotAllowedError' || e.name === 'SecurityError';
+    const byId = deviceId ? { deviceId: { exact: deviceId } } : {};
     let stream;
     try {
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: Object.assign(
-                { width: { ideal: width }, height: { ideal: height } },
-                deviceId ? { deviceId: { exact: deviceId } } : {}
-            )
-        });
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: Object.assign({ width: { ideal: width }, height: { ideal: height } }, byId)
+            });
+        } catch (error) {
+            if (isDenied(error)) throw error;
+            // Một số webcam/driver (hay gặp trên Firefox) lỗi khi yêu cầu độ phân giải → thử lại không ràng buộc
+            stream = await navigator.mediaDevices.getUserMedia({ video: deviceId ? byId : true });
+        }
     } catch (error) {
-        // Camera đã lưu không còn cắm → dùng camera mặc định
-        if (deviceId && error.name === 'OverconstrainedError') return openCameraInto(videoId, selectId, null, width, height);
-        throw new Error(error.name === 'NotAllowedError' || error.name === 'SecurityError' ? 'denied'
-                      : error.name === 'NotFoundError' ? 'notfound'
-                      : 'busy');
+        if (!isDenied(error) && !manual && !autoPick) {
+            // Camera đã nhớ không mở được (đã rút ra / đổi ID / đang bận) → thử camera mặc định
+            if (deviceId) return openCameraInto(videoId, selectId, null, width, height);
+            // Camera mặc định không mở được (vd. camera ảo lỗi trên Firefox) → thử lần lượt các camera khác, camera thật trước
+            const others = (await listCameras()).filter(c => c.deviceId)
+                .sort((a, b) => VIRTUAL_CAMERA_RE.test(a.label) - VIRTUAL_CAMERA_RE.test(b.label));
+            for (const cam of others) {
+                try {
+                    return await openCameraInto(videoId, selectId, cam.deviceId, width, height, false, true);
+                } catch (e) {}
+            }
+        }
+        // Vẫn hiện danh sách camera để GĐV chọn camera khác (vd. camera thật thay vì camera ảo)
+        const cameras = await listCameras();
+        if (cameras.some(c => c.deviceId)) fillCameraSelect(selectId, cameras, deviceId);
+        const err = new Error(isDenied(error) ? 'denied' : error.name === 'NotFoundError' ? 'notfound' : 'busy');
+        err.detail = `${error.name}: ${error.message} | Camera trên máy: ${cameras.map(c => c.label || '(chưa có tên)').join(', ') || 'không có'}`;
+        throw err;
     }
 
-    const activeId = stream.getVideoTracks()[0].getSettings().deviceId;
-    try { localStorage.setItem('cccdQrCameraId', activeId); } catch (e) {}
+    const track = stream.getVideoTracks()[0];
+    const activeId = track.getSettings().deviceId;
+    const cameras = await listCameras();
+    const activeIsVirtual = VIRTUAL_CAMERA_RE.test((cameras.find(c => c.deviceId === activeId) || {}).label || '');
+
+    // Đang dùng camera ảo mà máy có camera thật → tự chuyển sang camera thật (không được thì quay lại camera ảo)
+    if (activeIsVirtual && !manual && !autoPick) {
+        const real = cameras.find(c => c.deviceId && !VIRTUAL_CAMERA_RE.test(c.label));
+        if (real) {
+            stream.getTracks().forEach(t => t.stop());
+            try {
+                return await openCameraInto(videoId, selectId, real.deviceId, width, height, false, true);
+            } catch (e) {
+                return openCameraInto(videoId, selectId, activeId, width, height, false, true);
+            }
+        }
+    }
+
+    // Chỉ nhớ camera thật hoặc camera GĐV tự chọn (không nhớ nhầm camera ảo)
+    if (manual || !activeIsVirtual) {
+        try { localStorage.setItem('cccdQrCameraId', activeId); } catch (e) {}
+    }
+
+    // Bật tự động lấy nét liên tục nếu webcam hỗ trợ (Chrome/Edge)
+    try {
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        }
+    } catch (e) {}
 
     const video = document.getElementById(videoId);
     video.srcObject = stream;
     await video.play();
-
-    // Danh sách camera (chỉ có tên sau khi đã cấp quyền)
-    const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
-    const select = document.getElementById(selectId);
-    select.innerHTML = '';
-    cameras.forEach((cam, i) => {
-        const opt = new Option(cam.label || `Camera ${i + 1}`, cam.deviceId);
-        opt.selected = cam.deviceId === activeId;
-        select.appendChild(opt);
-    });
+    fillCameraSelect(selectId, cameras, activeId);
     return stream;
 }
 
@@ -1647,16 +1720,16 @@ function savedCameraId() {
     try { return localStorage.getItem('cccdQrCameraId'); } catch (e) { return null; }
 }
 
-async function startCccdQrScan(deviceId) {
+async function startCccdQrScan(deviceId, manual = false) {
     stopCccdQrScan();
     document.getElementById('cccdQrHelp').innerHTML = '';
-    setCccdQrStatus(CAMERA_WAIT_HTML);
+    setCccdQrStatus(cameraWaitHtml());
     let stream;
     try {
-        stream = await openCameraInto('cccdQrVideo', 'cccdQrCameraSelect', deviceId, 1280, 720);
+        stream = await openCameraInto('cccdQrVideo', 'cccdQrCameraSelect', deviceId, 1280, 720, manual);
     } catch (error) {
         setCccdQrStatus('<i class="bi bi-x-circle"></i> Chưa dùng được camera — làm theo hướng dẫn bên dưới, hoặc dùng ô dán chuỗi QR.', 'text-danger');
-        renderCameraHelp('cccdQrHelp', error.message, 'startCccdQrScan(savedCameraId())');
+        renderCameraHelp('cccdQrHelp', error.message, 'startCccdQrScan(savedCameraId())', error.detail);
         return;
     }
 
@@ -1700,7 +1773,7 @@ document.getElementById('cccdQrModal').addEventListener('hidden.bs.modal', () =>
 // ============================================
 
 const CCCD_RATIO = 85.6 / 54;
-const CCCD_OUT_W = 1012, CCCD_OUT_H = 638;   // ~300 dpi ở cỡ thẻ thật
+const CCCD_OUT_W = 1518, CCCD_OUT_H = 957;   // ~450 dpi ở cỡ thẻ thật (giữ đủ chi tiết từ webcam Full HD)
 let cccdPhotoStream = null;
 let cccdPhotoModalOpen = false;
 let cccdPhotoCrop = null;                     // vùng cắt theo pixel gốc của video
@@ -1750,19 +1823,19 @@ function refreshCccdPhotoUi() {
     });
 }
 
-async function startCccdPhotoCamera(deviceId) {
+async function startCccdPhotoCamera(deviceId, manual = false) {
     stopCccdPhotoCamera();
     const status = document.getElementById('cccdPhotoStatus');
     status.className = 'small text-muted mt-2';
-    status.innerHTML = CAMERA_WAIT_HTML;
+    status.innerHTML = cameraWaitHtml();
     document.getElementById('cccdPhotoHelp').innerHTML = '';
     let stream;
     try {
-        stream = await openCameraInto('cccdPhotoVideo', 'cccdPhotoCameraSelect', deviceId, 1920, 1080);
+        stream = await openCameraInto('cccdPhotoVideo', 'cccdPhotoCameraSelect', deviceId, 3840, 2160, manual);
     } catch (error) {
         status.className = 'small text-danger mt-2';
         status.textContent = 'Chưa dùng được camera — làm theo hướng dẫn bên dưới, hoặc bấm "Tải ảnh" nếu đã có sẵn file ảnh.';
-        renderCameraHelp('cccdPhotoHelp', error.message, 'startCccdPhotoCamera(savedCameraId())');
+        renderCameraHelp('cccdPhotoHelp', error.message, 'startCccdPhotoCamera(savedCameraId())', error.detail);
         refreshCccdPhotoUi();
         return;
     }
@@ -1776,27 +1849,68 @@ async function startCccdPhotoCamera(deviceId) {
     refreshCccdPhotoUi();
 }
 
-function shootCccdPhoto() {
+let cccdShooting = false;
+
+// Độ nét của ảnh = phương sai Laplacian (ảnh mờ/rung → giá trị nhỏ)
+function cccdSharpness(src) {
+    const w = 640, h = Math.round(640 * src.height / src.width);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(src, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    const g = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) g[i] = d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114;
+    let sum = 0, sum2 = 0, n = 0;
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            const i = y * w + x;
+            const lap = 4 * g[i] - g[i - 1] - g[i + 1] - g[i - w] - g[i + w];
+            sum += lap;
+            sum2 += lap * lap;
+            n++;
+        }
+    }
+    return sum2 / n - (sum / n) ** 2;
+}
+
+// Chụp liền 5 khung hình trong ~0.6 giây, giữ khung NÉT NHẤT (tránh ảnh mờ do rung tay / camera đang lấy nét)
+async function shootCccdPhoto() {
     const side = nextCccdSide();
     const video = document.getElementById('cccdPhotoVideo');
-    if (!side || !cccdPhotoStream || !cccdPhotoCrop) return;
+    if (!side || !cccdPhotoStream || !cccdPhotoCrop || cccdShooting) return;
+
+    cccdShooting = true;
+    const btn = document.getElementById('cccdPhotoShootBtn');
+    btn.disabled = true;
+    document.getElementById('cccdPhotoShootText').textContent = 'Đang chụp... giữ yên thẻ';
 
     const c = cccdPhotoCrop;
-    const src = document.createElement('canvas');
-    src.width = Math.round(c.w);
-    src.height = Math.round(c.h);
-    src.getContext('2d').drawImage(video, c.x, c.y, c.w, c.h, 0, 0, src.width, src.height);
-    setCccdPhotoSource(side, src);
+    let best = null, bestScore = -1;
+    for (let i = 0; i < 5 && cccdPhotoStream; i++) {
+        if (i) await new Promise(r => setTimeout(r, 150));
+        const frame = document.createElement('canvas');
+        frame.width = Math.round(c.w);
+        frame.height = Math.round(c.h);
+        frame.getContext('2d').drawImage(video, c.x, c.y, c.w, c.h, 0, 0, frame.width, frame.height);
+        const score = cccdSharpness(frame);
+        if (score > bestScore) { best = frame; bestScore = score; }
+    }
+    cccdShooting = false;
+    if (!cccdPhotoStream || !best) { refreshCccdPhotoUi(); return; }   // đóng cửa sổ giữa chừng
+    setCccdPhotoSource(side, best);
     beepCccdQr();
 }
 
-// Đưa ảnh gốc vào khung chuẩn 1012x638 (tỉ lệ thẻ): giữ nguyên toàn bộ ảnh, phần thừa để nền trắng
+// Đưa ảnh gốc vào khung chuẩn 1518x957 (tỉ lệ thẻ): giữ nguyên toàn bộ ảnh, phần thừa để nền trắng
 function setCccdPhotoSource(side, src) {
     cccdPhotoSources[side] = src;
     const out = document.createElement('canvas');
     out.width = CCCD_OUT_W;
     out.height = CCCD_OUT_H;
     const ctx = out.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, CCCD_OUT_W, CCCD_OUT_H);
     const scale = Math.min(CCCD_OUT_W / src.width, CCCD_OUT_H / src.height);
