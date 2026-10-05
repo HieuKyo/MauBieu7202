@@ -808,8 +808,22 @@
                 <!-- Video hiển thị đúng tỉ lệ gốc (height:auto) để khung hướng dẫn khớp vùng cắt ảnh -->
                 <div class="position-relative bg-dark rounded overflow-hidden">
                     <video id="cccdPhotoVideo" playsinline muted style="width:100%; height:auto; display:block; min-height:200px;"></video>
-                    <div id="cccdPhotoGuide" class="position-absolute border border-4 border-warning rounded" style="box-shadow:0 0 0 2000px rgba(0,0,0,.45); pointer-events:none;"></div>
-                    <div id="cccdPhotoGuideLabel" class="position-absolute top-0 start-50 translate-middle-x mt-2 badge bg-warning text-dark fs-6"></div>
+                    <!-- Khung vàng: kéo để di chuyển, kéo nút tròn ở góc để phóng to / thu nhỏ (giữ đúng tỉ lệ thẻ) -->
+                    <div id="cccdPhotoGuide" class="position-absolute border border-4 border-warning rounded" title="Kéo để di chuyển khung"
+                         style="box-shadow:0 0 0 2000px rgba(0,0,0,.45); cursor:move; touch-action:none;">
+                        <div id="cccdPhotoGuideHandle" title="Kéo để phóng to / thu nhỏ khung"
+                             style="position:absolute; right:-14px; bottom:-14px; width:26px; height:26px; border-radius:50%;
+                                    background:#ffc107; border:3px solid #fff; cursor:nwse-resize; touch-action:none;"></div>
+                    </div>
+                    <div id="cccdPhotoGuideLabel" class="position-absolute top-0 start-50 translate-middle-x mt-2 badge bg-warning text-dark fs-6" style="pointer-events:none;"></div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-2 small">
+                    <span class="text-muted"><i class="bi bi-bounding-box"></i> Khung chưa khớp mép thẻ? Kéo khung vàng / nút tròn ở góc, hoặc:</span>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary" onclick="resizeCccdGuide(0.97)" title="Thu nhỏ khung"><i class="bi bi-dash-lg"></i></button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="resizeCccdGuide(1.03)" title="Phóng to khung"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetCccdGuide()"><i class="bi bi-arrow-counterclockwise"></i> Đặt lại khung</button>
                 </div>
                 <div id="cccdPhotoStatus" class="small text-muted mt-2"></div>
                 <div id="cccdPhotoHelp"></div>
@@ -1803,21 +1817,112 @@ function stopCccdPhotoCamera() {
     }
 }
 
-// Khung hướng dẫn: rộng 80% khung hình (tối đa cao 85%), đúng tỉ lệ thẻ, nằm giữa
-function layoutCccdPhotoGuide() {
+// Khung hướng dẫn = vùng cắt ảnh (pixel gốc của video), luôn đúng tỉ lệ thẻ.
+// Mặc định: rộng 80% khung hình (tối đa cao 85%), nằm giữa. GĐV chỉnh được và được nhớ theo từng camera
+// (máy đặt thẻ trên giá cố định → chỉnh 1 lần là các lần sau vừa khít).
+function cccdGuideKey() {
+    const track = cccdPhotoStream && cccdPhotoStream.getVideoTracks()[0];
+    return track ? 'cccdGuide:' + track.label : null;
+}
+
+function defaultCccdGuide(vw, vh) {
+    let w = vw * 0.8, h = w / CCCD_RATIO;
+    if (h > vh * 0.85) { h = vh * 0.85; w = h * CCCD_RATIO; }
+    return { x: (vw - w) / 2, y: (vh - h) / 2, w, h };
+}
+
+// Giữ khung trong khung hình, đúng tỉ lệ thẻ, không nhỏ hơn 25% chiều ngang
+function clampCccdGuide(c, vw, vh) {
+    let w = Math.min(Math.max(c.w, vw * 0.25), vw, vh * CCCD_RATIO);
+    const h = w / CCCD_RATIO;
+    return { x: Math.min(Math.max(c.x, 0), vw - w), y: Math.min(Math.max(c.y, 0), vh - h), w, h };
+}
+
+function applyCccdGuide(c, save) {
     const video = document.getElementById('cccdPhotoVideo');
     const vw = video.videoWidth, vh = video.videoHeight;
     if (!vw || !vh) return;
-    let w = vw * 0.8, h = w / CCCD_RATIO;
-    if (h > vh * 0.85) { h = vh * 0.85; w = h * CCCD_RATIO; }
-    cccdPhotoCrop = { x: (vw - w) / 2, y: (vh - h) / 2, w, h };
+    cccdPhotoCrop = clampCccdGuide(c, vw, vh);
 
     const guide = document.getElementById('cccdPhotoGuide');
     guide.style.left = `${cccdPhotoCrop.x / vw * 100}%`;
     guide.style.top = `${cccdPhotoCrop.y / vh * 100}%`;
-    guide.style.width = `${w / vw * 100}%`;
-    guide.style.height = `${h / vh * 100}%`;
+    guide.style.width = `${cccdPhotoCrop.w / vw * 100}%`;
+    guide.style.height = `${cccdPhotoCrop.h / vh * 100}%`;
+
+    const key = cccdGuideKey();
+    if (save && key) {
+        // Lưu theo tỉ lệ khung hình để vẫn đúng nếu độ phân giải đổi
+        const r = { x: cccdPhotoCrop.x / vw, y: cccdPhotoCrop.y / vh, w: cccdPhotoCrop.w / vw };
+        try { localStorage.setItem(key, JSON.stringify(r)); } catch (e) {}
+    }
 }
+
+function layoutCccdPhotoGuide() {
+    const video = document.getElementById('cccdPhotoVideo');
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(cccdGuideKey())); } catch (e) {}
+    applyCccdGuide(saved ? { x: saved.x * vw, y: saved.y * vh, w: saved.w * vw, h: saved.w * vw / CCCD_RATIO }
+                         : defaultCccdGuide(vw, vh), false);
+}
+
+function resizeCccdGuide(factor) {
+    if (!cccdPhotoCrop) return;
+    const c = cccdPhotoCrop, w = c.w * factor, h = w / CCCD_RATIO;
+    // Phóng to / thu nhỏ quanh tâm khung
+    applyCccdGuide({ x: c.x + (c.w - w) / 2, y: c.y + (c.h - h) / 2, w, h }, true);
+}
+
+function resetCccdGuide() {
+    const key = cccdGuideKey();
+    try { if (key) localStorage.removeItem(key); } catch (e) {}
+    layoutCccdPhotoGuide();
+}
+
+// Kéo chuột / chạm: kéo khung để di chuyển, kéo nút tròn ở góc để đổi cỡ (neo góc trên-trái)
+(function initCccdGuideDrag() {
+    const guide = document.getElementById('cccdPhotoGuide');
+    const handle = document.getElementById('cccdPhotoGuideHandle');
+    const video = document.getElementById('cccdPhotoVideo');
+    let drag = null;
+
+    const start = (e, mode) => {
+        if (!cccdPhotoCrop || !video.videoWidth) return;
+        e.preventDefault();
+        e.stopPropagation();
+        drag = { mode, x0: e.clientX, y0: e.clientY, crop: Object.assign({}, cccdPhotoCrop),
+                 scale: video.videoWidth / video.clientWidth };   // px màn hình → px gốc của video
+        (e.target).setPointerCapture(e.pointerId);
+    };
+    guide.addEventListener('pointerdown', e => start(e, 'move'));
+    handle.addEventListener('pointerdown', e => start(e, 'resize'));
+
+    const moveTo = e => {
+        if (!drag) return;
+        const dx = (e.clientX - drag.x0) * drag.scale, dy = (e.clientY - drag.y0) * drag.scale;
+        const c = drag.crop;
+        if (drag.mode === 'move') {
+            applyCccdGuide({ x: c.x + dx, y: c.y + dy, w: c.w, h: c.h }, false);
+        } else {
+            // Lấy thay đổi theo chiều kéo nhiều hơn (ngang hoặc dọc, quy về chiều ngang) → kéo ra phóng to, kéo vào thu nhỏ
+            const dw = Math.abs(dx) >= Math.abs(dy * CCCD_RATIO) ? dx : dy * CCCD_RATIO;
+            const w = c.w + dw;
+            applyCccdGuide({ x: c.x, y: c.y, w, h: w / CCCD_RATIO }, false);
+        }
+    };
+    const end = () => {
+        if (!drag) return;
+        drag = null;
+        applyCccdGuide(cccdPhotoCrop, true);
+    };
+    [guide, handle].forEach(el => {
+        el.addEventListener('pointermove', moveTo);
+        el.addEventListener('pointerup', end);
+        el.addEventListener('pointercancel', end);
+    });
+})();
 
 function nextCccdSide() {
     return !cccdPhotos.front ? 'front' : !cccdPhotos.back ? 'back' : null;
@@ -2199,6 +2304,23 @@ cccdPhotoModalEl.addEventListener('keydown', e => {
     if (!e.repeat) shootCccdPhoto();
 });
 cccdPhotoModalEl.addEventListener('keyup', e => { if (isCccdShootKey(e)) e.preventDefault(); });
+// Phím mũi tên: dịch khung vàng (giữ Shift để dịch nhanh); phím + / -: phóng to / thu nhỏ khung
+cccdPhotoModalEl.addEventListener('keydown', e => {
+    if (!cccdPhotoCrop || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    const step = (e.shiftKey ? 0.02 : 0.004) * document.getElementById('cccdPhotoVideo').videoWidth;
+    const move = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (move) {
+        e.preventDefault();
+        const c = cccdPhotoCrop;
+        applyCccdGuide({ x: c.x + move[0], y: c.y + move[1], w: c.w, h: c.h }, true);
+    } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        resizeCccdGuide(1.02);
+    } else if (e.key === '-') {
+        e.preventDefault();
+        resizeCccdGuide(0.98);
+    }
+});
 document.getElementById('cccdPhotoVideo').addEventListener('loadedmetadata', layoutCccdPhotoGuide);
 
 // Validation functions
