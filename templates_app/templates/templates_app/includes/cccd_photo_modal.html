@@ -1,0 +1,101 @@
+{# Cửa sổ "Chụp CCCD 2 mặt" (in A5). Cần biến dia_danh trong context và static/js/cccd_photo_capture.js #}
+<!-- Modal: Chụp CCCD 2 mặt để in kèm (A5 ngang: trái mặt trước, phải mặt sau) -->
+<div class="modal fade" id="cccdPhotoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-camera"></i> Chụp CCCD 2 mặt để in kèm<span id="cccdPhotoTargetLabel"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                    <select class="form-select" id="cccdPhotoCameraSelect" onchange="startCccdPhotoCamera(this.value, true)"></select>
+                </div>
+                <!-- Video hiển thị đúng tỉ lệ gốc (height:auto) để khung hướng dẫn khớp vùng cắt ảnh -->
+                <div class="position-relative bg-dark rounded overflow-hidden">
+                    <video id="cccdPhotoVideo" playsinline muted style="width:100%; height:auto; display:block; min-height:200px;"></video>
+                    <!-- Khung vàng: kéo để di chuyển, kéo nút tròn ở góc để phóng to / thu nhỏ (giữ đúng tỉ lệ thẻ) -->
+                    <div id="cccdPhotoGuide" class="position-absolute border border-4 border-warning rounded" title="Kéo để di chuyển khung"
+                         style="box-shadow:0 0 0 2000px rgba(0,0,0,.45); cursor:move; touch-action:none;">
+                        <div id="cccdPhotoGuideHandle" title="Kéo để phóng to / thu nhỏ khung"
+                             style="position:absolute; right:-14px; bottom:-14px; width:26px; height:26px; border-radius:50%;
+                                    background:#ffc107; border:3px solid #fff; cursor:nwse-resize; touch-action:none;"></div>
+                    </div>
+                    <div id="cccdPhotoGuideLabel" class="position-absolute top-0 start-50 translate-middle-x mt-2 badge bg-warning text-dark fs-6" style="pointer-events:none;"></div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-2 small">
+                    <span class="text-muted"><i class="bi bi-bounding-box"></i> Khung chưa khớp mép thẻ? Kéo khung vàng / nút tròn ở góc, hoặc:</span>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary" onclick="resizeCccdGuide(0.97)" title="Thu nhỏ khung"><i class="bi bi-dash-lg"></i></button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="resizeCccdGuide(1.03)" title="Phóng to khung"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetCccdGuide()"><i class="bi bi-arrow-counterclockwise"></i> Đặt lại khung</button>
+                </div>
+                <div id="cccdPhotoStatus" class="small text-muted mt-2"></div>
+                <div id="cccdPhotoHelp"></div>
+
+                <!-- Chỉnh thông số webcam (chỉ hiện các thông số webcam + trình duyệt cho phép) -->
+                <details class="mt-2 border rounded px-2 py-1">
+                    <summary class="small fw-bold"><i class="bi bi-sliders"></i> Chỉnh hình camera (độ nét, tương phản, độ sáng, lấy nét, phóng to)</summary>
+                    <div id="cccdPhotoTune" class="small mt-2"></div>
+                </details>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" id="cccdPhotoEnhance" onchange="onCccdEnhanceChange(this.checked)">
+                    <label class="form-check-label" for="cccdPhotoEnhance">
+                        <strong>Tăng nét chữ</strong> (làm nét + tăng tương phản ảnh chụp, giúp chữ trên thẻ rõ hơn khi in)
+                    </label>
+                </div>
+
+                <button type="button" class="btn btn-primary btn-lg w-100 mt-2" id="cccdPhotoShootBtn" onclick="shootCccdPhoto()">
+                    <i class="bi bi-camera-fill"></i> <span id="cccdPhotoShootText">Chụp mặt trước</span>
+                </button>
+
+                <div class="row g-2 mt-2">
+                    <div class="col-6">
+                        <div class="small fw-bold text-center mb-1">Mặt trước</div>
+                        <div class="cccd-photo-slot border rounded bg-light d-flex align-items-center justify-content-center" data-side="front" onclick="retakeCccdPhoto('front')" title="Bấm để chụp lại" style="aspect-ratio:85.6/54; cursor:pointer;">
+                            <span class="text-muted small">Chưa chụp</span>
+                        </div>
+                        <div class="d-flex gap-1 mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="document.getElementById('cccdPhotoFile-front').click()">
+                                <i class="bi bi-folder2-open"></i> Tải ảnh
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCccdPhoto('front')">
+                                <i class="bi bi-arrow-clockwise"></i> Xoay
+                            </button>
+                        </div>
+                        <input type="file" id="cccdPhotoFile-front" accept="image/*" class="d-none" onchange="uploadCccdPhoto('front', this)">
+                    </div>
+                    <div class="col-6">
+                        <div class="small fw-bold text-center mb-1">Mặt sau</div>
+                        <div class="cccd-photo-slot border rounded bg-light d-flex align-items-center justify-content-center" data-side="back" onclick="retakeCccdPhoto('back')" title="Bấm để chụp lại" style="aspect-ratio:85.6/54; cursor:pointer;">
+                            <span class="text-muted small">Chưa chụp</span>
+                        </div>
+                        <div class="d-flex gap-1 mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="document.getElementById('cccdPhotoFile-back').click()">
+                                <i class="bi bi-folder2-open"></i> Tải ảnh
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCccdPhoto('back')">
+                                <i class="bi bi-arrow-clockwise"></i> Xoay
+                            </button>
+                        </div>
+                        <input type="file" id="cccdPhotoFile-back" accept="image/*" class="d-none" onchange="uploadCccdPhoto('back', this)">
+                    </div>
+                </div>
+                <div class="small text-muted text-center mt-1">Bấm vào ảnh để chụp lại · Có sẵn file ảnh thì bấm "Tải ảnh" · Đóng cửa sổ sẽ xóa ảnh</div>
+
+                <div class="input-group input-group-sm mt-3">
+                    <span class="input-group-text">Địa danh</span>
+                    <input type="text" class="form-control" id="cccdPhotoDiaDanh" value="{{ dia_danh }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-success btn-lg" id="cccdPhotoPrintBtn" onclick="printCccdPhotos()" disabled>
+                    <i class="bi bi-printer"></i> In A5
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

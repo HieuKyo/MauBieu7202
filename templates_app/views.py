@@ -6685,6 +6685,8 @@ def business_create(request):
         'form': form,
         'action': 'create',
         'title': 'Tạo doanh nghiệp mới',
+        # Địa danh in trên trang ảnh CCCD 2 mặt
+        'dia_danh': BranchConfig.get_for_user(request.user).dia_danh,
     }
     return render(request, 'templates_app/business/form.html', context)
 
@@ -6710,6 +6712,8 @@ def business_edit(request, business_id):
         'business': business,
         'action': 'edit',
         'title': f'Sửa doanh nghiệp: {business.ten_doanh_nghiep}',
+        # Địa danh in trên trang ảnh CCCD 2 mặt
+        'dia_danh': BranchConfig.get_for_user(request.user).dia_danh,
     }
     return render(request, 'templates_app/business/form.html', context)
 

@@ -162,6 +162,9 @@
                         <div class="mb-4">
                             <h6 class="border-bottom pb-2">
                                 <i class="bi bi-person-badge"></i> Người đại diện pháp luật
+                                <button type="button" class="btn btn-sm btn-outline-primary float-end ms-1" onclick="openCccdPhotoFor('nguoi_dai_dien')">
+                                    <i class="bi bi-camera"></i> Chụp 2 mặt
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-success float-end" onclick="openCccdQrFor('nguoi_dai_dien')">
                                     <i class="bi bi-qr-code-scan"></i> Quét QR CCCD
                                 </button>
@@ -241,6 +244,9 @@
                         <div class="mb-4">
                             <h6 class="border-bottom pb-2">
                                 <i class="bi bi-calculator"></i> Kế toán trưởng
+                                <button type="button" class="btn btn-sm btn-outline-primary float-end ms-1" onclick="openCccdPhotoFor('ke_toan_truong')">
+                                    <i class="bi bi-camera"></i> Chụp 2 mặt
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-success float-end" onclick="openCccdQrFor('ke_toan_truong')">
                                     <i class="bi bi-qr-code-scan"></i> Quét QR CCCD
                                 </button>
@@ -511,6 +517,8 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+{% include 'templates_app/includes/cccd_photo_modal.html' %}
+
 <!-- Modal: Quét QR CCCD / Căn cước bằng Webcam (người đại diện / kế toán trưởng) -->
 <div class="modal fade" id="cccdQrModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -562,6 +570,12 @@ loadAddressConversionData('{% static "data/chuyen_doi.json" %}');
 // Quét QR cho mục nào: 'nguoi_dai_dien' | 'ke_toan_truong' (prefix của field trong BusinessForm)
 let cccdQrTarget = 'nguoi_dai_dien';
 const CCCD_QR_TARGET_LABELS = { nguoi_dai_dien: 'Người đại diện pháp luật', ke_toan_truong: 'Kế toán trưởng' };
+
+// Chụp 2 mặt CCCD của người đại diện / kế toán trưởng để in kèm (A5)
+function openCccdPhotoFor(target) {
+    document.getElementById('cccdPhotoTargetLabel').textContent = ' — ' + CCCD_QR_TARGET_LABELS[target];
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cccdPhotoModal')).show();
+}
 
 function openCccdQrFor(target) {
     cccdQrTarget = target;
@@ -624,4 +638,5 @@ function applyCccdQr(text) {
     return true;
 }
 </script>
+<script src="{% static 'js/cccd_photo_capture.js' %}"></script>
 {% endblock %}
