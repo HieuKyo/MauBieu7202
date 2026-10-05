@@ -867,8 +867,35 @@ class ATMManagementBoardAdmin(admin.ModelAdmin):
     """Admin cho Ban quản lý ATM"""
     list_display = ['get_position_display', 'full_name', 'title', 'account_number', 'effective_from', 'effective_to', 'is_active', 'updated_at']
     list_filter = ['position', 'is_active']
-    list_editable = ['is_active']
     ordering = ['position', 'full_name']
+
+    CLOSED_RECORD_HELP = (
+        "Nhiệm kỳ này đã kết thúc (đã có người khác tiếp nhận vị trí sau đó) nên bị khóa, "
+        "không cho sửa — tránh làm sai lệch số quyết định/ngày hiệu lực đã dùng để tính bảng kê "
+        "thanh toán cho giai đoạn đã qua. Nếu người này quay lại vị trí, hãy dùng nút \"Thêm "
+        "{}\" bên trên để tạo MỘT BẢN GHI MỚI cho nhiệm kỳ mới — không sửa lại bản ghi cũ này."
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        """
+        Khóa toàn bộ các trường của 1 bản ghi đã "đóng" (is_active=False, tức đã có người
+        khác tiếp nhận vị trí sau đó) — sửa trực tiếp 1 bản ghi lịch sử đã đóng sẽ làm sai
+        lệch số quyết định/ngày hiệu lực đã gắn với các giao dịch trong giai đoạn đã qua,
+        thậm chí có thể làm "biến mất" cả giai đoạn đó khỏi bảng kê thanh toán nếu effective_from
+        bị ghi đè. Mỗi lần 1 người quay lại 1 vị trí phải tạo bản ghi mới, không sửa bản ghi cũ.
+        """
+        if obj is not None and not obj.is_active:
+            return [f.name for f in self.model._meta.fields if f.name != 'id']
+        return super().get_readonly_fields(request, obj)
+
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        obj = self.get_object(request, object_id) if object_id else None
+        if obj is not None and not obj.is_active:
+            messages.warning(
+                request,
+                self.CLOSED_RECORD_HELP.format(self.model._meta.verbose_name)
+            )
+        return super().changeform_view(request, object_id, form_url, extra_context)
 
     def _close_previous_holders(self, obj):
         """Khi kích hoạt 1 người mới cho 1 vị trí, tự đóng effective_to của người active trước đó (nếu chưa đóng)"""
@@ -954,10 +981,10 @@ class PersonAdmin(admin.ModelAdmin):
 @admin.register(ATMReplenishment)
 class ATMReplenishmentAdmin(admin.ModelAdmin):
     """Admin cho Phiếu tiếp quỹ ATM"""
-    list_display = ['atm', 'replenishment_date', 'total_amount_display', 'vehicle', 'driver', 'created_by']
+    list_display = ['travel_order_number', 'atm', 'replenishment_date', 'total_amount_display', 'vehicle', 'driver', 'created_by']
     list_filter = ['replenishment_date', 'atm', 'created_by']
     search_fields = ['atm__machine_id', 'atm__address']
-    readonly_fields = ['created_by', 'created_at', 'updated_at', 'total_amount_display']
+    readonly_fields = ['travel_order_number', 'created_by', 'created_at', 'updated_at', 'total_amount_display']
     ordering = ['-replenishment_date', '-created_at']
     date_hierarchy = 'replenishment_date'
 
@@ -973,7 +1000,7 @@ class ATMReplenishmentAdmin(admin.ModelAdmin):
             'fields': ('vehicle', 'driver', 'guard')
         }),
         ('Thông tin hệ thống', {
-            'fields': ('created_by', 'created_at', 'updated_at'),
+            'fields': ('travel_order_number', 'created_by', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )

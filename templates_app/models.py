@@ -1010,6 +1010,8 @@ class Business(models.Model):
     so_gcn = models.CharField(
         max_length=50,
         unique=True,
+        null=True,
+        blank=True,
         verbose_name="Số GCN đăng ký DN/Giấy ĐKKD/QĐ thành lập"
     )
     ngay_cap_gcn = models.DateField(
@@ -1027,6 +1029,8 @@ class Business(models.Model):
     ma_so_thue = models.CharField(
         max_length=20,
         unique=True,
+        null=True,
+        blank=True,
         verbose_name="Mã số thuế"
     )
     ngay_cap_mst = models.DateField(
@@ -2549,6 +2553,17 @@ class ATMReplenishment(models.Model):
         verbose_name="Bảo vệ"
     )
 
+    # Số văn bản giấy đi đường — tự động tăng dần theo từng năm (sang năm mới reset về 1),
+    # gán 1 lần duy nhất khi tạo phiếu, dựa theo năm của ngày tiếp quỹ
+    travel_order_number = models.PositiveIntegerField(
+        null=True, blank=True, editable=False,
+        verbose_name="Số văn bản giấy đi đường"
+    )
+    travel_order_year = models.PositiveIntegerField(
+        null=True, blank=True, editable=False,
+        verbose_name="Năm của số văn bản giấy đi đường"
+    )
+
     # Thông tin người tạo
     created_by = models.ForeignKey(
         User,
@@ -2562,9 +2577,20 @@ class ATMReplenishment(models.Model):
         verbose_name = "Phiếu tiếp quỹ ATM"
         verbose_name_plural = "Phiếu tiếp quỹ ATM"
         ordering = ['-replenishment_date', '-created_at']
+        unique_together = [('travel_order_year', 'travel_order_number')]
 
     def __str__(self):
         return f"Tiếp quỹ {self.atm.machine_id} - {self.replenishment_date.strftime('%d/%m/%Y')}"
+
+    def save(self, *args, **kwargs):
+        if self.travel_order_number is None:
+            year = self.replenishment_date.year
+            last = ATMReplenishment.objects.filter(travel_order_year=year).aggregate(
+                models.Max('travel_order_number')
+            )
+            self.travel_order_number = (last['travel_order_number__max'] or 0) + 1
+            self.travel_order_year = year
+        super().save(*args, **kwargs)
 
     @property
     def total_amount(self):
@@ -2708,6 +2734,9 @@ class ATMReplenishment(models.Model):
                 f"ngày {team_leader.decision_date.day:02d} tháng {team_leader.decision_date.month:02d} năm {team_leader.decision_date.year}"
                 if (team_leader and team_leader.decision_date) else ''
             ),
+
+            # Số văn bản giấy đi đường — tự tăng dần theo từng phiếu tiếp quỹ
+            'travel_order_number': str(self.travel_order_number) if self.travel_order_number else '',
 
             # Thông tin người tạo
             'created_by': self.created_by.username,

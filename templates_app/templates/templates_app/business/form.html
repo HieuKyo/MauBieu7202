@@ -165,7 +165,11 @@
                                 <button type="button" class="btn btn-sm btn-outline-primary float-end" id="quickSelectRepBtn">
                                     <i class="bi bi-search"></i> Chọn nhanh
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-success float-end me-1" onclick="openCccdQrFor('nguoi_dai_dien')">
+                                    <i class="bi bi-qr-code-scan"></i> Quét QR CCCD
+                                </button>
                             </h6>
+                            <div id="cccdQrAlert-nguoi_dai_dien"></div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="{{ form.nguoi_dai_dien_ho_ten.id_for_label }}" class="form-label">
@@ -243,7 +247,11 @@
                                 <button type="button" class="btn btn-sm btn-outline-success float-end" id="quickSelectAccBtn">
                                     <i class="bi bi-search"></i> Chọn nhanh
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-success float-end me-1" onclick="openCccdQrFor('ke_toan_truong')">
+                                    <i class="bi bi-qr-code-scan"></i> Quét QR CCCD
+                                </button>
                             </h6>
+                            <div id="cccdQrAlert-ke_toan_truong"></div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="{{ form.ke_toan_truong_ho_ten.id_for_label }}" class="form-label">
@@ -509,4 +517,117 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Modal: Quét QR CCCD / Căn cước bằng Webcam (người đại diện / kế toán trưởng) -->
+<div class="modal fade" id="cccdQrModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-qr-code-scan"></i> Quét QR CCCD — <span id="cccdQrTargetLabel"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                    <select class="form-select" id="cccdQrCameraSelect" onchange="startCccdQrScan(this.value, true)"></select>
+                </div>
+                <div class="position-relative bg-dark rounded overflow-hidden text-center">
+                    <video id="cccdQrVideo" playsinline muted style="width:100%; min-height:200px; max-height:420px; object-fit:contain;"></video>
+                    <div id="cccdQrSuccess" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center text-white" style="background:rgba(25,135,84,.93);">
+                        <i class="bi bi-check-circle-fill" style="font-size:72px;"></i>
+                        <div class="fs-3 fw-bold">QUÉT THÀNH CÔNG</div>
+                        <div class="fs-5" id="cccdQrSuccessName"></div>
+                    </div>
+                </div>
+                <div id="cccdQrStatus" class="small text-muted mt-2">
+                    <i class="bi bi-hourglass-split"></i> Đang khởi động camera...
+                </div>
+                <div id="cccdQrHelp"></div>
+                <hr>
+                <label class="form-label small mb-1">Hoặc dùng máy quét QR cầm tay / dán chuỗi QR:</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace" id="cccdQrManualInput"
+                           placeholder="012345678901|123456789|Nguyễn Văn A|01011990|Nam|Địa chỉ...|01012022"
+                           onkeydown="if (event.key === 'Enter') { event.preventDefault(); applyCccdQr(this.value); }">
+                    <button type="button" class="btn btn-outline-success" onclick="applyCccdQr(document.getElementById('cccdQrManualInput').value)">
+                        <i class="bi bi-arrow-down-circle"></i> Điền
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/jsQR.min.js' %}"></script>
+<script src="{% static 'js/cccd_qr_scanner.js' %}"></script>
+<script>
+loadAddressConversionData('{% static "data/chuyen_doi.json" %}');
+
+// Quét QR cho mục nào: 'nguoi_dai_dien' | 'ke_toan_truong' (prefix của field trong BusinessForm)
+let cccdQrTarget = 'nguoi_dai_dien';
+const CCCD_QR_TARGET_LABELS = { nguoi_dai_dien: 'Người đại diện pháp luật', ke_toan_truong: 'Kế toán trưởng' };
+
+function openCccdQrFor(target) {
+    cccdQrTarget = target;
+    document.getElementById('cccdQrTargetLabel').textContent = CCCD_QR_TARGET_LABELS[target];
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cccdQrModal')).show();
+}
+
+// Trả về true nếu chuỗi là QR CCCD hợp lệ và đã điền vào form
+function applyCccdQr(text) {
+    const data = parseCccdQr(text);
+    if (!data) {
+        setCccdQrStatus('<i class="bi bi-exclamation-triangle"></i> Mã QR không phải CCCD/Căn cước. Vui lòng quét mã QR ở <strong>mặt trước</strong> thẻ.', 'text-danger');
+        return false;
+    }
+
+    stopCccdQrScan();
+    const prefix = cccdQrTarget;
+    const set = (field, value) => { document.getElementById(`id_${prefix}_${field}`).value = value || ''; };
+    set('ho_ten', data.ho_ten);
+    set('ngay_sinh', data.ngay_sinh);
+    set('gioi_tinh', data.gioi_tinh);
+    set('loai_giay_to', 'CCCD_CHIP');  // QR chỉ có trên CCCD gắn chip / Căn cước
+    set('so_cccd', data.so_cmnd);
+    set('ngay_cap', data.ngay_cap_cmnd);
+    set('noi_cap', data.noi_cap_cmnd);
+    set('ngay_het_han', data.ngay_het_han_cmnd);
+    set('noi_o_hien_tai', data.dia_chi);
+    document.getElementById('cccdQrManualInput').value = '';
+
+    const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+
+    // Báo thành công ngay trên khung camera (kèm tiếng bíp), 1.5 giây sau tự đóng
+    document.getElementById('cccdQrSuccessName').textContent = data.ho_ten;
+    document.getElementById('cccdQrSuccess').classList.replace('d-none', 'd-flex');
+    beepCccdQr();
+    setTimeout(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('cccdQrModal'));
+        if (modal) modal.hide();
+    }, 1500);
+
+    const diaChiHtml = data.da_doi_dia_chi
+        ? `<li>Địa chỉ trên thẻ: <span class="text-decoration-line-through">${esc(data.dia_chi_tren_the)}</span><br>
+               → Đã đổi sang địa chỉ mới: <strong>${esc(data.dia_chi)}</strong></li>`
+        : `<li class="text-danger">Địa chỉ: <strong>${esc(data.dia_chi)}</strong><br>
+               <i class="bi bi-exclamation-triangle"></i> Chưa có dữ liệu đổi sang địa chỉ mới → vui lòng kiểm tra và sửa tay nếu cần.</li>`;
+
+    // Thông báo ngay dưới tiêu đề mục vừa quét, giữ đến khi tự đóng
+    const box = document.getElementById(`cccdQrAlert-${prefix}`);
+    box.innerHTML = `
+        <div class="alert alert-success alert-dismissible fade show">
+            <div><i class="bi bi-check-circle-fill"></i> <strong>Đã điền ${CCCD_QR_TARGET_LABELS[prefix]} từ QR CCCD.</strong> Vui lòng kiểm tra lại thông tin.</div>
+            <ul class="mb-0 mt-2">
+                <li>Họ tên: <strong>${esc(data.ho_ten)}</strong> · Số CCCD: <strong>${data.so_cmnd}</strong>${data.cmnd_cu ? ` (CMND cũ: ${esc(data.cmnd_cu)})` : ''}</li>
+                <li>Ngày hết hạn: <strong>${data.ngay_het_han_cmnd ? data.ngay_het_han_cmnd.split('-').reverse().join('/') : 'Không thời hạn'}</strong></li>
+                ${diaChiHtml}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>`;
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
+}
+</script>
 {% endblock %}
