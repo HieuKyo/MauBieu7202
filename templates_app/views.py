@@ -3265,6 +3265,18 @@ def bank_statement_upload(request):
                         f.write(chunk)
                 itl_mapping = BankStatementParser.parse_itl_file(itl_path)
 
+            # File đối soát CSP / MSPH02 tùy chọn
+            from .bank_statement_enricher import AUX_FILES, enrich
+            aux_paths = {}
+            for kind in AUX_FILES:
+                aux_file = request.FILES.get(f'{kind}_file')
+                if aux_file:
+                    aux_ext = os.path.splitext(aux_file.name)[1].lower()
+                    aux_paths[kind] = os.path.join(upload_dir, f"{kind}_{uuid.uuid4().hex}{aux_ext}")
+                    with open(aux_paths[kind], 'wb+') as f:
+                        for chunk in aux_file.chunks():
+                            f.write(chunk)
+
             try:
                 # Parse file
                 parser = BankStatementParser(file_path)
@@ -3274,7 +3286,11 @@ def bank_statement_upload(request):
                     messages.error(request, f'File không hợp lệ: {error_msg}')
                     return redirect('bank_statement_upload')
 
-                transactions_data = parser.process(itl_mapping=itl_mapping)
+                enrichment, unmatched_rows = enrich(parser.df, aux_paths)
+                from .models import AccountName
+                name_book = {(a.account_key, a.bank_key): a.name for a in AccountName.objects.all()}
+                transactions_data = parser.process(itl_mapping=itl_mapping, enrichment=enrichment,
+                                                   name_book=name_book)
                 summary = parser.get_summary()
 
                 # Tạo BankStatement
@@ -3285,6 +3301,7 @@ def bank_statement_upload(request):
                     total_credit=summary['total_credit'],
                     final_balance=summary['final_balance'],
                     processed=True,
+                    unmatched_rows=unmatched_rows,
                     uploaded_by=request.user
                 )
 
@@ -3302,13 +3319,18 @@ def bank_statement_upload(request):
                         beneficiary_name=t['ten_nguoi'],
                         description=t['noi_dung'],
                         transaction_type=t['ghi_chu'],
+                        source=t['nguon'],
                         raw_trcdnm=t['raw_trcdnm'],
                         raw_tomgntno=t['raw_tomgntno'],
                     )
                     for t in transactions_data
                 ])
 
-                messages.success(request, f'Đã phân tích thành công {summary["total_transactions"]} giao dịch!')
+                msg = f'Đã phân tích thành công {summary["total_transactions"]} giao dịch!'
+                if aux_paths:
+                    msg += f' Bổ sung thông tin đối tác cho {len(enrichment)} giao dịch từ file CSP/MSPH02'
+                    msg += f', {len(unmatched_rows)} dòng không khớp.' if unmatched_rows else '.'
+                messages.success(request, msg)
                 return redirect('bank_statement_result', statement_id=statement.id)
 
             finally:
@@ -3317,6 +3339,9 @@ def bank_statement_upload(request):
                     os.remove(file_path)
                 if itl_path and os.path.exists(itl_path):
                     os.remove(itl_path)
+                for aux_path in aux_paths.values():
+                    if os.path.exists(aux_path):
+                        os.remove(aux_path)
 
         except Exception as e:
             messages.error(request, f'Lỗi khi xử lý file: {str(e)}')
@@ -3368,6 +3393,37 @@ def _is_proper_name(name):
     return True
 
 
+def _frequent_accounts(statement, amount_field):
+    """
+    Gom giao dịch theo (số TK, ngân hàng) cho chiều tiền ra (debit_amount) hoặc vào (credit_amount).
+    Tên ưu tiên lấy từ dòng có nguồn file đối soát CSP/MSPH02 (tin cậy, không lọc);
+    còn lại tên parse từ rem phải qua _is_proper_name.
+    """
+    accounts = list(
+        statement.transactions.filter(**{f'{amount_field}__gt': 0})
+        .exclude(account_number='')
+        .values('account_number', 'bank_name')
+        .annotate(
+            count=models.Count('id'),
+            total_amount=models.Sum(amount_field),
+            name=models.Max('beneficiary_name'),
+            aux_name=models.Max('beneficiary_name', filter=~models.Q(source='')),
+        )
+        .order_by('-count')
+    )
+    for acc in accounts:
+        acct = acc.get('account_number', '')
+        name = acc.get('name', '') or ''
+        if acc['aux_name']:
+            name = acc['aux_name']
+        # STK dạng ITL: tên lấy từ ordcust (FXIR64) — tin cậy, không lọc
+        elif not re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
+            if not _is_proper_name(name):
+                name = ''
+        acc['name'] = name
+    return accounts
+
+
 @login_required
 def bank_statement_result(request, statement_id):
     """
@@ -3400,49 +3456,9 @@ def bank_statement_result(request, statement_id):
         total_credit=models.Sum('credit_amount')
     ).order_by('transaction_type')
 
-    # Tài khoản nhận tiền nhiều lần (chuyển đi, debit > 0)
-    frequent_recipients = list(
-        statement.transactions.filter(debit_amount__gt=0)
-        .exclude(account_number='')
-        .values('account_number', 'bank_name')
-        .annotate(
-            count=models.Count('id'),
-            total_amount=models.Sum('debit_amount'),
-            name=models.Max('beneficiary_name'),
-        )
-        .filter(count__gte=1)
-        .order_by('-count')
-    )
-    for acc in frequent_recipients:
-        acct = acc.get('account_number', '')
-        name = acc.get('name', '') or ''
-        # STK dạng ITL: tên lấy từ ordcust (FXIR64) — tin cậy, không lọc
-        if not re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
-            if not _is_proper_name(name):
-                name = ''
-        acc['name'] = name
-
-    # Tài khoản chuyển tiền đến nhiều lần (nhận về, credit > 0)
-    frequent_senders = list(
-        statement.transactions.filter(credit_amount__gt=0)
-        .exclude(account_number='')
-        .values('account_number', 'bank_name')
-        .annotate(
-            count=models.Count('id'),
-            total_amount=models.Sum('credit_amount'),
-            name=models.Max('beneficiary_name'),
-        )
-        .filter(count__gte=1)
-        .order_by('-count')
-    )
-    for acc in frequent_senders:
-        acct = acc.get('account_number', '')
-        name = acc.get('name', '') or ''
-        # STK dạng ITL: tên lấy từ ordcust (FXIR64) — tin cậy, không lọc
-        if not re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
-            if not _is_proper_name(name):
-                name = ''
-        acc['name'] = name
+    # Tài khoản nhận tiền nhiều lần (chuyển đi) / chuyển tiền đến nhiều lần (nhận về)
+    frequent_recipients = _frequent_accounts(statement, 'debit_amount')
+    frequent_senders = _frequent_accounts(statement, 'credit_amount')
 
     # Danh sách các loại giao dịch để filter — phải khớp chính xác với classify_transaction()
     filter_options = [
@@ -3482,10 +3498,7 @@ def bank_statement_result(request, statement_id):
         "Trả lãi tiền gửi hàng tháng",
         "Trả lãi tiền gửi hằng tháng",
         "Giải ngân",
-        "Thanh toán qua PaymentHub",
-        "Nhận tiền qua PaymentHub",
-        "Chuyển tiền qua OSB",
-        "Nhận tiền qua OSB",
+        "Giao dịch OSB",
     ]
 
     context = {
@@ -3499,6 +3512,74 @@ def bank_statement_result(request, statement_id):
     }
 
     return render(request, 'templates_app/bank_statement_result.html', context)
+
+
+@login_required
+def bank_statement_import_names(request, statement_id):
+    """
+    Nhận lại file Excel đã xuất (người dùng điền tên ở sheet 'TK giao dịch nhiều lần'):
+    lưu tên mới/đã sửa vào danh bạ dùng chung và cập nhật giao dịch của sao kê này.
+    """
+    from .models import AccountName, BankStatement, Transaction
+    from .bank_statement_parser import account_key
+    from openpyxl import load_workbook
+
+    statement = get_object_or_404(BankStatement, id=statement_id, uploaded_by=request.user)
+    result_url = reverse('bank_statement_result', args=[statement.id])
+    names_file = request.FILES.get('names_file')
+    if request.method != 'POST' or not names_file:
+        messages.error(request, 'Vui lòng chọn file Excel đã điền tên.')
+        return redirect(result_url)
+
+    try:
+        wb = load_workbook(names_file, read_only=True, data_only=True)
+        rows = list(wb['TK giao dịch nhiều lần'].iter_rows(values_only=True))
+        wb.close()
+    except Exception:
+        messages.error(request, "File không đúng: cần file Excel xuất từ chương trình "
+                                "(có sheet 'TK giao dịch nhiều lần').")
+        return redirect(result_url)
+
+    # Tên đang hiển thị hiện tại — chỉ lưu những tên người dùng mới điền hoặc đã sửa
+    current = {}
+    for amount_field in ('debit_amount', 'credit_amount'):
+        for acc in _frequent_accounts(statement, amount_field):
+            current[account_key(acc['account_number'], acc['bank_name'])] = acc['name']
+
+    # Dòng dữ liệu: cột A = số thứ tự, B = Ngân hàng, C = Số TK, D = Tên (bỏ qua dòng tiêu đề)
+    entries = {}
+    for row in rows:
+        if len(row) < 4 or not isinstance(row[0], (int, float)):
+            continue
+        bank, acct, name = (str(v or '').strip() for v in row[1:4])
+        if not acct or not name:
+            continue
+        key = account_key(acct, bank)
+        if current.get(key, '') != name:
+            entries[key] = (acct, bank, name)
+
+    if not entries:
+        messages.warning(request, 'Không tìm thấy tên mới nào trong file.')
+        return redirect(result_url)
+
+    for (acct_key, bank_key), (acct, bank, name) in entries.items():
+        AccountName.objects.update_or_create(
+            account_key=acct_key, bank_key=bank_key,
+            defaults={'account_number': acct, 'bank_name': bank, 'name': name, 'updated_by': request.user},
+        )
+
+    updated = []
+    for trans in statement.transactions.exclude(account_number=''):
+        entry = entries.get(account_key(trans.account_number, trans.bank_name))
+        if entry and trans.beneficiary_name != entry[2]:
+            trans.beneficiary_name = entry[2]
+            base = trans.source.split(' (')[0]
+            trans.source = 'Danh bạ' if base in ('', 'Đối chiếu số TK', 'Danh bạ') else f'{base} (tên từ danh bạ)'
+            updated.append(trans)
+    Transaction.objects.bulk_update(updated, ['beneficiary_name', 'source'])
+
+    messages.success(request, f'Đã lưu {len(entries)} tên vào danh bạ, cập nhật {len(updated)} giao dịch.')
+    return redirect(result_url)
 
 
 @login_required
@@ -3547,7 +3628,7 @@ def bank_statement_export(request, statement_id):
     headers = [
         'STT', 'Ngày GD', 'Số tiền ghi nợ', 'Số tiền ghi có',
         'Số dư sau GD', 'Ngân hàng', 'Số TK', 'Tên người',
-        'Nội dung', 'Loại giao dịch'
+        'Nội dung', 'Loại giao dịch', 'Nguồn'
     ]
 
     for col_num, header in enumerate(headers):
@@ -3562,6 +3643,25 @@ def bank_statement_export(request, statement_id):
     worksheet1.set_column('H:H', 25)  # Tên người
     worksheet1.set_column('I:I', 40)  # Nội dung
     worksheet1.set_column('J:J', 30)  # Loại GD
+    worksheet1.set_column('K:K', 25)  # Nguồn
+
+    # Bảng TK giao dịch nhiều lần (sheet 3) — tính trước để sheet 1 tham chiếu bằng công thức
+    frequent_recipients_export = _frequent_accounts(statement, 'debit_amount')
+    frequent_senders_export = _frequent_accounts(statement, 'credit_amount')
+    start_row = len(frequent_recipients_export) + 4  # dòng tiêu đề bảng 2 (0-based)
+
+    # Vùng dữ liệu (Excel, 1-based) của 2 bảng ở sheet 3: cột B=Ngân hàng, C=Số TK, D=Tên
+    sheet3 = "'TK giao dịch nhiều lần'"
+    rec_rows = (3, 2 + len(frequent_recipients_export))
+    send_rows = (start_row + 3, start_row + 2 + len(frequent_senders_export))
+
+    def name_lookup_formula(excel_row, rows):
+        # Tên điền tay ở sheet 3 → tự hiện ở cột Tên người (khớp Ngân hàng + Số TK)
+        first, last = rows
+        bank = f'{sheet3}!$B${first}:$B${last}'
+        acct = f'{sheet3}!$C${first}:$C${last}'
+        name = f'{sheet3}!$D${first}:$D${last}'
+        return (f'=IFERROR(LOOKUP(2,1/(({bank}=F{excel_row})*({acct}=G{excel_row})*({name}<>"")),{name}),"")')
 
     # Data
     transactions = statement.transactions.all()
@@ -3573,9 +3673,14 @@ def bank_statement_export(request, statement_id):
         worksheet1.write(row_num, 4, float(trans.balance), money_format)
         worksheet1.write(row_num, 5, trans.bank_name)
         worksheet1.write(row_num, 6, trans.account_number)
-        worksheet1.write(row_num, 7, trans.beneficiary_name)
+        rows = rec_rows if trans.debit_amount > 0 else send_rows
+        if not trans.beneficiary_name and trans.account_number and rows[1] >= rows[0]:
+            worksheet1.write_formula(row_num, 7, name_lookup_formula(row_num + 1, rows), None, '')
+        else:
+            worksheet1.write(row_num, 7, trans.beneficiary_name)
         worksheet1.write(row_num, 8, trans.description)
         worksheet1.write(row_num, 9, trans.transaction_type)
+        worksheet1.write(row_num, 10, trans.source or 'Nội dung GD')
 
     # Sheet 2: Thống kê
     worksheet2 = workbook.add_worksheet('Thống kê')
@@ -3614,6 +3719,32 @@ def bank_statement_export(request, statement_id):
         worksheet2.write(row_num, 2, float(item['total_debit'] or 0), money_format)
         worksheet2.write(row_num, 3, float(item['total_credit'] or 0), money_format)
 
+    # Thống kê theo nguồn thông tin đối tác (gộp các biến thể "CSP chiều đi (tên từ ...)")
+    by_source = {}
+    for item in statement.transactions.values('source').annotate(
+        count=models.Count('id'),
+        total_debit=models.Sum('debit_amount'),
+        total_credit=models.Sum('credit_amount'),
+    ):
+        label = (item['source'] or 'Nội dung GD').split(' (')[0]
+        agg = by_source.setdefault(label, [0, 0, 0])
+        agg[0] += item['count']
+        agg[1] += float(item['total_debit'] or 0)
+        agg[2] += float(item['total_credit'] or 0)
+
+    src_row = 10 + len(transaction_types) + 2
+    worksheet2.write(src_row, 0, 'THỐNG KÊ THEO NGUỒN', header_format)
+    for col, h in enumerate(['Nguồn', 'Số lượng', 'Tổng ghi nợ', 'Tổng ghi có']):
+        worksheet2.write(src_row + 1, col, h, header_format)
+    for row_num, (label, (count, debit, credit)) in enumerate(sorted(by_source.items()), start=src_row + 2):
+        worksheet2.write(row_num, 0, label)
+        worksheet2.write(row_num, 1, count)
+        worksheet2.write(row_num, 2, debit, money_format)
+        worksheet2.write(row_num, 3, credit, money_format)
+    note_row = src_row + 2 + len(by_source)
+    worksheet2.write(note_row, 0, 'Dòng file đối soát không khớp DPTB18:')
+    worksheet2.write(note_row, 1, len(statement.unmatched_rows))
+
     worksheet2.set_column('A:A', 40)
     worksheet2.set_column('B:D', 15)
 
@@ -3624,6 +3755,8 @@ def bank_statement_export(request, statement_id):
         'bold': True, 'bg_color': '#C00000', 'font_color': 'white',
         'align': 'center', 'valign': 'vcenter', 'border': 1
     })
+    # Ô tên còn trống: tô vàng để người dùng điền tay (sheet Chi tiết tự cập nhật)
+    fill_name_format = workbook.add_format({'bg_color': '#FFF2CC'})
     header_green = workbook.add_format({
         'bold': True, 'bg_color': '#375623', 'font_color': 'white',
         'align': 'center', 'valign': 'vcenter', 'border': 1
@@ -3638,36 +3771,18 @@ def bank_statement_export(request, statement_id):
         worksheet3.write(1, col, h, header_format)
 
 
-    frequent_recipients_export = list(
-        statement.transactions.filter(debit_amount__gt=0)
-        .exclude(account_number='')
-        .values('account_number', 'bank_name')
-        .annotate(
-            count=models.Count('id'),
-            total_amount=models.Sum('debit_amount'),
-            name=models.Max('beneficiary_name'),
-        )
-        .filter(count__gte=1)
-        .order_by('-count')
-    )
-
     for i, acc in enumerate(frequent_recipients_export, start=1):
         row = i + 1
         acct = acc.get('account_number', '')
-        name = acc.get('name', '') or ''
-        if re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
-            display_name = name  # ITL: tên từ ordcust, không lọc
-        else:
-            display_name = name if _is_proper_name(name) else ''
+        display_name = acc['name']
         worksheet3.write(row, 0, i)
         worksheet3.write(row, 1, acc['bank_name'] or '')
         worksheet3.write(row, 2, acct)
-        worksheet3.write(row, 3, display_name)
+        worksheet3.write(row, 3, display_name, None if display_name else fill_name_format)
         worksheet3.write(row, 4, acc['count'])
         worksheet3.write(row, 5, float(acc['total_amount'] or 0), money_format)
 
     # --- Bảng 2: Tài khoản chuyển tiền đến nhiều lần (tiền vào) ---
-    start_row = len(frequent_recipients_export) + 4
 
     worksheet3.merge_range(start_row, 0, start_row, 5, 'TÀI KHOẢN CHUYỂN TIỀN ĐẾN NHIỀU LẦN (tất cả tài khoản)', header_green)
 
@@ -3675,31 +3790,14 @@ def bank_statement_export(request, statement_id):
     for col, h in enumerate(send_headers):
         worksheet3.write(start_row + 1, col, h, header_format)
 
-    frequent_senders_export = list(
-        statement.transactions.filter(credit_amount__gt=0)
-        .exclude(account_number='')
-        .values('account_number', 'bank_name')
-        .annotate(
-            count=models.Count('id'),
-            total_amount=models.Sum('credit_amount'),
-            name=models.Max('beneficiary_name'),
-        )
-        .filter(count__gte=1)
-        .order_by('-count')
-    )
-
     for i, acc in enumerate(frequent_senders_export, start=1):
         row = start_row + 1 + i
         acct = acc.get('account_number', '')
-        name = acc.get('name', '') or ''
-        if re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
-            display_name = name  # ITL: tên từ ordcust, không lọc
-        else:
-            display_name = name if _is_proper_name(name) else ''
+        display_name = acc['name']
         worksheet3.write(row, 0, i)
         worksheet3.write(row, 1, acc['bank_name'] or '')
         worksheet3.write(row, 2, acct)
-        worksheet3.write(row, 3, display_name)
+        worksheet3.write(row, 3, display_name, None if display_name else fill_name_format)
         worksheet3.write(row, 4, acc['count'])
         worksheet3.write(row, 5, float(acc['total_amount'] or 0), money_format)
 
@@ -3709,6 +3807,27 @@ def bank_statement_export(request, statement_id):
     worksheet3.set_column('D:D', 28)
     worksheet3.set_column('E:E', 10)
     worksheet3.set_column('F:F', 18)
+
+    # Sheet 4: Dòng file đối soát không khớp DPTB18
+    if statement.unmatched_rows:
+        worksheet4 = workbook.add_worksheet('Không khớp')
+        unmatched_headers = ['#', 'File', 'Thời gian', 'Số tiền', 'Trace', 'Số TK đối tác', 'Tên đối tác', 'Nội dung']
+        for col, h in enumerate(unmatched_headers):
+            worksheet4.write(0, col, h, header_format)
+        for i, item in enumerate(statement.unmatched_rows, start=1):
+            worksheet4.write(i, 0, i)
+            worksheet4.write(i, 1, item.get('file', ''))
+            worksheet4.write(i, 2, item.get('time', ''))
+            worksheet4.write(i, 3, float(item.get('amount') or 0), money_format)
+            worksheet4.write(i, 4, item.get('trace', ''))
+            worksheet4.write(i, 5, item.get('account', ''))
+            worksheet4.write(i, 6, item.get('name', ''))
+            worksheet4.write(i, 7, item.get('content', ''))
+        worksheet4.set_column('A:A', 6)
+        worksheet4.set_column('B:C', 20)
+        worksheet4.set_column('D:E', 14)
+        worksheet4.set_column('F:G', 22)
+        worksheet4.set_column('H:H', 60)
 
     workbook.close()
 

@@ -48,6 +48,9 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
+# Sample data (dữ liệu sao kê thật, không commit)
+samples/
+
 # Backup files
 *.bak
 *.tmp

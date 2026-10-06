@@ -98,6 +98,7 @@ urlpatterns = [
     path('bank-statement/upload/', views.bank_statement_upload, name='bank_statement_upload'),
     path('bank-statement/result/<int:statement_id>/', views.bank_statement_result, name='bank_statement_result'),
     path('bank-statement/export/<int:statement_id>/', views.bank_statement_export, name='bank_statement_export'),
+    path('bank-statement/import-names/<int:statement_id>/', views.bank_statement_import_names, name='bank_statement_import_names'),
 
     # Employee Management
     path('employees/', views.employee_list, name='employee_list'),

@@ -94,8 +94,38 @@
                                 <strong>File đã chọn:</strong> <span id="fileName"></span>
                             </div>
                         </div>
-                        <!-- File ITL tùy chọn -->
+                        <!-- File đối soát CSP / MSPH02 tùy chọn -->
                         <div class="mt-4 p-3 border rounded bg-light">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-file-earmark-plus"></i>
+                                File đối soát <span class="text-muted fw-normal">(tùy chọn)</span>
+                            </label>
+                            <div class="text-muted small mb-3">
+                                Hệ thống sẽ bổ sung <strong>tên, số tài khoản, ngân hàng đối tác</strong>
+                                cho các giao dịch chuyển khoản liên ngân hàng khớp với file DPTB18.
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="msph02_den_file" class="form-label small mb-1">MSPH02 chiều đến</label>
+                                    <input type="file" class="form-control form-control-sm" id="msph02_den_file" name="msph02_den_file" accept=".xls,.xlsx">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="msph02_di_file" class="form-label small mb-1">MSPH02 chiều đi</label>
+                                    <input type="file" class="form-control form-control-sm" id="msph02_di_file" name="msph02_di_file" accept=".xls,.xlsx">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="csp_den_file" class="form-label small mb-1">CSP chiều đến</label>
+                                    <input type="file" class="form-control form-control-sm" id="csp_den_file" name="csp_den_file" accept=".xls,.xlsx">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="csp_di_file" class="form-label small mb-1">CSP chiều đi <span class="text-muted">(bản đầy đủ)</span></label>
+                                    <input type="file" class="form-control form-control-sm" id="csp_di_file" name="csp_di_file" accept=".xls,.xlsx">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- File ITL tùy chọn — tạm ẩn, xem lại sau -->
+                        <div class="mt-4 p-3 border rounded bg-light d-none">
                             <label class="form-label fw-semibold">
                                 <i class="bi bi-file-earmark-plus"></i>
                                 File ITL <span class="text-muted fw-normal">(tùy chọn — FXIR64: Lấy số liệu ITL)</span>
@@ -129,9 +159,10 @@
                 </div>
                 <div class="card-body">
                     <ul class="mb-0">
-                        <li>File phải là định dạng Excel (.xls hoặc .xlsx) xuất từ hệ thống Agribank</li>
+                        <li>File sao kê DPTB18 phải là định dạng Excel (.xls hoặc .xlsx) xuất từ hệ thống Agribank</li>
                         <li>File phải chứa các cột: <code>trdt</code>, <code>acctccyamt</code>, <code>aftrbal</code>, <code>rem</code>, <code>trcdnm</code></li>
                         <li>Hệ thống sẽ tự động phân tích và phân loại các giao dịch</li>
+                        <li>File đối soát CSP / MSPH02 không bắt buộc; dòng nào không khớp với DPTB18 sẽ được liệt kê riêng để kiểm tra</li>
                         <li>Kết quả có thể export ra file Excel để lưu trữ</li>
                     </ul>
                 </div>

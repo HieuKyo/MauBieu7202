@@ -196,6 +196,14 @@
                 {% endif %}
             </button>
         </li>
+        {% if statement.unmatched_rows %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-khongkhop-btn" data-bs-toggle="tab" data-bs-target="#tab-khongkhop" type="button" role="tab">
+                <i class="bi bi-exclamation-triangle"></i> Dòng không khớp
+                <span class="badge bg-danger ms-1">{{ statement.unmatched_rows|length }}</span>
+            </button>
+        </li>
+        {% endif %}
     </ul>
 
     <div class="tab-content" id="mainTabContent">
@@ -252,6 +260,7 @@
                                     <th style="width: 180px;">Tên người</th>
                                     <th>Nội dung</th>
                                     <th style="width: 180px;">Loại GD</th>
+                                    <th style="width: 140px;">Nguồn</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -287,10 +296,11 @@
                                             <span class="badge badge-custom bg-secondary">Chưa phân loại</span>
                                         {% endif %}
                                     </td>
+                                    <td><small class="text-muted">{{ transaction.source|default:"Nội dung GD" }}</small></td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="10" class="text-center py-4">
+                                    <td colspan="11" class="text-center py-4">
                                         <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
                                         <p class="text-muted mt-2">Không có giao dịch nào</p>
                                     </td>
@@ -346,6 +356,31 @@
 
         <!-- Tab Thống kê -->
         <div class="tab-pane fade" id="tab-thongke" role="tabpanel">
+
+            <!-- Cập nhật tên từ file Excel đã điền -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data"
+                          action="{% url 'bank_statement_import_names' statement.id %}" class="row g-2 align-items-end">
+                        {% csrf_token %}
+                        <div class="col-md-8">
+                            <label for="names_file" class="form-label fw-semibold mb-1">
+                                <i class="bi bi-person-lines-fill"></i> Cập nhật tên từ file Excel
+                            </label>
+                            <div class="text-muted small mb-2">
+                                Xuất Excel, điền tên vào các ô tô vàng ở sheet <strong>TK giao dịch nhiều lần</strong>,
+                                lưu file rồi tải lên đây. Tên được lưu vào danh bạ dùng chung và tự điền cho các sao kê sau.
+                            </div>
+                            <input type="file" class="form-control form-control-sm" id="names_file" name="names_file" accept=".xlsx" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-agribank btn-sm w-100">
+                                <i class="bi bi-upload"></i> Cập nhật tên
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- Tài khoản nhận tiền nhiều lần -->
             <div class="card shadow-sm mb-4">
@@ -450,6 +485,52 @@
             </div>
 
         </div>
+
+        <!-- Tab Dòng không khớp -->
+        {% if statement.unmatched_rows %}
+        <div class="tab-pane fade" id="tab-khongkhop" role="tabpanel">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning">
+                    <h6 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Giao dịch thành công trong file đối soát nhưng không tìm thấy trong DPTB18
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover transaction-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th style="width: 150px;">File</th>
+                                    <th style="width: 160px;">Thời gian</th>
+                                    <th class="text-end" style="width: 130px;">Số tiền</th>
+                                    <th style="width: 100px;">Trace</th>
+                                    <th style="width: 160px;">Số TK đối tác</th>
+                                    <th style="width: 180px;">Tên đối tác</th>
+                                    <th>Nội dung</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in statement.unmatched_rows %}
+                                <tr>
+                                    <td class="text-center text-muted">{{ forloop.counter }}</td>
+                                    <td>{{ row.file }}</td>
+                                    <td>{{ row.time }}</td>
+                                    <td class="text-end fw-bold">{{ row.amount|floatformat:0|intcomma }}</td>
+                                    <td class="font-monospace small">{{ row.trace|default:"-" }}</td>
+                                    <td class="font-monospace small">{{ row.account|default:"-" }}</td>
+                                    <td>{{ row.name|default:"-" }}</td>
+                                    <td><small>{{ row.content|truncatechars:80 }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 

@@ -2,9 +2,18 @@
 Module xử lý và phân tích file sao kê ngân hàng Agribank
 """
 import re
+from collections import Counter
+
 import pandas as pd
 from datetime import datetime
 from decimal import Decimal
+
+
+def account_key(account_number, bank_name):
+    """Khoá so khớp tài khoản: (số TK bỏ số 0 đầu, ngân hàng — mọi chi nhánh Agribank coi là một)."""
+    bank = (bank_name or '').strip().lower()
+    bank_key = 'agribank' if bank.startswith('agribank') else bank
+    return (account_number or '').strip().lstrip('0').upper(), bank_key
 
 
 class BankStatementParser:
@@ -12,6 +21,9 @@ class BankStatementParser:
 
     # Các cột bắt buộc trong file sao kê Agribank
     REQUIRED_COLUMNS = ['trdt', 'acctccyamt', 'aftrbal', 'rem', 'trcdnm']
+
+    # Cột số TK / mã tham chiếu: đọc dạng chuỗi để không bị đổi thành số thực (7202205160708.0)
+    TEXT_COLUMNS = {c: str for c in ['tomgntno', 'toacctno', 'thrref', 'ourref', 'husrid', 'trcd', 'fndtpcd']}
 
     # Mapping tên viết tắt ngân hàng
     BANK_CODE_MAPPING = {
@@ -39,7 +51,8 @@ class BankStatementParser:
         'TPB': 'TPBank',
         'TPBANK': 'TPBank',
         'SEABANK': 'SeABank',
-        'HDBank': 'HDBank',
+        'HDBANK': 'HDBank',
+        'HDB': 'HDBank',
         'LPB': 'LienVietPostBank',
         'LIENVIETPOSTBANK': 'LienVietPostBank',
         'PVCOMBANK': 'PVcomBank',
@@ -51,6 +64,12 @@ class BankStatementParser:
         'VIETABANK': 'VietABank',
         'VBA': 'Agribank',  # Vietnam Bank for Agriculture (Agribank)
         'PGBANK': 'PGBank',
+        'PGB': 'PGBank',
+        'VCCB': 'BVBank',
+        'BVBANK': 'BVBank',
+        'SEAB': 'SeABank',
+        'SHBVN': 'Shinhan Bank',
+        'MOMO': 'MoMo',
         'ABB': 'ABBank',
         'ABBANK': 'ABBank',
         'VIETBANK': 'VietBank',
@@ -75,7 +94,7 @@ class BankStatementParser:
     # BIN code gồm 6 số dùng để định danh ngân hàng trong giao dịch thẻ
     BIN_CODE_MAPPING = {
         '970405': 'Agribank',
-        '970422': 'Vietinbank',  # CTG
+        '970422': 'MB Bank',
         '970436': 'Vietcombank',  # VCB
         '970418': 'BIDV',
         '970407': 'Techcombank',  # TCB
@@ -86,21 +105,21 @@ class BankStatementParser:
         '970441': 'VIB',
         '970443': 'SHB',
         '970431': 'Eximbank',
-        '970426': 'MB Bank',
+        '970426': 'MSB',
         '970448': 'OCB',
-        '970414': 'PVcomBank',
-        '970433': 'VietABank',
-        '970427': 'VietCapital Bank',
+        '970414': 'OceanBank',
+        '970433': 'VietBank',
+        '970427': 'VietABank',
         '970438': 'BaoViet Bank',
         '970457': 'Woori Bank',
         '970410': 'Standard Chartered',
         '970424': 'Shinhan Bank',
-        '970412': 'HSBC',
+        '970412': 'PVcomBank',
         '970419': 'NCB',
         '970406': 'DongA Bank',
         '970437': 'HDBank',
         '970429': 'SCB',
-        '970454': 'VietBank',
+        '970454': 'BVBank',
         '970430': 'PGBank',
         '970425': 'ABBank',
         '970409': 'BacABank',
@@ -108,7 +127,7 @@ class BankStatementParser:
         '970458': 'UOB',
         '970434': 'Indovina Bank',
         '970439': 'Public Bank',
-        '970415': 'Vietinbank',  # Duplicate entry for legacy
+        '970415': 'Vietinbank',  # CTG
         '970400': 'SaigonBank',
         '970449': 'LienVietPostBank',
         '970452': 'Kiên Long Bank',  # KLB
@@ -118,6 +137,7 @@ class BankStatementParser:
         '970440': 'SeABank',
         '970460': 'CAKE by VPBank',
         '970463': 'Timo by VPBank',
+        '971025': 'MoMo',
     }
 
     def __init__(self, file_path):
@@ -142,9 +162,9 @@ class BankStatementParser:
             # Đọc file Excel (case-insensitive)
             file_lower = self.file_path.lower()
             if file_lower.endswith('.xls') and not file_lower.endswith('.xlsx'):
-                self.df = pd.read_excel(self.file_path, engine='xlrd')
+                self.df = pd.read_excel(self.file_path, engine='xlrd', dtype=self.TEXT_COLUMNS)
             elif file_lower.endswith('.xlsx'):
-                self.df = pd.read_excel(self.file_path, engine='openpyxl')
+                self.df = pd.read_excel(self.file_path, engine='openpyxl', dtype=self.TEXT_COLUMNS)
             else:
                 return False, "File phải có định dạng .xls hoặc .xlsx"
 
@@ -588,6 +608,10 @@ class BankStatementParser:
         if trcd == 'W000':
             return "Mở tài khoản"
 
+        # OSB (hệ sinh thái Agribank): husrid = mã CN + "OSB" (VD 7202OSB) — cả chiều nhận và chuyển
+        if re.match(r'^\d{4}OSB', husrid, re.IGNORECASE):
+            return "Giao dịch OSB"
+
         # Giải ngân
         if '7202LDS' in rem:
             return "Giải ngân"
@@ -616,6 +640,8 @@ class BankStatementParser:
                 'ANNUAL FEE',
                 'PHI DICH VU', 'PHI QUAN LY',
                 'PHI THU THEO LO',
+                'PHI TIN NHAN',   # Phi Tin nhan OTT DV Agribank Plus
+                'PHI DV ',        # Phi DV SMS Banking
             ]
             if any(k in rem_upper for k in _FEE_KEYWORDS) or 'ABIC' in rem_upper:
                 return "Phí dịch vụ"
@@ -627,6 +653,11 @@ class BankStatementParser:
         # MAP(số)(nội dung) — hệ thống thanh toán hóa đơn qua SMS/Mobile Banking
         if re.search(r'MAP\(\d+\)', rem, re.IGNORECASE):
             return "Thanh toán hóa đơn"
+
+        # husrid = mã CN + "API" (VD 7202API5): hệ thống Payment Hub — thanh toán tập trung
+        # liên ngân hàng (file MSPH02), không phải nội bộ Agribank
+        if re.match(r'^\d{4}API', husrid, re.IGNORECASE):
+            return "Nhận chuyển khoản liên ngân hàng" if amount > 0 else "Chuyển khoản đi khác ngân hàng"
 
         # trcd C204: Rút tiền bằng thẻ 24/24 (ATM)
         # fndtpcd=101 → tiền mặt thực rút; fndtpcd=198 → phí dịch vụ kèm theo
@@ -879,22 +910,6 @@ class BankStatementParser:
         if 'LAI TIEN GUI' in trcdnm.upper() or ('LAI' in rem.upper() and 'GUI' in rem.upper()):
             return "Trả lãi tiền gửi"
 
-        # Giao dịch đặc biệt dựa vào husrid
-        husrid = str(row.get('husrid', ''))
-        if husrid and len(husrid) >= 7:
-            # PaymentHub: husrid starts with '7202API'
-            if husrid[:7] == '7202API':
-                if amount > 0:
-                    return "Nhận tiền qua PaymentHub"
-                else:
-                    return "Thanh toán qua PaymentHub"
-            # OSB: husrid starts with '7202OSB'
-            elif husrid[:7] == '7202OSB':
-                if amount > 0:
-                    return "Nhận tiền qua OSB"
-                else:
-                    return "Chuyển tiền qua OSB"
-
         # Không xác định được
         return ""
 
@@ -959,7 +974,7 @@ class BankStatementParser:
         except Exception:
             return {}
 
-    def process(self, itl_mapping=None):
+    def process(self, itl_mapping=None, enrichment=None, name_book=None):
         """
         Xử lý toàn bộ file và trả về dữ liệu đã parse
 
@@ -967,6 +982,10 @@ class BankStatementParser:
             itl_mapping: dict {trref: ordcust} từ file FXIR64 (tùy chọn).
                          Nếu cung cấp, tên người chuyển của giao dịch ITL sẽ được
                          lấy từ cột ordcust thay vì parse từ rem.
+            enrichment: dict {index dòng: thông tin đối tác} từ bank_statement_enricher.enrich()
+                        (tùy chọn). Thông tin từ file CSP/MSPH02 được ưu tiên hơn parse rem.
+            name_book: dict {account_key(...): tên} từ danh bạ người dùng điền (tùy chọn).
+                       Chỉ điền cho giao dịch có số TK nhưng chưa tìm được tên.
 
         Returns:
             list: Danh sách dict chứa thông tin các giao dịch đã parse
@@ -1009,6 +1028,8 @@ class BankStatementParser:
             # Các trường bổ sung
             tomgntno = row.get('tomgntno', '')
             toacctno = row.get('toacctno', '')
+            tomgntno = '' if pd.isna(tomgntno) else tomgntno
+            toacctno = '' if pd.isna(toacctno) else toacctno
             lclbrnm  = str(row.get('lclbrnm', ''))
             thrref   = str(row.get('thrref', '')).strip()
             husrid   = str(row.get('husrid', '')).strip()
@@ -1073,6 +1094,25 @@ class BankStatementParser:
             if acctccyamt < 0:
                 beneficiary_info['beneficiary_name'] = ''
 
+            # Thông tin đối tác từ file CSP/MSPH02 (nếu có) — ưu tiên hơn parse rem
+            source = ''
+            info = (enrichment or {}).get(idx)
+            if info:
+                source = info['source']
+                # Khớp file đối soát CSP/MSPH02 → chắc chắn là liên ngân hàng (lclbrnm "Agribank CN ..."
+                # có thể khiến bị nhầm thành nội bộ). Giữ nguyên tên loại MCC.
+                if transaction_type not in ("Nhận thanh toán MCC", "Thanh toán qua MCC"):
+                    transaction_type = ("Nhận chuyển khoản liên ngân hàng" if acctccyamt > 0
+                                        else "Chuyển khoản đi khác ngân hàng")
+                if info['beneficiary_name']:
+                    beneficiary_info['beneficiary_name'] = info['beneficiary_name']
+                # Giữ số TK parse từ rem nếu chỉ khác số 0 đầu (file CSP làm mất số 0)
+                parsed_acct = beneficiary_info['account_number'].lstrip('0').upper()
+                if info['account_number'] and info['account_number'].lstrip('0').upper() != parsed_acct:
+                    beneficiary_info['account_number'] = info['account_number']
+                if info['bank_name']:
+                    beneficiary_info['bank_name'] = info['bank_name']
+
             # Tạo dict cho giao dịch
             transaction = {
                 'stt': stt,
@@ -1085,6 +1125,7 @@ class BankStatementParser:
                 'ten_nguoi': beneficiary_info['beneficiary_name'],
                 'noi_dung': description,
                 'ghi_chu': transaction_type,
+                'nguon': source,
                 # Raw data
                 'raw_trcdnm': str(row.get('trcdnm', '')),
                 'raw_tomgntno': str(tomgntno),
@@ -1092,7 +1133,48 @@ class BankStatementParser:
 
             self.processed_data.append(transaction)
 
+        self._fill_names_by_account()
+        if name_book:
+            for t in self.processed_data:
+                if t['so_tai_khoan'] and not t['ten_nguoi']:
+                    name = name_book.get(account_key(t['so_tai_khoan'], t['ngan_hang']))
+                    if name:
+                        t['ten_nguoi'] = name
+                        t['nguon'] = f"{t['nguon']} (tên từ danh bạ)" if t['nguon'] else 'Danh bạ'
         return self.processed_data
+
+    def _fill_names_by_account(self):
+        """
+        Kiểm tra chéo: giao dịch có số TK nhưng chưa có tên → lấy tên đã biết của cùng số TK
+        + cùng ngân hàng ở giao dịch khác. VD nhận MB(..)(HUYNH VAN CONG ..) từ TK X,
+        sau đó chuyển đi TK X → điền HUYNH VAN CONG.
+        Chỉ dùng tên tin cậy: GD nội bộ Agribank hoặc GD có nguồn file đối soát CSP/MSPH02.
+        """
+        def key(t):
+            return account_key(t['so_tai_khoan'], t['ngan_hang'])
+
+        own = set()
+        if 'acctno' in self.df.columns:
+            own = {str(v).split('.')[0].lstrip('0') for v in self.df['acctno'].dropna()}
+
+        known = {}
+        for t in self.processed_data:
+            name = t['ten_nguoi'].strip()
+            if not t['so_tai_khoan'] or not name:
+                continue
+            if not (t['nguon'] or key(t)[1] == 'agribank'):
+                continue
+            if any(c.isdigit() for c in name) or len(name.split()) < 2:
+                continue
+            known.setdefault(key(t), Counter())[name] += 1
+
+        for t in self.processed_data:
+            if not t['so_tai_khoan'] or t['ten_nguoi'] or key(t)[0] in own:
+                continue
+            names = known.get(key(t))
+            if names:
+                t['ten_nguoi'] = names.most_common(1)[0][0]
+                t['nguon'] = f"{t['nguon']} (tên đối chiếu số TK)" if t['nguon'] else 'Đối chiếu số TK'
 
     def get_summary(self):
         """

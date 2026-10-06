@@ -7,7 +7,7 @@ from django.contrib import messages
 from .models import (
     Category, Template, Customer, Business, GlobalConfig, BranchConfig, AppProgram,
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
-    BankStatement, Transaction,
+    BankStatement, Transaction, AccountName,
     UserProfile, Course, CourseEnrollment,
     ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy,
     VehicleDutySchedule,
@@ -676,6 +676,22 @@ class BankStatementAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # Chỉ cho phép xóa nếu là superuser
         return request.user.is_superuser
+
+
+@admin.register(AccountName)
+class AccountNameAdmin(admin.ModelAdmin):
+    """Danh bạ tên chủ TK dùng chung — chỉ sửa tên hoặc xoá; khoá so khớp giữ nguyên"""
+    list_display = ['bank_name', 'account_number', 'name', 'updated_by', 'updated_at']
+    list_filter = ['bank_name']
+    search_fields = ['account_number', 'name']
+    readonly_fields = ['account_key', 'bank_key', 'account_number', 'bank_name', 'updated_by', 'updated_at']
+
+    def has_add_permission(self, request):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Transaction)
