@@ -85,9 +85,19 @@
                 </div>
                 <div class="small text-muted text-center mt-1">Bấm vào ảnh để chụp lại · Có sẵn file ảnh thì bấm "Tải ảnh" · Đóng cửa sổ sẽ xóa ảnh</div>
 
-                <div class="input-group input-group-sm mt-3">
-                    <span class="input-group-text">Địa danh</span>
-                    <input type="text" class="form-control" id="cccdPhotoDiaDanh" value="{{ dia_danh }}">
+                <div class="row g-2 mt-2">
+                    <div class="col-sm-7">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Địa danh</span>
+                            <input type="text" class="form-control" id="cccdPhotoDiaDanh" value="{{ dia_danh }}">
+                        </div>
+                    </div>
+                    <div class="col-sm-5">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Ngày ký</span>
+                            <input type="date" class="form-control" id="cccdPhotoNgayKy" title="Mặc định là hôm nay. Xóa trống để in dấu chấm và ghi tay.">
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">

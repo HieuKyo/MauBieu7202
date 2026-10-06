@@ -449,6 +449,9 @@ function printCccdPhotos() {
     if (!cccdPhotos.front || !cccdPhotos.back) return;
     const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
     const diaDanh = esc(document.getElementById('cccdPhotoDiaDanh').value.trim() || '..................');
+    // Ngày ký (yyyy-mm-dd từ ô chọn ngày); để trống → in dấu chấm để ghi tay
+    const [nam, thang, ngay] = (document.getElementById('cccdPhotoNgayKy').value || '').split('-');
+    const ngayKy = nam ? `ngày ${ngay} tháng ${thang} năm ${nam}` : 'ngày ...... tháng ...... năm ........';
 
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>CCCD 2 mặt</title><style>
         @page { size: A5 landscape; margin: 0; }
@@ -465,7 +468,7 @@ function printCccdPhotos() {
         <div class="cards"><img src="${cccdPhotos.front}"><img src="${cccdPhotos.back}"></div>
         <div class="note">
             <div><b>ĐÃ ĐỐI CHIẾU KHỚP ĐÚNG VỚI BẢN GỐC</b></div>
-            <div><i>${diaDanh}, ngày ...... tháng ...... năm ........</i></div>
+            <div><i>${diaDanh}, ${ngayKy}</i></div>
             <div><b>Người đối chiếu</b></div>
             <div class="sign-space"></div>
         </div>
@@ -488,6 +491,9 @@ function printCccdPhotos() {
 const cccdPhotoModalEl = document.getElementById('cccdPhotoModal');
 cccdPhotoModalEl.addEventListener('shown.bs.modal', () => {
     cccdPhotoModalOpen = true;
+    // Ngày ký mặc định = hôm nay (theo giờ máy), GĐV sửa được trước khi in
+    const today = new Date(), p2 = n => String(n).padStart(2, '0');
+    document.getElementById('cccdPhotoNgayKy').value = `${today.getFullYear()}-${p2(today.getMonth() + 1)}-${p2(today.getDate())}`;
     let enhance = '1';
     try { enhance = localStorage.getItem('cccdPhotoEnhance') ?? '1'; } catch (e) {}
     document.getElementById('cccdPhotoEnhance').checked = enhance === '1';
