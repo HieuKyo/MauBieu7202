@@ -14,7 +14,7 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from .bank_statement_enricher import _valid_name, enrich
-from .bank_statement_parser import BankStatementParser
+from .bank_statement_parser import SOURCE_CONTENT_NAME, BankStatementParser
 from .models import AccountName, BankStatement
 
 
@@ -121,7 +121,7 @@ class EnrichTests(SimpleTestCase):
             'Chuyển khoản đi khác ngân hàng',
         ])
         # Giao dịch nội bộ: không có trong file đối soát → giữ kết quả parse rem
-        self.assertEqual((rows[4]['nguon'], rows[4]['ten_nguoi']), ('', 'PHAM D'))
+        self.assertEqual((rows[4]['nguon'], rows[4]['ten_nguoi']), (SOURCE_CONTENT_NAME, 'PHAM D'))
         self.assertEqual(sorted((u['file'], u['trace']) for u in unmatched), [
             ('CSP chiều đến', '111111'),
             ('MSPH02 chiều đến', '000000999'),
@@ -130,7 +130,7 @@ class EnrichTests(SimpleTestCase):
     def test_without_aux_files_behaves_as_before(self):
         rows, unmatched = self._process({})
         self.assertEqual(unmatched, [])
-        self.assertTrue(all(r['nguon'] == '' for r in rows))
+        self.assertTrue(all(r['nguon'] in ('', SOURCE_CONTENT_NAME) for r in rows))
 
     def test_cross_check_requires_same_bank(self):
         paths = dict(self.aux_paths)
@@ -140,6 +140,30 @@ class EnrichTests(SimpleTestCase):
         frames['csp_den'].to_excel(paths['csp_den'], index=False)
         rows, _ = self._process(paths)
         self.assertEqual((rows[3]['nguon'], rows[3]['ten_nguoi']), ('CSP chiều đi', ''))
+
+    def _process_csp_di(self, frame):
+        path = os.path.join(self.tmp, 'csp_di_remark.xlsx')
+        frame.to_excel(path, index=False)
+        rows, _ = self._process({**self.aux_paths, 'csp_di': path})
+        return rows[3]
+
+    def test_csp_di_to_account_remark_on_debit_row(self):
+        frame = _aux_frames()['csp_di']
+        frame['TO_ACCOUNT_REMARK'] = ['TRAN VAN NHAN', '', '']
+        row = self._process_csp_di(frame)
+        # Tên lấy thẳng từ file, ưu tiên hơn đối chiếu chéo (LU THI E)
+        self.assertEqual((row['ten_nguoi'], row['nguon']), ('TRAN VAN NHAN', 'CSP chiều đi'))
+
+    def test_csp_di_to_account_remark_on_credit_row_with_bank_prefix(self):
+        frame = _aux_frames()['csp_di']
+        frame['TO_ACCOUNT_REMARK'] = ['', 'OCB;0947365707;TRAN VAN NHAN', '']
+        self.assertEqual(self._process_csp_di(frame)['ten_nguoi'], 'TRAN VAN NHAN')
+
+    def test_csp_di_to_account_remark_bank_name_falls_back_to_cross_check(self):
+        frame = _aux_frames()['csp_di']
+        frame['TO_ACCOUNT_REMARK'] = ['MoMo', '', '']
+        row = self._process_csp_di(frame)
+        self.assertEqual((row['ten_nguoi'], row['nguon']), ('LU THI E', 'CSP chiều đi (tên từ CSP chiều đến)'))
 
     def test_missing_column_raises(self):
         bad = os.path.join(self.tmp, 'bad.xlsx')
@@ -172,6 +196,17 @@ class ClassifyTests(SimpleTestCase):
             {**base, 'trcd': 'X201', 'trcdnm': 'Rút tiền (tiền gửi KKH)', 'acctccyamt': -50000}),
             'Chuyển khoản đi khác ngân hàng')
 
+    def test_internal_mb_name_needs_full_name(self):
+        parser = BankStatementParser('unused.xlsx')
+
+        def name(content):
+            return parser.parse_beneficiary_info(f'MB(366304)({content})', '7207205188157', 100000)['beneficiary_name']
+
+        self.assertEqual(name('THANH chuyen khoan'), '')            # 1 từ → không coi là tên
+        self.assertEqual(name('NGO TAN THANH chuyen tien'), 'NGO TAN THANH')  # "THANH" là tên, không phải từ dừng
+        self.assertEqual(name('NGUYEN VAN TIEN chuyen tien'), 'NGUYEN VAN TIEN')
+        self.assertEqual(name('LE VAN A thanh toan tien hang'), 'LE VAN A')
+
     def test_osb_both_directions(self):
         parser = BankStatementParser('unused.xlsx')
         base = {'trcd': 'X101', 'trcdnm': 'Tiền gửi không kỳ hạn', 'husrid': '7202OSB',
@@ -203,10 +238,17 @@ class FillNamesByAccountTests(SimpleTestCase):
         parser = BankStatementParser(path)
         parser.validate_file()
         result = parser.process()
-        self.assertEqual((result[0]['ten_nguoi'], result[0]['nguon']), ('HUYNH VAN CONG', ''))
+        self.assertEqual((result[0]['ten_nguoi'], result[0]['nguon']), ('HUYNH VAN CONG', SOURCE_CONTENT_NAME))
         self.assertEqual(
             (result[1]['so_tai_khoan'], result[1]['ten_nguoi'], result[1]['nguon']),
-            ('7207205188157', 'HUYNH VAN CONG', 'Đối chiếu số TK'))
+            ('7207205188157', 'HUYNH VAN CONG', 'Đối chiếu số TK (chưa xác thực)'))
+
+        # Danh bạ (người dùng xác nhận) ghi đè tên chưa xác thực
+        parser = BankStatementParser(parser.file_path)
+        parser.validate_file()
+        result = parser.process(name_book={('7207205188157', 'agribank'): 'HUYNH VAN CONG CHINH'})
+        self.assertEqual([(r['ten_nguoi'], r['nguon']) for r in result],
+                         [('HUYNH VAN CONG CHINH', 'Danh bạ')] * 2)
 
 
 class BankStatementViewTests(TestCase):
@@ -223,7 +265,7 @@ class BankStatementViewTests(TestCase):
         statement = BankStatement.objects.get(uploaded_by=self.user)
         self.assertRedirects(response, reverse('bank_statement_result', args=[statement.id]))
         self.assertEqual(len(statement.unmatched_rows), 2)
-        self.assertEqual(statement.transactions.exclude(source='').count(), 4)
+        self.assertEqual(statement.transactions.exclude(source='').exclude(source=SOURCE_CONTENT_NAME).count(), 4)
 
         page = self.client.get(reverse('bank_statement_result', args=[statement.id]))
         self.assertContains(page, 'Dòng không khớp')

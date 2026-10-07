@@ -3396,7 +3396,7 @@ def _is_proper_name(name):
 def _frequent_accounts(statement, amount_field):
     """
     Gom giao dịch theo (số TK, ngân hàng) cho chiều tiền ra (debit_amount) hoặc vào (credit_amount).
-    Tên ưu tiên lấy từ dòng có nguồn file đối soát CSP/MSPH02 (tin cậy, không lọc);
+    Tên ưu tiên lấy từ dòng có nguồn đã xác thực (file đối soát, danh bạ — không lọc);
     còn lại tên parse từ rem phải qua _is_proper_name.
     """
     accounts = list(
@@ -3407,7 +3407,8 @@ def _frequent_accounts(statement, amount_field):
             count=models.Count('id'),
             total_amount=models.Sum(amount_field),
             name=models.Max('beneficiary_name'),
-            aux_name=models.Max('beneficiary_name', filter=~models.Q(source='')),
+            aux_name=models.Max('beneficiary_name',
+                                filter=~models.Q(source='') & ~models.Q(source__contains='chưa xác thực')),
         )
         .order_by('-count')
     )
@@ -3521,7 +3522,7 @@ def bank_statement_import_names(request, statement_id):
     lưu tên mới/đã sửa vào danh bạ dùng chung và cập nhật giao dịch của sao kê này.
     """
     from .models import AccountName, BankStatement, Transaction
-    from .bank_statement_parser import account_key
+    from .bank_statement_parser import account_key, name_book_source
     from openpyxl import load_workbook
 
     statement = get_object_or_404(BankStatement, id=statement_id, uploaded_by=request.user)
@@ -3573,8 +3574,7 @@ def bank_statement_import_names(request, statement_id):
         entry = entries.get(account_key(trans.account_number, trans.bank_name))
         if entry and trans.beneficiary_name != entry[2]:
             trans.beneficiary_name = entry[2]
-            base = trans.source.split(' (')[0]
-            trans.source = 'Danh bạ' if base in ('', 'Đối chiếu số TK', 'Danh bạ') else f'{base} (tên từ danh bạ)'
+            trans.source = name_book_source(trans.source)
             updated.append(trans)
     Transaction.objects.bulk_update(updated, ['beneficiary_name', 'source'])
 

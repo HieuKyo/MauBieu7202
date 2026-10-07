@@ -7,6 +7,7 @@ Quy tắc khớp với DPTB18 (đã kiểm chứng trên dữ liệu thật):
 - CSP chiều đến:    cột TRACE IPCAS = mã 6 số đầu rem ("678144-..." hoặc "1000A87202 - 678144-...")
 - CSP chiều đi:     dòng 369-Transfer Debit, cột TRACE = mã 6 số đầu rem;
                     số TK / ngân hàng nhận lấy từ dòng 91-Transfer Credit cùng REMARK + số tiền
+                    tên người nhận lấy từ cột TO_ACCOUNT_REMARK (nếu có), không có thì đối chiếu chéo
 Mọi phép khớp đều kiểm tra thêm chiều tiền (vào/ra) và số tiền bằng nhau.
 """
 import re
@@ -240,15 +241,20 @@ def enrich(dptb_df, aux_paths):
             idx = index.take(index.by_trace, (_s(r['TRACE']).zfill(6), -1), amount)
             credit = _pair_credit(r, credits, used_credits)
             account = _s(credit['TO_ACCOUNT']) if credit is not None else ''
+            # Tên người nhận ghi trực tiếp trong file (cột TO_ACCOUNT_REMARK, không bắt buộc)
+            to_name = _to_account_remark(r) or (_to_account_remark(credit) if credit is not None else '')
             if idx is None:
                 unmatched.append(_unmatched('csp_di', r['TRANSACTION TIME'], amount, account,
-                                            '', r['REMARK'], r['TRACE']))
+                                            to_name, r['REMARK'], r['TRACE']))
                 continue
             bin_code, bank = _bin_bank(credit['TO_BANK_CODE']) if credit is not None else ('', '')
-            name, name_src = names.lookup(account, bin_code)
             source = AUX_FILES['csp_di']
-            if name:
-                source += f' (tên từ {name_src})'
+            name = to_name
+            if not name:
+                # Không có tên trong file → đối chiếu chéo số TK với các file khác
+                name, name_src = names.lookup(account, bin_code)
+                if name:
+                    source += f' (tên từ {name_src})'
             enrichment[idx] = {
                 'beneficiary_name': name,
                 'account_number': account,
@@ -259,9 +265,24 @@ def enrich(dptb_df, aux_paths):
     return enrichment, unmatched
 
 
+def _to_account_remark(row):
+    """
+    Tên người nhận từ cột TO_ACCOUNT_REMARK (CSP chiều đi). Nếu giá trị dạng
+    'NGÂN HÀNG;SỐ TK;TÊN' thì lấy phần cuối. Trả '' nếu không có cột / không phải tên người.
+    """
+    name = _s(row.get('TO_ACCOUNT_REMARK')).split(';')[-1].strip()
+    return name if _valid_name(name) else ''
+
+
+def _norm_remark(text):
+    return ' '.join(_s(text).replace(';', ' ').split())
+
+
 def _pair_credit(debit, credits, used, max_seconds=300):
     """Tìm dòng 91-Transfer Credit cùng REMARK + số tiền, gần thời điểm nhất."""
-    cand = credits[(credits['AMOUNT'] == debit['AMOUNT']) & (credits['REMARK'] == debit['REMARK'])
+    # REMARK dòng Credit có thể ngăn cách bằng dấu cách thay vì ';' (VD VPB, NCB) → so sau khi chuẩn hoá
+    cand = credits[(credits['AMOUNT'] == debit['AMOUNT'])
+                   & (credits['REMARK'].map(_norm_remark) == _norm_remark(debit['REMARK']))
                    & ~credits.index.isin(used)]
     if cand.empty or pd.isna(debit['_ts']):
         return None

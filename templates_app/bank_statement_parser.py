@@ -9,6 +9,17 @@ from datetime import datetime
 from decimal import Decimal
 
 
+# Tên lấy từ nội dung GD do người chuyển tự gõ → chưa phải tên chủ TK đã xác thực
+UNVERIFIED = 'chưa xác thực'
+SOURCE_CONTENT_NAME = f'Nội dung GD (tên {UNVERIFIED})'
+
+
+def name_book_source(source):
+    """Nguồn mới khi tên được lấy từ Danh bạ (thay cho tên từ nội dung / đối chiếu)."""
+    base = (source or '').split(' (')[0]
+    return 'Danh bạ' if base in ('', 'Nội dung GD', 'Đối chiếu số TK', 'Danh bạ') else f'{base} (tên từ danh bạ)'
+
+
 def account_key(account_number, bank_name):
     """Khoá so khớp tài khoản: (số TK bỏ số 0 đầu, ngân hàng — mọi chi nhánh Agribank coi là một)."""
     bank = (bank_name or '').strip().lower()
@@ -307,14 +318,21 @@ class BankStatementParser:
             elif acctccyamt < 0 and toacctno:
                 account_number = str(toacctno)
             # Parse tên từ nội dung trong ngoặc thứ hai
-            content = pattern1.group(2).strip()
-            _stop = {'chuyen', 'khoan', 'ck', 'ct', 'gui', 'tien', 'nhan', 'thanh', 'toan'}
+            # Dừng ở từ khoá nội dung; "thanh", "nhan" chỉ dừng khi là "thanh toan", "nhan tien"
+            # (Thành, Tiến, Nhân, Toàn cũng là tên người)
+            words = pattern1.group(2).split()
+            _stop = {'chuyen', 'ck', 'ct', 'gui', 'tra', 'nop'}
+            _stop_pairs = {('thanh', 'toan'), ('nhan', 'tien')}
             name_parts = []
-            for word in content.split():
-                if word.lower() in _stop:
+            for i, word in enumerate(words):
+                nxt = words[i + 1].lower() if i + 1 < len(words) else ''
+                if word.lower() in _stop or (word.lower(), nxt) in _stop_pairs:
                     break
                 name_parts.append(word)
-            beneficiary_name = ' '.join(name_parts[:5]) if name_parts else ''
+            name_parts = name_parts[:5]
+            # Chỉ nhận họ tên ≥ 2 từ toàn chữ cái ("THANH chuyen khoan" → không đủ để coi là tên)
+            if len(name_parts) >= 2 and all(w.isalpha() for w in name_parts):
+                beneficiary_name = ' '.join(name_parts)
             return {'bank_name': bank_name, 'account_number': account_number, 'beneficiary_name': beneficiary_name}
 
         # Pattern 1.5: Chuyển khoản nội bộ/liên ngân hàng (không có MB pattern)
@@ -1076,6 +1094,7 @@ class BankStatementParser:
             if transaction_type in _FEE_TYPES and not beneficiary_info['bank_name']:
                 beneficiary_info['bank_name'] = 'Agribank'
 
+            itl_named = False
             # Giao dịch ITL (nội bộ Agribank khác chi nhánh) → bank=Agribank, account=mã ITL
             # Kiểm tra tomgntno trước, fallback sang ourref
             _itl_val = str(row.get('tomgntno', '')).strip()
@@ -1089,13 +1108,14 @@ class BankStatementParser:
                     sender_name = itl_mapping.get(_itl_val, '')
                     if sender_name:
                         beneficiary_info['beneficiary_name'] = sender_name
+                        itl_named = True
 
             # Giao dịch tiền ra (< 0): tên trong rem là chủ TK người gửi, không phải người thụ hưởng
             if acctccyamt < 0:
                 beneficiary_info['beneficiary_name'] = ''
 
             # Thông tin đối tác từ file CSP/MSPH02 (nếu có) — ưu tiên hơn parse rem
-            source = ''
+            source = 'File ITL' if itl_named else ''
             info = (enrichment or {}).get(idx)
             if info:
                 source = info['source']
@@ -1112,6 +1132,9 @@ class BankStatementParser:
                     beneficiary_info['account_number'] = info['account_number']
                 if info['bank_name']:
                     beneficiary_info['bank_name'] = info['bank_name']
+
+            if not source and beneficiary_info['beneficiary_name']:
+                source = SOURCE_CONTENT_NAME
 
             # Tạo dict cho giao dịch
             transaction = {
@@ -1136,11 +1159,12 @@ class BankStatementParser:
         self._fill_names_by_account()
         if name_book:
             for t in self.processed_data:
-                if t['so_tai_khoan'] and not t['ten_nguoi']:
+                # Danh bạ (người dùng xác nhận) ghi đè cả tên chưa xác thực lấy từ nội dung
+                if t['so_tai_khoan'] and (not t['ten_nguoi'] or UNVERIFIED in t['nguon']):
                     name = name_book.get(account_key(t['so_tai_khoan'], t['ngan_hang']))
                     if name:
                         t['ten_nguoi'] = name
-                        t['nguon'] = f"{t['nguon']} (tên từ danh bạ)" if t['nguon'] else 'Danh bạ'
+                        t['nguon'] = name_book_source(t['nguon'])
         return self.processed_data
 
     def _fill_names_by_account(self):
@@ -1162,19 +1186,25 @@ class BankStatementParser:
             name = t['ten_nguoi'].strip()
             if not t['so_tai_khoan'] or not name:
                 continue
-            if not (t['nguon'] or key(t)[1] == 'agribank'):
+            verified_source = t['nguon'] and UNVERIFIED not in t['nguon']
+            if not (verified_source or key(t)[1] == 'agribank'):
                 continue
             if any(c.isdigit() for c in name) or len(name.split()) < 2:
                 continue
-            known.setdefault(key(t), Counter())[name] += 1
+            verified = UNVERIFIED not in t['nguon']
+            known.setdefault(key(t), Counter())[(verified, name)] += 1
 
         for t in self.processed_data:
             if not t['so_tai_khoan'] or t['ten_nguoi'] or key(t)[0] in own:
                 continue
             names = known.get(key(t))
             if names:
-                t['ten_nguoi'] = names.most_common(1)[0][0]
-                t['nguon'] = f"{t['nguon']} (tên đối chiếu số TK)" if t['nguon'] else 'Đối chiếu số TK'
+                # Ưu tiên tên đã xác thực (file đối soát), sau đó tên xuất hiện nhiều nhất
+                (verified, name), _ = max(names.items(), key=lambda kv: (kv[0][0], kv[1]))
+                t['ten_nguoi'] = name
+                note = '' if verified else f', {UNVERIFIED}'
+                t['nguon'] = (f"{t['nguon']} (tên đối chiếu số TK{note})" if t['nguon']
+                              else f"Đối chiếu số TK ({UNVERIFIED})" if not verified else 'Đối chiếu số TK')
 
     def get_summary(self):
         """
