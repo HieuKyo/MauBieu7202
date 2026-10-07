@@ -212,7 +212,7 @@ def phat_hanh_the_report_view(request):
     # Xóa session data cũ khi truy cập trang mới
     if 'phat_hanh_the_data' in request.session:
         del request.session['phat_hanh_the_data']
-    return render(request, 'templates_app/reports/phat_hanh_the.html')
+    return render(request, 'templates_app/reports/phat_hanh_the.html', {'current_year': datetime.now().year})
 
 
 @login_required
@@ -490,16 +490,76 @@ def _collect_phat_hanh_the_data(request):
     return combined_df, pgd_user_map, "; ".join(warnings) if warnings else None
 
 
-def _build_phat_hanh_the_excel(combined_df, pgd_user_map, start_date_str, end_date_str):
-    """Tạo Excel nhiều sheet từ DataFrame đã chuẩn hóa"""
-    output = io.BytesIO()
-    sheets_created = 0
+_THE_OUTPUT_COLS = ['Họ tên', 'Số tài khoản', 'Loại thẻ', 'GDV phát hành', 'Ngày phát hành']
 
+
+def _write_the_sheet(writer, sheet_name, df, title, subtitle, highlight=True):
+    """Ghi 1 sheet danh sách thẻ (sắp theo ngày phát hành) với tiêu đề, border, auto-fit."""
     thin_border = Border(
         left=Side(style='thin'), right=Side(style='thin'),
         top=Side(style='thin'), bottom=Side(style='thin')
     )
     highlight_fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+
+    df_final = (
+        df.assign(_sort_date=pd.to_datetime(df['Ngày phát hành'], format='%d/%m/%Y', errors='coerce'))
+        .sort_values('_sort_date')
+        .drop(columns=['_sort_date'])
+        .reset_index(drop=True)
+    )
+    n_cols = len(df_final.columns)
+    last_col = get_column_letter(n_cols)
+
+    df_final.to_excel(writer, sheet_name=sheet_name, index=False, startrow=3)
+    ws = writer.sheets[sheet_name]
+
+    ws['A1'] = title
+    ws.merge_cells(f'A1:{last_col}1')
+    ws['A1'].font = Font(bold=True, size=14)
+    ws['A1'].alignment = Alignment(horizontal='center')
+
+    ws['A2'] = subtitle
+    ws.merge_cells(f'A2:{last_col}2')
+    ws['A2'].font = Font(italic=True, size=11)
+    ws['A2'].alignment = Alignment(horizontal='center')
+
+    # Border + highlight cho dữ liệu
+    for row_idx in range(5, 5 + len(df_final)):
+        loai_the = ws[f'C{row_idx}'].value or ''
+        apply_highlight = highlight and loai_the not in ('PSuccess', '(486283)-Visa Gold Debit')
+        for col_idx in range(1, n_cols + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.border = thin_border
+            if apply_highlight:
+                cell.fill = highlight_fill
+
+    for cell in ws[4]:
+        cell.border = thin_border
+
+    # Auto-fit cột
+    for col_idx in range(1, n_cols + 1):
+        col_letter = get_column_letter(col_idx)
+        max_len = max(
+            (len(str(c.value)) for c in ws[col_letter] if c.row >= 4 and c.value),
+            default=10
+        )
+        ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
+
+    from openpyxl.worksheet.properties import PageSetupProperties
+    ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+
+
+def _build_phat_hanh_the_excel(combined_df, pgd_user_map, start_date_str, end_date_str):
+    """Tạo Excel nhiều sheet từ DataFrame đã chuẩn hóa"""
+    output = io.BytesIO()
+    sheets_created = 0
+
+    date_range_str = (
+        f"Từ ngày {pd.to_datetime(start_date_str).strftime('%d/%m/%Y')} "
+        f"đến ngày {pd.to_datetime(end_date_str).strftime('%d/%m/%Y')}"
+    )
 
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for pgd_name in pgd_user_map.keys():
@@ -507,63 +567,140 @@ def _build_phat_hanh_the_excel(combined_df, pgd_user_map, start_date_str, end_da
             if pgd_df.empty:
                 continue
 
-            output_cols = ['Họ tên', 'Số tài khoản', 'Loại thẻ', 'GDV phát hành', 'Ngày phát hành']
-            pgd_df_final = (
-                pgd_df[output_cols]
-                .assign(_sort_date=pd.to_datetime(pgd_df['Ngày phát hành'], format='%d/%m/%Y', errors='coerce'))
-                .sort_values('_sort_date')
-                .drop(columns=['_sort_date'])
-                .reset_index(drop=True)
-            )
-
             sheets_created += 1
-            pgd_df_final.to_excel(writer, sheet_name=pgd_name, index=False, startrow=3)
-            ws = writer.sheets[pgd_name]
-
-            title = f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}"
-            date_range_str = (
-                f"Từ ngày {pd.to_datetime(start_date_str).strftime('%d/%m/%Y')} "
-                f"đến ngày {pd.to_datetime(end_date_str).strftime('%d/%m/%Y')}"
+            _write_the_sheet(
+                writer, pgd_name, pgd_df[_THE_OUTPUT_COLS],
+                f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}", date_range_str
             )
-
-            ws['A1'] = title
-            ws.merge_cells('A1:E1')
-            ws['A1'].font = Font(bold=True, size=14)
-            ws['A1'].alignment = Alignment(horizontal='center')
-
-            ws['A2'] = date_range_str
-            ws.merge_cells('A2:E2')
-            ws['A2'].font = Font(italic=True, size=11)
-            ws['A2'].alignment = Alignment(horizontal='center')
-
-            # Border + highlight cho dữ liệu
-            for row_idx in range(5, 5 + len(pgd_df_final)):
-                loai_the = ws[f'C{row_idx}'].value or ''
-                apply_highlight = loai_the not in ('PSuccess', '(486283)-Visa Gold Debit')
-                for col_idx in range(1, 6):
-                    cell = ws.cell(row=row_idx, column=col_idx)
-                    cell.border = thin_border
-                    if apply_highlight:
-                        cell.fill = highlight_fill
-
-            for cell in ws[4]:
-                cell.border = thin_border
-
-            # Auto-fit cột
-            for col_idx in range(1, 6):
-                col_letter = get_column_letter(col_idx)
-                max_len = max(
-                    (len(str(c.value)) for c in ws[col_letter] if c.row >= 4 and c.value),
-                    default=10
-                )
-                ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
-
-            from openpyxl.worksheet.properties import PageSetupProperties
-            ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
-            ws.page_setup.fitToWidth = 1
-            ws.page_setup.fitToHeight = 0
 
     return output, sheets_created
+
+
+def _read_csp_free_cards(file_bytes, start_date_str, end_date_str, pgd_user_map):
+    """
+    Đọc file CSP, lấy toàn bộ thẻ miễn phí trong kỳ — không lọc theo GDV.
+    Miễn phí: FEEISSUECARD = 0 (hoặc trống) và IS_DEBIT khác 'TTT Báo nợ'.
+    Trả về DataFrame cột _THE_OUTPUT_COLS + 'Đơn vị' (GDV ngoài cấu hình ghi 'Khác').
+    """
+    df = _read_excel_safe(file_bytes)
+    df.columns = df.columns.str.strip()
+
+    for col in ['CDATE', 'CUSER', 'CUSTVIENAME', 'ACCOUNT', 'CARDTYPE', 'FEEISSUECARD', 'IS_DEBIT']:
+        if col not in df.columns:
+            return None, f"File CSP không có cột '{col}'."
+
+    df['_date'] = pd.to_datetime(df['CDATE'].astype(str).str[:10], format='%d/%m/%Y', errors='coerce').dt.normalize()
+    df = df[(df['_date'] >= pd.to_datetime(start_date_str)) & (df['_date'] <= pd.to_datetime(end_date_str))]
+
+    fee = pd.to_numeric(
+        df['FEEISSUECARD'].astype(str).str.replace(',', '', regex=False).str.strip(), errors='coerce'
+    ).fillna(0)
+    is_debit = df['IS_DEBIT'].astype(str).str.strip().str.lower() == 'ttt báo nợ'
+    df = df[(fee == 0) & ~is_debit]
+
+    user_map = {u: pgd for pgd, users in pgd_user_map.items() for u in users}
+    result = pd.DataFrame({
+        'Họ tên':          df['CUSTVIENAME'].values,
+        'Số tài khoản':    df['ACCOUNT'].astype(str).values,
+        'Loại thẻ':        df['CARDTYPE'].values,
+        'GDV phát hành':   df['CUSER'].values,
+        'Ngày phát hành':  df['_date'].dt.strftime('%d/%m/%Y').values,
+        'Đơn vị':          df['CUSER'].map(user_map).fillna('Khác').values,
+    })
+    return result, None
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_phat_hanh_the_quy_pgd(request):
+    """
+    Báo cáo phát hành thẻ theo Quý (form có 'quarter') hoặc theo PGD (form có start/end date).
+    Sheet đơn vị (Hội Sở trước, rồi các PGD) gộp CSP + Visa; sheet cuối: thẻ miễn phí CSP toàn chi nhánh.
+    """
+    try:
+        csp_file = request.FILES.get('data_file')
+        visa_file = request.FILES.get('visa_file')
+        quarter = request.POST.get('quarter')
+
+        if quarter:
+            year = int(request.POST.get('year'))
+            start_dt = pd.Timestamp(year=year, month=3 * (int(quarter) - 1) + 1, day=1)
+            end_dt = start_dt + pd.offsets.QuarterEnd(0)
+            start_date_str, end_date_str = start_dt.strftime('%Y-%m-%d'), end_dt.strftime('%Y-%m-%d')
+            period_prefix = f"Quý {quarter} năm {year} - "
+            file_suffix = f"Quy{quarter}_{year}"
+        else:
+            start_date_str = request.POST.get('start_date', '')
+            end_date_str = request.POST.get('end_date', '')
+            if not start_date_str or not end_date_str:
+                messages.warning(request, "Vui lòng cung cấp khoảng thời gian.")
+                return redirect('phat_hanh_the_report')
+            period_prefix = ""
+            file_suffix = f"PGD_{start_date_str}_den_{end_date_str}"
+
+        if not csp_file:
+            messages.warning(request, "Vui lòng tải lên file thẻ CSP.")
+            return redirect('phat_hanh_the_report')
+
+        subtitle = (
+            f"{period_prefix}Từ ngày {pd.to_datetime(start_date_str).strftime('%d/%m/%Y')} "
+            f"đến ngày {pd.to_datetime(end_date_str).strftime('%d/%m/%Y')}"
+        )
+
+        csp_bytes = csp_file.read()
+        atm_pgd_map = _get_atm_pgd_config()
+
+        frames = []
+        atm_df, err = _read_atm_normalized(csp_bytes, start_date_str, end_date_str, atm_pgd_map)
+        if err:
+            messages.warning(request, f"File CSP: {err}")
+            return redirect('phat_hanh_the_report')
+        if atm_df is not None:
+            frames.append(atm_df)
+
+        if visa_file:
+            visa_df, err = _read_visa_normalized(visa_file, start_date_str, end_date_str, _get_visa_pgd_config())
+            if err:
+                messages.warning(request, f"File Visa: {err}")
+                return redirect('phat_hanh_the_report')
+            if visa_df is not None:
+                frames.append(visa_df)
+
+        free_df, err = _read_csp_free_cards(csp_bytes, start_date_str, end_date_str, atm_pgd_map)
+        if err:
+            messages.warning(request, err)
+            return redirect('phat_hanh_the_report')
+
+        combined_df = (
+            pd.concat(frames, ignore_index=True) if frames
+            else pd.DataFrame(columns=_THE_OUTPUT_COLS + ['PGD'])
+        )
+
+        output = io.BytesIO()
+        pgd_names = sorted(atm_pgd_map.keys(), key=lambda n: 'hội sở' not in n.lower())
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            for pgd_name in pgd_names:
+                pgd_df = combined_df[combined_df['PGD'] == pgd_name]
+                _write_the_sheet(
+                    writer, pgd_name, pgd_df[_THE_OUTPUT_COLS],
+                    f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}", subtitle
+                )
+            _write_the_sheet(
+                writer, 'Thẻ miễn phí', free_df,
+                "DANH SÁCH THẺ MIỄN PHÍ ĐÃ PHÁT HÀNH CỦA CHI NHÁNH", subtitle, highlight=False
+            )
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="BaoCao_PhatHanhThe_{file_suffix}.xlsx"'
+        return response
+
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"Đã xảy ra lỗi: {e}")
+        return redirect('phat_hanh_the_report')
 
 
 def _save_phat_hanh_the_session(request, combined_df, pgd_user_map, start_date_str, end_date_str):
