@@ -7,10 +7,12 @@ Quy tắc khớp với DPTB18 (đã kiểm chứng trên dữ liệu thật):
 - CSP chiều đến:    cột TRACE IPCAS = mã 6 số đầu rem ("678144-..." hoặc "1000A87202 - 678144-...")
 - CSP chiều đi:     dòng 369-Transfer Debit, cột TRACE = mã 6 số đầu rem;
                     số TK / ngân hàng nhận lấy từ dòng 91-Transfer Credit cùng REMARK + số tiền
-                    tên người nhận lấy từ cột TO_ACCOUNT_REMARK (nếu có), không có thì đối chiếu chéo
+                    tên người nhận lấy từ cột TO_ACCOUNT_REMARK (dòng 91 hoặc 43 cùng số TK), không có thì đối chiếu chéo
 Mọi phép khớp đều kiểm tra thêm chiều tiền (vào/ra) và số tiền bằng nhau.
 """
 import re
+from collections import Counter
+
 import pandas as pd
 
 from .bank_statement_parser import BankStatementParser
@@ -235,6 +237,7 @@ def enrich(dptb_df, aux_paths):
         credits = df[approved & df['TRANCODE'].fillna('').str.startswith('91')]
         used_credits = set()
         names = _cross_check_names(frames)
+        remark_names = _to_account_names(df[approved])
 
         for _, r in debits.iterrows():
             amount = _amount(r['AMOUNT'])
@@ -242,7 +245,10 @@ def enrich(dptb_df, aux_paths):
             credit = _pair_credit(r, credits, used_credits)
             account = _s(credit['TO_ACCOUNT']) if credit is not None else ''
             # Tên người nhận ghi trực tiếp trong file (cột TO_ACCOUNT_REMARK, không bắt buộc)
-            to_name = _to_account_remark(r) or (_to_account_remark(credit) if credit is not None else '')
+            to_name = ''
+            if credit is not None:
+                to_name = _to_account_remark(credit) or remark_names.get(
+                    (_norm_acct(account), _bin_bank(credit['TO_BANK_CODE'])[0]), '')
             if idx is None:
                 unmatched.append(_unmatched('csp_di', r['TRANSACTION TIME'], amount, account,
                                             to_name, r['REMARK'], r['TRACE']))
@@ -267,11 +273,28 @@ def enrich(dptb_df, aux_paths):
 
 def _to_account_remark(row):
     """
-    Tên người nhận từ cột TO_ACCOUNT_REMARK (CSP chiều đi). Nếu giá trị dạng
-    'NGÂN HÀNG;SỐ TK;TÊN' thì lấy phần cuối. Trả '' nếu không có cột / không phải tên người.
+    Tên người nhận từ cột TO_ACCOUNT_REMARK (CSP chiều đi; có ở dòng 91-Credit và 43-Inquiry).
+    Bỏ tiền tố ví/ngân hàng: 'MOMO_QUACH HONG QUY' → 'QUACH HONG QUY'.
+    Trả '' nếu không có cột / không phải tên người.
     """
-    name = _s(row.get('TO_ACCOUNT_REMARK')).split(';')[-1].strip()
+    name = _s(row.get('TO_ACCOUNT_REMARK')).split(';')[-1].split('_')[-1].strip()
     return name if _valid_name(name) else ''
+
+
+def _to_account_names(df):
+    """
+    {(số TK chuẩn hoá, mã BIN): tên} từ mọi dòng có TO_ACCOUNT_REMARK. Dòng 91-Credit đôi khi
+    để trống tên nhưng dòng 43-Inquiry (truy vấn TK trước khi chuyển) cùng số TK thì có.
+    """
+    names = {}
+    if 'TO_ACCOUNT_REMARK' not in df.columns:
+        return names
+    for _, r in df.iterrows():
+        name = _to_account_remark(r)
+        if name:
+            key = (_norm_acct(r['TO_ACCOUNT']), _bin_bank(r['TO_BANK_CODE'])[0])
+            names.setdefault(key, Counter())[name] += 1
+    return {key: counter.most_common(1)[0][0] for key, counter in names.items()}
 
 
 def _norm_remark(text):

@@ -147,12 +147,22 @@ class EnrichTests(SimpleTestCase):
         rows, _ = self._process({**self.aux_paths, 'csp_di': path})
         return rows[3]
 
-    def test_csp_di_to_account_remark_on_debit_row(self):
+    def test_csp_di_name_from_inquiry_row_when_credit_blank(self):
         frame = _aux_frames()['csp_di']
-        frame['TO_ACCOUNT_REMARK'] = ['TRAN VAN NHAN', '', '']
+        frame['TO_ACCOUNT_REMARK'] = ['', '', '']
+        # Dòng 43-Inquiry (truy vấn TK trước khi chuyển) có tên, dòng Credit để trống
+        inquiry = {'TRANSACTION TIME': '2026-01-03 09:23:49', 'AMOUNT': '0', 'TRANCODE': '43-Transfer Inquiry',
+                   'TRACE': '547207', 'RESPONSE': '1-Approved', 'REMARK': 'OCB;0947365707;TRAN B',
+                   'TO_ACCOUNT': '947365707', 'TO_BANK_CODE': '970448-OCB', 'TO_ACCOUNT_REMARK': 'TRAN VAN NHAN'}
+        frame = pd.concat([frame, pd.DataFrame([inquiry])], ignore_index=True)
         row = self._process_csp_di(frame)
         # Tên lấy thẳng từ file, ưu tiên hơn đối chiếu chéo (LU THI E)
         self.assertEqual((row['ten_nguoi'], row['nguon']), ('TRAN VAN NHAN', 'CSP chiều đi'))
+
+    def test_csp_di_wallet_prefix_removed(self):
+        frame = _aux_frames()['csp_di']
+        frame['TO_ACCOUNT_REMARK'] = ['', 'MOMO_QUACH HONG QUY', '']
+        self.assertEqual(self._process_csp_di(frame)['ten_nguoi'], 'QUACH HONG QUY')
 
     def test_csp_di_to_account_remark_on_credit_row_with_bank_prefix(self):
         frame = _aux_frames()['csp_di']
@@ -161,7 +171,7 @@ class EnrichTests(SimpleTestCase):
 
     def test_csp_di_to_account_remark_bank_name_falls_back_to_cross_check(self):
         frame = _aux_frames()['csp_di']
-        frame['TO_ACCOUNT_REMARK'] = ['MoMo', '', '']
+        frame['TO_ACCOUNT_REMARK'] = ['', 'MoMo', '']
         row = self._process_csp_di(frame)
         self.assertEqual((row['ten_nguoi'], row['nguon']), ('LU THI E', 'CSP chiều đi (tên từ CSP chiều đến)'))
 
