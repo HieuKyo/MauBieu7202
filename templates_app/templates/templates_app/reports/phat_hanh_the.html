@@ -161,6 +161,19 @@
                             <input type="file" class="form-control" name="visa_file" accept=".xlsx,.xls">
                         </div>
 
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-person-plus text-success me-1"></i>
+                                File DPDA19 - OPEN
+                                <span class="badge bg-secondary fw-normal ms-1">Tùy chọn</span>
+                            </label>
+                            <input type="file" class="form-control" name="dpda19_file" accept=".xlsx,.xls">
+                            <div class="form-text">
+                                Cột cần có: <code>idxacno, custnm, opndt, locdpnm, tellernm, clsdt</code>
+                                — thêm vào Sheet 1-3 các TK mở trong quý chưa phát hành thẻ, bỏ TK đóng ngay trong ngày mở (tô đỏ nhạt)
+                            </div>
+                        </div>
+
                         <div class="alert alert-info py-2 small">
                             <i class="bi bi-info-circle me-1"></i>
                             Sheet 1-3: danh sách thẻ của Hội sở và các PGD.

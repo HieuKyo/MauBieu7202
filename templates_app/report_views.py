@@ -503,6 +503,7 @@ def _write_the_sheet(writer, sheet_name, df, title, subtitle, highlight=True, th
         top=Side(style='thin'), bottom=Side(style='thin')
     )
     highlight_fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+    no_card_fill = PatternFill(start_color="FCE4E4", end_color="FCE4E4", fill_type="solid")
 
     df_final = (
         df.assign(_sort_date=pd.to_datetime(df['Ngày phát hành'], format='%d/%m/%Y', errors='coerce'))
@@ -532,12 +533,17 @@ def _write_the_sheet(writer, sheet_name, df, title, subtitle, highlight=True, th
     # Border + highlight cho dữ liệu
     for row_idx in range(5, 5 + len(df_final)):
         loai_the = ws[f'C{row_idx}'].value or ''
-        apply_highlight = highlight and loai_the not in ('PSuccess', '(486283)-Visa Gold Debit')
+        if loai_the == _NO_CARD_LABEL:
+            fill = no_card_fill
+        elif highlight and loai_the not in ('PSuccess', '(486283)-Visa Gold Debit'):
+            fill = highlight_fill
+        else:
+            fill = None
         for col_idx in range(1, n_cols + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.border = thin_border
-            if apply_highlight:
-                cell.fill = highlight_fill
+            if fill:
+                cell.fill = fill
 
     for cell in ws[4]:
         cell.border = thin_border
@@ -616,16 +622,99 @@ def _read_csp_free_cards(file_bytes, start_date_str, end_date_str, pgd_user_map)
     return result, None
 
 
+_NO_CARD_LABEL = 'Mở TK - chưa phát hành thẻ'
+_DPDA19_EXCLUDED_TYPES = {'tktt hộ kinh doanh', 'tg thanh toán cá nhân ekyc', 'tg kkh tckt (số đẹp)', 'tg kkh tckt'}
+
+
+def _norm_account(series):
+    """Chuẩn hóa số TK về chuỗi để so khớp giữa các file (bỏ '.0' khi Excel đọc thành số)."""
+    return series.astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+
+
+# User CSP → user IPCAS (GRA...) cho GDV chưa khai trong hồ sơ người dùng (UserProfile được ưu tiên)
+_CSP_TO_IPCAS_FALLBACK = {
+    '7202cthuclt': 'GRALTHUC',
+    '7202cthaotlt': 'GRATTHAO',
+    '7202canhsh': 'GRASHANH',
+    '7202cthaotn': 'GRANTHAO',
+}
+
+
+def _csp_to_ipcas_user_map():
+    """Map user CSP (chữ thường) → user IPCAS: lấy từ UserProfile, bổ sung bằng _CSP_TO_IPCAS_FALLBACK."""
+    from .models import UserProfile
+    user_map = dict(_CSP_TO_IPCAS_FALLBACK)
+    for csp_user, ipcas_user in (UserProfile.objects.exclude(csp_cuser='').exclude(ipcas_user='')
+                                 .values_list('csp_cuser', 'ipcas_user')):
+        user_map[csp_user.strip().lower()] = ipcas_user.strip()
+    return user_map
+
+
+def _read_accounts(file_bytes, col):
+    """Tập số TK (đã chuẩn hóa) trong cột col của file Excel."""
+    df = _read_excel_safe(file_bytes, dtype=str)
+    df.columns = df.columns.str.strip()
+    return set(_norm_account(df[col].dropna()))
+
+
+def _read_dpda19_no_card(file_bytes, start_date_str, end_date_str, pgd_user_map, card_accounts):
+    """
+    Đọc file DPDA19 - OPEN, lấy TK mở trong kỳ (bỏ TK đóng ngay trong ngày mở: clsdt = opndt)
+    mà số TK không có trong card_accounts (chưa phát hành thẻ).
+    Bỏ các loại TK trong _DPDA19_EXCLUDED_TYPES; GDV mở TK (tellernm) map PGD theo user ID cũ.
+    Trả về DataFrame cùng cột như _read_atm_normalized, Loại thẻ = _NO_CARD_LABEL.
+    """
+    df = _read_excel_safe(file_bytes, dtype={'idxacno': str})
+    df.columns = df.columns.str.strip()
+
+    for col in ['idxacno', 'custnm', 'opndt', 'locdpnm', 'tellernm', 'clsdt']:
+        if col not in df.columns:
+            return None, f"File DPDA19 không có cột '{col}'."
+
+    def parse_date(col):
+        if pd.api.types.is_datetime64_any_dtype(col):
+            return col.dt.normalize()
+        s = col.astype(str).str.strip().str[:10]
+        return pd.to_datetime(s, format='%d/%m/%Y', errors='coerce').fillna(
+            pd.to_datetime(s, format='%Y-%m-%d', errors='coerce'))
+
+    df['_date'] = parse_date(df['opndt'])
+    df = df[(df['_date'] >= pd.to_datetime(start_date_str)) & (df['_date'] <= pd.to_datetime(end_date_str))]
+
+    # Bỏ TK mở xong đóng ngay trong ngày (clsdt = opndt)
+    df = df[parse_date(df['clsdt']) != df['_date']]
+
+    df = df[~df['locdpnm'].astype(str).str.strip().str.lower().isin(_DPDA19_EXCLUDED_TYPES)]
+    df['_acct'] = _norm_account(df['idxacno'])
+    df = df[~df['_acct'].isin(card_accounts)]
+
+    user_map = {u: pgd for pgd, users in pgd_user_map.items() for u in users}
+    df['PGD'] = df['tellernm'].astype(str).str.strip().map(user_map)
+    df = df.dropna(subset=['PGD'])
+
+    result = pd.DataFrame({
+        'Họ tên':          df['custnm'].values,
+        'Số tài khoản':    df['_acct'].values,
+        'Loại thẻ':        _NO_CARD_LABEL,
+        'GDV phát hành':   df['tellernm'].values,
+        'Ngày phát hành':  df['_date'].dt.strftime('%d/%m/%Y').values,
+        'PGD':             df['PGD'].values,
+    })
+    return result, None
+
+
 @login_required
 @require_http_methods(["POST"])
 def process_phat_hanh_the_quy(request):
     """
     Báo cáo phát hành thẻ theo Quý.
-    Sheet đơn vị (Hội Sở trước, rồi các PGD) gộp CSP + Visa; sheet cuối: thẻ miễn phí CSP toàn chi nhánh.
+    Sheet đơn vị (Hội Sở trước, rồi các PGD) gộp CSP + Visa + TK mở chưa có thẻ (DPDA19, tùy chọn);
+    sheet cuối: thẻ miễn phí CSP toàn chi nhánh.
     """
     try:
         csp_file = request.FILES.get('data_file')
         visa_file = request.FILES.get('visa_file')
+        dpda19_file = request.FILES.get('dpda19_file')
         quarter = int(request.POST.get('quarter'))
         year = int(request.POST.get('year'))
 
@@ -653,13 +742,27 @@ def process_phat_hanh_the_quy(request):
         if atm_df is not None:
             frames.append(atm_df)
 
-        if visa_file:
-            visa_df, err = _read_visa_normalized(visa_file, start_date_str, end_date_str, _get_visa_pgd_config())
+        visa_bytes = visa_file.read() if visa_file else None
+        if visa_bytes:
+            visa_df, err = _read_visa_normalized(visa_bytes, start_date_str, end_date_str, _get_visa_pgd_config())
             if err:
                 messages.warning(request, f"File Visa: {err}")
                 return redirect('phat_hanh_the_report')
             if visa_df is not None:
                 frames.append(visa_df)
+
+        if dpda19_file:
+            # Số TK đã có thẻ: toàn bộ file CSP + Visa (không lọc ngày/GDV)
+            card_accounts = _read_accounts(csp_bytes, 'ACCOUNT')
+            if visa_bytes:
+                card_accounts |= _read_accounts(visa_bytes, 'acctseq')
+            no_card_df, err = _read_dpda19_no_card(
+                dpda19_file.read(), start_date_str, end_date_str, _get_visa_pgd_config(), card_accounts
+            )
+            if err:
+                messages.warning(request, err)
+                return redirect('phat_hanh_the_report')
+            frames.append(no_card_df)
 
         free_df, err = _read_csp_free_cards(csp_bytes, start_date_str, end_date_str, atm_pgd_map)
         if err:
@@ -670,6 +773,13 @@ def process_phat_hanh_the_quy(request):
             pd.concat(frames, ignore_index=True) if frames
             else pd.DataFrame(columns=_THE_OUTPUT_COLS + ['PGD'])
         )
+
+        # Đồng bộ tên GDV về user IPCAS (GRA...); user không có trong map giữ nguyên
+        ipcas_map = _csp_to_ipcas_user_map()
+        for df in (combined_df, free_df):
+            df['GDV phát hành'] = df['GDV phát hành'].map(
+                lambda u: ipcas_map.get(str(u).strip().lower(), u)
+            )
 
         output = io.BytesIO()
         pgd_names = sorted(atm_pgd_map.keys(), key=lambda n: 'hội sở' not in n.lower())
