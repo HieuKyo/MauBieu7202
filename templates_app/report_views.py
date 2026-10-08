@@ -493,8 +493,11 @@ def _collect_phat_hanh_the_data(request):
 _THE_OUTPUT_COLS = ['Họ tên', 'Số tài khoản', 'Loại thẻ', 'GDV phát hành', 'Ngày phát hành']
 
 
-def _write_the_sheet(writer, sheet_name, df, title, subtitle, highlight=True):
-    """Ghi 1 sheet danh sách thẻ (sắp theo ngày phát hành) với tiêu đề, border, auto-fit."""
+def _write_the_sheet(writer, sheet_name, df, title, subtitle, highlight=True, then_sort_by=()):
+    """
+    Ghi 1 sheet danh sách thẻ với tiêu đề, border, auto-fit.
+    Sắp theo ngày phát hành, rồi lần lượt theo các cột trong then_sort_by (không phân biệt hoa/thường).
+    """
     thin_border = Border(
         left=Side(style='thin'), right=Side(style='thin'),
         top=Side(style='thin'), bottom=Side(style='thin')
@@ -503,7 +506,10 @@ def _write_the_sheet(writer, sheet_name, df, title, subtitle, highlight=True):
 
     df_final = (
         df.assign(_sort_date=pd.to_datetime(df['Ngày phát hành'], format='%d/%m/%Y', errors='coerce'))
-        .sort_values('_sort_date')
+        .sort_values(
+            ['_sort_date', *then_sort_by], kind='stable',
+            key=lambda s: s.astype(str).str.lower() if s.name in then_sort_by else s
+        )
         .drop(columns=['_sort_date'])
         .reset_index(drop=True)
     )
@@ -612,39 +618,28 @@ def _read_csp_free_cards(file_bytes, start_date_str, end_date_str, pgd_user_map)
 
 @login_required
 @require_http_methods(["POST"])
-def process_phat_hanh_the_quy_pgd(request):
+def process_phat_hanh_the_quy(request):
     """
-    Báo cáo phát hành thẻ theo Quý (form có 'quarter') hoặc theo PGD (form có start/end date).
+    Báo cáo phát hành thẻ theo Quý.
     Sheet đơn vị (Hội Sở trước, rồi các PGD) gộp CSP + Visa; sheet cuối: thẻ miễn phí CSP toàn chi nhánh.
     """
     try:
         csp_file = request.FILES.get('data_file')
         visa_file = request.FILES.get('visa_file')
-        quarter = request.POST.get('quarter')
-
-        if quarter:
-            year = int(request.POST.get('year'))
-            start_dt = pd.Timestamp(year=year, month=3 * (int(quarter) - 1) + 1, day=1)
-            end_dt = start_dt + pd.offsets.QuarterEnd(0)
-            start_date_str, end_date_str = start_dt.strftime('%Y-%m-%d'), end_dt.strftime('%Y-%m-%d')
-            period_prefix = f"Quý {quarter} năm {year} - "
-            file_suffix = f"Quy{quarter}_{year}"
-        else:
-            start_date_str = request.POST.get('start_date', '')
-            end_date_str = request.POST.get('end_date', '')
-            if not start_date_str or not end_date_str:
-                messages.warning(request, "Vui lòng cung cấp khoảng thời gian.")
-                return redirect('phat_hanh_the_report')
-            period_prefix = ""
-            file_suffix = f"PGD_{start_date_str}_den_{end_date_str}"
+        quarter = int(request.POST.get('quarter'))
+        year = int(request.POST.get('year'))
 
         if not csp_file:
             messages.warning(request, "Vui lòng tải lên file thẻ CSP.")
             return redirect('phat_hanh_the_report')
 
+        start_dt = pd.Timestamp(year=year, month=3 * (quarter - 1) + 1, day=1)
+        end_dt = start_dt + pd.offsets.QuarterEnd(0)
+        start_date_str, end_date_str = start_dt.strftime('%Y-%m-%d'), end_dt.strftime('%Y-%m-%d')
+        file_suffix = f"Quy{quarter}_{year}"
         subtitle = (
-            f"{period_prefix}Từ ngày {pd.to_datetime(start_date_str).strftime('%d/%m/%Y')} "
-            f"đến ngày {pd.to_datetime(end_date_str).strftime('%d/%m/%Y')}"
+            f"Quý {quarter} năm {year} - Từ ngày {start_dt.strftime('%d/%m/%Y')} "
+            f"đến ngày {end_dt.strftime('%d/%m/%Y')}"
         )
 
         csp_bytes = csp_file.read()
@@ -678,16 +673,19 @@ def process_phat_hanh_the_quy_pgd(request):
 
         output = io.BytesIO()
         pgd_names = sorted(atm_pgd_map.keys(), key=lambda n: 'hội sở' not in n.lower())
+        sort_by = ('GDV phát hành', 'Loại thẻ')
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             for pgd_name in pgd_names:
                 pgd_df = combined_df[combined_df['PGD'] == pgd_name]
                 _write_the_sheet(
                     writer, pgd_name, pgd_df[_THE_OUTPUT_COLS],
-                    f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}", subtitle
+                    f"DANH SÁCH THẺ PHÁT HÀNH CỦA {pgd_name.upper()}", subtitle,
+                    then_sort_by=sort_by
                 )
             _write_the_sheet(
                 writer, 'Thẻ miễn phí', free_df,
-                "DANH SÁCH THẺ MIỄN PHÍ ĐÃ PHÁT HÀNH CỦA CHI NHÁNH", subtitle, highlight=False
+                "DANH SÁCH THẺ MIỄN PHÍ ĐÃ PHÁT HÀNH CỦA CHI NHÁNH", subtitle, highlight=False,
+                then_sort_by=sort_by
             )
 
         response = HttpResponse(
