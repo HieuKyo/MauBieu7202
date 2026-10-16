@@ -248,6 +248,33 @@ def template_form_view(request, template_id):
     return render(request, 'templates_app/template_form.html', context)
 
 
+def _customer_error_text(e):
+    """Lỗi lưu khách hàng → câu tiếng Việt ngắn, kèm tên trường (vd. "Giới tính: Trường này không được để trắng.")."""
+    by_field = getattr(e, 'message_dict', None)
+    if by_field:
+        def label(f):
+            try:
+                return str(Customer._meta.get_field(f).verbose_name)
+            except Exception:
+                return f
+        return '; '.join(f'{label(f)}: {" ".join(m)}' for f, m in by_field.items())
+    messages_ = getattr(e, 'messages', None)
+    return '; '.join(messages_) if messages_ else str(e)
+
+
+# Trường để trống khi in → in dấu chấm để ghi tay (Mã khách hàng / CIF, Số tài khoản)
+PRINT_EMPTY_DOTS = '.........................'
+PRINT_DOTS_FIELDS = ('ma_khach_hang', 'cif', 'so_tai_khoan')
+
+
+def fill_empty_print_fields(data):
+    """Chỉ dùng cho dữ liệu đưa vào file Word, KHÔNG dùng cho dữ liệu lưu khách hàng."""
+    for field in PRINT_DOTS_FIELDS:
+        if not str(data.get(field) or '').strip():
+            data[field] = PRINT_EMPTY_DOTS
+    return data
+
+
 @login_required
 def generate_document_view(request, template_id):
     """
@@ -290,6 +317,8 @@ def generate_document_view(request, template_id):
                         data[key] = value
             except Customer.DoesNotExist:
                 pass
+
+        fill_empty_print_fields(data)
 
         # Render template Word với dữ liệu
         template_path = template.file.path
@@ -378,6 +407,11 @@ def customer_list_view(request):
     paginator = Paginator(customers, 20)  # 20 items per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    # Số ảnh chữ ký đã chụp của từng khách trên trang
+    from .customer_signature import signature_files
+    for customer in page_obj:
+        customer.signature_count = len(signature_files(customer.pk))
 
     context = {
         'page_obj': page_obj,
@@ -1616,7 +1650,9 @@ def category_templates_api(request, category_id):
         templates_data = [{
             'id': t.id,
             'name': t.name,
-            'description': t.description
+            'description': t.description,
+            'preset_values': t.preset_values or {},
+            'required_fields': t.required_fields or [],
         } for t in templates]
 
         return JsonResponse({
@@ -1641,6 +1677,13 @@ def generate_document_direct(request, template_id):
         # Kiểm tra quyền
         if not template.user_has_access(request.user):
             return HttpResponse("Không có quyền truy cập", status=403)
+
+        # Trường bắt buộc của mẫu (vd. Số điện thoại với mẫu Phát hành thẻ Học sinh)
+        missing = [f for f in (template.required_fields or []) if not request.POST.get(f, '').strip()]
+        if missing:
+            labels = {'so_dien_thoai': 'Số điện thoại', 'email': 'Email', 'so_tai_khoan': 'Số tài khoản',
+                      'ma_khach_hang': 'Mã khách hàng', 'dia_chi': 'Địa chỉ', 'ngay_sinh': 'Ngày sinh'}
+            return HttpResponse('Thiếu thông tin bắt buộc: ' + ', '.join(labels.get(f, f) for f in missing), status=400)
 
         # Lấy BranchConfig cho user
         config = BranchConfig.get_for_user(request.user)
@@ -1995,6 +2038,9 @@ def generate_document_direct(request, template_id):
             data['so_tai_khoan_SMS'] = ''
             data['so_dien_thoai_SMS'] = ''
 
+        # Lỗi khi lưu khách hàng (file Word vẫn tạo) → báo về trang qua header X-Customer-Save-Error
+        customer_save_error = ''
+
         # Check if this is updating an existing customer
         customer_id = request.POST.get('customer_id', '').strip()
         if customer_id:
@@ -2080,8 +2126,8 @@ def generate_document_direct(request, template_id):
 
             except Customer.DoesNotExist:
                 pass  # Customer not found, generate document without saving
-            except Exception:
-                pass  # Failed to update customer, continue with document generation
+            except Exception as e:
+                customer_save_error = _customer_error_text(e)   # continue with document generation
         else:
             # No customer_id provided - this is a new customer
             # Create or update customer from form data
@@ -2181,7 +2227,11 @@ def generate_document_direct(request, template_id):
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Error saving customer: {str(e)}")
-                pass
+                customer_save_error = _customer_error_text(e)
+
+        # Để trống "Mã khách hàng" / "Số tài khoản" → in dấu chấm để ghi tay.
+        # Làm SAU khi lưu khách hàng để không lưu dấu chấm vào dữ liệu khách hàng.
+        fill_empty_print_fields(data)
 
         # Add ALL GlobalConfig variables (branch info + custom variables + auto-generated date variables)
         data.update(config.get_all_variables())
@@ -2196,6 +2246,9 @@ def generate_document_direct(request, template_id):
             content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
         response['Content-Disposition'] = f'attachment; filename="{template.name}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.docx"'
+        if customer_save_error:
+            from urllib.parse import quote
+            response['X-Customer-Save-Error'] = quote(customer_save_error)
         return response
 
     except Exception as e:
@@ -2658,6 +2711,8 @@ def print_preview_view(request, template_id):
                         preview_data[key] = customer_data[key]
             except Customer.DoesNotExist:
                 pass
+
+        fill_empty_print_fields(preview_data)
 
         # Render template Word với dữ liệu
         template_path = template.file.path

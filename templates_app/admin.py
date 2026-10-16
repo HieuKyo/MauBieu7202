@@ -254,6 +254,10 @@ class TemplateAdmin(admin.ModelAdmin):
         ('Cấu hình', {
             'fields': ('is_active', 'order', 'allowed_groups')
         }),
+        ('Nhập nhanh (chọn sẵn / bắt buộc trên trang In mẫu biểu)', {
+            'fields': ('preset_values', 'required_fields'),
+            'classes': ('collapse',),
+        }),
     )
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):

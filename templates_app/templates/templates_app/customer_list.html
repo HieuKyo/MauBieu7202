@@ -23,6 +23,15 @@
         <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#importAgribankModal">
             <i class="bi bi-bank"></i> Import AGRIBANK
         </button>
+        <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#exportExcelModal">
+            <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+        </button>
+        <button type="button" class="btn btn-warning me-2" data-bs-toggle="modal" data-bs-target="#updateCodesModal">
+            <i class="bi bi-upload"></i> Cập nhật Mã KH
+        </button>
+        <button type="button" class="btn btn-outline-dark me-2" data-bs-toggle="modal" data-bs-target="#signatureFoldersModal">
+            <i class="bi bi-folder-plus"></i> Tạo Folder chữ ký
+        </button>
         <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Quay lại
         </a>
@@ -86,7 +95,11 @@
                     <tr>
                         <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
                         <td><span class="badge bg-secondary">{{ customer.ma_khach_hang|default:"-" }}</span></td>
-                        <td class="fw-bold">{{ customer.ho_ten }}</td>
+                        <td class="fw-bold">{{ customer.ho_ten }}
+                            {% with note=customer.get_age_note %}{% if note %}
+                            <div><span class="badge {% if note.0 == 'under' %}bg-warning text-dark{% else %}bg-success{% endif %} fw-normal">{{ note.1 }}</span></div>
+                            {% endif %}{% endwith %}
+                        </td>
                         <td>{{ customer.so_cmnd }}</td>
                         <td>
                             {% if customer.ngay_cap_cmnd %}
@@ -112,6 +125,10 @@
                             {% endif %}
                         </td>
                         <td>
+                            <button class="btn btn-sm btn-outline-dark me-1 position-relative" onclick="openSignatureModal({{ customer.id|unlocalize }})" title="Chụp hình chữ ký">
+                                <i class="bi bi-pen"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success{% if not customer.signature_count %} d-none{% endif %}" data-sig-count="{{ customer.id|unlocalize }}">{{ customer.signature_count }}</span>
+                            </button>
                             <button class="btn btn-sm btn-warning me-1" onclick="editCustomer({{ customer.id|unlocalize }})" title="Sửa">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
@@ -519,6 +536,145 @@
 </div>
 
 <!-- Modal: Import từ AGRIBANK (TSV) -->
+<!-- Modal: Xuất danh sách khách hàng ra Excel -->
+<div class="modal fade" id="exportExcelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="get" action="{% url 'customer_export' %}">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Xuất Excel khách hàng</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="q" value="{{ search_query }}">
+                    <label class="form-label fw-bold">Loại file</label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="kind" value="normal" id="exportNormal" checked>
+                        <label class="form-check-label" for="exportNormal">
+                            <strong>1. Excel thường</strong><br>
+                            <small class="text-muted">Danh sách thông tin khách hàng (họ tên, CCCD, SĐT, địa chỉ, tài khoản, thẻ, dịch vụ...)</small>
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="kind" value="cif" id="exportCif">
+                        <label class="form-check-label" for="exportCif">
+                            <strong>2. Mẫu mở CIF - dịch vụ đồng thời (Khách hàng mới) V7.1-1</strong><br>
+                            <small class="text-muted">Điền vào đúng file mẫu (tối đa 500 khách). Giữ nguyên các cột mã, công thức và danh mục của mẫu.</small>
+                        </label>
+                    </div>
+                    <label class="form-label fw-bold">Khách hàng in / cập nhật trong khoảng</label>
+                    <div class="row g-2">
+                        <div class="col"><input type="date" class="form-control" name="from" id="exportFrom"></div>
+                        <div class="col"><input type="date" class="form-control" name="to" id="exportTo"></div>
+                    </div>
+                    <small class="text-muted d-block mt-1">Mặc định: hôm nay. Xóa trống cả 2 ô để xuất tất cả{% if search_query %} (theo kết quả tìm kiếm "<strong>{{ search_query }}</strong>"){% endif %}.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-download"></i> Xuất file</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Cập nhật Mã khách hàng từ file Excel (sau khi mở CIF) -->
+<div class="modal fade" id="updateCodesModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-upload"></i> Cập nhật Mã khách hàng từ file Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="updateCodesForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" class="form-control" name="excel_file" accept=".xlsx,.xlsm" required>
+                    <small class="text-muted d-block mt-1">
+                        File Excel danh sách khách hàng đã mở CIF, cần có cột <strong>Số ID / CCCD</strong> và cột <strong>Mã KH / Mã khách hàng / CIF</strong>
+                        (tiêu đề ở dòng nào cũng được). Khách được ghép theo <strong>số CCCD</strong>; chỉ cập nhật <strong>Mã khách hàng</strong>, không đổi thông tin khác.
+                    </small>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="overwrite" value="1" id="updateCodesOverwrite">
+                        <label class="form-check-label" for="updateCodesOverwrite">Ghi đè khi khách hàng đã có Mã KH khác</label>
+                    </div>
+                </form>
+                <div id="updateCodesResult" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-outline-primary" onclick="submitUpdateCodes(false)"><i class="bi bi-eye"></i> Xem trước</button>
+                <button type="button" class="btn btn-warning" id="updateCodesApplyBtn" onclick="submitUpdateCodes(true)" disabled><i class="bi bi-check2-circle"></i> Cập nhật</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Chụp hình chữ ký của khách hàng (lưu trên máy chủ, đưa vào folder Mã KH khi tạo file ZIP) -->
+<div class="modal fade" id="signatureModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-pen"></i> Chụp hình chữ ký<span id="sigTitle"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="sigNoCode" class="alert alert-warning py-2 d-none">
+                    <i class="bi bi-exclamation-triangle"></i> Khách hàng chưa có <strong>Mã KH</strong>: ảnh vẫn được lưu, nhưng chỉ có trong file ZIP sau khi cập nhật Mã KH.
+                </div>
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                    <select class="form-select" id="sigCameraSelect" onchange="startSigCamera(this.value, true)"></select>
+                </div>
+                <div class="position-relative bg-dark rounded overflow-hidden">
+                    <video id="sigVideo" playsinline muted style="width:100%; height:auto; display:block; min-height:200px;"></video>
+                    <div id="sigGuide" class="position-absolute border border-4 border-warning rounded" style="box-shadow:0 0 0 2000px rgba(0,0,0,.45); pointer-events:none;"></div>
+                    <img id="sigPreview" class="position-absolute top-0 start-0 w-100 h-100 d-none" alt="Ảnh chữ ký" style="object-fit:contain; background:#000;">
+                </div>
+                <div id="sigStatus" class="small text-muted mt-2"></div>
+                <div id="sigHelp"></div>
+                <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="btn btn-dark btn-lg flex-fill" id="sigShootBtn" onclick="shootSignature()" disabled><i class="bi bi-camera-fill"></i> Chụp</button>
+                    <button type="button" class="btn btn-outline-secondary btn-lg flex-fill d-none" id="sigRetakeBtn" onclick="showSigShot(null)"><i class="bi bi-arrow-counterclockwise"></i> Chụp lại</button>
+                    <button type="button" class="btn btn-success btn-lg flex-fill d-none" id="sigSaveBtn" onclick="saveSignature()"><i class="bi bi-save"></i> Lưu chữ ký</button>
+                </div>
+                <hr>
+                <div class="fw-bold small mb-2"><i class="bi bi-images"></i> Ảnh chữ ký đã lưu (sẽ có trong folder Mã KH khi tạo file ZIP)</div>
+                <div id="sigList" class="row g-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Tạo file nén các folder chữ ký (folder rỗng, đặt tên theo Mã KH) -->
+<div class="modal fade" id="signatureFoldersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="get" action="{% url 'customer_signature_folders' %}">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-folder-plus"></i> Tạo Folder chữ ký</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="q" value="{{ search_query }}">
+                    <p class="mb-2">Tạo file <strong>.zip</strong> gồm các folder đặt tên theo <strong>Mã khách hàng</strong>, chứa sẵn <strong>ảnh chữ ký</strong> đã chụp (chưa chụp → folder rỗng)
+                        (mã KH 9 số; bỏ qua khách chưa có Mã KH).</p>
+                    <label class="form-label fw-bold">Khách hàng in / cập nhật trong khoảng</label>
+                    <div class="row g-2">
+                        <div class="col"><input type="date" class="form-control" name="from" id="foldersFrom"></div>
+                        <div class="col"><input type="date" class="form-control" name="to" id="foldersTo"></div>
+                    </div>
+                    <small class="text-muted d-block mt-1">Mặc định: hôm nay. Xóa trống cả 2 ô để lấy tất cả{% if search_query %} (theo kết quả tìm kiếm "<strong>{{ search_query }}</strong>"){% endif %}.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-dark"><i class="bi bi-file-earmark-zip"></i> Tải file nén</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="importAgribankModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -649,7 +805,74 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Mở camera dùng chung + chụp chữ ký -->
+<script src="{% static 'js/cccd_qr_scanner.js' %}"></script>
+<script src="{% static 'js/signature_capture.js' %}"></script>
 <script>
+// Xuất Excel: mặc định khách hàng in / cập nhật hôm nay
+// Xuất Excel / Tạo Folder chữ ký: mặc định khách hàng in / cập nhật hôm nay
+function fillTodayIfEmpty(ids) {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    const today = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    ids.forEach(id => { const el = document.getElementById(id); if (!el.value) el.value = today; });
+}
+document.getElementById('exportExcelModal').addEventListener('show.bs.modal', () => fillTodayIfEmpty(['exportFrom', 'exportTo']));
+document.getElementById('signatureFoldersModal').addEventListener('show.bs.modal', () => fillTodayIfEmpty(['foldersFrom', 'foldersTo']));
+
+// Cập nhật Mã KH từ Excel: Xem trước (apply=false) → Cập nhật (apply=true)
+const UPDATE_CODE_STATUS = {
+    update: ['success', 'Sẽ cập nhật'], same: ['secondary', 'Đã đúng'],
+    conflict: ['warning', 'Đã có mã khác (bỏ qua)'], not_found: ['danger', 'Không có trong danh sách'],
+    invalid: ['danger', 'Mã KH không đúng 9 số (bỏ qua)'],
+};
+document.querySelector('#updateCodesForm [name="excel_file"]').addEventListener('change', () => {
+    document.getElementById('updateCodesApplyBtn').disabled = true;
+    document.getElementById('updateCodesResult').innerHTML = '';
+});
+document.getElementById('updateCodesOverwrite').addEventListener('change', () => {
+    document.getElementById('updateCodesApplyBtn').disabled = true;   // đổi lựa chọn → xem trước lại
+});
+
+function submitUpdateCodes(apply) {
+    const form = document.getElementById('updateCodesForm');
+    const result = document.getElementById('updateCodesResult');
+    if (!form.excel_file.files.length) { alert('Vui lòng chọn file Excel'); return; }
+    if (apply && !confirm('Cập nhật Mã khách hàng cho các khách hàng ở trạng thái "Sẽ cập nhật"?')) return;
+    const fd = new FormData(form);
+    fd.append('apply', apply ? '1' : '0');
+    result.innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+    fetch('{% url "customer_update_codes" %}', {
+        method: 'POST', body: fd,
+        headers: { 'X-CSRFToken': document.querySelector('#updateCodesForm [name=csrfmiddlewaretoken]').value },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { result.innerHTML = `<div class="alert alert-danger">${esc(data.error)}</div>`; return; }
+        const s = data.summary;
+        const head = data.applied
+            ? `<div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> Đã cập nhật Mã KH cho <strong>${data.updated_ids.length}</strong> khách hàng.
+                ${data.updated_ids.length ? `<a class="btn btn-sm btn-dark ms-2" href="{% url 'customer_signature_folders' %}?ids=${data.updated_ids.join(',')}">
+                    <i class="bi bi-folder-plus"></i> Tạo Folder chữ ký cho ${data.updated_ids.length} khách vừa cập nhật</a>` : ''}
+                <a class="btn btn-sm btn-outline-secondary ms-2" href="">Tải lại danh sách</a></div>`
+            : `<div class="alert alert-info">Xem trước: <strong>${s.update}</strong> sẽ cập nhật · ${s.same} đã đúng ·
+                ${s.conflict} đã có mã khác · ${s.not_found} không có trong danh sách khách hàng${s.invalid ? ` · <span class="text-danger">${s.invalid} mã KH không đúng 9 số</span>` : ''}. Kiểm tra rồi bấm <strong>Cập nhật</strong>.</div>`;
+        const rows = data.rows.map(r => {
+            const [color, label] = UPDATE_CODE_STATUS[r.trang_thai];
+            const shown = data.applied && r.trang_thai === 'update' ? ['success', 'Đã cập nhật'] : [color, label];
+            return `<tr><td>${esc(r.cccd)}</td><td>${esc(r.ho_ten) || '-'}</td><td>${esc(r.ma_cu) || '-'}</td>
+                <td class="fw-bold">${esc(r.ma_moi)}</td><td><span class="badge bg-${shown[0]}">${shown[1]}</span></td>
+                <td class="small text-muted">${esc(r.nguon)}</td></tr>`;
+        }).join('');
+        result.innerHTML = head + `<div class="table-responsive" style="max-height:420px">
+            <table class="table table-sm table-bordered"><thead class="table-light sticky-top"><tr>
+            <th>Số CCCD</th><th>Họ tên</th><th>Mã KH hiện tại</th><th>Mã KH trong file</th><th>Trạng thái</th><th>Vị trí trong file</th>
+            </tr></thead><tbody>${rows}</tbody></table></div>`;
+        document.getElementById('updateCodesApplyBtn').disabled = data.applied || !s.update;
+    })
+    .catch(err => { result.innerHTML = `<div class="alert alert-danger">Lỗi: ${esc(err.message)}</div>`; });
+}
+
 // Add Customer
 function submitAddCustomer() {
     const form = document.getElementById('addCustomerForm');
@@ -1035,18 +1258,10 @@ function submitAgribankImport() {
 // Address Selector Component Initialization
 // ============================================
 let addAddressSelector, editAddressSelector;
-let addressConversionData = {}; // Store conversion mapping
 
-// Load address conversion data
-fetch('{% static "data/chuyen_doi.json" %}')
-    .then(response => response.json())
-    .then(data => {
-        addressConversionData = data;
-        console.log('Address conversion data loaded:', Object.keys(data).length, 'mappings');
-    })
-    .catch(error => {
-        console.error('Error loading address conversion data:', error);
-    });
+// Load address conversion data (biến addressConversionData khai báo trong cccd_qr_scanner.js — không khai báo lại,
+// khai báo trùng làm hỏng cả đoạn script này: nút Sửa / Xóa khách hàng không chạy)
+loadAddressConversionData('{% static "data/chuyen_doi.json" %}');
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Address Selector for Add Customer Modal

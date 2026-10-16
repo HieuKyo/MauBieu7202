@@ -151,6 +151,16 @@ class Template(models.Model):
     allowed_groups = models.ManyToManyField(Group, blank=True, related_name='templates', verbose_name="Nhóm được phép truy cập")
     order = models.IntegerField(default=0, verbose_name="Thứ tự hiển thị")
     is_active = models.BooleanField(default=True, verbose_name="Kích hoạt")
+    # Mẫu "nhập nhanh" trên trang In mẫu biểu (vd. Phát hành thẻ Học sinh): chọn sẵn một số mục + trường bắt buộc
+    preset_values = models.JSONField(
+        default=dict, blank=True, verbose_name="Giá trị chọn sẵn",
+        help_text='Tên trường trên form In mẫu biểu → giá trị chọn sẵn khi mở mẫu. '
+                  'VD: {"nghe_nghiep": "Học sinh/Sinh viên", "phat_hanh_lan_dau": true}'
+    )
+    required_fields = models.JSONField(
+        default=list, blank=True, verbose_name="Trường bắt buộc",
+        help_text='Tên các trường bắt buộc nhập với mẫu này. VD: ["so_dien_thoai"]'
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
 
@@ -497,13 +507,14 @@ class Customer(models.Model):
                 if cmnd_length not in [9, 12]:
                     errors['so_cmnd'] = f'Số CMND/CCCD phải có 9 chữ số (CMND cũ) hoặc 12 chữ số (CCCD/Căn cước). Hiện tại: {cmnd_length} chữ số'
 
-        # Validate age (must be at least 15 years old)
+        # Validate age: chỉ chặn ngày sinh vô lý. Khách dưới 15 tuổi (học sinh có căn cước, mở TK qua người giám hộ)
+        # vẫn phải lưu được — trước đây bị chặn nên in mẫu xong không lưu khách hàng.
         if self.ngay_sinh:
             today = date.today()
             age = relativedelta(today, self.ngay_sinh).years
 
-            if age < 15:
-                errors['ngay_sinh'] = f'Khách hàng phải từ 15 tuổi trở lên (hiện tại: {age} tuổi)'
+            if self.ngay_sinh > today:
+                errors['ngay_sinh'] = 'Ngày sinh không được sau ngày hôm nay'
             elif age > 120:
                 errors['ngay_sinh'] = f'Ngày sinh không hợp lệ (tuổi tính được: {age})'
 
@@ -527,6 +538,26 @@ class Customer(models.Model):
         from datetime import date
         from dateutil.relativedelta import relativedelta
         return relativedelta(date.today(), self.ngay_sinh).years
+
+    MIN_ACCOUNT_AGE = 15
+
+    def get_age_note(self):
+        """
+        Ghi chú tuổi tính theo ngày hiện tại (không lưu vào DB, không đưa vào file CIF):
+        - ('under', ...)   : hiện dưới 15 tuổi
+        - ('reached', ...) : lúc lưu dưới 15 tuổi (theo ngày tạo), nay đã đủ 15 tuổi
+        - None             : các trường hợp khác
+        """
+        if not self.ngay_sinh:
+            return None
+        from dateutil.relativedelta import relativedelta
+        age = self.get_age()
+        if age < self.MIN_ACCOUNT_AGE:
+            return ('under', f'Dưới {self.MIN_ACCOUNT_AGE} tuổi ({age} tuổi) – cần người giám hộ')
+        if self.created_at and relativedelta(self.created_at.date(), self.ngay_sinh).years < self.MIN_ACCOUNT_AGE:
+            du_tuoi = self.ngay_sinh + relativedelta(years=self.MIN_ACCOUNT_AGE)   # 29/02 → 28/02
+            return ('reached', f'Đã đủ {self.MIN_ACCOUNT_AGE} tuổi từ {du_tuoi:%d/%m/%Y}')
+        return None
 
     def get_cccd_days_remaining(self):
         """Tính số ngày CCCD còn hiệu lực"""

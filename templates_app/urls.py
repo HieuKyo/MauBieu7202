@@ -11,6 +11,9 @@ from . import qr_reg_views
 from . import cash_drawer_views
 from . import can_doi_views
 from . import spdv_kpi_views
+from . import customer_export
+from . import customer_cif_tools
+from . import customer_signature
 
 urlpatterns = [
     # Authentication
@@ -38,6 +41,12 @@ urlpatterns = [
 
     # Customer
     path('customers/', views.customer_list_view, name='customer_list'),
+    path('customers/export/', customer_export.customer_export_view, name='customer_export'),
+    path('customers/update-codes/', customer_cif_tools.customer_update_codes_view, name='customer_update_codes'),
+    path('customers/signature-folders/', customer_cif_tools.customer_signature_folders_view, name='customer_signature_folders'),
+    path('customers/<int:customer_id>/signatures/', customer_signature.customer_signatures_view, name='customer_signatures'),
+    path('customers/<int:customer_id>/signatures/<str:name>/', customer_signature.customer_signature_file_view, name='customer_signature_file'),
+    path('customers/<int:customer_id>/signatures/<str:name>/delete/', customer_signature.customer_signature_delete_view, name='customer_signature_delete'),
     path('api/customers/search/', views.customer_search_api, name='customer_search_api'),
     path('api/customers/<int:customer_id>/', views.customer_get, name='customer_get'),
     path('api/customers/<int:customer_id>/data/', views.customer_data_api, name='customer_data_api'),

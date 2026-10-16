@@ -194,17 +194,7 @@ const CAM_TUNE_PARAMS = [
     ['zoom', 'Phóng to'],
 ];
 
-function camTuneKey(track) { return 'cccdCamTune:' + track.label; }
-
-function loadCamTune(track) {
-    try { return JSON.parse(localStorage.getItem(camTuneKey(track))) || {}; } catch (e) { return {}; }
-}
-
-async function applyCamTune(track, values) {
-    const c = Object.assign({}, values);
-    if ('focusDistance' in c) c.focusMode = 'manual';   // lấy nét tay cần tắt lấy nét tự động
-    try { await track.applyConstraints({ advanced: [c] }); } catch (e) {}
-}
+// camTuneKey / loadCamTune / applyCamTune: ở cccd_qr_scanner.js (dùng chung với Quét QR)
 
 async function buildCameraTuning(track) {
     const box = document.getElementById('cccdPhotoTune');
@@ -281,29 +271,7 @@ async function buildCameraTuning(track) {
 
 let cccdShooting = false;
 
-// Độ nét của ảnh = phương sai Laplacian (ảnh mờ/rung → giá trị nhỏ)
-function cccdSharpness(src) {
-    const w = 640, h = Math.round(640 * src.height / src.width);
-    const c = document.createElement('canvas');
-    c.width = w;
-    c.height = h;
-    const ctx = c.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(src, 0, 0, w, h);
-    const d = ctx.getImageData(0, 0, w, h).data;
-    const g = new Float32Array(w * h);
-    for (let i = 0; i < w * h; i++) g[i] = d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114;
-    let sum = 0, sum2 = 0, n = 0;
-    for (let y = 1; y < h - 1; y++) {
-        for (let x = 1; x < w - 1; x++) {
-            const i = y * w + x;
-            const lap = 4 * g[i] - g[i - 1] - g[i + 1] - g[i - w] - g[i + w];
-            sum += lap;
-            sum2 += lap * lap;
-            n++;
-        }
-    }
-    return sum2 / n - (sum / n) ** 2;
-}
+// cccdSharpness: ở cccd_qr_scanner.js (dùng chung)
 
 // Chụp liền 5 khung hình trong ~0.6 giây, giữ khung NÉT NHẤT (tránh ảnh mờ do rung tay / camera đang lấy nét)
 async function shootCccdPhoto() {

@@ -616,11 +616,7 @@ function applyCccdQr(text) {
         if (modal) modal.hide();
     }, 1500);
 
-    const diaChiHtml = data.da_doi_dia_chi
-        ? `<li>Địa chỉ trên thẻ: <span class="text-decoration-line-through">${esc(data.dia_chi_tren_the)}</span><br>
-               → Đã đổi sang địa chỉ mới: <strong>${esc(data.dia_chi)}</strong></li>`
-        : `<li class="text-danger">Địa chỉ: <strong>${esc(data.dia_chi)}</strong><br>
-               <i class="bi bi-exclamation-triangle"></i> Chưa có dữ liệu đổi sang địa chỉ mới → vui lòng kiểm tra và sửa tay nếu cần.</li>`;
+    const diaChiHtml = cccdAddressHtml(data, `#id_${prefix}_noi_o_hien_tai`);
 
     // Thông báo ngay dưới tiêu đề mục vừa quét, giữ đến khi tự đóng
     const box = document.getElementById(`cccdQrAlert-${prefix}`);

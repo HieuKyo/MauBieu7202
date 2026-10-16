@@ -70,7 +70,10 @@ function buildAddrConvIndex() {
     return { hamlet, ward };
 }
 
-// Trả về địa chỉ mới, hoặc null nếu không có trong dữ liệu chuyển đổi
+// Trả về { address, sure } hoặc null nếu không có trong dữ liệu chuyển đổi.
+// sure = true  : khớp đủ ấp + xã + huyện + tỉnh (thẻ không ghi ấp: khớp xã + huyện + tỉnh) → tự điền.
+// sure = false : phải bỏ qua huyện mới khớp, hoặc ấp không có trong dữ liệu (giữ tên ấp như trên thẻ, có thể đã đổi tên)
+//                → KHÔNG tự điền, chỉ gợi ý để GĐV quyết định.
 function convertToNewAddress(addr) {
     if (!addrConvIndex && Object.keys(addressConversionData).length) addrConvIndex = buildAddrConvIndex();
     if (!addrConvIndex || !addr) return null;
@@ -81,14 +84,18 @@ function convertToNewAddress(addr) {
     const get = (map, key) => { const s = map.get(key); return s && s.size === 1 ? [...s][0] : null; };
     const [p, d, w] = [parts[parts.length - 1], parts[parts.length - 2], parts[parts.length - 3]].map(normAddrPart);
 
-    if (parts.length >= 4) {
+    const hasHamlet = parts.length >= 4;
+    if (hasHamlet) {
         const h = normAddrPart(parts[parts.length - 4]);
-        const full = get(addrConvIndex.hamlet, `${h}|${w}|${d}|${p}`) || get(addrConvIndex.hamlet, `${h}|${w}|${p}`);
-        if (full) return [...parts.slice(0, -4), full].join(', ');
+        const exact = get(addrConvIndex.hamlet, `${h}|${w}|${d}|${p}`);
+        if (exact) return { address: [...parts.slice(0, -4), exact].join(', '), sure: true };
+        const noDistrict = get(addrConvIndex.hamlet, `${h}|${w}|${p}`);
+        if (noDistrict) return { address: [...parts.slice(0, -4), noDistrict].join(', '), sure: false };
     }
-    // Không có ấp/khóm trong dữ liệu → giữ ấp/số nhà như trên thẻ, đổi xã/tỉnh
-    const newWard = get(addrConvIndex.ward, `${w}|${d}|${p}`) || get(addrConvIndex.ward, `${w}|${p}`);
-    if (newWard) return [...parts.slice(0, -3), newWard].join(', ');
+    // Ấp/khóm không có trong dữ liệu (hoặc thẻ không ghi ấp) → đổi xã/tỉnh, giữ phần trước như trên thẻ
+    const wardExact = get(addrConvIndex.ward, `${w}|${d}|${p}`);
+    const ward = wardExact || get(addrConvIndex.ward, `${w}|${p}`);
+    if (ward) return { address: [...parts.slice(0, -3), ward].join(', '), sure: !!wardExact && !hasHamlet };
     return null;
 }
 
@@ -99,7 +106,8 @@ function parseCccdQr(text) {
     const toIsoDate = s => /^\d{8}$/.test(s) ? `${s.slice(4, 8)}-${s.slice(2, 4)}-${s.slice(0, 2)}` : '';
     const ngaySinh = toIsoDate(p[3]);
     const ngayCap = toIsoDate(p[6]);
-    const diaChiMoi = convertToNewAddress(p[5]);
+    const conv = convertToNewAddress(p[5]);
+    const diaChiMoi = conv && conv.sure ? conv.address : null;   // chỉ tự điền khi chắc chắn
 
     return {
         so_cmnd: p[0],
@@ -110,11 +118,40 @@ function parseCccdQr(text) {
         dia_chi: diaChiMoi || p[5],
         dia_chi_tren_the: p[5],
         da_doi_dia_chi: !!diaChiMoi,
+        dia_chi_goi_y: conv && !conv.sure ? conv.address : '',
         ngay_cap_cmnd: ngayCap,
         ngay_het_han_cmnd: tinhNgayHetHanCccd(ngaySinh, ngayCap),
         // Căn cước mẫu mới (từ 01/07/2024) do Bộ Công an cấp
         noi_cap_cmnd: ngayCap >= '2024-07-01' ? 'Bộ Công An' : 'Cục CSQLHC về TTXH',
     };
+}
+
+// Khung thông báo địa chỉ sau khi quét QR (dùng chung cho In mẫu biểu / Doanh nghiệp).
+// fieldSelector: ô địa chỉ trên form để nút "Dùng địa chỉ gợi ý" điền vào.
+function cccdAddressHtml(data, fieldSelector) {
+    const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+    if (data.da_doi_dia_chi) {
+        return `<li>Địa chỉ trên thẻ: <span class="text-decoration-line-through">${esc(data.dia_chi_tren_the)}</span><br>
+            → Đã đổi sang địa chỉ mới: <strong>${esc(data.dia_chi)}</strong></li>`;
+    }
+    if (data.dia_chi_goi_y) {
+        return `<li class="text-warning-emphasis">Địa chỉ (giữ nguyên như trên thẻ): <strong>${esc(data.dia_chi)}</strong><br>
+            <i class="bi bi-question-circle"></i> Không chắc chắn đổi được. Gợi ý địa chỉ mới: <strong>${esc(data.dia_chi_goi_y)}</strong>
+            <button type="button" class="btn btn-sm btn-outline-warning ms-1" data-target="${esc(fieldSelector)}"
+                data-address="${esc(data.dia_chi_goi_y)}" onclick="useCccdAddressSuggestion(this)">Dùng địa chỉ gợi ý</button>
+            <div class="small">Vui lòng đối chiếu tên ấp/khóm, xã/phường trước khi dùng.</div></li>`;
+    }
+    return `<li class="text-danger">Địa chỉ (giữ nguyên như trên thẻ): <strong>${esc(data.dia_chi)}</strong><br>
+        <i class="bi bi-exclamation-triangle"></i> Chưa có dữ liệu đổi sang địa chỉ mới → vui lòng kiểm tra và sửa tay nếu cần.</li>`;
+}
+
+function useCccdAddressSuggestion(btn) {
+    const field = document.querySelector(btn.dataset.target);
+    if (!field) return;
+    field.value = btn.dataset.address;
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+    btn.disabled = true;
+    btn.textContent = 'Đã dùng địa chỉ gợi ý';
 }
 
 function setCccdQrStatus(html, cls = 'text-muted') {
@@ -236,7 +273,7 @@ function copyCccdQrText(text, btn) {
 }
 
 function stopCccdQrScan() {
-    clearInterval(cccdQrTimer);
+    clearTimeout(cccdQrTimer);
     cccdQrTimer = null;
     if (cccdQrStream) {
         cccdQrStream.getTracks().forEach(t => t.stop());
@@ -348,6 +385,20 @@ async function openCameraInto(videoId, selectId, deviceId, width, height, manual
     return stream;
 }
 
+// Thông số webcam GĐV đã chỉnh trong "Chụp 2 mặt" (độ nét, lấy nét tay...), nhớ theo tên camera.
+// Quét QR dùng lại vì thẻ đặt ở cùng khoảng cách → camera không bị nét vào thành hộp.
+function camTuneKey(track) { return 'cccdCamTune:' + track.label; }
+
+function loadCamTune(track) {
+    try { return JSON.parse(localStorage.getItem(camTuneKey(track))) || {}; } catch (e) { return {}; }
+}
+
+async function applyCamTune(track, values) {
+    const c = Object.assign({}, values);
+    if ('focusDistance' in c) c.focusMode = 'manual';   // lấy nét tay cần tắt lấy nét tự động
+    try { await track.applyConstraints({ advanced: [c] }); } catch (e) {}
+}
+
 function savedCameraId() {
     try { return localStorage.getItem('cccdQrCameraId'); } catch (e) { return null; }
 }
@@ -358,7 +409,8 @@ async function startCccdQrScan(deviceId, manual = false) {
     setCccdQrStatus(cameraWaitHtml());
     let stream;
     try {
-        stream = await openCameraInto('cccdQrVideo', 'cccdQrCameraSelect', deviceId, 1280, 720, manual);
+        // Xin độ phân giải cao nhất của webcam: mã QR trên thẻ rất nhỏ và dày đặc (~50x50 ô)
+        stream = await openCameraInto('cccdQrVideo', 'cccdQrCameraSelect', deviceId, 3840, 2160, manual);
     } catch (error) {
         setCccdQrStatus('<i class="bi bi-x-circle"></i> Chưa dùng được camera — làm theo hướng dẫn bên dưới, hoặc dùng ô dán chuỗi QR.', 'text-danger');
         renderCameraHelp('cccdQrHelp', error.message, 'startCccdQrScan(savedCameraId())', error.detail);
@@ -372,29 +424,112 @@ async function startCccdQrScan(deviceId, manual = false) {
     }
     cccdQrStream = stream;
 
-    setCccdQrStatus('<i class="bi bi-qr-code-scan"></i> Đang quét... Đưa mã QR mặt trước thẻ vào giữa khung hình, giữ yên 1-2 giây.', 'text-success');
-    cccdQrTimer = setInterval(scanCccdQrFrame, 250);
+    const saved = loadCamTune(stream.getVideoTracks()[0]);
+    if (Object.keys(saved).length) await applyCamTune(stream.getVideoTracks()[0], saved);
+
+    cccdQrRegion = 0;
+    setCccdQrStatus('<i class="bi bi-qr-code-scan"></i> Đang quét... Đưa mã QR mặt trước thẻ vào khung hình, giữ yên 1-2 giây.', 'text-success');
+    // Quét xong 1 lượt rồi nghỉ 120 ms mới quét tiếp (không dồn lượt → máy yếu không bị đơ)
+    const loop = () => {
+        if (!cccdQrStream) return;
+        scanCccdQrFrame();
+        if (cccdQrStream) cccdQrTimer = setTimeout(loop, 120);
+    };
+    cccdQrTimer = setTimeout(loop, 120);
+}
+
+// Mỗi lượt quét 1 vùng, luân phiên: cả khung hình (thu nhỏ còn rộng 1280 → nhanh, bắt được khi thẻ gần)
+// và từng góc + giữa khung hình ở ĐỘ PHÂN GIẢI GỐC (mã QR nằm ở góc thẻ → mỗi ô của mã to gấp ~2 lần, dễ đọc hơn).
+// Vùng = [x, y, rộng, cao] theo tỉ lệ khung hình; các vùng góc rộng 55% nên chồng lên nhau, mã QR luôn trọn trong 1 vùng.
+const CCCD_QR_REGIONS = [
+    [0, 0, 1, 1],
+    [0, 0, 0.55, 0.55], [0.45, 0, 0.55, 0.55],
+    [0, 0, 1, 1],
+    [0, 0.45, 0.55, 0.55], [0.45, 0.45, 0.55, 0.55],
+    [0.225, 0.225, 0.55, 0.55],
+];
+let cccdQrRegion = 0;
+
+// Ảnh mờ (webcam rẻ, lấy nét chưa tới): làm nét (unsharp mask 3x3) + kéo giãn tương phản theo ảnh xám.
+// Chỉ chạy khi lần đọc thường thất bại. Ghi đè lên img và trả về chính nó.
+function sharpenForQr(img) {
+    const w = img.width, h = img.height, d = img.data, n = w * h;
+    const g = new Uint8ClampedArray(n);
+    for (let i = 0, j = 0; i < n; i++, j += 4) g[i] = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8;
+    const o = new Uint8ClampedArray(n);
+    const hist = new Uint32Array(256);
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1, i = y * w + 1; x < w - 1; x++, i++) {
+            const mean = (g[i - w - 1] + g[i - w] + g[i - w + 1] + g[i - 1] + g[i] + g[i + 1] + g[i + w - 1] + g[i + w] + g[i + w + 1]) / 9;
+            o[i] = g[i] + 1.5 * (g[i] - mean);
+            hist[o[i]]++;
+        }
+    }
+    // Bỏ 1% điểm tối nhất / sáng nhất rồi kéo giãn về 0..255
+    const cut = n * 0.01;
+    let lo = 0, hi = 255, acc = 0;
+    while (lo < 255 && (acc += hist[lo]) < cut) lo++;
+    acc = 0;
+    while (hi > 0 && (acc += hist[hi]) < cut) hi--;
+    const k = 255 / Math.max(hi - lo, 1);
+    for (let i = 0, j = 0; i < n; i++, j += 4) d[j] = d[j + 1] = d[j + 2] = (o[i] - lo) * k;
+    return img;
 }
 
 function scanCccdQrFrame() {
     const video = document.getElementById('cccdQrVideo');
     if (!cccdQrStream || video.readyState < video.HAVE_ENOUGH_DATA) return;
 
-    cccdQrCanvas.width = video.videoWidth;
-    cccdQrCanvas.height = video.videoHeight;
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const [rx, ry, rw, rh] = CCCD_QR_REGIONS[cccdQrRegion];
+    cccdQrRegion = (cccdQrRegion + 1) % CCCD_QR_REGIONS.length;
+    const sx = Math.round(rx * vw), sy = Math.round(ry * vh), sw = Math.round(rw * vw), sh = Math.round(rh * vh);
+    const scale = Math.min(1, 1280 / sw);   // vùng nhỏ giữ độ phân giải gốc; cả khung hình thì thu nhỏ cho nhanh
+
+    cccdQrCanvas.width = Math.round(sw * scale);
+    cccdQrCanvas.height = Math.round(sh * scale);
     const ctx = cccdQrCanvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(video, 0, 0);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cccdQrCanvas.width, cccdQrCanvas.height);
     const image = ctx.getImageData(0, 0, cccdQrCanvas.width, cccdQrCanvas.height);
-    const code = jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' });
+    let code = jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' });
+    if (!code) code = jsQR(sharpenForQr(image).data, image.width, image.height, { inversionAttempts: 'dontInvert' });
     if (code && code.data) applyCccdQr(code.data);
 }
 
-document.getElementById('cccdQrModal').addEventListener('shown.bs.modal', () => {
-    cccdQrModalOpen = true;
-    document.getElementById('cccdQrSuccess').classList.replace('d-flex', 'd-none');
-    startCccdQrScan(savedCameraId());
-});
-document.getElementById('cccdQrModal').addEventListener('hidden.bs.modal', () => {
-    cccdQrModalOpen = false;
-    stopCccdQrScan();
-});
+// Độ nét của ảnh = phương sai Laplacian (ảnh mờ/rung → giá trị nhỏ)
+function cccdSharpness(src) {
+    const w = 640, h = Math.round(640 * src.height / src.width);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(src, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    const g = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) g[i] = d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114;
+    let sum = 0, sum2 = 0, n = 0;
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            const i = y * w + x;
+            const lap = 4 * g[i] - g[i - 1] - g[i + 1] - g[i - w] - g[i + w];
+            sum += lap;
+            sum2 += lap * lap;
+            n++;
+        }
+    }
+    return sum2 / n - (sum / n) ** 2;
+}
+
+// Cửa sổ Quét QR (chỉ có ở trang In mẫu biểu / Doanh nghiệp; trang khác chỉ dùng các hàm camera ở trên)
+const cccdQrModalEl = document.getElementById('cccdQrModal');
+if (cccdQrModalEl) {
+    cccdQrModalEl.addEventListener('shown.bs.modal', () => {
+        cccdQrModalOpen = true;
+        document.getElementById('cccdQrSuccess').classList.replace('d-flex', 'd-none');
+        startCccdQrScan(savedCameraId());
+    });
+    cccdQrModalEl.addEventListener('hidden.bs.modal', () => {
+        cccdQrModalOpen = false;
+        stopCccdQrScan();
+    });
+}
