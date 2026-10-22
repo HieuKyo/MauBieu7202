@@ -13,7 +13,9 @@ from . import can_doi_views
 from . import spdv_kpi_views
 from . import customer_export
 from . import customer_cif_tools
+from . import customer_cccd_images
 from . import customer_signature
+from . import student_registration
 
 urlpatterns = [
     # Authentication
@@ -44,6 +46,11 @@ urlpatterns = [
     path('customers/export/', customer_export.customer_export_view, name='customer_export'),
     path('customers/update-codes/', customer_cif_tools.customer_update_codes_view, name='customer_update_codes'),
     path('customers/signature-folders/', customer_cif_tools.customer_signature_folders_view, name='customer_signature_folders'),
+    path('customers/students/import/', student_registration.student_import_view, name='student_import'),
+    path('customers/batch-print/', student_registration.student_batch_print_view, name='student_batch_print'),
+    path('customers/students/keys/', student_registration.student_keys_view, name='student_keys'),
+    path('customers/cccd-anh/in-lo/', customer_cccd_images.cccd_batch_print_view, name='cccd_batch_print'),
+    path('customers/<int:customer_id>/cccd-anh/<str:side>/', customer_cccd_images.customer_cccd_image_view, name='customer_cccd_image'),
     path('customers/<int:customer_id>/signatures/', customer_signature.customer_signatures_view, name='customer_signatures'),
     path('customers/<int:customer_id>/signatures/<str:name>/', customer_signature.customer_signature_file_view, name='customer_signature_file'),
     path('customers/<int:customer_id>/signatures/<str:name>/delete/', customer_signature.customer_signature_delete_view, name='customer_signature_delete'),

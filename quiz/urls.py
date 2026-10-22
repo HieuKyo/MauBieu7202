@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.exam_list, name='quiz_exam_list'),
     path('exam/<int:exam_id>/', views.quiz_list, name='quiz_list'),
+    path('lookup/', views.question_lookup, name='question_lookup_all'),
     path('exam/<int:exam_id>/lookup/', views.question_lookup, name='question_lookup'),
     path('quiz/<int:quiz_id>/start/', views.quiz_start, name='quiz_start'),
     path('quiz/<int:quiz_id>/question/<int:index>/', views.quiz_question, name='quiz_question'),

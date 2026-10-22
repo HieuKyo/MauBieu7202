@@ -30,7 +30,8 @@ class Quiz(models.Model):
 
 
 class Question(models.Model):
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions', verbose_name="Đề thi")
+    # Ngân hàng câu hỏi chung: 1 câu hỏi có thể thuộc nhiều đề/kỳ thi
+    quizzes = models.ManyToManyField(Quiz, related_name='questions', verbose_name="Đề thi")
     text = models.TextField("Nội dung câu hỏi")
     order = models.IntegerField("Thứ tự", default=0)
     explanation = models.TextField("Diễn giải", blank=True)

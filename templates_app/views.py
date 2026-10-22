@@ -397,7 +397,8 @@ def customer_list_view(request):
             Q(ho_ten__icontains=search_query) |
             Q(so_cmnd__icontains=search_query) |
             Q(so_dien_thoai__icontains=search_query) |
-            Q(email__icontains=search_query)
+            Q(email__icontains=search_query) |
+            Q(ghi_chu__icontains=search_query)
         )
 
     customers = customers.order_by('-created_at')
@@ -408,14 +409,23 @@ def customer_list_view(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Số ảnh chữ ký đã chụp của từng khách trên trang
+    # Số ảnh chữ ký đã chụp + ảnh 2 mặt thẻ (học sinh gửi online) của từng khách trên trang
+    from .customer_cccd_images import cccd_image_sides
     from .customer_signature import signature_files
     for customer in page_obj:
         customer.signature_count = len(signature_files(customer.pk))
+        customer.cccd_sides = cccd_image_sides(customer.pk)
+
+    # Mẫu biểu cho "In theo lô" (mẫu học sinh đứng đầu)
+    from .student_registration import STUDENT_TEMPLATE_NAME
+    batch_templates = [t for t in Template.objects.filter(is_active=True).select_related('category').order_by('category__name', 'order', 'name')
+                       if t.user_has_access(request.user)]
+    batch_templates.sort(key=lambda t: t.name != STUDENT_TEMPLATE_NAME)
 
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
+        'batch_templates': batch_templates,
     }
     return render(request, 'templates_app/customer_list.html', context)
 

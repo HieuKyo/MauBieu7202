@@ -281,7 +281,7 @@
                 </div>
                 <div class="col-md-6 text-center text-md-end">
                     <p class="mb-0 text-muted small">&copy; 2025 Hệ thống Mẫu biểu - Nội bộ</p>
-                    <p class="mb-0 text-muted small">Phiên bản 1.0</p>
+                    <p class="mb-0 text-muted small">Phiên bản {{ APP_VERSION }}</p>
                 </div>
             </div>
         </div>
@@ -418,7 +418,7 @@
 
         function showAbout() {
             alert('HỆ THỐNG MẪU BIỂU\n\n' +
-                  'Phiên bản: 1.0\n' +
+                  'Phiên bản: {{ APP_VERSION|escapejs }}\n' +
                   'Ngân hàng: Agribank Chi nhánh Giá Rai Bạc Liêu\n' +
                   'Năm: 2025\n\n' +
                   'Hệ thống quản lý mẫu biểu và hồ sơ khách hàng');

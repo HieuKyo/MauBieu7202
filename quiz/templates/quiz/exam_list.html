@@ -7,10 +7,15 @@
 <div class="container main-container">
     <div class="row mb-4">
         <div class="col">
-            <h2 class="fw-bold" style="color: var(--agri-red);">
-                <i class="bi bi-journal-check me-2"></i>Thi nghiệp vụ
-            </h2>
-            <p class="text-muted">Chọn kỳ thi để tra cứu câu hỏi</p>
+            <div class="d-flex align-items-center flex-wrap gap-3">
+                <h2 class="fw-bold mb-0" style="color: var(--agri-red);">
+                    <i class="bi bi-journal-check me-2"></i>Thi nghiệp vụ
+                </h2>
+                <a href="{% url 'question_lookup_all' %}" class="btn btn-danger btn-lg fw-bold shadow-sm">
+                    <i class="bi bi-search me-2"></i>Tra cứu câu hỏi
+                </a>
+            </div>
+            <p class="text-muted mt-2">Chọn kỳ thi để tra cứu câu hỏi</p>
         </div>
     </div>
 

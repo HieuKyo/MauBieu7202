@@ -50,7 +50,7 @@ def _filtered_customers(request):
     q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(Q(ho_ten__icontains=q) | Q(so_cmnd__icontains=q) |
-                       Q(so_dien_thoai__icontains=q) | Q(email__icontains=q))
+                       Q(so_dien_thoai__icontains=q) | Q(email__icontains=q) | Q(ghi_chu__icontains=q))
     for param, lookup in (('from', 'updated_at__date__gte'), ('to', 'updated_at__date__lte')):
         value = request.GET.get(param, '').strip()
         if value:
@@ -116,6 +116,12 @@ def _xlsx_response(wb, filename):
 
 
 # ----------------------------------------------------------------------------- 1. Excel thường
+def _class_name(note):
+    """Lớp của học sinh trong ghi chú dạng 'Lớp: 10A1 - Trường: ...' (do Nhập DS học sinh ghi)."""
+    m = re.search(r'^Lớp:\s*(.*?)(?:\s+-\s+Trường:.*)?$', note or '', re.M)
+    return m.group(1).strip() if m else ''
+
+
 def _export_normal(customers):
     import openpyxl
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -125,7 +131,7 @@ def _export_normal(customers):
     dmy = lambda d: d.strftime('%d/%m/%Y') if d else ''
     columns = [
         ('STT', None), ('Mã khách hàng', lambda c: c.ma_khach_hang), ('Mã CIF', lambda c: c.cif),
-        ('Họ và tên', lambda c: c.ho_ten), ('Ngày sinh', lambda c: dmy(c.ngay_sinh)),
+        ('Họ và tên', lambda c: c.ho_ten), ('Lớp', lambda c: _class_name(c.ghi_chu)), ('Ngày sinh', lambda c: dmy(c.ngay_sinh)),
         ('Ghi chú tuổi', lambda c: (c.get_age_note() or ('', ''))[1]), ('Giới tính', lambda c: c.gioi_tinh),
         ('Số CCCD', lambda c: c.so_cmnd), ('Ngày cấp', lambda c: dmy(c.ngay_cap_cmnd)),
         ('Nơi cấp', lambda c: c.noi_cap_cmnd), ('Ngày hết hạn', lambda c: dmy(c.ngay_het_han_cmnd)),

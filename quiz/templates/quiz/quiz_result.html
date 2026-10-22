@@ -27,7 +27,7 @@
                 {% widthratio score total 100 %}% chính xác
             </p>
             <div class="d-flex justify-content-center gap-3 mt-3">
-                <a href="{% url 'quiz_start' quiz_id=quiz.id %}" class="btn btn-danger">
+                <a href="{% url 'quiz_start' quiz_id=quiz.id %}{% if mode == 'all' %}?mode=all{% endif %}" class="btn btn-danger">
                     <i class="bi bi-arrow-repeat me-1"></i> Làm lại
                 </a>
                 <a href="{% url 'quiz_list' exam_id=quiz.exam_id %}" class="btn btn-outline-secondary">

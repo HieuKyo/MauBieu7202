@@ -53,6 +53,12 @@ samples/
 
 # Backup files
 *.bak
+*.sqlite3.bak*
+
+# Gói cập nhật LAN (tao_ban_cap_nhat.bat) và bản sao lưu khi cập nhật (cap_nhat.bat)
+/ban_cap_nhat/
+/backups/
+/VERSION
 *.tmp
 
 # Ảnh chữ ký khách hàng (dữ liệu cá nhân, không đưa lên git)

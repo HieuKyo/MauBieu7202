@@ -26,13 +26,17 @@ def quiz_list(request, exam_id):
 @login_required
 def quiz_start(request, quiz_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
+    # mode=all: ôn toàn bộ câu hỏi của đề; mặc định: 50 câu ngẫu nhiên
+    mode = 'all' if request.GET.get('mode') == 'all' else 'random'
     question_ids = list(quiz.questions.values_list('id', flat=True))
     random.shuffle(question_ids)
-    question_ids = question_ids[:50]
+    if mode == 'random':
+        question_ids = question_ids[:50]
 
     prefix = f'quiz_{quiz_id}'
     request.session[f'{prefix}_ids'] = question_ids
     request.session[f'{prefix}_answers'] = {}
+    request.session[f'{prefix}_mode'] = mode
     return redirect('quiz_question', quiz_id=quiz_id, index=0)
 
 
@@ -113,6 +117,7 @@ def quiz_result(request, quiz_id):
 
     context = {
         'quiz': quiz,
+        'mode': request.session.get(f'quiz_{quiz_id}_mode', 'random'),
         'score': score,
         'total': len(ids),
         'results': results,
@@ -148,8 +153,8 @@ def quiz_review(request, quiz_id):
 
 
 @login_required
-def question_lookup(request, exam_id):
-    exam = get_object_or_404(Exam, pk=exam_id)
+def question_lookup(request, exam_id=None):
+    exam = get_object_or_404(Exam, pk=exam_id) if exam_id else None
     questions = []
     query = ""
 
@@ -157,11 +162,10 @@ def question_lookup(request, exam_id):
         query = request.POST.get('query', '').strip()
         if query:
             search_term = unidecode(query.lower())
+            # Tra cứu trên toàn bộ ngân hàng câu hỏi chung
             questions = Question.objects.filter(
-                Q(quiz__exam_id=exam_id) & (
-                    Q(search_text_normalized__icontains=search_term) |
-                    Q(choices__search_text_normalized__icontains=search_term)
-                )
+                Q(search_text_normalized__icontains=search_term) |
+                Q(choices__search_text_normalized__icontains=search_term)
             ).prefetch_related('choices').distinct()
 
     context = {'exam': exam, 'questions': questions, 'query': query}

@@ -1,7 +1,7 @@
 {% extends 'templates_app/base.html' %}
 {% load static %}
 
-{% block title %}Tra cứu - {{ exam.title }}{% endblock %}
+{% block title %}Tra cứu - {% if exam %}{{ exam.title }}{% else %}Ngân hàng câu hỏi{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -38,7 +38,7 @@
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'quiz_exam_list' %}">Thi nghiệp vụ</a></li>
-            <li class="breadcrumb-item active">{{ exam.title }}</li>
+            <li class="breadcrumb-item active">{% if exam %}{{ exam.title }}{% else %}Tra cứu câu hỏi{% endif %}</li>
         </ol>
     </nav>
 
@@ -47,11 +47,11 @@
             <h4 class="mb-0 text-white fw-bold">
                 <i class="bi bi-search me-2"></i>Tra cứu câu hỏi
             </h4>
-            <p class="mb-0 text-white-50 small mt-1">{{ exam.title }}</p>
+            <p class="mb-0 text-white-50 small mt-1">Ngân hàng câu hỏi chung (toàn bộ các kỳ thi)</p>
         </div>
 
         <div class="card-body">
-            <form method="POST" action="{% url 'question_lookup' exam_id=exam.id %}">
+            <form method="POST" action="{{ request.path }}">
                 {% csrf_token %}
                 <div class="input-group mb-3">
                     <span class="input-group-text bg-white border-end-0">
@@ -65,7 +65,7 @@
                            placeholder="Nhập nội dung câu hỏi hoặc câu trả lời (có thể không dấu)..."
                            autofocus>
                     {% if query %}
-                    <a href="{% url 'question_lookup' exam_id=exam.id %}"
+                    <a href="{{ request.path }}"
                        class="btn btn-outline-secondary" title="Xóa tìm kiếm">
                         <i class="bi bi-x-lg"></i>
                     </a>

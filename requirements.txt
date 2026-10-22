@@ -51,3 +51,6 @@ pdfplumber>=0.11.0   # Trích xuất text trực tiếp từ PDF có text select
 # PDF Tools (Tách / Ghép PDF)
 pypdf>=4.0.0         # Đọc, tách, ghép file PDF thuần Python
 reportlab>=4.0.0     # Tạo file PDF (bảng kê tiền mặt, giấy đề nghị tiếp quỹ)
+
+# Giải mã hồ sơ học sinh tự đăng ký (file cài offline có trong packages/)
+cryptography>=49.0.0
