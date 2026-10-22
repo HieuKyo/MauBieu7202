@@ -10,24 +10,21 @@ def forwards(apps, schema_editor):
     Question = apps.get_model('quiz', 'Question')
     Through = Question.quizzes_new.through
 
-    Through.objects.bulk_create([
-        Through(question_id=q_id, quiz_id=quiz_id)
-        for q_id, quiz_id in Question.objects.values_list('id', 'quiz_id')
-    ])
-
     groups = {}
-    for q_id, normalized in Question.objects.values_list('id', 'search_text_normalized'):
-        groups.setdefault(_dup_key(normalized), []).append(q_id)
+    for q_id, quiz_id, normalized in Question.objects.values_list('id', 'quiz_id', 'search_text_normalized'):
+        groups.setdefault(_dup_key(normalized), []).append((q_id, quiz_id))
 
-    for ids in groups.values():
-        if len(ids) < 2:
-            continue
-        ids.sort()
-        keep_id, old_ids = ids[-1], ids[:-1]
-        keep = Question.objects.get(pk=keep_id)
-        quiz_ids = set(Through.objects.filter(question_id__in=old_ids).values_list('quiz_id', flat=True))
-        keep.quizzes_new.add(*quiz_ids)
-        Question.objects.filter(pk__in=old_ids).delete()
+    # Mỗi nhóm trùng giữ câu mới nhất (id lớn nhất), gắn với mọi đề của cả nhóm.
+    # Dùng set để không sinh cặp (câu hỏi, đề) trùng khi câu bị import 2 lần vào cùng 1 đề.
+    pairs, old_ids = set(), []
+    for items in groups.values():
+        keep_id = max(q_id for q_id, _ in items)
+        pairs.update((keep_id, quiz_id) for _, quiz_id in items)
+        old_ids += [q_id for q_id, _ in items if q_id != keep_id]
+
+    Through.objects.bulk_create([Through(question_id=q_id, quiz_id=quiz_id) for q_id, quiz_id in pairs])
+    for i in range(0, len(old_ids), 500):
+        Question.objects.filter(pk__in=old_ids[i:i + 500]).delete()
 
 
 class Migration(migrations.Migration):
