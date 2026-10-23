@@ -1,6 +1,6 @@
 """
 Bổ sung thông tin đối tác (tên, số TK, ngân hàng) cho sao kê DPTB18
-từ các file đối soát CSP / MSPH02 chiều đi và chiều đến.
+từ các file đối soát CSP / MSPH02 / FX (FXIR64, FXOR88) chiều đi và chiều đến.
 
 Quy tắc khớp với DPTB18 (đã kiểm chứng trên dữ liệu thật):
 - MSPH02 (đi/đến):  cột trace       = cột thrref của DPTB18
@@ -8,10 +8,15 @@ Quy tắc khớp với DPTB18 (đã kiểm chứng trên dữ liệu thật):
 - CSP chiều đi:     dòng 369-Transfer Debit, cột TRACE = mã 6 số đầu rem;
                     số TK / ngân hàng nhận lấy từ dòng 91-Transfer Credit cùng REMARK + số tiền
                     tên người nhận lấy từ cột TO_ACCOUNT_REMARK (dòng 91 hoặc 43 cùng số TK), không có thì đối chiếu chéo
-Mọi phép khớp đều kiểm tra thêm chiều tiền (vào/ra) và số tiền bằng nhau.
+- FXIR64 / FXOR88:  cột trref ("7202ITL...", "7202OTT...") = cột tomgntno của DPTB18;
+                    ngân hàng đối tác "IKOxxxx" = chi nhánh Agribank (nội bộ), mã 8 số = mã CITAD (liên NH)
+Mọi phép khớp đều kiểm tra thêm chiều tiền (vào/ra); CSP/MSPH02 kiểm tra cả số tiền bằng nhau.
+FX không so số tiền vì DPTB18 ghi số tiền đã gộp phí chuyển tiền.
 """
+import json
 import re
 from collections import Counter
+from pathlib import Path
 
 import pandas as pd
 
@@ -23,6 +28,8 @@ AUX_FILES = {
     'msph02_di': 'MSPH02 chiều đi',
     'csp_den': 'CSP chiều đến',
     'csp_di': 'CSP chiều đi',
+    'fxir64': 'FXIR64 chiều đến',
+    'fxor88': 'FXOR88 chiều đi',
 }
 
 _MSPH02_COLS = ['trace', 'sttlamt', 'rspcd', 'nh_nhan_gui_nhan', 'noi_dung',
@@ -34,6 +41,8 @@ REQUIRED_COLUMNS = {
                 'CONTENT', 'TRACE IPCAS', 'FROM BANK CODE'],
     'csp_di': ['TRANSACTION TIME', 'TO_ACCOUNT', 'TRANCODE', 'AMOUNT', 'TRACE',
                'RESPONSE', 'REMARK', 'TO_BANK_CODE'],
+    'fxir64': ['trref', 'trdate', 'traamt', 'ordcust', 'name_4', 'rembk1', 'remntbk', 'remark'],
+    'fxor88': ['trref', 'trdate', 'traamt', 'bencust', 'benacct', 'rcvbk', 'remark'],
 }
 
 # Trạng thái MSPH02 được coi là giao dịch thành công (có hạch toán vào DPTB18)
@@ -65,6 +74,9 @@ _MSPH02_BANK_NAMES = [
 ]
 
 _REM_TRACE_RE = re.compile(r'(?:^|- )(\d{6})-')
+
+# Bảng mã CITAD (mã thanh toán liên ngân hàng 8 số: 2 số tỉnh + 3 số ngân hàng + 3 số chi nhánh)
+_CITAD = json.loads((Path(__file__).parent / 'data' / 'citad_codes.json').read_text(encoding='utf-8'))
 
 
 def _s(value):
@@ -99,6 +111,14 @@ def _bin_bank(code):
     bin_code = bin_code.strip()
     name = BankStatementParser.BIN_CODE_MAPPING.get(bin_code) or short.strip()
     return bin_code, name
+
+
+def _citad_bank(code):
+    """Mã CITAD → tên ngân hàng ngắn ('79303001' → 'Sacombank'); không có trong bảng → 'CITAD <mã>'."""
+    code = _s(code)
+    if not code:
+        return ''
+    return _CITAD['banks'].get(code[2:5]) or _CITAD['codes'].get(code) or f'CITAD {code}'
 
 
 def _msph02_bank(text):
@@ -137,6 +157,7 @@ class _DptbIndex:
     def __init__(self, df):
         self.by_thrref = {}
         self.by_trace = {}
+        self.by_tomgntno = {}
         self.amounts = {}
         self.used = set()
         for idx, row in df.iterrows():
@@ -154,11 +175,14 @@ class _DptbIndex:
             m = _REM_TRACE_RE.search(_s(row.get('rem')))
             if m:
                 self.by_trace.setdefault((m.group(1), sign), []).append(idx)
+            tomgntno = _norm_acct(row.get('tomgntno'))
+            if tomgntno:
+                self.by_tomgntno.setdefault((tomgntno, sign), []).append(idx)
 
-    def take(self, table, key, amount):
-        """Lấy dòng DPTB18 chưa dùng có cùng khoá và số tiền."""
+    def take(self, table, key, amount=None):
+        """Lấy dòng DPTB18 chưa dùng có cùng khoá (và cùng số tiền, nếu truyền amount)."""
         for idx in table.get(key, []):
-            if idx not in self.used and self.amounts[idx] == amount:
+            if idx not in self.used and (amount is None or self.amounts[idx] == amount):
                 self.used.add(idx)
                 return idx
         return None
@@ -179,7 +203,8 @@ def enrich(dptb_df, aux_paths):
 
     Returns:
         (enrichment, unmatched)
-        enrichment: {index dòng DPTB18: {'beneficiary_name', 'account_number', 'bank_name', 'source'}}
+        enrichment: {index dòng DPTB18: {'beneficiary_name', 'account_number', 'bank_name', 'source',
+                     'internal' (chỉ FX: True nếu đối tác ở chi nhánh Agribank khác)}}
         unmatched: list dict các dòng thành công trong file phụ không tìm thấy trong DPTB18
     """
     frames = {kind: read_aux_file(path, kind) for kind, path in aux_paths.items() if path}
@@ -266,6 +291,42 @@ def enrich(dptb_df, aux_paths):
                 'account_number': account,
                 'bank_name': bank,
                 'source': source,
+            }
+
+    # ── FX (chuyển tiền qua FX/CITAD): trref = tomgntno ───────────────────
+    # Tên chi nhánh Agribank theo mã IKO, lấy từ FXIR64 (VD IKO7200 → "Agribank CN Bạc Liêu")
+    iko_names = {}
+    if 'fxir64' in frames:
+        for _, r in frames['fxir64'].iterrows():
+            if _s(r['rembk1']).upper().startswith('IKO') and _s(r['remntbk']):
+                iko_names[_s(r['rembk1']).upper()] = _s(r['remntbk'])
+    for kind, sign, name_col, acct_col, bank_code_col in [
+        ('fxir64', 1, 'ordcust', 'name_4', 'rembk1'),
+        ('fxor88', -1, 'bencust', 'benacct', 'rcvbk'),
+    ]:
+        if kind not in frames:
+            continue
+        # Giao dịch viên chỉnh sửa lệnh → cùng trref xuất hiện nhiều lần; giữ dòng sau cùng
+        frame = frames[kind].assign(_ref=frames[kind]['trref'].map(_s)).drop_duplicates('_ref', keep='last')
+        for _, r in frame.iterrows():
+            amount = _amount(r['traamt'])
+            idx = index.take(index.by_tomgntno, (_norm_acct(r['_ref']), sign))
+            if idx is None:
+                unmatched.append(_unmatched(kind, r['trdate'], amount, r[acct_col],
+                                            r[name_col], r['remark'], r['_ref']))
+                continue
+            bank_code = _s(r[bank_code_col])
+            internal = bank_code.upper().startswith('IKO')
+            if internal:
+                bank = iko_names.get(bank_code.upper(), 'Agribank')
+            else:
+                bank = _citad_bank(bank_code)
+            enrichment[idx] = {
+                'beneficiary_name': _s(r[name_col]) if _valid_name(r[name_col]) else '',
+                'account_number': _s(r[acct_col]),
+                'bank_name': bank or 'Agribank',
+                'source': AUX_FILES[kind],
+                'internal': internal,
             }
 
     return enrichment, unmatched

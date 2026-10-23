@@ -3318,19 +3318,7 @@ def bank_statement_upload(request):
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
 
-            # Xử lý file ITL tùy chọn (FXIR64)
-            itl_mapping = {}
-            itl_file = request.FILES.get('itl_file')
-            itl_path = None
-            if itl_file:
-                itl_ext = os.path.splitext(itl_file.name)[1].lower()
-                itl_path = os.path.join(upload_dir, f"itl_{uuid.uuid4().hex}{itl_ext}")
-                with open(itl_path, 'wb+') as f:
-                    for chunk in itl_file.chunks():
-                        f.write(chunk)
-                itl_mapping = BankStatementParser.parse_itl_file(itl_path)
-
-            # File đối soát CSP / MSPH02 tùy chọn
+            # File đối soát CSP / MSPH02 / FX tùy chọn
             from .bank_statement_enricher import AUX_FILES, enrich
             aux_paths = {}
             for kind in AUX_FILES:
@@ -3354,8 +3342,7 @@ def bank_statement_upload(request):
                 enrichment, unmatched_rows = enrich(parser.df, aux_paths)
                 from .models import AccountName
                 name_book = {(a.account_key, a.bank_key): a.name for a in AccountName.objects.all()}
-                transactions_data = parser.process(itl_mapping=itl_mapping, enrichment=enrichment,
-                                                   name_book=name_book)
+                transactions_data = parser.process(enrichment=enrichment, name_book=name_book)
                 summary = parser.get_summary()
 
                 # Tạo BankStatement
@@ -3393,7 +3380,7 @@ def bank_statement_upload(request):
 
                 msg = f'Đã phân tích thành công {summary["total_transactions"]} giao dịch!'
                 if aux_paths:
-                    msg += f' Bổ sung thông tin đối tác cho {len(enrichment)} giao dịch từ file CSP/MSPH02'
+                    msg += f' Bổ sung thông tin đối tác cho {len(enrichment)} giao dịch từ file đối soát'
                     msg += f', {len(unmatched_rows)} dòng không khớp.' if unmatched_rows else '.'
                 messages.success(request, msg)
                 return redirect('bank_statement_result', statement_id=statement.id)
@@ -3402,8 +3389,6 @@ def bank_statement_upload(request):
                 # Luôn xóa file tạm sau khi xử lý xong (dù thành công hay lỗi)
                 if os.path.exists(file_path):
                     os.remove(file_path)
-                if itl_path and os.path.exists(itl_path):
-                    os.remove(itl_path)
                 for aux_path in aux_paths.values():
                     if os.path.exists(aux_path):
                         os.remove(aux_path)
@@ -3478,14 +3463,11 @@ def _frequent_accounts(statement, amount_field):
         .order_by('-count')
     )
     for acc in accounts:
-        acct = acc.get('account_number', '')
         name = acc.get('name', '') or ''
         if acc['aux_name']:
             name = acc['aux_name']
-        # STK dạng ITL: tên lấy từ ordcust (FXIR64) — tin cậy, không lọc
-        elif not re.search(r'\d+ITL\d+', acct, re.IGNORECASE):
-            if not _is_proper_name(name):
-                name = ''
+        elif not _is_proper_name(name):
+            name = ''
         acc['name'] = name
     return accounts
 
@@ -3560,6 +3542,7 @@ def bank_statement_result(request, statement_id):
         "Thanh toán dịch vụ",
         "Thanh toán dịch vụ (VNPT)",
         "Phí dịch vụ",
+        "Nộp thuế / NSNN",
         "Trả lãi tiền gửi",
         "Trả lãi tiền gửi hàng tháng",
         "Trả lãi tiền gửi hằng tháng",

@@ -630,6 +630,10 @@ class BankStatementParser:
         if re.match(r'^\d{4}OSB', husrid, re.IGNORECASE):
             return "Giao dịch OSB"
 
+        # Nộp thuế điện tử: rem bắt đầu "EBAGRTAX"; dòng phí kèm theo có fndtpcd=198 (TK thu phí)
+        if rem.strip().upper().startswith('EBAGRTAX'):
+            return "Phí dịch vụ" if str(row.get('fndtpcd', '')).strip() == '198' else "Nộp thuế / NSNN"
+
         # Giải ngân
         if '7202LDS' in rem:
             return "Giải ngân"
@@ -960,48 +964,13 @@ class BankStatementParser:
 
         return None
 
-    @staticmethod
-    def parse_itl_file(file_path):
-        """
-        Parse file FXIR64 (Lấy số liệu ITL - Search Customer Number).
-        Trả về dict {trref: ordcust} để tra cứu tên người chuyển cho giao dịch ITL.
-
-        Args:
-            file_path: Đường dẫn đến file FXIR64 (.xlsx / .xls / .txt tab-separated)
-
-        Returns:
-            dict: {mã_ITL: tên_người_chuyển}  VD: {'7202ITL161013516': 'Lê Thị Hơn'}
-        """
-        try:
-            ext = str(file_path).lower()
-            if ext.endswith(('.xlsx', '.xls')):
-                df = pd.read_excel(file_path, dtype=str)
-            else:
-                # Tab-separated text export từ hệ thống Agribank
-                df = pd.read_csv(file_path, sep='\t', dtype=str, encoding='utf-8-sig')
-
-            df.columns = [str(c).strip().lower() for c in df.columns]
-
-            mapping = {}
-            for _, row in df.iterrows():
-                trref = str(row.get('trref', '')).strip()
-                ordcust = str(row.get('ordcust', '')).strip()
-                if trref and ordcust and ordcust.lower() != 'nan':
-                    mapping[trref] = ordcust
-            return mapping
-        except Exception:
-            return {}
-
-    def process(self, itl_mapping=None, enrichment=None, name_book=None):
+    def process(self, enrichment=None, name_book=None):
         """
         Xử lý toàn bộ file và trả về dữ liệu đã parse
 
         Args:
-            itl_mapping: dict {trref: ordcust} từ file FXIR64 (tùy chọn).
-                         Nếu cung cấp, tên người chuyển của giao dịch ITL sẽ được
-                         lấy từ cột ordcust thay vì parse từ rem.
             enrichment: dict {index dòng: thông tin đối tác} từ bank_statement_enricher.enrich()
-                        (tùy chọn). Thông tin từ file CSP/MSPH02 được ưu tiên hơn parse rem.
+                        (tùy chọn). Thông tin từ file CSP/MSPH02/FX được ưu tiên hơn parse rem.
             name_book: dict {account_key(...): tên} từ danh bạ người dùng điền (tùy chọn).
                        Chỉ điền cho giao dịch có số TK nhưng chưa tìm được tên.
 
@@ -1094,34 +1063,37 @@ class BankStatementParser:
             if transaction_type in _FEE_TYPES and not beneficiary_info['bank_name']:
                 beneficiary_info['bank_name'] = 'Agribank'
 
-            itl_named = False
-            # Giao dịch ITL (nội bộ Agribank khác chi nhánh) → bank=Agribank, account=mã ITL
+            # Giao dịch ITL (nội bộ Agribank khác chi nhánh) → bank=Agribank.
+            # "7202ITL..." / "7202OTT..." là MÃ GIAO DỊCH FX, không phải số TK — dùng để nối sang file
+            # FXIR64 / FXOR88 (cột trref) lấy số TK, tên, ngân hàng đối tác (bank_statement_enricher)
             # Kiểm tra tomgntno trước, fallback sang ourref
             _itl_val = str(row.get('tomgntno', '')).strip()
             if not re.search(r'\d+ITL\d+', _itl_val, re.IGNORECASE):
                 _itl_val = str(row.get('ourref', '')).strip()
             if re.search(r'\d+ITL\d+', _itl_val, re.IGNORECASE):
                 beneficiary_info['bank_name'] = 'Agribank'
-                beneficiary_info['account_number'] = _itl_val
-                # Lấy tên người chuyển từ file FXIR64 nếu có (chỉ cho GD nhận tiền)
-                if itl_mapping and acctccyamt > 0:
-                    sender_name = itl_mapping.get(_itl_val, '')
-                    if sender_name:
-                        beneficiary_info['beneficiary_name'] = sender_name
-                        itl_named = True
+                if re.search(r'ITL', beneficiary_info['account_number'], re.IGNORECASE):
+                    beneficiary_info['account_number'] = ''
 
             # Giao dịch tiền ra (< 0): tên trong rem là chủ TK người gửi, không phải người thụ hưởng
             if acctccyamt < 0:
                 beneficiary_info['beneficiary_name'] = ''
 
-            # Thông tin đối tác từ file CSP/MSPH02 (nếu có) — ưu tiên hơn parse rem
-            source = 'File ITL' if itl_named else ''
+            # Nộp thuế điện tử (và phí kèm theo): không có đối tác là người (rem "EBAGRTAX: FT Trace[...]")
+            if description.strip().upper().startswith('EBAGRTAX'):
+                beneficiary_info['beneficiary_name'] = ''
+
+            # Thông tin đối tác từ file CSP/MSPH02/FX (nếu có) — ưu tiên hơn parse rem
+            source = ''
             info = (enrichment or {}).get(idx)
             if info:
                 source = info['source']
-                # Khớp file đối soát CSP/MSPH02 → chắc chắn là liên ngân hàng (lclbrnm "Agribank CN ..."
+                # Khớp file đối soát → biết chắc nội bộ hay liên ngân hàng (lclbrnm "Agribank CN ..."
                 # có thể khiến bị nhầm thành nội bộ). Giữ nguyên tên loại MCC.
-                if transaction_type not in ("Nhận thanh toán MCC", "Thanh toán qua MCC"):
+                if info.get('internal'):
+                    transaction_type = ("Nhận chuyển khoản nội bộ Agribank" if acctccyamt > 0
+                                        else "Chuyển khoản nội bộ Agribank")
+                elif transaction_type not in ("Nhận thanh toán MCC", "Thanh toán qua MCC"):
                     transaction_type = ("Nhận chuyển khoản liên ngân hàng" if acctccyamt > 0
                                         else "Chuyển khoản đi khác ngân hàng")
                 if info['beneficiary_name']:

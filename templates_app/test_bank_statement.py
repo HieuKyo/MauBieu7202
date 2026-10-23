@@ -188,6 +188,71 @@ class EnrichTests(SimpleTestCase):
         self.assertTrue(_valid_name('Lam Chi Dinh'))
 
 
+class FxTests(SimpleTestCase):
+    """FXIR64 / FXOR88: trref = tomgntno của DPTB18; DPTB18 ghi số tiền đã gộp phí."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp)
+        base = {'trdt': '2021-01-15', 'aftrbal': 1000000, 'thrref': '', 'toacctno': '',
+                'lclbrnm': 'Agribank CN Giá Rai Bạc Liêu', 'acctno': '7202201000711'}
+        rows = [
+            {**base, 'trcd': 'X101', 'trcdnm': 'Inward Credit Customer a/c', 'husrid': '7202KO',
+             'acctccyamt': 36412000, 'tomgntno': '7202ITL211001728', 'rem': 'THANH TOAN TIEN DAU VO'},
+            # DPTB18 trừ 22.011.000 = 22.000.000 (FXOR88) + phí 11.000
+            {**base, 'trcd': 'X201', 'trcdnm': 'Outward Remittance T/T', 'husrid': 'GRAHBICH',
+             'acctccyamt': -22011000, 'tomgntno': '7202OTT211000977', 'rem': 'CHUYEN TRA TIEN XE'},
+            {**base, 'trcd': 'X201', 'trcdnm': 'Outward Remittance T/T', 'husrid': 'GRAHBICH',
+             'acctccyamt': -1400154000, 'tomgntno': '7202OTT211000854', 'rem': 'CHUYEN VON'},
+        ]
+        path = os.path.join(self.tmp, 'dptb18.xlsx')
+        pd.DataFrame(rows).to_excel(path, index=False)
+        self.parser = BankStatementParser(path)
+        self.parser.validate_file()
+
+        fxir64 = pd.DataFrame([
+            {'trref': '7202ITL211001728', 'trdate': '2021-01-18', 'traamt': '36412000', 'ordcust': 'DNTN MAI KA',
+             'name_4': '7500201004892', 'rembk1': 'IKO7500', 'remntbk': 'Agribank CN Cà Mau', 'remark': 'TT'},
+        ])
+        or_base = {'trdate': '2021-01-15', 'remark': 'CK'}
+        fxor88 = pd.DataFrame([
+            {**or_base, 'trref': '7202OTT211000977', 'traamt': '22000000', 'bencust': 'TEN CU',
+             'benacct': '070051254838', 'rcvbk': '79303001'},
+            # Giao dịch viên sửa lệnh → cùng trref, giữ dòng sau cùng
+            {**or_base, 'trref': '7202OTT211000977', 'traamt': '22000000', 'bencust': 'CTY TNHH HOANG HAN',
+             'benacct': '070051254838', 'rcvbk': '79303001'},
+            {**or_base, 'trref': '7202OTT211000854', 'traamt': '1400000000', 'bencust': 'DNTN MAI KA',
+             'benacct': '7500201004892', 'rcvbk': 'IKO7500'},
+            # Ngoài kỳ DPTB18 → không khớp
+            {**or_base, 'trref': '7202OTT231000001', 'trdate': '2023-01-05', 'traamt': '5000000',
+             'bencust': 'CTY X', 'benacct': '123', 'rcvbk': '01203001'},
+        ])
+        self.aux = {}
+        for kind, frame in (('fxir64', fxir64), ('fxor88', fxor88)):
+            self.aux[kind] = os.path.join(self.tmp, f'{kind}.xlsx')
+            frame.to_excel(self.aux[kind], index=False)
+
+    def test_fx_matching(self):
+        enrichment, unmatched = enrich(self.parser.df, self.aux)
+        rows = self.parser.process(enrichment=enrichment)
+        got = [(r['nguon'], r['ghi_chu'], r['ngan_hang'], r['so_tai_khoan'], r['ten_nguoi']) for r in rows]
+        self.assertEqual(got, [
+            ('FXIR64 chiều đến', 'Nhận chuyển khoản nội bộ Agribank', 'Agribank CN Cà Mau', '7500201004892', 'DNTN MAI KA'),
+            ('FXOR88 chiều đi', 'Chuyển khoản đi khác ngân hàng', 'Sacombank', '070051254838', 'CTY TNHH HOANG HAN'),
+            # IKO7500 → tên chi nhánh lấy từ FXIR64
+            ('FXOR88 chiều đi', 'Chuyển khoản nội bộ Agribank', 'Agribank CN Cà Mau', '7500201004892', 'DNTN MAI KA'),
+        ])
+        # Giữ nguyên số tiền DPTB18 (đã gồm phí)
+        self.assertEqual(float(rows[1]['so_tien_ghi_no']), 22011000)
+        self.assertEqual([(u['file'], u['trace']) for u in unmatched], [('FXOR88 chiều đi', '7202OTT231000001')])
+
+    def test_citad_bank_lookup(self):
+        from .bank_statement_enricher import _citad_bank
+        self.assertEqual(_citad_bank('01203001'), 'Vietcombank')
+        self.assertEqual(_citad_bank('95701001'), 'Kho bạc Nhà nước')   # mã chi nhánh không có trong bảng
+        self.assertEqual(_citad_bank('99999999'), 'CITAD 99999999')
+
+
 class ClassifyTests(SimpleTestCase):
     def test_sms_ott_fees_are_service_fees(self):
         parser = BankStatementParser('unused.xlsx')
@@ -216,6 +281,15 @@ class ClassifyTests(SimpleTestCase):
         self.assertEqual(name('NGO TAN THANH chuyen tien'), 'NGO TAN THANH')  # "THANH" là tên, không phải từ dừng
         self.assertEqual(name('NGUYEN VAN TIEN chuyen tien'), 'NGUYEN VAN TIEN')
         self.assertEqual(name('LE VAN A thanh toan tien hang'), 'LE VAN A')
+
+    def test_ebagrtax_tax_and_fee(self):
+        parser = BankStatementParser('unused.xlsx')
+        base = {'trcd': 'X202', 'trcdnm': 'Nộp thuế điện tử', 'husrid': '7202EI',
+                'rem': 'EBAGRTAX: FT Trace[394869]-[EATAX NOP THUE DIEN TU MST:1900315501-SO CT:0084731]'}
+        self.assertEqual(parser.classify_transaction({**base, 'acctccyamt': -3000000, 'fndtpcd': '601'}),
+                         'Nộp thuế / NSNN')
+        self.assertEqual(parser.classify_transaction({**base, 'acctccyamt': -11000, 'fndtpcd': '198'}),
+                         'Phí dịch vụ')
 
     def test_osb_both_directions(self):
         parser = BankStatementParser('unused.xlsx')
