@@ -21,13 +21,26 @@ function stopSigCamera() {
     if (sigStream) { sigStream.getTracks().forEach(t => t.stop()); sigStream = null; }
 }
 
-// Khung chữ ký: rộng 85% khung hình (tối đa cao 80%), nằm giữa
+// Khung chữ ký co giãn được (thanh trượt / lăn chuột) và kéo di chuyển được; luôn đúng tỉ lệ 640x328.
+// Cỡ = % chiều ngang khung hình, tâm = vị trí tương đối; nhớ trên máy cho lần sau.
+const SIG_FRAME_KEY = 'sigFrame';
+let sigFrame = (() => {
+    try { return Object.assign({ size: 85, cx: 0.5, cy: 0.5 }, JSON.parse(localStorage.getItem(SIG_FRAME_KEY) || '{}')); }
+    catch (e) { return { size: 85, cx: 0.5, cy: 0.5 }; }
+})();
+function saveSigFrame() { try { localStorage.setItem(SIG_FRAME_KEY, JSON.stringify(sigFrame)); } catch (e) {} }
+
 function layoutSigGuide() {
     const v = sigEl('sigVideo'), vw = v.videoWidth, vh = v.videoHeight;
     if (!vw || !vh) return;
-    let w = vw * 0.85, h = w / SIG_RATIO;
-    if (h > vh * 0.8) { h = vh * 0.8; w = h * SIG_RATIO; }
-    sigCrop = { x: (vw - w) / 2, y: (vh - h) / 2, w, h };
+    sigFrame.size = Math.min(100, Math.max(20, sigFrame.size));
+    sigEl('sigFrameSize').value = sigFrame.size;
+    let w = vw * sigFrame.size / 100, h = w / SIG_RATIO;
+    if (h > vh) { h = vh; w = h * SIG_RATIO; }
+    // giữ khung nằm trọn trong khung hình
+    const x = Math.min(vw - w, Math.max(0, sigFrame.cx * vw - w / 2));
+    const y = Math.min(vh - h, Math.max(0, sigFrame.cy * vh - h / 2));
+    sigCrop = { x, y, w, h };
     const g = sigEl('sigGuide');
     g.style.left = `${sigCrop.x / vw * 100}%`; g.style.top = `${sigCrop.y / vh * 100}%`;
     g.style.width = `${w / vw * 100}%`; g.style.height = `${h / vh * 100}%`;
@@ -104,7 +117,7 @@ async function startSigCamera(deviceId, manual = false) {
     layoutSigGuide();
     const { width = 0, height = 0 } = track.getSettings();
     status.innerHTML = `Camera: <strong>${track.label.replace(/[&<>"']/g, '')}</strong> · ${width}×${height}`
-        + '<br>Đặt chữ ký trên giấy trắng, đủ sáng, nằm trong khung vàng rồi bấm Chụp (hoặc phím Space).';
+        + '<br>Đặt chữ ký trên giấy trắng, đủ sáng, nằm trong khung vàng rồi bấm Chụp (hoặc phím Space). Kéo khung để di chuyển, lăn chuột / thanh Cỡ khung để co giãn.';
     sigEl('sigShootBtn').disabled = false;
 }
 
@@ -182,4 +195,36 @@ function deleteSignature(url) {
     });
     sigEl('sigVideo').addEventListener('loadedmetadata', layoutSigGuide);
     sigEl('sigVideo').addEventListener('resize', layoutSigGuide);
+
+    // Co giãn: thanh trượt, lăn chuột trên khung hình; nút Đặt lại về mặc định
+    const setSize = size => { sigFrame.size = size; layoutSigGuide(); saveSigFrame(); };
+    sigEl('sigFrameSize').addEventListener('input', e => setSize(Number(e.target.value)));
+    sigEl('sigFrameReset').addEventListener('click', () => { sigFrame = { size: 85, cx: 0.5, cy: 0.5 }; layoutSigGuide(); saveSigFrame(); });
+    const box = sigEl('sigBox');
+    box.addEventListener('wheel', e => {
+        if (!sigStream || sigShot) return;
+        e.preventDefault();
+        setSize(sigFrame.size + (e.deltaY < 0 ? 3 : -3));
+    }, { passive: false });
+    // Kéo khung để di chuyển
+    const guide = sigEl('sigGuide');
+    let drag = null;
+    guide.addEventListener('pointerdown', e => {
+        if (!sigCrop) return;
+        e.preventDefault();
+        guide.setPointerCapture(e.pointerId);
+        drag = { x: e.clientX, y: e.clientY, cx: sigFrame.cx, cy: sigFrame.cy };
+    });
+    guide.addEventListener('pointermove', e => {
+        if (!drag) return;
+        const r = sigEl('sigVideo').getBoundingClientRect(), v = sigEl('sigVideo');
+        // tâm mới, giới hạn để khung không ra ngoài khung hình
+        const halfW = sigCrop.w / v.videoWidth / 2, halfH = sigCrop.h / v.videoHeight / 2;
+        sigFrame.cx = Math.min(1 - halfW, Math.max(halfW, drag.cx + (e.clientX - drag.x) / r.width));
+        sigFrame.cy = Math.min(1 - halfH, Math.max(halfH, drag.cy + (e.clientY - drag.y) / r.height));
+        layoutSigGuide();
+    });
+    const endDrag = () => { if (drag) { drag = null; saveSigFrame(); } };
+    guide.addEventListener('pointerup', endDrag);
+    guide.addEventListener('pointercancel', endDrag);
 })();

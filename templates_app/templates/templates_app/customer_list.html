@@ -638,10 +638,16 @@
                     <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
                     <select class="form-select" id="sigCameraSelect" onchange="startSigCamera(this.value, true)"></select>
                 </div>
-                <div class="position-relative bg-dark rounded overflow-hidden">
+                <div class="position-relative bg-dark rounded overflow-hidden" id="sigBox">
                     <video id="sigVideo" playsinline muted style="width:100%; height:auto; display:block; min-height:200px;"></video>
-                    <div id="sigGuide" class="position-absolute border border-4 border-warning rounded" style="box-shadow:0 0 0 2000px rgba(0,0,0,.45); pointer-events:none;"></div>
+                    <div id="sigGuide" class="position-absolute border border-4 border-warning rounded" title="Kéo để di chuyển khung · lăn chuột để phóng to / thu nhỏ"
+                         style="box-shadow:0 0 0 2000px rgba(0,0,0,.45); cursor:move; touch-action:none;"></div>
                     <img id="sigPreview" class="position-absolute top-0 start-0 w-100 h-100 d-none" alt="Ảnh chữ ký" style="object-fit:contain; background:#000;">
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-2 small">
+                    <span class="text-nowrap fw-bold"><i class="bi bi-arrows-angle-expand"></i> Cỡ khung</span>
+                    <input type="range" class="form-range" id="sigFrameSize" min="20" max="100" step="1" value="85">
+                    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" id="sigFrameReset">Đặt lại</button>
                 </div>
                 <div id="sigStatus" class="small text-muted mt-2"></div>
                 <div id="sigHelp"></div>
@@ -943,7 +949,7 @@
 {% block extra_js %}
 <!-- Mở camera dùng chung + chụp chữ ký -->
 <script src="{% static 'js/cccd_qr_scanner.js' %}"></script>
-<script src="{% static 'js/signature_capture.js' %}"></script>
+<script src="{% static 'js/signature_capture.js' %}?v=2"></script>
 <script>
 // Xuất Excel: mặc định khách hàng in / cập nhật hôm nay
 // Xuất Excel / Tạo Folder chữ ký: mặc định khách hàng in / cập nhật hôm nay
