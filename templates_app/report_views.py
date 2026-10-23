@@ -212,7 +212,7 @@ def phat_hanh_the_report_view(request):
     # Xóa session data cũ khi truy cập trang mới
     if 'phat_hanh_the_data' in request.session:
         del request.session['phat_hanh_the_data']
-    return render(request, 'templates_app/reports/phat_hanh_the.html', {'current_year': datetime.now().year})
+    return render(request, 'templates_app/reports/phat_hanh_the.html', {'current_month': datetime.now().strftime('%Y-%m')})
 
 
 @login_required
@@ -705,9 +705,9 @@ def _read_dpda19_no_card(file_bytes, start_date_str, end_date_str, pgd_user_map,
 
 @login_required
 @require_http_methods(["POST"])
-def process_phat_hanh_the_quy(request):
+def process_phat_hanh_the_thang(request):
     """
-    Báo cáo phát hành thẻ theo Quý.
+    Báo cáo phát hành thẻ theo Tháng (chọn tháng/năm: từ ngày 1 đến ngày cuối tháng).
     Sheet đơn vị (Hội Sở trước, rồi các PGD) gộp CSP + Visa + TK mở chưa có thẻ (DPDA19, tùy chọn);
     sheet cuối: thẻ miễn phí CSP toàn chi nhánh.
     """
@@ -715,19 +715,22 @@ def process_phat_hanh_the_quy(request):
         csp_file = request.FILES.get('data_file')
         visa_file = request.FILES.get('visa_file')
         dpda19_file = request.FILES.get('dpda19_file')
-        quarter = int(request.POST.get('quarter'))
-        year = int(request.POST.get('year'))
+        try:
+            year, month = (int(x) for x in request.POST.get('thang', '').split('-'))
+        except ValueError:
+            messages.warning(request, "Vui lòng chọn tháng báo cáo.")
+            return redirect('phat_hanh_the_report')
 
         if not csp_file:
             messages.warning(request, "Vui lòng tải lên file thẻ CSP.")
             return redirect('phat_hanh_the_report')
 
-        start_dt = pd.Timestamp(year=year, month=3 * (quarter - 1) + 1, day=1)
-        end_dt = start_dt + pd.offsets.QuarterEnd(0)
+        start_dt = pd.Timestamp(year=year, month=month, day=1)
+        end_dt = start_dt + pd.offsets.MonthEnd(0)
         start_date_str, end_date_str = start_dt.strftime('%Y-%m-%d'), end_dt.strftime('%Y-%m-%d')
-        file_suffix = f"Quy{quarter}_{year}"
+        file_suffix = f"Thang{month:02d}_{year}"
         subtitle = (
-            f"Quý {quarter} năm {year} - Từ ngày {start_dt.strftime('%d/%m/%Y')} "
+            f"Tháng {month} năm {year} - Từ ngày {start_dt.strftime('%d/%m/%Y')} "
             f"đến ngày {end_dt.strftime('%d/%m/%Y')}"
         )
 
