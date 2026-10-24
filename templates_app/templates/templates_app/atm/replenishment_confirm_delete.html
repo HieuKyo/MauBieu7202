@@ -1,0 +1,90 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Xác nhận xóa phiếu tiếp quỹ ATM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'atm_replenishment_list' %}">Danh sách tiếp quỹ</a></li>
+                    <li class="breadcrumb-item active">Xác nhận xóa</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-trash"></i> Xác nhận xóa phiếu tiếp quỹ</h2>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Xác nhận xóa phiếu tiếp quỹ ATM</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Cảnh báo:</strong> Bạn có chắc chắn muốn xóa phiếu tiếp quỹ này? Hành động này không thể hoàn tác!
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title border-bottom pb-2">Thông tin phiếu sẽ bị xóa:</h6>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Ngày tiếp quỹ:</strong></div>
+                                <div class="col-md-8">{{ replenishment.replenishment_date|date:"d/m/Y" }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Máy ATM:</strong></div>
+                                <div class="col-md-8">{{ replenishment.atm.machine_id }} - {{ replenishment.atm.address }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Tổng tiền tiếp quỹ:</strong></div>
+                                <div class="col-md-8"><strong class="text-success">{{ replenishment.total_amount|floatformat:0 }} VNĐ</strong></div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Phương tiện:</strong></div>
+                                <div class="col-md-8">{{ replenishment.vehicle.license_plate }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Tài xế:</strong></div>
+                                <div class="col-md-8">{{ replenishment.driver.full_name }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Bảo vệ:</strong></div>
+                                <div class="col-md-8">{{ replenishment.guard.full_name }}</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4"><strong>Người tạo:</strong></div>
+                                <div class="col-md-8">{{ replenishment.created_by.username }} - {{ replenishment.created_at|date:"d/m/Y H:i" }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'atm_replenishment_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Hủy
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Xác nhận xóa
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

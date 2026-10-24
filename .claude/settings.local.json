@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(grep -v \"^\\\\.$\")",
+      "Bash(pip install:*)",
+      "Bash(python -m pylint templates_app/)",
+      "Bash(python -m py_compile templates_app/views.py)",
+      "Bash(python -m py_compile salary/views.py)",
+      "mcp__ide__getDiagnostics"
+    ]
+  }
+}

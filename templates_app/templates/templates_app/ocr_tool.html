@@ -1,0 +1,381 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Công cụ OCR - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 2px dashed #007934;
+        border-radius: 10px;
+        padding: 3rem;
+        text-align: center;
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .upload-area:hover, .upload-area.dragover {
+        background-color: #e9f5ee;
+        border-color: #005a26;
+    }
+    .upload-icon {
+        font-size: 4rem;
+        color: #007934;
+        margin-bottom: 1rem;
+    }
+    .file-preview {
+        max-width: 100%;
+        max-height: 300px;
+        border-radius: 8px;
+        margin-top: 1rem;
+        object-fit: contain;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container">
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-agribank">
+                <i class="bi bi-file-earmark-text"></i>
+                Công cụ OCR - Trích xuất văn bản
+            </h2>
+            <p class="text-muted">Upload ảnh hoặc PDF để trích xuất văn bản và tải về file Word có thể chỉnh sửa</p>
+        </div>
+    </div>
+
+    <!-- Django Messages (ẩn, hiển thị qua JS modal) -->
+    <div id="messages" style="display:none;">
+        {% if messages %}
+            {% for message in messages %}
+                <div data-type="{{ message.tags }}" data-message="{{ message }}"></div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+
+            <!-- Form Upload -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="ocrForm">
+                        {% csrf_token %}
+
+                        <!-- Vùng kéo thả -->
+                        <div class="upload-area" id="uploadArea">
+                            <i class="bi bi-file-earmark-image upload-icon"></i>
+                            <h5>Kéo thả file hoặc click để chọn</h5>
+                            <p class="text-muted mb-1">Ảnh: JPG, PNG, BMP, TIFF</p>
+                            <p class="text-muted">PDF: tối đa {{ max_pages }} trang, {{ max_size }} MB</p>
+                            <input type="file"
+                                   class="d-none"
+                                   id="ocr_file"
+                                   name="ocr_file"
+                                   accept=".jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf"
+                                   required>
+                            <button type="button"
+                                    class="btn btn-agribank mt-2"
+                                    onclick="document.getElementById('ocr_file').click()">
+                                <i class="bi bi-folder2-open"></i> Chọn file
+                            </button>
+                        </div>
+
+                        <!-- Thông tin file đã chọn -->
+                        <div id="fileInfo" class="mt-3 d-none">
+                            <div class="alert alert-info d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-file-earmark-check fs-5"></i>
+                                <div>
+                                    <strong id="fileName"></strong>
+                                    <span class="text-muted ms-2" id="fileSize"></span>
+                                </div>
+                            </div>
+                            <!-- Preview ảnh (chỉ hiển thị nếu là ảnh) -->
+                            <div id="imagePreviewContainer" class="text-center d-none">
+                                <img id="imagePreview" class="file-preview" src="" alt="Preview">
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <button type="submit"
+                                    class="btn btn-success btn-lg px-5"
+                                    id="submitBtn"
+                                    disabled>
+                                <i class="bi bi-magic"></i> Trích xuất & Tải về Word
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Hướng dẫn -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Hướng dẫn sử dụng</h6>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Chọn file ảnh (JPG, PNG, BMP, TIFF) hoặc file PDF cần trích xuất văn bản.</li>
+                        <li>Nhấn <strong>"Trích xuất & Tải về Word"</strong> và đợi hệ thống xử lý.</li>
+                        <li>File Word (.docx) sẽ tự động tải xuống — mở và chỉnh sửa tùy ý.</li>
+                    </ol>
+                    <hr class="my-3">
+                    <div class="row g-2">
+                        <div class="col-sm-6">
+                            <div class="d-flex gap-2 align-items-start">
+                                <i class="bi bi-check-circle-fill text-success mt-1"></i>
+                                <span>Hỗ trợ tiếng Việt và tiếng Anh</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex gap-2 align-items-start">
+                                <i class="bi bi-check-circle-fill text-success mt-1"></i>
+                                <span>PDF tối đa {{ max_pages }} trang</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex gap-2 align-items-start">
+                                <i class="bi bi-exclamation-triangle-fill text-warning mt-1"></i>
+                                <span>Ảnh mờ/nghiêng sẽ giảm độ chính xác</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex gap-2 align-items-start">
+                                <i class="bi bi-exclamation-triangle-fill text-warning mt-1"></i>
+                                <span>File quá lớn (> {{ max_size }} MB) sẽ bị từ chối</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Yêu cầu hệ thống -->
+            <div class="card shadow-sm mt-3 border-warning">
+                <div class="card-header bg-warning bg-opacity-10">
+                    <h6 class="mb-0 text-warning">
+                        <i class="bi bi-gear-fill"></i> Yêu cầu cài đặt (dành cho quản trị viên)
+                    </h6>
+                </div>
+                <div class="card-body small">
+                    <p class="mb-1">Tính năng này yêu cầu hai phần mềm bên ngoài đã được cài trên máy chủ:</p>
+                    <ul class="mb-0">
+                        <li>
+                            <strong>Tesseract OCR</strong> (bắt buộc) — kèm gói ngôn ngữ <code>vie</code>:<br>
+                            <code>C:\Program Files\Tesseract-OCR\tesseract.exe</code>
+                        </li>
+                        <li class="mt-1">
+                            <strong>Poppler</strong> (chỉ cần khi OCR file PDF):<br>
+                            <code>C:\poppler\Library\bin\</code>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Alert Modal -->
+<div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center pb-4">
+                <div id="alertIcon" style="font-size:3.5rem;" class="mb-3"></div>
+                <h5 id="alertTitle" class="mb-2"></h5>
+                <p id="alertMessage" class="text-muted"></p>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pt-0">
+                <button type="button" class="btn btn-agribank" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1"
+     data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-success mb-3" role="status" style="width:3rem;height:3rem;">
+                    <span class="visually-hidden">Đang xử lý...</span>
+                </div>
+                <h6>Đang OCR...</h6>
+                <p class="text-muted small mb-2">Vui lòng đợi, quá trình có thể mất vài giây</p>
+                <div class="alert alert-warning small text-start mt-3 mb-0 py-2 px-3">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    <strong>Lưu ý:</strong> Dữ liệu chuyển đổi chỉ có thể đúng 90%, đề nghị người dùng kiểm tra lại về dấu câu và lỗi chính tả.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ALLOWED_EXTS = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.pdf'];
+const IMAGE_EXTS   = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'];
+
+function showAlert(type, title, message) {
+    const icons = {
+        error:   '<i class="bi bi-x-circle text-danger"></i>',
+        warning: '<i class="bi bi-exclamation-triangle text-warning"></i>',
+        success: '<i class="bi bi-check-circle text-success"></i>',
+        info:    '<i class="bi bi-info-circle text-info"></i>',
+    };
+    document.getElementById('alertIcon').innerHTML    = icons[type] || icons.info;
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertMessage').textContent = message;
+    new bootstrap.Modal(document.getElementById('alertModal')).show();
+}
+
+function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Hiển thị messages từ Django
+    document.querySelectorAll('#messages [data-type]').forEach(function (el) {
+        const type = el.dataset.type;
+        const msg  = el.dataset.message;
+        const titles = { error: 'Lỗi!', warning: 'Cảnh báo!', success: 'Thành công!', info: 'Thông báo' };
+        showAlert(type, titles[type] || 'Thông báo', msg);
+    });
+
+    const fileInput  = document.getElementById('ocr_file');
+    const fileInfo   = document.getElementById('fileInfo');
+    const fileName   = document.getElementById('fileName');
+    const fileSize   = document.getElementById('fileSize');
+    const submitBtn  = document.getElementById('submitBtn');
+    const uploadArea = document.getElementById('uploadArea');
+    const imgPreviewContainer = document.getElementById('imagePreviewContainer');
+    const imgPreview = document.getElementById('imagePreview');
+
+    function handleFile(file) {
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (!ALLOWED_EXTS.includes(ext)) {
+            showAlert('error', 'Định dạng không hỗ trợ',
+                'Chỉ chấp nhận: JPG, PNG, BMP, TIFF, PDF');
+            fileInput.value = '';
+            return;
+        }
+
+        fileName.textContent = file.name;
+        fileSize.textContent = '(' + formatBytes(file.size) + ')';
+        fileInfo.classList.remove('d-none');
+        submitBtn.disabled = false;
+
+        // Hiển thị preview nếu là ảnh
+        if (IMAGE_EXTS.includes(ext)) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                imgPreview.src = e.target.result;
+                imgPreviewContainer.classList.remove('d-none');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            imgPreviewContainer.classList.add('d-none');
+        }
+    }
+
+    // Click vùng upload
+    uploadArea.addEventListener('click', function (e) {
+        if (e.target.tagName !== 'BUTTON') fileInput.click();
+    });
+
+    // Chọn file qua input
+    fileInput.addEventListener('change', function () {
+        if (this.files && this.files[0]) handleFile(this.files[0]);
+    });
+
+    // Kéo thả
+    uploadArea.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+    });
+    uploadArea.addEventListener('dragleave', function () {
+        this.classList.remove('dragover');
+    });
+    uploadArea.addEventListener('drop', function (e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    const _ocrLoadingEl = document.getElementById('loadingModal');
+
+    function hideOcrLoadingThen(callback) {
+        const modal = bootstrap.Modal.getInstance(_ocrLoadingEl);
+        if (!modal || !_ocrLoadingEl.classList.contains('show')) {
+            callback && callback();
+            return;
+        }
+        _ocrLoadingEl.addEventListener('hidden.bs.modal', callback, { once: true });
+        modal.hide();
+    }
+
+    // Submit bằng fetch để có thể tắt modal sau khi tải file xong
+    document.getElementById('ocrForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const submitBtn = this.querySelector('[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        const modal = bootstrap.Modal.getInstance(_ocrLoadingEl) || new bootstrap.Modal(_ocrLoadingEl);
+        modal.show();
+
+        try {
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: new FormData(this),
+            });
+
+            const contentType = response.headers.get('Content-Type') || '';
+
+            if (contentType.includes('wordprocessingml')) {
+                const blob = await response.blob();
+                const disposition = response.headers.get('Content-Disposition') || '';
+                const match = disposition.match(/filename="([^"]+)"/);
+                const filename = match ? match[1] : 'OCR_result.docx';
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                hideOcrLoadingThen(() =>
+                    showAlert('success', 'Thành công!', 'File Word đã tải xuống. Mở file để chỉnh sửa.')
+                );
+            } else {
+                const data = await response.json().catch(() => ({}));
+                hideOcrLoadingThen(() =>
+                    showAlert('error', 'Lỗi xử lý!', data.error || 'Có lỗi xảy ra, vui lòng thử lại.')
+                );
+            }
+        } catch (err) {
+            hideOcrLoadingThen(() =>
+                showAlert('error', 'Lỗi kết nối!', 'Không thể kết nối máy chủ: ' + err.message)
+            );
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

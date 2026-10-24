@@ -11,9 +11,9 @@ sys.path.insert(0, '/home/user/MauBieu7202')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wordgen.settings')
 django.setup()
 
-from templates_app.models import Customer
-from templates_app.issueby_mapping import get_issueby_name
-from django.contrib.auth.models import User
+from templates_app.models import Customer  # noqa: E402
+from templates_app.issueby_mapping import get_issueby_name  # noqa: E402
+from django.contrib.auth.models import User  # noqa: E402
 
 
 def parse_date(date_str):

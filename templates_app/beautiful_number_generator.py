@@ -471,3 +471,64 @@ def generate_with_analysis(generator_func, num_to_gen, analyzer=None):
         })
 
     return analyzed_list
+
+
+def refresh_all_beautiful_numbers(dry_run=False):
+    """
+    Tính lại category/price_tier/fee cho toàn bộ BeautifulNumber theo engine tính phí hiện tại.
+    Không xóa/thêm bản ghi nào, chỉ cập nhật 3 field trên. Dùng chung cho cả management command
+    (refresh_beautiful_numbers) và nút "Cập nhật lại giá" trên trang quản lý số đẹp.
+
+    Trả về dict thống kê: {'total', 'changed_fee', 'changed_tier', 'changed_category', 'updated', 'errors'}
+    """
+    from .beautiful_number_services import analyze_account_number
+    from .models import BeautifulNumber
+    from .views import get_price_tier_from_fee
+
+    numbers = list(BeautifulNumber.objects.all())
+    stats = {
+        'total': len(numbers),
+        'changed_fee': 0,
+        'changed_tier': 0,
+        'changed_category': 0,
+        'updated': 0,
+        'errors': 0,
+    }
+    to_update = []
+
+    for number in numbers:
+        analysis = analyze_account_number(number.account_number)
+        if analysis.get('error'):
+            stats['errors'] += 1
+            continue
+
+        new_fee = analysis['fee_min_vat']
+        new_tier = get_price_tier_from_fee(analysis['fee_max_vat'] or analysis['fee_min_vat'])
+
+        dirty = False
+        if int(number.fee) != int(new_fee):
+            stats['changed_fee'] += 1
+            dirty = True
+        if number.price_tier != new_tier:
+            stats['changed_tier'] += 1
+            dirty = True
+
+        number.fee = new_fee
+        number.price_tier = new_tier
+
+        # Chỉ nâng lên DAC_BIET nếu engine xác định là số đặc biệt
+        # (không hạ cấp category cũ, vì category còn phản ánh phân loại tiếp thị đã chọn thủ công)
+        if analysis['is_special'] and number.category != BeautifulNumber.CATEGORY_DAC_BIET:
+            number.category = BeautifulNumber.CATEGORY_DAC_BIET
+            stats['changed_category'] += 1
+            dirty = True
+
+        if dirty:
+            to_update.append(number)
+
+    stats['updated'] = len(to_update)
+
+    if not dry_run and to_update:
+        BeautifulNumber.objects.bulk_update(to_update, ['fee', 'price_tier', 'category'], batch_size=500)
+
+    return stats
