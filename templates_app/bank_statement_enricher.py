@@ -41,7 +41,8 @@ REQUIRED_COLUMNS = {
                 'CONTENT', 'TRACE IPCAS', 'FROM BANK CODE'],
     'csp_di': ['TRANSACTION TIME', 'TO_ACCOUNT', 'TRANCODE', 'AMOUNT', 'TRACE',
                'RESPONSE', 'REMARK', 'TO_BANK_CODE'],
-    'fxir64': ['trref', 'trdate', 'traamt', 'ordcust', 'name_4', 'rembk1', 'remntbk', 'remark'],
+    # FXIR64: name_4 = số TK người chuyển, remtbk = mã ngân hàng chuyển, remntbk = tên ngân hàng chuyển
+    'fxir64': ['trref', 'trdate', 'traamt', 'ordcust', 'name_4', 'remtbk', 'remntbk', 'remark'],
     'fxor88': ['trref', 'trdate', 'traamt', 'bencust', 'benacct', 'rcvbk', 'remark'],
 }
 
@@ -294,15 +295,16 @@ def enrich(dptb_df, aux_paths):
             }
 
     # ── FX (chuyển tiền qua FX/CITAD): trref = tomgntno ───────────────────
-    # Tên chi nhánh Agribank theo mã IKO, lấy từ FXIR64 (VD IKO7200 → "Agribank CN Bạc Liêu")
+    # Tên chi nhánh Agribank theo mã IKO, lấy từ FXIR64 (remtbk IKO7200 → remntbk "Agribank CN Bạc Liêu")
     iko_names = {}
     if 'fxir64' in frames:
         for _, r in frames['fxir64'].iterrows():
-            if _s(r['rembk1']).upper().startswith('IKO') and _s(r['remntbk']):
-                iko_names[_s(r['rembk1']).upper()] = _s(r['remntbk'])
-    for kind, sign, name_col, acct_col, bank_code_col in [
-        ('fxir64', 1, 'ordcust', 'name_4', 'rembk1'),
-        ('fxor88', -1, 'bencust', 'benacct', 'rcvbk'),
+            if _s(r['remtbk']).upper().startswith('IKO') and _s(r['remntbk']):
+                iko_names[_s(r['remtbk']).upper()] = _s(r['remntbk'])
+    # Mã ngân hàng đối tác: cột chính, cột dự phòng
+    for kind, sign, name_col, acct_col, bank_code_cols in [
+        ('fxir64', 1, 'ordcust', 'name_4', ('remtbk', 'rembk1')),
+        ('fxor88', -1, 'bencust', 'benacct', ('rcvbk', 'paynbk')),
     ]:
         if kind not in frames:
             continue
@@ -315,16 +317,18 @@ def enrich(dptb_df, aux_paths):
                 unmatched.append(_unmatched(kind, r['trdate'], amount, r[acct_col],
                                             r[name_col], r['remark'], r['_ref']))
                 continue
-            bank_code = _s(r[bank_code_col])
-            internal = bank_code.upper().startswith('IKO')
+            bank_code = next((_s(r.get(c)) for c in bank_code_cols if _s(r.get(c))), '').upper()
+            bank_text = _s(r.get('remntbk'))  # tên ngân hàng chuyển (chỉ FXIR64)
+            # IKOxxxx = chi nhánh Agribank; không có mã thì dựa vào tên ngân hàng
+            internal = bank_code.startswith('IKO') or (not bank_code and 'agribank' in bank_text.lower())
             if internal:
-                bank = iko_names.get(bank_code.upper(), 'Agribank')
+                bank = iko_names.get(bank_code, bank_text or 'Agribank')
             else:
-                bank = _citad_bank(bank_code)
+                bank = _citad_bank(bank_code) or bank_text
             enrichment[idx] = {
                 'beneficiary_name': _s(r[name_col]) if _valid_name(r[name_col]) else '',
                 'account_number': _s(r[acct_col]),
-                'bank_name': bank or 'Agribank',
+                'bank_name': bank,
                 'source': AUX_FILES[kind],
                 'internal': internal,
             }

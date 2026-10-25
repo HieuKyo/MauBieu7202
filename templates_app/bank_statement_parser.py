@@ -982,6 +982,7 @@ class BankStatementParser:
 
         self.processed_data = []
         stt_counter = 0
+        own_accounts = self._own_accounts()
 
         for idx, row in self.df.iterrows():
             # Bỏ qua dòng header lặp lại giữa file (trdt = 'trdt')
@@ -1063,6 +1064,16 @@ class BankStatementParser:
             if transaction_type in _FEE_TYPES and not beneficiary_info['bank_name']:
                 beneficiary_info['bank_name'] = 'Agribank'
 
+            # Tiền ra có toacctno = TK Agribank nhận tiền (VD "CTY ... CHUYEN TIEN BAO HIEM") → dò trước nội dung.
+            # Tiền vào: toacctno là chính TK khách hàng → bỏ qua.
+            to_acct = str(toacctno).strip()
+            if acctccyamt < 0 and re.fullmatch(r'\d{8,}', to_acct) and to_acct.lstrip('0') not in own_accounts:
+                beneficiary_info['account_number'] = to_acct
+                beneficiary_info['bank_name'] = 'Agribank'
+                # Chuyển sang TK khác chứ không phải rút tiền mặt (loại cụ thể hơn như thuế, hoá đơn giữ nguyên)
+                if transaction_type in ('Rút tiền mặt', ''):
+                    transaction_type = 'Chuyển khoản nội bộ Agribank'
+
             # Giao dịch ITL (nội bộ Agribank khác chi nhánh) → bank=Agribank.
             # "7202ITL..." / "7202OTT..." là MÃ GIAO DỊCH FX, không phải số TK — dùng để nối sang file
             # FXIR64 / FXOR88 (cột trref) lấy số TK, tên, ngân hàng đối tác (bank_statement_enricher)
@@ -1139,6 +1150,12 @@ class BankStatementParser:
                         t['nguon'] = name_book_source(t['nguon'])
         return self.processed_data
 
+    def _own_accounts(self):
+        """Số TK của chính khách hàng sao kê (cột acctno), bỏ số 0 đầu."""
+        if 'acctno' not in self.df.columns:
+            return set()
+        return {str(v).split('.')[0].lstrip('0') for v in self.df['acctno'].dropna()}
+
     def _fill_names_by_account(self):
         """
         Kiểm tra chéo: giao dịch có số TK nhưng chưa có tên → lấy tên đã biết của cùng số TK
@@ -1149,9 +1166,7 @@ class BankStatementParser:
         def key(t):
             return account_key(t['so_tai_khoan'], t['ngan_hang'])
 
-        own = set()
-        if 'acctno' in self.df.columns:
-            own = {str(v).split('.')[0].lstrip('0') for v in self.df['acctno'].dropna()}
+        own = self._own_accounts()
 
         known = {}
         for t in self.processed_data:

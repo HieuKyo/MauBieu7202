@@ -212,7 +212,7 @@ class FxTests(SimpleTestCase):
 
         fxir64 = pd.DataFrame([
             {'trref': '7202ITL211001728', 'trdate': '2021-01-18', 'traamt': '36412000', 'ordcust': 'DNTN MAI KA',
-             'name_4': '7500201004892', 'rembk1': 'IKO7500', 'remntbk': 'Agribank CN Cà Mau', 'remark': 'TT'},
+             'name_4': '7500201004892', 'remtbk': 'IKO7500', 'remntbk': 'Agribank CN Cà Mau', 'remark': 'TT'},
         ])
         or_base = {'trdate': '2021-01-15', 'remark': 'CK'}
         fxor88 = pd.DataFrame([
@@ -245,6 +245,26 @@ class FxTests(SimpleTestCase):
         # Giữ nguyên số tiền DPTB18 (đã gồm phí)
         self.assertEqual(float(rows[1]['so_tien_ghi_no']), 22011000)
         self.assertEqual([(u['file'], u['trace']) for u in unmatched], [('FXOR88 chiều đi', '7202OTT231000001')])
+
+    def test_fxir64_itt_from_other_bank(self):
+        # 7202ITT = tiền đến từ ngân hàng khác (W021), cùng nằm trong FXIR64; mã CITAD ở remtbk
+        tmp_dptb = os.path.join(self.tmp, 'dptb18_itt.xlsx')
+        pd.DataFrame([{'trdt': '2021-03-05', 'trcd': 'X101', 'trcdnm': 'Inward Remittance Payment Non a/c',
+                       'husrid': 'GRATLINH', 'acctccyamt': 4936700, 'aftrbal': 1000000, 'thrref': '7202ITT211002545',
+                       'tomgntno': '7202ITT211002545', 'toacctno': '', 'lclbrnm': 'Agribank CN Giá Rai Bạc Liêu',
+                       'rem': 'BHXH TX GIA RAI CAP THANH TOAN CHE DO THAI SAN'}]).to_excel(tmp_dptb, index=False)
+        parser = BankStatementParser(tmp_dptb)
+        parser.validate_file()
+        fx = os.path.join(self.tmp, 'fxir64_itt.xlsx')
+        pd.DataFrame([{'trref': '7202ITT211002545', 'trdate': '2021-03-05', 'traamt': '4936700',
+                       'ordcust': 'BAO HIEM XA HOI THI XA GIA RAI', 'name_4': '3713.0.1055999', 'rembk1': '',
+                       'remtbk': '95202001', 'remntbk': 'BIDV CN Bac Lieu', 'remark': 'BHXH'}]).to_excel(fx, index=False)
+        enrichment, unmatched = enrich(parser.df, {'fxir64': fx})
+        row = parser.process(enrichment=enrichment)[0]
+        self.assertEqual((row['nguon'], row['ghi_chu'], row['ngan_hang'], row['ten_nguoi'], row['so_tai_khoan']),
+                         ('FXIR64 chiều đến', 'Nhận chuyển khoản liên ngân hàng', 'BIDV',
+                          'BAO HIEM XA HOI THI XA GIA RAI', '3713.0.1055999'))
+        self.assertEqual(unmatched, [])
 
     def test_citad_bank_lookup(self):
         from .bank_statement_enricher import _citad_bank
@@ -281,6 +301,22 @@ class ClassifyTests(SimpleTestCase):
         self.assertEqual(name('NGO TAN THANH chuyen tien'), 'NGO TAN THANH')  # "THANH" là tên, không phải từ dừng
         self.assertEqual(name('NGUYEN VAN TIEN chuyen tien'), 'NGUYEN VAN TIEN')
         self.assertEqual(name('LE VAN A thanh toan tien hang'), 'LE VAN A')
+
+    def test_ebagrtax_receiving_account_from_toacctno(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        base = {'trdt': '2021-01-06', 'trcd': 'X202', 'trcdnm': 'Nộp thuế điện tử', 'husrid': '7202EI',
+                'aftrbal': 1000000, 'thrref': '', 'tomgntno': '',
+                'rem': 'EBAGRTAX: FT Trace[394869]-[EATAX NOP THUE DIEN TU MST:1900315501-SO CT:0084731]'}
+        rows = [{**base, 'acctccyamt': -3000000, 'fndtpcd': '601', 'toacctno': '7200203000024'},
+                {**base, 'acctccyamt': -11000, 'fndtpcd': '198', 'toacctno': ''}]
+        path = os.path.join(tmp, 'dptb18.xlsx')
+        pd.DataFrame(rows).to_excel(path, index=False)
+        parser = BankStatementParser(path)
+        parser.validate_file()
+        result = parser.process()
+        self.assertEqual([(r['ghi_chu'], r['so_tai_khoan'], r['ten_nguoi']) for r in result],
+                         [('Nộp thuế / NSNN', '7200203000024', ''), ('Phí dịch vụ', '', '')])
 
     def test_ebagrtax_tax_and_fee(self):
         parser = BankStatementParser('unused.xlsx')
