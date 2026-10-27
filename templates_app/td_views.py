@@ -472,64 +472,6 @@ def td_faq_view(request):
 
 
 # ---------------------------------------------------------------------------
-# Debug: xem cột thực tế trong file MSIT80 (chỉ dùng khi cần kiểm tra)
-# ---------------------------------------------------------------------------
-
-@login_required
-def td_debug_cols_view(request):
-    """POST: upload file → trả thông tin debug cột nhóm nợ."""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST only'}, status=405)
-    uploaded = request.FILES.get('msit80_file')
-    if not uploaded:
-        return JsonResponse({'error': 'No file'}, status=400)
-    suffix = '.xlsx' if uploaded.name.lower().endswith('.xlsx') else '.xls'
-    tmp_path = None
-    try:
-        import pandas as pd
-        import math
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            for chunk in uploaded.chunks():
-                tmp.write(chunk)
-            tmp_path = tmp.name
-        try:
-            df = pd.read_excel(tmp_path, header=0, engine='xlrd')
-        except Exception:
-            df = pd.read_excel(tmp_path, header=0, engine='openpyxl')
-        cols = [str(c).strip().lower() for c in df.columns]
-        df.columns = cols
-
-        def clean(v):
-            if isinstance(v, float) and math.isnan(v): return None
-            return str(v) if not isinstance(v, (int, float, str, bool, type(None))) else v
-
-        def col_info(col):
-            if col not in df.columns:
-                return {'exists': False}
-            uniq = [clean(v) for v in df[col].dropna().unique()[:20]]
-            return {'exists': True, 'unique_values': uniq, 'dtype': str(df[col].dtype)}
-
-        # Tìm các cột liên quan nhóm nợ (chứa 'grp', 'nhom', 'aqcc', 'clas', 'group')
-        nhom_cols = [c for c in cols if any(k in c for k in ('grp','nhom','aqcc','clas','group','fin'))]
-
-        return JsonResponse({
-            'all_columns': cols,
-            'grpno':     col_info('grpno'),
-            'aqccdfin':  col_info('aqccdfin'),
-            'custseq':   col_info('custseq'),
-            'brcd':      col_info('brcd'),
-            'nhom_related_cols': nhom_cols,
-            'sample_3_rows': [{k: clean(v) for k, v in row.items()}
-                              for row in df.head(3).to_dict(orient='records')],
-        })
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
-
-
-# ---------------------------------------------------------------------------
 # 9. So sánh 2 kỳ (trang riêng)
 # ---------------------------------------------------------------------------
 

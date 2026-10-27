@@ -73,8 +73,50 @@ def dashboard_view(request):
     context = {
         'promotions': promotions,
         'user': user if (user := request.user) else None,
+        **_dashboard_alerts(request.user, today),
     }
     return render(request, 'templates_app/news_feed.html', context)
+
+
+CCCD_ALERT_DAYS = 30
+
+
+def _dashboard_alerts(user, today):
+    """Số liệu cho khối 'Cần chú ý' ở trang chủ."""
+    from tasks.models import Task
+    from tasks.views import REMINDER_DAYS_AHEAD
+    from .hdv_reg_views import _is_kiem_soat_vien, _pgd_status_counts
+
+    cccd_sap_het_han = Customer.objects.filter(
+        ngay_het_han_cmnd__gte=today,
+        ngay_het_han_cmnd__lte=today + timedelta(days=CCCD_ALERT_DAYS),
+    ).order_by('ngay_het_han_cmnd')
+    cccd_da_het_han_count = Customer.objects.filter(ngay_het_han_cmnd__lt=today).count()
+
+    hdv_cho_duyet, hdv_cho_add = _pgd_status_counts(user)
+
+    my_tasks = Task.objects.filter(
+        Q(created_by=user) | Q(assigned_to=user),
+        is_completed=False,
+        due_date__isnull=False,
+    )
+    task_qua_han = my_tasks.filter(due_date__lt=today).count()
+    task_sap_den_han = my_tasks.filter(
+        due_date__gte=today, due_date__lte=today + timedelta(days=REMINDER_DAYS_AHEAD),
+    ).count()
+
+    return {
+        'cccd_alert_days': CCCD_ALERT_DAYS,
+        'cccd_sap_het_han': cccd_sap_het_han[:10],
+        'cccd_sap_het_han_count': cccd_sap_het_han.count(),
+        'cccd_da_het_han_count': cccd_da_het_han_count,
+        # Chỉ KSV mới duyệt được nên chỉ nhắc KSV
+        'hdv_cho_duyet': hdv_cho_duyet if _is_kiem_soat_vien(user) else 0,
+        'hdv_cho_add': hdv_cho_add,
+        'task_qua_han': task_qua_han,
+        'task_sap_den_han': task_sap_den_han,
+        'task_reminder_days': REMINDER_DAYS_AHEAD,
+    }
 
 
 @login_required
@@ -3265,14 +3307,6 @@ def beautiful_number_list_export_csv(request):
         writer.writerow(row)
 
     return response
-
-
-@login_required
-def test_address_selector(request):
-    """
-    Test page for Address Selector Component
-    """
-    return render(request, 'templates_app/test_address_selector.html')
 
 
 def area_lookup(request):

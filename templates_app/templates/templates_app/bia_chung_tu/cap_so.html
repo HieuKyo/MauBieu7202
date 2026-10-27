@@ -1,0 +1,67 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Cấp số bìa chứng từ{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% include 'templates_app/bia_chung_tu/_nav.html' with active='cap_so' %}
+
+    <form method="post" class="card shadow-sm mb-4" style="max-width: 760px;">
+        {% csrf_token %}
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Ngày chứng từ</label>
+                    <input type="date" class="form-control" name="ngay" value="{{ ngay|date:'Y-m-d' }}"
+                           onchange="location.href='?ngay=' + this.value;">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Số bắt đầu ({{ ma_cn }}-{{ ngay|date:'Y' }}.NNNN)</label>
+                    <input type="number" min="1" class="form-control" name="so_bat_dau" value="{{ so_bat_dau }}" required>
+                    <div class="form-text">Gợi ý: số lớn nhất trong năm + 1</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Đã có trong ngày</label>
+                    <input type="text" class="form-control" value="{{ da_co }} tập" disabled>
+                    {% if da_co %}<div class="form-text text-warning">Tập mới đánh tiếp từ {{ da_co|add:1 }}, tổng N của cả ngày được cập nhật lại.</div>{% endif %}
+                </div>
+            </div>
+
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" class="form-check-input" id="chkAll"></th>
+                        <th>Giao dịch viên</th>
+                        <th>UserIPCAS (QR)</th>
+                        <th style="width: 140px;">Số tập</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for uid, name, user_ipcas in gdv_rows %}
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input row-chk" name="chk_{{ uid }}" id="chk_{{ uid }}" value="1"></td>
+                        <td><label for="chk_{{ uid }}">{{ name }}</label></td>
+                        <td>{% if user_ipcas %}{{ user_ipcas }}{% else %}<span class="text-danger small">Chưa khai báo</span>{% endif %}</td>
+                        <td><input type="number" min="1" class="form-control form-control-sm" name="so_tap_{{ uid }}" value="1"></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-muted">Chưa có GDV phòng Kế toán & Ngân quỹ nào ở đơn vị này.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-plus-circle"></i> Cấp số hồ sơ
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('chkAll').addEventListener('change', function () {
+    document.querySelectorAll('.row-chk').forEach(function (c) { c.checked = this.checked; }, this);
+});
+</script>
+{% endblock %}

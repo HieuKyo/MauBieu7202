@@ -2385,6 +2385,42 @@ class CanDoiUpload(models.Model):
         return f"{self.file_name} - {self.uploaded_at.strftime('%d/%m/%Y %H:%M')}"
 
 
+class BiaChungTu(models.Model):
+    """Bìa lưu trữ Nhật ký chứng từ (mẫu M01/LHS) — mỗi bản ghi là 1 tập chứng từ
+    trong ngày, in kèm mã QR. Số hồ sơ đánh riêng theo từng đơn vị (UserProfile.branch)."""
+    branch = models.CharField(max_length=50, db_index=True, verbose_name="Đơn vị")
+    so_ho_so = models.CharField(max_length=30, verbose_name="Số hồ sơ")
+    ngay_chung_tu = models.DateField(db_index=True, verbose_name="Ngày chứng từ")
+    tap_so = models.PositiveIntegerField(default=1, verbose_name="Tập số")
+    tong_tap = models.PositiveIntegerField(default=1, verbose_name="Tổng số tập")
+    gdv = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bia_chung_tu_gdv', verbose_name="Giao dịch viên"
+    )
+    so_to = models.PositiveIntegerField(default=1, verbose_name="Số tờ")
+    don_vi = models.CharField(max_length=30, default='Quyển', verbose_name="Đơn vị tính")
+    thoi_han_bao_quan = models.CharField(max_length=30, default='20 năm', verbose_name="Thời hạn bảo quản")
+    user_ipcas = models.CharField(max_length=100, verbose_name="UserIPCAS (in vào QR)")
+    nguoi_lap = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bia_chung_tu_lap', verbose_name="Người lập"
+    )
+    ngay_in = models.DateTimeField(null=True, blank=True, verbose_name="Ngày in gần nhất")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
+
+    class Meta:
+        verbose_name = "Bìa chứng từ"
+        verbose_name_plural = "Bìa chứng từ"
+        ordering = ['-ngay_chung_tu', 'so_ho_so']
+        constraints = [
+            models.UniqueConstraint(fields=['branch', 'so_ho_so'], name='uniq_bia_chung_tu_branch_so_ho_so'),
+        ]
+
+    def __str__(self):
+        return f"{self.so_ho_so} - {self.ngay_chung_tu.strftime('%d/%m/%Y')} - Tập {self.tap_so}/{self.tong_tap}"
+
+
 # ============================================================================
 # ATM Management Models
 # ============================================================================

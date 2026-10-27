@@ -15,6 +15,7 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import BranchConfig, QRRegistration
@@ -230,6 +231,67 @@ def qr_registration_template_download_view(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
     resp['Content-Disposition'] = 'attachment; filename="Mau_Dang_Ky_QR.xlsx"'
+    return resp
+
+
+@login_required
+def qr_registration_export_view(request):
+    """Tải danh sách đăng ký QR (toàn bộ cán bộ) ra file Excel — chỉ admin."""
+    if not request.user.is_superuser:
+        messages.error(request, 'Chỉ admin mới được tải danh sách QR')
+        return redirect('qr_registration_list')
+
+    qs = QRRegistration.objects.all()
+
+    ten_kh = request.GET.get('ten_kh', '').strip()
+    so_tai_khoan = request.GET.get('so_tai_khoan', '').strip()
+    ten_cua_hang = request.GET.get('ten_cua_hang', '').strip()
+
+    if ten_kh:
+        qs = qs.filter(ten_kh__icontains=ten_kh)
+    if so_tai_khoan:
+        qs = qs.filter(so_tai_khoan__icontains=so_tai_khoan)
+    if ten_cua_hang:
+        qs = qs.filter(ten_cua_hang__icontains=ten_cua_hang)
+
+    qs = qs.order_by('-ngay_dang_ky')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Danh sach QR'
+
+    headers = ['STT', 'Tên khách hàng', 'Số tài khoản', 'Tên cửa hàng',
+               'Tên cán bộ đăng ký', 'Phòng giao dịch', 'Ngày đăng ký']
+    ws.append(headers)
+    header_fill = PatternFill('solid', fgColor='8B1E2D')
+    bold_white = Font(bold=True, color='FFFFFF')
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = bold_white
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    for i, reg in enumerate(qs, 1):
+        ws.append([
+            i, reg.ten_kh, reg.so_tai_khoan, reg.ten_cua_hang,
+            reg.ten_can_bo, reg.phong_giao_dich,
+            timezone.localtime(reg.ngay_dang_ky).strftime('%d/%m/%Y %H:%M'),
+        ])
+        # Giữ số tài khoản dạng text để Excel không làm mất số 0 đầu
+        ws.cell(row=i + 1, column=3).number_format = '@'
+
+    col_widths = [6, 28, 20, 32, 26, 26, 18]
+    for col, w in enumerate(col_widths, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    resp['Content-Disposition'] = f'attachment; filename="Danh_Sach_QR_{date.today():%Y%m%d}.xlsx"'
     return resp
 
 

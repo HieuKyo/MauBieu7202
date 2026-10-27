@@ -90,6 +90,36 @@
     .quick-links {
         margin-bottom: 2rem;
     }
+    .feature-search-box {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: #fff;
+        border: 2px solid #e3d6da;
+        border-radius: 12px;
+        padding: 0.9rem 1.25rem;
+        font-size: 1.05rem;
+        color: #999;
+        cursor: text;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .feature-search-box:hover,
+    .feature-search-box:focus {
+        border-color: #AE1C3F;
+        box-shadow: 0 4px 14px rgba(174,28,63,0.15);
+        outline: none;
+    }
+    .feature-search-box .bi-search {
+        font-size: 1.25rem;
+        color: #AE1C3F;
+    }
+    .feature-search-box kbd {
+        background: #f3f3f3;
+        color: #666;
+        border: 1px solid #ddd;
+        font-size: 0.75rem;
+    }
     .quick-link-card {
         border: none;
         border-radius: 10px;
@@ -139,6 +169,14 @@
 {% endblock %}
 
 {% block content %}
+<!-- Tìm chức năng: bấm vào mở hộp tìm (định nghĩa trong base.html) -->
+<div class="feature-search-box mb-3" role="button" tabindex="0"
+     onclick="openFeatureSearch()" onkeydown="if (event.key === 'Enter') openFeatureSearch()">
+    <i class="bi bi-search"></i>
+    <span class="flex-grow-1">Tìm chức năng... (vd: bìa chứng từ, sao kê, tính lãi, phát hành thẻ)</span>
+    <kbd class="d-none d-md-inline">Ctrl K</kbd>
+</div>
+
 <!-- Welcome Header -->
 <div class="news-feed-header">
     <div class="d-flex align-items-center justify-content-between">
@@ -195,6 +233,60 @@
         </div>
     </div>
 </div>
+
+<!-- Cần chú ý -->
+{% if cccd_sap_het_han_count or cccd_da_het_han_count or hdv_cho_duyet or hdv_cho_add or task_qua_han or task_sap_den_han %}
+<div class="d-flex align-items-center mb-3">
+    <h5 class="mb-0 fw-bold" style="color: var(--agri-red);">
+        <i class="bi bi-bell"></i> Cần chú ý
+    </h5>
+</div>
+<div class="row g-3 mb-4">
+    {% if task_qua_han or task_sap_den_han %}
+    <div class="col-12 col-md-6 col-lg-4">
+        <a href="{% url 'tasks:list' %}" class="card h-100 text-decoration-none text-reset border-start border-4 {% if task_qua_han %}border-danger{% else %}border-warning{% endif %}">
+            <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="bi bi-check2-square"></i> Công việc</h6>
+                {% if task_qua_han %}<div class="text-danger">Quá hạn: <strong>{{ task_qua_han }}</strong></div>{% endif %}
+                {% if task_sap_den_han %}<div class="text-warning-emphasis">Đến hạn trong {{ task_reminder_days }} ngày: <strong>{{ task_sap_den_han }}</strong></div>{% endif %}
+            </div>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if hdv_cho_duyet or hdv_cho_add %}
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100 border-start border-4 border-warning">
+            <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="bi bi-cash-coin"></i> Đăng ký huy động vốn (cùng PGD)</h6>
+                {% if hdv_cho_duyet %}<div><a href="{% url 'hdv_approval_list' %}">Chờ phê duyệt: <strong>{{ hdv_cho_duyet }}</strong></a></div>{% endif %}
+                {% if hdv_cho_add %}<div><a href="{% url 'hdv_add_chi_tieu_list' %}">Đã duyệt, chờ add chỉ tiêu: <strong>{{ hdv_cho_add }}</strong></a></div>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if cccd_sap_het_han_count or cccd_da_het_han_count %}
+    <div class="col-12 col-md-12 col-lg-4">
+        <div class="card h-100 border-start border-4 border-info">
+            <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="bi bi-person-vcard"></i> CCCD khách hàng</h6>
+                {% if cccd_sap_het_han_count %}
+                <div class="mb-1">Hết hạn trong {{ cccd_alert_days }} ngày tới: <strong>{{ cccd_sap_het_han_count }}</strong></div>
+                <ul class="small mb-2 ps-3">
+                    {% for c in cccd_sap_het_han %}
+                    <li><a href="{% url 'customer_list' %}?q={{ c.so_cmnd|urlencode }}">{{ c.ho_ten }}</a> — {{ c.ngay_het_han_cmnd|date:"d/m/Y" }}</li>
+                    {% endfor %}
+                    {% if cccd_sap_het_han_count > cccd_sap_het_han|length %}<li class="text-muted">...</li>{% endif %}
+                </ul>
+                {% endif %}
+                {% if cccd_da_het_han_count %}<div class="text-muted small">Đã hết hạn: {{ cccd_da_het_han_count }} khách hàng</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 
 <!-- News Feed Section -->
 <div class="d-flex align-items-center justify-content-between mb-3">

@@ -1,0 +1,61 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Sửa bìa chứng từ{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% include 'templates_app/bia_chung_tu/_nav.html' with active='' %}
+
+    <form method="post" class="card shadow-sm mb-4" style="max-width: 760px;">
+        {% csrf_token %}
+        <div class="card-header"><b>Sửa bìa {{ bia.so_ho_so }}</b></div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Số hồ sơ</label>
+                <input type="text" class="form-control" name="so_ho_so" value="{{ bia.so_ho_so }}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Ngày chứng từ</label>
+                <input type="date" class="form-control" name="ngay_chung_tu" value="{{ bia.ngay_chung_tu|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tập số</label>
+                <input type="number" min="1" class="form-control" name="tap_so" value="{{ bia.tap_so }}" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tổng số tập</label>
+                <input type="number" min="1" class="form-control" name="tong_tap" value="{{ bia.tong_tap }}" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Số tờ</label>
+                <input type="number" min="1" class="form-control" name="so_to" value="{{ bia.so_to }}" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Đơn vị tính</label>
+                <input type="text" class="form-control" name="don_vi" value="{{ bia.don_vi }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Giao dịch viên</label>
+                <select class="form-select" name="gdv">
+                    <option value="">-- Không --</option>
+                    {% for uid, name in gdv_choices %}
+                    <option value="{{ uid }}" {% if bia.gdv_id == uid %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Thời hạn bảo quản</label>
+                <input type="text" class="form-control" name="thoi_han_bao_quan" value="{{ bia.thoi_han_bao_quan }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">UserIPCAS (QR)</label>
+                <input type="text" class="form-control" name="user_ipcas" value="{{ bia.user_ipcas }}" required>
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-danger"><i class="bi bi-save"></i> Lưu</button>
+                <a href="{% url 'bia_chung_tu_list' %}" class="btn btn-outline-secondary">Huỷ</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

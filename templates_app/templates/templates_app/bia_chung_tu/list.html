@@ -1,0 +1,138 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Tạo bìa chứng từ{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% include 'templates_app/bia_chung_tu/_nav.html' with active='list' %}
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Từ ngày CT</label>
+                    <input type="text" class="form-control" name="tu_ngay" value="{{ filters.tu_ngay }}" placeholder="dd/mm/yyyy">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Đến ngày CT</label>
+                    <input type="text" class="form-control" name="den_ngay" value="{{ filters.den_ngay }}" placeholder="dd/mm/yyyy">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Giao dịch viên</label>
+                    <select class="form-select" name="gdv">
+                        <option value="">-- Tất cả --</option>
+                        {% for uid, name in gdv_choices %}
+                        <option value="{{ uid }}" {% if filters.gdv == uid|stringformat:"s" %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Trạng thái</label>
+                    <select class="form-select" name="trang_thai">
+                        <option value="">-- Tất cả --</option>
+                        <option value="chua_in" {% if filters.trang_thai == 'chua_in' %}selected{% endif %}>Chưa in</option>
+                        <option value="da_in" {% if filters.trang_thai == 'da_in' %}selected{% endif %}>Đã in</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Số hồ sơ</label>
+                    <input type="text" class="form-control" name="q" value="{{ filters.q }}" placeholder="VD: 2026.0030">
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-search"></i> Lọc</button>
+                    <a href="{% url 'bia_chung_tu_list' %}" class="btn btn-outline-secondary">Xoá lọc</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <form method="post" id="mainForm">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+                    <button type="submit" class="btn btn-danger btn-sm" formaction="{% url 'bia_chung_tu_print' %}" formtarget="_blank">
+                        <i class="bi bi-printer"></i> In bìa đã chọn (PDF)
+                    </button>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" formaction="{% url 'bia_chung_tu_save_so_to' %}">
+                        <i class="bi bi-save"></i> Lưu số tờ
+                    </button>
+                    <span class="text-muted small ms-auto">Tổng: {{ page_obj.paginator.count }} bìa</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" class="form-check-input" id="chkAll"></th>
+                                <th>Số hồ sơ</th>
+                                <th>Ngày CT</th>
+                                <th>Tập</th>
+                                <th>Giao dịch viên</th>
+                                <th style="width: 90px;">Số tờ</th>
+                                <th>UserIPCAS</th>
+                                <th>Đã in</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in page_obj %}
+                            <tr {% if b.ngay_chung_tu in lech %}class="table-warning"{% endif %}>
+                                <td><input type="checkbox" class="form-check-input row-chk" name="ids" value="{{ b.pk }}"></td>
+                                <td class="fw-semibold">{{ b.so_ho_so }}</td>
+                                <td>{{ b.ngay_chung_tu|date:"d/m/Y" }}</td>
+                                <td>
+                                    {{ b.tap_so }}/{{ b.tong_tap }}
+                                    {% if b.ngay_chung_tu in lech %}<span class="badge bg-warning text-dark" title="Các tập trong ngày không khớp 1..N">Lệch tập</span>{% endif %}
+                                </td>
+                                <td>{{ b.gdv.profile.full_name|default:"" }}</td>
+                                <td><input type="number" min="1" class="form-control form-control-sm" name="so_to_{{ b.pk }}" value="{{ b.so_to }}"></td>
+                                <td>{{ b.user_ipcas }}</td>
+                                <td>{% if b.ngay_in %}<span class="badge bg-success" title="{{ b.ngay_in|date:'d/m/Y H:i' }}">Đã in</span>{% else %}<span class="badge bg-secondary">Chưa in</span>{% endif %}</td>
+                                <td class="text-nowrap">
+                                    <a href="{% url 'bia_chung_tu_print' %}?id={{ b.pk }}" target="_blank" class="btn btn-outline-danger btn-sm" title="In bìa"><i class="bi bi-printer"></i></a>
+                                    <a href="{% url 'bia_chung_tu_edit' b.pk %}" class="btn btn-outline-primary btn-sm" title="Sửa"><i class="bi bi-pencil"></i></a>
+                                    <button type="submit" form="del-{{ b.pk }}" class="btn btn-outline-secondary btn-sm" title="Xoá"
+                                            onclick="return confirm('Xoá bìa {{ b.so_ho_so }}?');"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="9" class="text-center text-muted py-4">Chưa có bìa chứng từ nào.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    {% for b in page_obj %}
+    <form method="post" action="{% url 'bia_chung_tu_delete' b.pk %}" id="del-{{ b.pk }}" class="d-none">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    </form>
+    {% endfor %}
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav>
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?{{ query_string }}&page={{ page_obj.previous_page_number }}">«</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Trang {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?{{ query_string }}&page={{ page_obj.next_page_number }}">»</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('chkAll').addEventListener('change', function () {
+    document.querySelectorAll('.row-chk').forEach(function (c) { c.checked = this.checked; }, this);
+});
+</script>
+{% endblock %}

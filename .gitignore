@@ -63,3 +63,6 @@ samples/
 
 # Ảnh chữ ký khách hàng (dữ liệu cá nhân, không đưa lên git)
 /private_media/
+
+# Log files
+logs/

@@ -10,6 +10,7 @@ from . import hdv_reg_views
 from . import qr_reg_views
 from . import cash_drawer_views
 from . import can_doi_views
+from . import bia_chung_tu_views
 from . import spdv_kpi_views
 from . import customer_export
 from . import customer_cif_tools
@@ -92,9 +93,6 @@ urlpatterns = [
     path('beautiful-number-list/export/', views.beautiful_number_list_export_csv, name='beautiful_number_list_export_csv'),
     path('api/beautiful-numbers/generate/', views.generate_beautiful_numbers_ajax, name='generate_beautiful_numbers'),
     path('api/beautiful-numbers/refresh/', views.refresh_beautiful_numbers_ajax, name='refresh_beautiful_numbers'),
-
-    # Test Address Selector
-    path('test-address-selector/', views.test_address_selector, name='test_address_selector'),
 
     # Area Lookup
     path('area-lookup/', views.area_lookup, name='area_lookup'),
@@ -214,6 +212,7 @@ urlpatterns = [
     path('qr/dang-ky/<int:pk>/delete/', qr_reg_views.qr_registration_delete_view, name='qr_registration_delete'),
     path('qr/dang-ky/mau-tai-ve/', qr_reg_views.qr_registration_template_download_view, name='qr_registration_template_download'),
     path('qr/dang-ky/upload/', qr_reg_views.qr_registration_import_view, name='qr_registration_import'),
+    path('qr/dang-ky/xuat-file/', qr_reg_views.qr_registration_export_view, name='qr_registration_export'),
     path('hdv/import/', hdv_reg_views.hdv_import_upload_view, name='hdv_import_upload'),
 
     # Thống kê chỉ tiêu Sản phẩm dịch vụ (Kế toán Ngân quỹ)
@@ -252,6 +251,16 @@ urlpatterns = [
     path('can-doi/upload/', can_doi_views.can_doi_upload, name='can_doi_upload'),
     path('can-doi/result/<int:upload_id>/', can_doi_views.can_doi_result, name='can_doi_result'),
 
+    # Tạo bìa chứng từ (Kế toán Ngân quỹ)
+    path('bia-chung-tu/', bia_chung_tu_views.bia_list, name='bia_chung_tu_list'),
+    path('bia-chung-tu/cap-so/', bia_chung_tu_views.bia_cap_so, name='bia_chung_tu_cap_so'),
+    path('bia-chung-tu/<int:pk>/sua/', bia_chung_tu_views.bia_edit, name='bia_chung_tu_edit'),
+    path('bia-chung-tu/<int:pk>/xoa/', bia_chung_tu_views.bia_delete, name='bia_chung_tu_delete'),
+    path('bia-chung-tu/luu-so-to/', bia_chung_tu_views.bia_save_so_to, name='bia_chung_tu_save_so_to'),
+    path('bia-chung-tu/import/', bia_chung_tu_views.bia_import, name='bia_chung_tu_import'),
+    path('bia-chung-tu/import/xac-nhan/', bia_chung_tu_views.bia_import_confirm, name='bia_chung_tu_import_confirm'),
+    path('bia-chung-tu/in/', bia_chung_tu_views.bia_print, name='bia_chung_tu_print'),
+
     # Permission Management
     path('permissions/', views.permission_management_view, name='permission_management'),
     path('permissions/users/<int:user_id>/superuser/', views.update_superuser_status, name='update_superuser_status'),
@@ -283,7 +292,6 @@ urlpatterns = [
     path('tin-dung/ftp-config/', td_views.td_ftp_config_view, name='td_ftp_config'),
     path('tin-dung/ftp-config/<int:pk>/delete/', td_views.td_ftp_delete_view, name='td_ftp_delete'),
     path('tin-dung/faq/', td_views.td_faq_view, name='td_faq'),
-    path('tin-dung/debug-cols/', td_views.td_debug_cols_view, name='td_debug_cols'),
     path('tin-dung/so-sanh/', td_views.td_so_sanh_view, name='td_so_sanh'),
     path('tin-dung/api/so-sanh-records/', td_views.td_so_sanh_records_api, name='td_so_sanh_records_api'),
     # Backward compat

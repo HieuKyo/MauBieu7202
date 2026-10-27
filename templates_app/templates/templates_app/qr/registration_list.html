@@ -45,6 +45,12 @@
                 <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#uploadQrModal">
                     <i class="bi bi-upload"></i> Upload đăng ký QR
                 </button>
+                {% if request.user.is_superuser %}
+                <a href="{% url 'qr_registration_export' %}?ten_kh={{ filters.ten_kh|urlencode }}&so_tai_khoan={{ filters.so_tai_khoan|urlencode }}&ten_cua_hang={{ filters.ten_cua_hang|urlencode }}"
+                   class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-excel"></i> Tải danh sách QR (Admin)
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>

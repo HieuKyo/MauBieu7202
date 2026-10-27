@@ -27,7 +27,7 @@ KEEP_LOCAL = 3
 
 # Không bao giờ đưa vào gói (dữ liệu riêng của từng máy)
 EXCLUDE_PREFIXES = ('db.sqlite3', 'media/', 'private_media/', 'staticfiles/', 'venv/',
-                    '.env', 'samples/', 'backups/', 'ban_cap_nhat/', '.claude/', 'VERSION')
+                    '.env', 'samples/', 'backups/', 'logs/', 'ban_cap_nhat/', '.claude/', 'VERSION')
 PIP_TRIGGERS = ('requirements.txt', 'packages/')
 
 
