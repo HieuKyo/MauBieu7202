@@ -1,8 +1,10 @@
 """Test Tạo bìa chứng từ: cấp số theo ngày, phân quyền, unique số hồ sơ, import, in PDF."""
+import io
 import os
 import unittest
 from datetime import date
 
+import openpyxl
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -129,18 +131,51 @@ class BiaChungTuTests(TestCase):
         self.assertIsNotNone(bia.ngay_in)
         self.assertEqual(bia.so_to, 7)
 
-    @unittest.skipUnless(os.path.exists(SAMPLE_FILE), 'Thiếu file mẫu')
-    def test_import_file_thang_01_07(self):
+    def _import_sample(self):
         with open(SAMPLE_FILE, 'rb') as f:
             resp = self.client.post(reverse('bia_chung_tu_import'), {'file': SimpleUploadedFile('x.xlsx', f.read())})
-        rows = resp.context['rows']
+        self.client.post(reverse('bia_chung_tu_import_confirm'))
+        return resp.context['rows']
+
+    @unittest.skipUnless(os.path.exists(SAMPLE_FILE), 'Thiếu file mẫu')
+    def test_import_file_thang_01_07(self):
+        for n in ('GRACACHI', 'GRANSINH', 'GRATHIEU', 'GRATNNHI'):
+            _user(n.lower(), ipcas=n)
+        rows = self._import_sample()
         self.assertEqual(len(rows), 668)  # bỏ 8 dòng cuối không có tiêu đề
         loi = [r['so_ho_so'] for r in rows if r['loi']]
         self.assertEqual(loi, ['7202-2026.0229', '7202-2026.0229'])
-        self.client.post(reverse('bia_chung_tu_import_confirm'))
         self.assertEqual(BiaChungTu.objects.count(), 666)
         b = BiaChungTu.objects.get(so_ho_so='7202-2026.0001')
-        self.assertEqual((b.ngay_chung_tu, b.tap_so, b.tong_tap, b.so_to, b.don_vi, b.user_ipcas),
-                         (date(2026, 1, 5), 1, 5, 1, 'Quyển', 'GRATKIEN'))
+        self.assertEqual((b.ngay_chung_tu, b.tap_so, b.tong_tap, b.so_to, b.don_vi),
+                         (date(2026, 1, 5), 1, 5, 1, 'Quyển'))
+        # Cột User → QR + GDV; Số tờ của tập "…." → trống; 2 tập của GRANSINH = 2 dòng
+        self.assertEqual((b.user_ipcas, b.gdv.username, b.so_to_tap), ('GRACACHI', 'gracachi', None))
+        self.assertEqual(list(BiaChungTu.objects.filter(user_ipcas='GRANSINH').order_by('so_ho_so')
+                              .values_list('so_ho_so', 'so_to_tap')),
+                         [('7202-2026.0002', 250), ('7202-2026.0003', 277)])
+        # Dòng không có User → UserIPCAS của người import
+        self.assertEqual(BiaChungTu.objects.get(so_ho_so='7202-2026.0010').user_ipcas, 'GRATKIEN')
         resp = self.client.get(reverse('bia_chung_tu_list') + '?tu_ngay=02/04/2026&den_ngay=02/04/2026')
         self.assertIn(date(2026, 4, 2), resp.context['lech'])
+
+    @unittest.skipUnless(os.path.exists(SAMPLE_FILE), 'Thiếu file mẫu')
+    def test_import_lai_cap_nhat_bia_da_co(self):
+        for n in ('GRACACHI', 'GRANSINH', 'GRATHIEU', 'GRATNNHI'):
+            _user(n.lower(), ipcas=n)
+        BiaChungTu.objects.create(branch='HOI_SO', so_ho_so='7202-2026.0005', ngay_chung_tu=date(2026, 1, 5),
+                                  tap_so=5, tong_tap=5, so_to=3, user_ipcas='GRATKIEN')
+        rows = self._import_sample()
+        self.assertEqual(next(r for r in rows if r['so_ho_so'] == '7202-2026.0005')['hanh_dong'], 'Cập nhật')
+        b = BiaChungTu.objects.get(so_ho_so='7202-2026.0005')
+        self.assertEqual((b.user_ipcas, b.gdv.username, b.so_to_tap, b.so_to), ('GRATNNHI', 'gratnnhi', 300, 3))
+
+    def test_import_user_khong_ton_tai_bao_loi(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(['Số hồ sơ', 'Tiêu đề hồ sơ', 'User', 'Số tờ của tập chứng từ'])
+        ws.append(['7202-2026.0001', 'Nhật ký chứng từ ngày 05/01/2026 - Tập 1/1', 'GRAXXX', 10])
+        buf = io.BytesIO()
+        wb.save(buf)
+        resp = self.client.post(reverse('bia_chung_tu_import'), {'file': SimpleUploadedFile('x.xlsx', buf.getvalue())})
+        self.assertIn('GRAXXX', resp.context['rows'][0]['loi'])

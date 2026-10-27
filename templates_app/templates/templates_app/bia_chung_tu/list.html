@@ -69,7 +69,8 @@
                                 <th>Ngày CT</th>
                                 <th>Tập</th>
                                 <th>Giao dịch viên</th>
-                                <th style="width: 90px;">Số tờ</th>
+                                <th style="width: 90px;" title="Gồm: n tờ (trên bìa)">Số tờ</th>
+                                <th style="width: 100px;" title="Chứng từ ngày ... (n tờ) — trên nhãn QR; trống = ….">Tờ của tập</th>
                                 <th>UserIPCAS</th>
                                 <th>Đã in</th>
                                 <th>Thao tác</th>
@@ -87,6 +88,7 @@
                                 </td>
                                 <td>{{ b.gdv.profile.full_name|default:"" }}</td>
                                 <td><input type="number" min="1" class="form-control form-control-sm" name="so_to_{{ b.pk }}" value="{{ b.so_to }}"></td>
+                                <td><input type="number" min="1" class="form-control form-control-sm" name="so_to_tap_{{ b.pk }}" value="{{ b.so_to_tap|default_if_none:'' }}" placeholder="…."></td>
                                 <td>{{ b.user_ipcas }}</td>
                                 <td>{% if b.ngay_in %}<span class="badge bg-success" title="{{ b.ngay_in|date:'d/m/Y H:i' }}">Đã in</span>{% else %}<span class="badge bg-secondary">Chưa in</span>{% endif %}</td>
                                 <td class="text-nowrap">
@@ -97,7 +99,7 @@
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="9" class="text-center text-muted py-4">Chưa có bìa chứng từ nào.</td></tr>
+                            <tr><td colspan="10" class="text-center text-muted py-4">Chưa có bìa chứng từ nào.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

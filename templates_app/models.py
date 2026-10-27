@@ -2398,6 +2398,10 @@ class BiaChungTu(models.Model):
         related_name='bia_chung_tu_gdv', verbose_name="Giao dịch viên"
     )
     so_to = models.PositiveIntegerField(default=1, verbose_name="Số tờ")
+    so_to_tap = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Số tờ của tập chứng từ",
+        help_text="In ở nhãn QR \"Chứng từ ngày ... (n tờ)\"; trống thì in \"(…. tờ)\" để hậu kiểm điền tay"
+    )
     don_vi = models.CharField(max_length=30, default='Quyển', verbose_name="Đơn vị tính")
     thoi_han_bao_quan = models.CharField(max_length=30, default='20 năm', verbose_name="Thời hạn bảo quản")
     user_ipcas = models.CharField(max_length=100, verbose_name="UserIPCAS (in vào QR)")

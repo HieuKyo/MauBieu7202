@@ -31,6 +31,10 @@
                 <input type="number" min="1" class="form-control" name="so_to" value="{{ bia.so_to }}" required>
             </div>
             <div class="col-md-3">
+                <label class="form-label">Số tờ của tập (nhãn QR)</label>
+                <input type="number" min="1" class="form-control" name="so_to_tap" value="{{ bia.so_to_tap|default_if_none:'' }}" placeholder="…. (hậu kiểm điền)">
+            </div>
+            <div class="col-md-3">
                 <label class="form-label">Đơn vị tính</label>
                 <input type="text" class="form-control" name="don_vi" value="{{ bia.don_vi }}">
             </div>

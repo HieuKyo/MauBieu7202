@@ -235,12 +235,13 @@
 </div>
 
 <!-- Cần chú ý -->
-{% if cccd_sap_het_han_count or hdv_cho_duyet or hdv_cho_add or task_qua_han or task_sap_den_han %}
+{% if hdv_cho_duyet or hdv_cho_add or task_qua_han or task_sap_den_han %}
 <div class="d-flex align-items-center mb-3">
     <h5 class="mb-0 fw-bold" style="color: var(--agri-red);">
         <i class="bi bi-bell"></i> Cần chú ý
     </h5>
 </div>
+{% endif %}
 <div class="row g-3 mb-4">
     {% if task_qua_han or task_sap_den_han %}
     <div class="col-12 col-md-6 col-lg-4">
@@ -266,26 +267,9 @@
     </div>
     {% endif %}
 
-    {% if cccd_sap_het_han_count %}
-    <div class="col-12 col-md-12 col-lg-4">
-        <div class="card h-100 border-start border-4 border-info">
-            <div class="card-body">
-                <h6 class="fw-bold mb-2"><i class="bi bi-person-vcard"></i> CCCD khách hàng</h6>
-                {% if cccd_sap_het_han_count %}
-                <div class="mb-1">Hết hạn trong {{ cccd_alert_days }} ngày tới: <strong>{{ cccd_sap_het_han_count }}</strong></div>
-                <ul class="small mb-2 ps-3">
-                    {% for c in cccd_sap_het_han %}
-                    <li><a href="{% url 'customer_list' %}?q={{ c.so_cmnd|urlencode }}">{{ c.ho_ten }}</a> — {{ c.ngay_het_han_cmnd|date:"d/m/Y" }}</li>
-                    {% endfor %}
-                    {% if cccd_sap_het_han_count > cccd_sap_het_han|length %}<li class="text-muted">...</li>{% endif %}
-                </ul>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
+    <!-- Chừa chỗ cho bảng tin news -->
+    <div class="col-12 col-lg-4" id="newsBoardSlot"></div>
 </div>
-{% endif %}
 
 <!-- News Feed Section -->
 <div class="d-flex align-items-center justify-content-between mb-3">

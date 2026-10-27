@@ -14,8 +14,10 @@
                     <label class="form-label">File Excel (.xlsx)</label>
                     <input type="file" class="form-control" name="file" accept=".xlsx" required>
                     <div class="form-text">
-                        Sheet đầu tiên, dòng 1 là tiêu đề: Số hồ sơ | Tiêu đề hồ sơ | Thời hạn bảo quản | Ngày mở | Ngày công việc kết thúc | Số tờ | Ghi chú.
-                        Tiêu đề dạng "Nhật ký chứng từ ngày dd/mm/yyyy - Tập x/y". QR dùng UserIPCAS của bạn ({{ ipcas|default:"chưa khai báo" }}).
+                        Sheet đầu tiên, dòng 1 là tiêu đề: Số hồ sơ | Tiêu đề hồ sơ | Thời hạn bảo quản | Ngày mở | Ngày công việc kết thúc | Số tờ | Ghi chú | User | Số tờ của tập chứng từ.
+                        Mỗi dòng là 1 tập; tiêu đề dạng "Nhật ký chứng từ ngày dd/mm/yyyy - Tập x/y".
+                        Cột User (IPCAS của GDV) trống thì QR dùng UserIPCAS của bạn ({{ ipcas|default:"chưa khai báo" }}).
+                        Số hồ sơ đã có trong hệ thống: chỉ cập nhật User và Số tờ của tập.
                     </div>
                 </div>
                 <div class="col-md-2">
@@ -31,18 +33,18 @@
             <form method="post" action="{% url 'bia_chung_tu_import_confirm' %}" class="d-flex align-items-center gap-3 mb-2">
                 {% csrf_token %}
                 <span>Hợp lệ: <b>{{ so_hop_le }}</b> / {{ rows|length }} dòng. Các dòng lỗi sẽ bị bỏ qua.</span>
-                <button type="submit" class="btn btn-danger btn-sm" {% if not so_hop_le or not ipcas %}disabled{% endif %}>
-                    <i class="bi bi-check2-circle"></i> Xác nhận import {{ so_hop_le }} bìa
+                <button type="submit" class="btn btn-danger btn-sm" {% if not so_hop_le %}disabled{% endif %}>
+                    <i class="bi bi-check2-circle"></i> Xác nhận import/cập nhật {{ so_hop_le }} bìa
                 </button>
             </form>
             <div class="table-responsive" style="max-height: 65vh;">
                 <table class="table table-sm align-middle">
                     <thead class="sticky-top bg-white">
-                        <tr><th>Dòng</th><th>Số hồ sơ</th><th>Ngày CT</th><th>Tập</th><th>Số tờ</th><th>Đơn vị</th><th>Thời hạn</th><th>Trạng thái</th></tr>
+                        <tr><th>Dòng</th><th>Số hồ sơ</th><th>Ngày CT</th><th>Tập</th><th>Số tờ</th><th>Đơn vị</th><th>Thời hạn</th><th>User</th><th>Tờ của tập</th><th>Trạng thái</th></tr>
                     </thead>
                     <tbody>
                         {% for r in rows %}
-                        <tr {% if r.loi %}class="table-danger"{% endif %}>
+                        <tr {% if r.loi %}class="{% if 'bỏ qua' in r.loi %}text-muted{% else %}table-danger{% endif %}"{% endif %}>
                             <td>{{ r.dong }}</td>
                             <td>{{ r.so_ho_so }}</td>
                             <td>{{ r.ngay }}</td>
@@ -50,7 +52,9 @@
                             <td>{{ r.so_to }}</td>
                             <td>{{ r.don_vi }}</td>
                             <td>{{ r.thoi_han }}</td>
-                            <td>{% if r.loi %}{{ r.loi }}{% else %}<span class="text-success">OK</span>{% endif %}</td>
+                            <td>{{ r.user }}</td>
+                            <td>{{ r.so_to_tap|default_if_none:"" }}</td>
+                            <td>{% if r.loi %}{{ r.loi }}{% else %}<span class="text-success">{{ r.hanh_dong }}</span>{% endif %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

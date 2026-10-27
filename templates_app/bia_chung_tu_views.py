@@ -96,6 +96,11 @@ def _gdv_choices(branch):
     return list(_gdv_qs(branch).values_list('user_id', 'full_name'))
 
 
+def _gdv_ipcas_map(branch):
+    """{IPCAS (in hoa): user_id} của GDV cùng đơn vị — dùng cho cột User khi import."""
+    return {(ip or '').strip().upper(): uid for uid, ip in _gdv_qs(branch).values_list('user_id', 'ipcas_user') if ip}
+
+
 def _ho_ten(bia):
     """Họ tên in trên nhãn QR: GDV sở hữu tập, bìa import (không có GDV) thì là người import."""
     profile = getattr(bia.gdv or bia.nguoi_lap, 'profile', None)
@@ -300,6 +305,9 @@ def bia_edit(request, pk):
             errors.append('Tập số, Tổng số tập, Số tờ phải là số nguyên dương.')
         if not p.get('user_ipcas', '').strip():
             errors.append('UserIPCAS không được trống.')
+        so_to_tap = p.get('so_to_tap', '').strip()
+        if so_to_tap and not (so_to_tap.isdigit() and int(so_to_tap) > 0):
+            errors.append('Số tờ của tập phải là số nguyên dương (hoặc để trống).')
         if errors:
             for e in errors:
                 messages.error(request, e)
@@ -311,6 +319,7 @@ def bia_edit(request, pk):
             bia.don_vi = p.get('don_vi', '').strip() or 'Quyển'
             bia.thoi_han_bao_quan = p.get('thoi_han_bao_quan', '').strip() or '20 năm'
             bia.user_ipcas = p['user_ipcas'].strip()
+            bia.so_to_tap = int(so_to_tap) if so_to_tap else None
             bia.save()
             messages.success(request, f'Đã cập nhật bìa {bia.so_ho_so}.')
             return redirect('bia_chung_tu_list')
@@ -345,9 +354,14 @@ def bia_save_so_to(request):
 
 
 def _apply_so_to(request, branch):
+    """so_to_<id>: Số tờ trên bìa; so_to_tap_<id>: Số tờ của tập ở nhãn QR (trống = "….")."""
     changed = 0
     for key, val in request.POST.items():
-        if key.startswith('so_to_') and key[6:].isdigit() and val.isdigit() and int(val) > 0:
+        val = val.strip()
+        if key.startswith('so_to_tap_') and key[10:].isdigit():
+            moi = int(val) if val.isdigit() and int(val) > 0 else None
+            changed += BiaChungTu.objects.filter(branch=branch, pk=int(key[10:])).exclude(so_to_tap=moi).update(so_to_tap=moi)
+        elif key.startswith('so_to_') and key[6:].isdigit() and val.isdigit() and int(val) > 0:
             changed += BiaChungTu.objects.filter(branch=branch, pk=int(key[6:])).exclude(so_to=int(val)).update(so_to=int(val))
     return changed
 
@@ -357,7 +371,8 @@ def _apply_so_to(request, branch):
 # ---------------------------------------------------------------------------
 
 def _parse_import_file(f):
-    """Đọc sheet đầu: Số hồ sơ | Tiêu đề hồ sơ | Thời hạn bảo quản | Ngày mở | Ngày công việc kết thúc | Số tờ | Ghi chú.
+    """Đọc sheet đầu: Số hồ sơ | Tiêu đề hồ sơ | Thời hạn bảo quản | Ngày mở | Ngày công việc kết thúc | Số tờ | Ghi chú
+    | User | Số tờ của tập chứng từ (2 cột cuối không bắt buộc; mỗi dòng = 1 tập).
     Bỏ qua dòng không có tiêu đề. Trả về list dict (giá trị chuỗi để lưu session)."""
     ws = openpyxl.load_workbook(f, data_only=True, read_only=True).worksheets[0]
     rows = ws.iter_rows(values_only=True)
@@ -370,6 +385,7 @@ def _parse_import_file(f):
     if c_so is None or c_tieu_de is None:
         raise ValueError('Không tìm thấy cột "Số hồ sơ" và "Tiêu đề hồ sơ" ở dòng đầu tiên.')
     c_han, c_mo, c_to, c_ghi_chu = col('thời hạn bảo quản'), col('ngày mở'), col('số tờ'), col('ghi chú')
+    c_user, c_to_tap = col('user'), col('số tờ của tập chứng từ')
 
     def get(r, c):
         return r[c] if c is not None and c < len(r) else None
@@ -383,6 +399,7 @@ def _parse_import_file(f):
         m = TITLE_RE.search(tieu_de)
         ngay = _parse_date(m.group(1)) if m else _parse_date(get(r, c_mo))
         so_to = get(r, c_to)
+        so_to_tap = get(r, c_to_tap)  # "…." = chưa có, hậu kiểm điền tay
         item = {
             'dong': i, 'so_ho_so': so, 'tieu_de': tieu_de,
             'ngay': ngay.isoformat() if ngay else '',
@@ -390,6 +407,9 @@ def _parse_import_file(f):
             'so_to': int(so_to) if isinstance(so_to, (int, float)) and so_to > 0 else 1,
             'don_vi': str(get(r, c_ghi_chu) or '').strip() or 'Quyển',
             'thoi_han': str(get(r, c_han) or '').strip() or '20 năm',
+            'user': str(get(r, c_user) or '').strip().upper(),
+            'so_to_tap': int(so_to_tap) if isinstance(so_to_tap, (int, float)) and so_to_tap > 0 else None,
+            'hanh_dong': 'Tạo mới',
             'loi': '',
         }
         if not so:
@@ -418,13 +438,20 @@ def bia_import(request):
             counts[r['so_ho_so']] = counts.get(r['so_ho_so'], 0) + 1
         da_co = set(BiaChungTu.objects.filter(branch=branch, so_ho_so__in=list(counts))
                     .values_list('so_ho_so', flat=True))
+        gdv_ipcas = _gdv_ipcas_map(branch)
         for r in rows:
             if r['loi']:
                 continue
             if counts[r['so_ho_so']] > 1:
                 r['loi'] = 'Số hồ sơ bị trùng trong file'
+            elif r['user'] and r['user'] not in gdv_ipcas:
+                r['loi'] = f'Không tìm thấy GDV có IPCAS {r["user"]}'
             elif r['so_ho_so'] in da_co:
-                r['loi'] = 'Đã có trong hệ thống (bỏ qua)'
+                # Bìa đã import trước: chỉ cập nhật User + Số tờ của tập (nếu file có), giữ nguyên phần đã sửa tay
+                if r['user'] or r['so_to_tap']:
+                    r['hanh_dong'] = 'Cập nhật'
+                else:
+                    r['loi'] = 'Đã có trong hệ thống (bỏ qua)'
         request.session['bia_import_rows'] = rows
         return render(request, 'templates_app/bia_chung_tu/import.html', {
             'rows': rows,
@@ -442,22 +469,35 @@ def bia_import_confirm(request):
     if not branch:
         return _deny(request)
     ipcas = _ipcas(request.user)
-    if not ipcas:
-        messages.error(request, 'Bạn chưa khai báo Tài khoản IPCAS trong hồ sơ nhân viên — QR cần UserIPCAS.')
+    rows = [r for r in request.session.get('bia_import_rows', []) if not r['loi']]
+    da_co = {b.so_ho_so: b for b in BiaChungTu.objects.filter(branch=branch, so_ho_so__in=[r['so_ho_so'] for r in rows])}
+    # Dòng không có cột User dùng UserIPCAS của người import
+    if not ipcas and any(not r['user'] and r['so_ho_so'] not in da_co for r in rows):
+        messages.error(request, 'Có dòng không ghi User mà bạn chưa khai báo Tài khoản IPCAS trong hồ sơ nhân viên — QR cần UserIPCAS.')
         return redirect('bia_chung_tu_import')
-    rows = [r for r in request.session.pop('bia_import_rows', []) if not r['loi']]
-    da_co = set(BiaChungTu.objects.filter(branch=branch, so_ho_so__in=[r['so_ho_so'] for r in rows])
-                .values_list('so_ho_so', flat=True))
-    moi = [
-        BiaChungTu(
-            branch=branch, so_ho_so=r['so_ho_so'], ngay_chung_tu=date.fromisoformat(r['ngay']),
-            tap_so=r['tap_so'], tong_tap=r['tong_tap'], so_to=r['so_to'], don_vi=r['don_vi'],
-            thoi_han_bao_quan=r['thoi_han'], user_ipcas=ipcas, nguoi_lap=request.user,
-        )
-        for r in rows if r['so_ho_so'] not in da_co
-    ]
-    BiaChungTu.objects.bulk_create(moi)
-    messages.success(request, f'Đã import {len(moi)} bìa chứng từ.')
+    request.session.pop('bia_import_rows', None)
+    gdv_ipcas = _gdv_ipcas_map(branch)
+
+    moi, cap_nhat = [], []
+    for r in rows:
+        bia = da_co.get(r['so_ho_so'])
+        if bia is None:
+            moi.append(BiaChungTu(
+                branch=branch, so_ho_so=r['so_ho_so'], ngay_chung_tu=date.fromisoformat(r['ngay']),
+                tap_so=r['tap_so'], tong_tap=r['tong_tap'], so_to=r['so_to'], don_vi=r['don_vi'],
+                thoi_han_bao_quan=r['thoi_han'], so_to_tap=r['so_to_tap'],
+                user_ipcas=r['user'] or ipcas, gdv_id=gdv_ipcas.get(r['user']), nguoi_lap=request.user,
+            ))
+            continue
+        if r['user']:
+            bia.user_ipcas, bia.gdv_id = r['user'], gdv_ipcas[r['user']]
+        if r['so_to_tap']:
+            bia.so_to_tap = r['so_to_tap']
+        cap_nhat.append(bia)
+    with transaction.atomic():
+        BiaChungTu.objects.bulk_create(moi)
+        BiaChungTu.objects.bulk_update(cap_nhat, ['user_ipcas', 'gdv', 'so_to_tap'])
+    messages.success(request, f'Đã import {len(moi)} bìa mới, cập nhật {len(cap_nhat)} bìa đã có.')
     return redirect('bia_chung_tu_list')
 
 
@@ -497,8 +537,8 @@ def _draw_nhan_qr(c, bia, ma_cn, ten_cn, x0, y_top):
     c.drawString(x0 + 2 * mm, mid(0, 11), f'{ma_cn}-Agribank chi nhánh {ten_cn}')
 
     ngay = f'{bia.ngay_chung_tu:%d/%m/%Y}'
-    # Số tờ ở nhãn = tổng số tờ GDV phát sinh trong ngày, hậu kiểm điền tay
-    center(f'Chứng từ ngày {ngay} (…. tờ)', xa, xr, 1, 12, 3 * mm)
+    # Số tờ ở nhãn = số tờ của tập chứng từ; chưa có thì để "…." cho hậu kiểm điền tay
+    center(f'Chứng từ ngày {ngay} ({bia.so_to_tap or "…."} tờ)', xa, xr, 1, 12, 3 * mm)
     center(f'Số tập chứng từ trong ngày: {bia.tong_tap}', xa, xr, 1, 12, -3 * mm)
     center(_ho_ten(bia), xa, xr, 2, 12)
 
