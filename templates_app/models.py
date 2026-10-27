@@ -2421,6 +2421,19 @@ class BiaChungTu(models.Model):
         return f"{self.so_ho_so} - {self.ngay_chung_tu.strftime('%d/%m/%Y')} - Tập {self.tap_so}/{self.tong_tap}"
 
 
+class BiaThuTuIn(models.Model):
+    """Thứ tự in (thứ tự cấp số) đã nhớ của từng GDV ở màn hình Cấp số bìa chứng từ."""
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='bia_thu_tu_in', verbose_name="Giao dịch viên")
+    thu_tu = models.PositiveIntegerField(verbose_name="Thứ tự in")
+
+    class Meta:
+        verbose_name = "Thứ tự in bìa chứng từ"
+        verbose_name_plural = "Thứ tự in bìa chứng từ"
+
+    def __str__(self):
+        return f"{self.user} - {self.thu_tu}"
+
+
 # ============================================================================
 # ATM Management Models
 # ============================================================================

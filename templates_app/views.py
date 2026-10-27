@@ -91,7 +91,6 @@ def _dashboard_alerts(user, today):
         ngay_het_han_cmnd__gte=today,
         ngay_het_han_cmnd__lte=today + timedelta(days=CCCD_ALERT_DAYS),
     ).order_by('ngay_het_han_cmnd')
-    cccd_da_het_han_count = Customer.objects.filter(ngay_het_han_cmnd__lt=today).count()
 
     hdv_cho_duyet, hdv_cho_add = _pgd_status_counts(user)
 
@@ -109,7 +108,6 @@ def _dashboard_alerts(user, today):
         'cccd_alert_days': CCCD_ALERT_DAYS,
         'cccd_sap_het_han': cccd_sap_het_han[:10],
         'cccd_sap_het_han_count': cccd_sap_het_han.count(),
-        'cccd_da_het_han_count': cccd_da_het_han_count,
         # Chỉ KSV mới duyệt được nên chỉ nhắc KSV
         'hdv_cho_duyet': hdv_cho_duyet if _is_kiem_soat_vien(user) else 0,
         'hdv_cho_add': hdv_cho_add,

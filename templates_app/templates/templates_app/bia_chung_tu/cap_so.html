@@ -17,8 +17,14 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Số bắt đầu ({{ ma_cn }}-{{ ngay|date:'Y' }}.NNNN)</label>
-                    <input type="number" min="1" class="form-control" name="so_bat_dau" value="{{ so_bat_dau }}" required>
-                    <div class="form-text">Gợi ý: số lớn nhất trong năm + 1</div>
+                    <input type="number" min="1" class="form-control" name="so_bat_dau" id="soBatDau" value="{{ so_bat_dau }}" required>
+                    {% if so_goi_y %}
+                    <div class="form-text">
+                        Gợi ý (số lớn nhất trong năm + 1): <b>{{ so_goi_y }}</b>
+                        <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
+                                onclick="document.getElementById('soBatDau').value='{{ so_goi_y }}';">Dùng số gợi ý</button>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Đã có trong ngày</label>
@@ -34,18 +40,20 @@
                         <th>Giao dịch viên</th>
                         <th>UserIPCAS (QR)</th>
                         <th style="width: 140px;">Số tập</th>
+                        <th style="width: 140px;" title="Để trống = mặc định (theo họ tên)">Thứ tự in</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for uid, name, user_ipcas in gdv_rows %}
+                    {% for uid, name, user_ipcas, thu_tu in gdv_rows %}
                     <tr>
                         <td><input type="checkbox" class="form-check-input row-chk" name="chk_{{ uid }}" id="chk_{{ uid }}" value="1"></td>
                         <td><label for="chk_{{ uid }}">{{ name }}</label></td>
                         <td>{% if user_ipcas %}{{ user_ipcas }}{% else %}<span class="text-danger small">Chưa khai báo</span>{% endif %}</td>
                         <td><input type="number" min="1" class="form-control form-control-sm" name="so_tap_{{ uid }}" value="1"></td>
+                        <td><input type="number" min="1" class="form-control form-control-sm" name="thu_tu_{{ uid }}" value="{{ thu_tu|default_if_none:'' }}" placeholder="Mặc định"></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="text-muted">Chưa có GDV phòng Kế toán & Ngân quỹ nào ở đơn vị này.</td></tr>
+                    <tr><td colspan="5" class="text-muted">Chưa có GDV phòng Kế toán & Ngân quỹ nào ở đơn vị này.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -53,6 +61,7 @@
             <button type="submit" class="btn btn-danger">
                 <i class="bi bi-plus-circle"></i> Cấp số hồ sơ
             </button>
+            <span class="form-text ms-2">"Thứ tự in" được nhớ cho các lần sau; xoá trống ô để về mặc định.</span>
         </div>
     </form>
 </div>

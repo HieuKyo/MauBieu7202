@@ -55,6 +55,32 @@ class BiaChungTuTests(TestCase):
         self.assertEqual(set(BiaChungTu.objects.values_list('tong_tap', flat=True)), {6})
         self.assertEqual(BiaChungTu.objects.get(so_ho_so='7202-2026.0035').tap_so, 6)
 
+    def test_cap_so_theo_thu_tu_in(self):
+        a, b, c, d = self.gdvs
+        data = {'ngay': '2026-10-26', 'so_bat_dau': 1}
+        for u in (a, b, c, d):
+            data[f'chk_{u.pk}'] = '1'
+            data[f'so_tap_{u.pk}'] = '1'
+        data[f'thu_tu_{c.pk}'] = '1'
+        data[f'thu_tu_{a.pk}'] = '2'
+        self.client.post(reverse('bia_chung_tu_cap_so'), data)
+        # C, A theo thứ tự đã chọn; B, D để trống → mặc định theo họ tên
+        self.assertEqual(list(BiaChungTu.objects.order_by('tap_so').values_list('gdv_id', flat=True)),
+                         [c.pk, a.pk, b.pk, d.pk])
+
+    def test_thu_tu_in_duoc_nho(self):
+        a, b, c, d = self.gdvs
+        self.client.post(reverse('bia_chung_tu_cap_so'), {
+            'ngay': '2026-10-26', 'so_bat_dau': 1, f'chk_{a.pk}': '1',
+            f'thu_tu_{c.pk}': '1', f'thu_tu_{a.pk}': '2'})
+        resp = self.client.get(reverse('bia_chung_tu_cap_so'))
+        self.assertEqual([(r[0], r[3]) for r in resp.context['gdv_rows']],
+                         [(c.pk, 1), (a.pk, 2), (b.pk, None), (d.pk, None)])
+        # Xoá trống ô của C → C về mặc định
+        self.client.post(reverse('bia_chung_tu_cap_so'), {'ngay': '2026-10-26', f'thu_tu_{a.pk}': '2'})
+        resp = self.client.get(reverse('bia_chung_tu_cap_so'))
+        self.assertEqual([r[0] for r in resp.context['gdv_rows']], [a.pk, b.pk, c.pk, d.pk])
+
     def test_cap_so_trung_so_bi_chan(self):
         self._cap_so(date(2026, 10, 26), 30, {self.gdvs[0]: 2})
         self._cap_so(date(2026, 10, 27), 31, {self.gdvs[1]: 1})
@@ -68,7 +94,9 @@ class BiaChungTuTests(TestCase):
     def test_danh_sach_gdv_chi_phong_ke_toan(self):
         resp = self.client.get(reverse('bia_chung_tu_cap_so'))
         self.assertNotContains(resp, 'TINDUNG')
-        self.assertEqual([n for _, n, _ in resp.context['gdv_rows']], ['A', 'B', 'C', 'D'])
+        self.assertEqual([r[1] for r in resp.context['gdv_rows']], ['A', 'B', 'C', 'D'])
+        self.assertEqual(resp.context['so_bat_dau'], '')  # không điền sẵn, chỉ gợi ý
+        self.assertEqual(resp.context['so_goi_y'], 1)
 
     def test_gdv_khong_duoc_vao(self):
         self.client.force_login(self.gdvs[0])
@@ -96,6 +124,7 @@ class BiaChungTuTests(TestCase):
         resp = self.client.post(reverse('bia_chung_tu_print'), {'ids': [bia.pk], f'so_to_{bia.pk}': '7'})
         self.assertEqual(resp['Content-Type'], 'application/pdf')
         self.assertTrue(resp.content.startswith(b'%PDF'))
+        self.assertIn(b'/Count 2', resp.content)  # 1 bìa = trang bìa + trang nhãn QR
         bia.refresh_from_db()
         self.assertIsNotNone(bia.ngay_in)
         self.assertEqual(bia.so_to, 7)

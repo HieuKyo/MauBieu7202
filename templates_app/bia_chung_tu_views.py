@@ -32,7 +32,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-from .models import BiaChungTu, BranchConfig, UserProfile
+from .models import BiaChungTu, BiaThuTuIn, BranchConfig, UserProfile
 
 # Mẫu Word dùng Times New Roman; không có thì rơi về Helvetica (không dấu).
 FONT_REGULAR = 'Helvetica'
@@ -203,14 +203,30 @@ def bia_cap_so(request):
     ngay = _parse_date(request.POST.get('ngay') or request.GET.get('ngay')) or date.today()
 
     if request.method == 'POST':
+        # Lưu "Thứ tự in" đang nhập để lần sau tự điền sẵn (ô trống = bỏ thứ tự đã nhớ)
+        for uid, _, _ in gdv_rows:
+            thu_tu = request.POST.get(f'thu_tu_{uid}', '').strip()
+            if thu_tu.isdigit() and int(thu_tu) > 0:
+                BiaThuTuIn.objects.update_or_create(user_id=uid, defaults={'thu_tu': int(thu_tu)})
+            else:
+                BiaThuTuIn.objects.filter(user_id=uid).delete()
+
+    # GDV có "Thứ tự in" đứng trước (tăng dần), còn lại giữ mặc định (họ tên A→Z)
+    thu_tu_map = dict(BiaThuTuIn.objects.filter(user_id__in=[r[0] for r in gdv_rows]).values_list('user_id', 'thu_tu'))
+    gdv_rows = sorted(
+        [(uid, name, ipcas, thu_tu_map.get(uid)) for uid, name, ipcas in gdv_rows],
+        key=lambda r: (r[3] is None, r[3] or 0),
+    )
+
+    if request.method == 'POST':
         chon, thieu_ipcas = [], []
-        for uid, name, ipcas in gdv_rows:
+        for uid, name, ipcas, _ in gdv_rows:
             if request.POST.get(f'chk_{uid}'):
                 so_tap = request.POST.get(f'so_tap_{uid}', '1')
                 chon.append((uid, (ipcas or '').strip(), int(so_tap) if so_tap.isdigit() and int(so_tap) > 0 else 1))
                 if not (ipcas or '').strip():
                     thieu_ipcas.append(name)
-        so_bat_dau = request.POST.get('so_bat_dau', '')
+        so_bat_dau = request.POST.get('so_bat_dau', '').strip()
 
         if not ma_cn:
             messages.error(request, f'Chưa cấu hình Mã chi nhánh cho đơn vị {branch} (Cấu hình Chi nhánh).')
@@ -219,7 +235,7 @@ def bia_cap_so(request):
         elif not chon:
             messages.error(request, 'Chưa chọn GDV nào.')
         elif not so_bat_dau.isdigit() or int(so_bat_dau) < 1:
-            messages.error(request, 'Số bắt đầu không hợp lệ.')
+            messages.error(request, 'Chưa nhập Số bắt đầu (hoặc số không hợp lệ).')
         else:
             with transaction.atomic():
                 cung_ngay = BiaChungTu.objects.filter(branch=branch, ngay_chung_tu=ngay)
@@ -249,7 +265,8 @@ def bia_cap_so(request):
     return render(request, 'templates_app/bia_chung_tu/cap_so.html', {
         'ngay': ngay,
         'gdv_rows': gdv_rows,
-        'so_bat_dau': request.POST.get('so_bat_dau') or (_next_so(branch, ma_cn, ngay.year) if ma_cn else ''),
+        'so_bat_dau': request.POST.get('so_bat_dau', ''),
+        'so_goi_y': _next_so(branch, ma_cn, ngay.year) if ma_cn else '',
         'ma_cn': ma_cn,
         'ipcas': _ipcas(request.user),
         'da_co': BiaChungTu.objects.filter(branch=branch, ngay_chung_tu=ngay).count(),
@@ -512,7 +529,7 @@ def _draw_nhan_qr(c, bia, ma_cn, ten_cn, x0, y_top):
     renderPDF.draw(d, c, x0 + (c1 - size) / 2, (ys[1] + ys[5]) / 2 - size / 2)
 
 
-def _draw_bia(c, bia, ma_cn, ten_cn, ten_cn_hoa):
+def _draw_bia(c, bia, ten_cn_hoa):
     W, _ = A4
     cx = W / 2
     x0, w = 22 * mm, W - 44 * mm
@@ -548,17 +565,14 @@ def _draw_bia(c, bia, ma_cn, ten_cn, ten_cn_hoa):
     line(f'Ngày bắt đầu: {ngay}    Ngày kết thúc: {ngay}', 110, 14)
     line(f'Gồm: {bia.so_to:02d} tờ (01 {bia.don_vi.lower()})', 120, 14)
 
-    # Nhãn QR ở khoảng trống giữa bìa
-    _draw_nhan_qr(c, bia, ma_cn, ten_cn, cx - 65 * mm, top - 126 * mm)
-
     # Khối thông tin cuối bìa: trái / phải
     c.setFont(FONT_REGULAR, 14)
     left, right = x0 + 12 * mm, x0 + w * 0.72
     for y, l_text, r_text in (
-        (204, 'Phông số :…….……', 'Thời hạn bảo quản'),
-        (213, 'Sổ quản lý hồ sơ số :…….', bia.thoi_han_bao_quan),
-        (222, f'Hồ sơ số: {bia.so_ho_so}', 'Ngày công việc kết thúc'),
-        (231, '', ngay),
+        (198, 'Phông số :…….……', 'Thời hạn bảo quản'),
+        (207, 'Sổ quản lý hồ sơ số :…….', bia.thoi_han_bao_quan),
+        (216, f'Hồ sơ số: {bia.so_ho_so}', 'Ngày công việc kết thúc'),
+        (225, '', ngay),
     ):
         c.drawString(left, top - y * mm, l_text)
         c.drawCentredString(right, top - y * mm, r_text)
@@ -588,7 +602,10 @@ def bia_print(request):
     c = canvas.Canvas(buf, pagesize=A4)
     c.setTitle('Bìa chứng từ')
     for bia in bias:
-        _draw_bia(c, bia, ma_cn, ten_cn, ten_cn_hoa)
+        _draw_bia(c, bia, ten_cn_hoa)
+        c.showPage()
+        # Trang sau: nhãn QR riêng, căn giữa phía trên trang
+        _draw_nhan_qr(c, bia, ma_cn, ten_cn, A4[0] / 2 - 65 * mm, A4[1] - 20 * mm)
         c.showPage()
     c.save()
     BiaChungTu.objects.filter(pk__in=[b.pk for b in bias]).update(ngay_in=timezone.now())

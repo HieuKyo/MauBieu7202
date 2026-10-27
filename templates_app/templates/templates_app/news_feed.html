@@ -235,7 +235,7 @@
 </div>
 
 <!-- Cần chú ý -->
-{% if cccd_sap_het_han_count or cccd_da_het_han_count or hdv_cho_duyet or hdv_cho_add or task_qua_han or task_sap_den_han %}
+{% if cccd_sap_het_han_count or hdv_cho_duyet or hdv_cho_add or task_qua_han or task_sap_den_han %}
 <div class="d-flex align-items-center mb-3">
     <h5 class="mb-0 fw-bold" style="color: var(--agri-red);">
         <i class="bi bi-bell"></i> Cần chú ý
@@ -266,7 +266,7 @@
     </div>
     {% endif %}
 
-    {% if cccd_sap_het_han_count or cccd_da_het_han_count %}
+    {% if cccd_sap_het_han_count %}
     <div class="col-12 col-md-12 col-lg-4">
         <div class="card h-100 border-start border-4 border-info">
             <div class="card-body">
@@ -280,7 +280,6 @@
                     {% if cccd_sap_het_han_count > cccd_sap_het_han|length %}<li class="text-muted">...</li>{% endif %}
                 </ul>
                 {% endif %}
-                {% if cccd_da_het_han_count %}<div class="text-muted small">Đã hết hạn: {{ cccd_da_het_han_count }} khách hàng</div>{% endif %}
             </div>
         </div>
     </div>
