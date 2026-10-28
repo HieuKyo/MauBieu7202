@@ -6763,7 +6763,10 @@ def atm_load_discrepancy_cycle_template(request, atm_id, start_date, end_date, t
             # Mẫu 03: render với GD đầu tiên, chèn thêm dòng KH cho các GD sau
             data = discrepancies[0].get_data_dict()
             data.update(branch_config.get_all_variables())
-            # Nếu có nhiều GD: ghi đè disc_amount và disc_amount_words bằng TỔNG
+            # Nếu có nhiều GD: ghi đè disc_amount và disc_amount_words bằng TỔNG — chỉ ảnh
+            # hưởng ô "Số tiền bằng số/chữ" ở bảng trên; dòng "KH: ..." của từng GD (kể cả
+            # GD đầu tiên) luôn được ghi đè lại bên dưới bằng số tiền RIÊNG của GD đó, không
+            # dùng chung placeholder disc_amount để tránh GD đầu tiên bị hiện nhầm thành tổng.
             if len(discrepancies) > 1:
                 from .models import num_to_vietnamese_words
                 total = sum(int(d.amount) for d in discrepancies)
@@ -6773,6 +6776,30 @@ def atm_load_discrepancy_cycle_template(request, atm_id, start_date, end_date, t
 
             doc = DocxDocument(stream)
 
+            def _kh_line_text(disc):
+                parts = [f"KH: {disc.full_name} STK: {disc.account_number}"]
+                if disc.card_number:
+                    parts.append(f"SO THE: {disc.card_number}")
+                if disc.transaction_id:
+                    parts.append(f"ID: {disc.transaction_id}")
+                if disc.trace_number:
+                    parts.append(f"TRACE: {disc.trace_number}")
+                parts.append(f"Số tiền: {disc.amount:,}đ")
+                return ", ".join(parts)
+
+            def _set_p_text(p_elem, text):
+                runs = p_elem.findall(oxml_qn('w:r'))
+                if not runs:
+                    return
+                t_el = runs[0].find(oxml_qn('w:t'))
+                if t_el is None:
+                    t_el = OxmlEl('w:t')
+                    runs[0].append(t_el)
+                t_el.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+                t_el.text = text
+                for r in runs[1:]:
+                    p_elem.remove(r)
+
             kh_para = None
             for para in doc.paragraphs:
                 if para.text.strip().startswith('KH:'):
@@ -6780,24 +6807,11 @@ def atm_load_discrepancy_cycle_template(request, atm_id, start_date, end_date, t
                     break
 
             if kh_para is not None:
+                _set_p_text(kh_para._p, _kh_line_text(discrepancies[0]))
                 last_p = kh_para._p
                 for disc in discrepancies[1:]:
-                    kh_text = (
-                        f"KH: {disc.full_name} STK: {disc.account_number},"
-                        f" SO THE: {disc.card_number}, ID: {disc.transaction_id},"
-                        f" TRACE: {disc.trace_number}, Số tiền: {disc.amount:,}đ"
-                    )
                     new_p = deepcopy(kh_para._p)
-                    runs = new_p.findall(oxml_qn('w:r'))
-                    if runs:
-                        t_el = runs[0].find(oxml_qn('w:t'))
-                        if t_el is None:
-                            t_el = OxmlEl('w:t')
-                            runs[0].append(t_el)
-                        t_el.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
-                        t_el.text = kh_text
-                        for r in runs[1:]:
-                            new_p.remove(r)
+                    _set_p_text(new_p, _kh_line_text(disc))
                     last_p.addnext(new_p)
                     last_p = new_p
 

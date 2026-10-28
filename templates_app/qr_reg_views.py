@@ -134,8 +134,18 @@ def qr_registration_list_view(request):
 
     ten_cb_default, pgd_default = _profile_defaults_qr(request.user)
 
+    today = date.today()
+    tu_ngay, den_ngay = _current_month_range(today)
+    tong_qr_thang = QRRegistration.objects.filter(
+        ngay_dang_ky__date__gte=tu_ngay, ngay_dang_ky__date__lte=den_ngay
+    ).count()
+    tong_qr_toan_bo = QRRegistration.objects.count()
+
     context = {
         'page_obj': page_obj,
+        'thang_hien_tai': today.strftime('%m/%Y'),
+        'tong_qr_thang': tong_qr_thang,
+        'tong_qr_toan_bo': tong_qr_toan_bo,
         'filters': {'ten_kh': ten_kh, 'so_tai_khoan': so_tai_khoan, 'ten_cua_hang': ten_cua_hang},
         'ten_cb_default': ten_cb_default,
         'pgd_default': pgd_default,

@@ -11,7 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from .bia_chung_tu_views import _next_so, _qr_text
+from .bia_chung_tu_views import _format_so, _next_so, _qr_text
 from .models import BiaChungTu, BranchConfig, UserProfile
 
 SAMPLE_FILE = os.path.join(settings.BASE_DIR, 'samples', 'FILE THANG 01 DEN THANG 7.2026.xlsx')
@@ -118,6 +118,12 @@ class BiaChungTuTests(TestCase):
         self.assertEqual(_next_so('HOI_SO', '7202', 2026), 101)
         self.assertEqual(_next_so('PGD_P1', '7202', 2026), 1)
         self.assertEqual(_next_so('HOI_SO', '7202', 2027), 1)
+        # PGD có hậu tố riêng: 7202LT-2026.NNNN / 7202P1-2026.NNNN
+        self.assertEqual(_format_so('PGD_LANG_TRON', '7202', 2026, 5), '7202LT-2026.0005')
+        self.assertEqual(_format_so('PGD_P1', '7202', 2026, 12), '7202P1-2026.0012')
+        self.assertEqual(_format_so('HOI_SO', '7202', 2026, 30), '7202-2026.0030')
+        BiaChungTu.objects.create(branch='PGD_P1', so_ho_so='7202P1-2026.0007', ngay_chung_tu=date(2026, 1, 2), user_ipcas='X')
+        self.assertEqual(_next_so('PGD_P1', '7202', 2026), 8)
 
     def test_in_pdf_va_qr(self):
         self._cap_so(date(2026, 9, 14), 8, {self.gdvs[0]: 1})

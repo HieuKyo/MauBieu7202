@@ -2913,9 +2913,9 @@ class ATMDiscrepancy(models.Model):
     )
     full_name = models.CharField(max_length=200, verbose_name="Họ tên")
     account_number = models.CharField(max_length=50, verbose_name="Số tài khoản")
-    card_number = models.CharField(max_length=50, verbose_name="Số thẻ")
-    trace_number = models.CharField(max_length=100, verbose_name="Số trace")
-    transaction_id = models.CharField(max_length=100, verbose_name="ID giao dịch")
+    card_number = models.CharField(max_length=50, blank=True, verbose_name="Số thẻ")
+    trace_number = models.CharField(max_length=100, blank=True, verbose_name="Số trace")
+    transaction_id = models.CharField(max_length=100, blank=True, verbose_name="ID giao dịch")
 
     discrepancy_type = models.CharField(
         max_length=10,

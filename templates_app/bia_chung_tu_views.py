@@ -46,6 +46,8 @@ if os.path.exists(r'C:\Windows\Fonts\times.ttf'):
         pass
 
 MANAGER_POSITIONS = ('TRUONG_PHONG', 'PHO_PHONG')
+# Hậu tố số hồ sơ để phân biệt PGD với Hội sở (cả 3 đơn vị cùng mã chi nhánh 7202)
+BRANCH_SUFFIX = {'PGD_LANG_TRON': 'LT', 'PGD_P1': 'P1'}
 TITLE_RE = re.compile(r'ngày\s+(\d{1,2}/\d{1,2}/\d{4})\s*[-–]\s*Tập\s*(\d+)\s*/\s*(\d+)', re.IGNORECASE)
 
 
@@ -107,9 +109,14 @@ def _ho_ten(bia):
     return profile.full_name if profile else ''
 
 
+def _so_prefix(branch, ma_cn, year):
+    """Phần đầu số hồ sơ: Hội sở "7202-2026.", PGD có hậu tố "7202LT-2026." / "7202P1-2026."."""
+    return f'{ma_cn}{BRANCH_SUFFIX.get(branch, "")}-{year}.'
+
+
 def _next_so(branch, ma_cn, year):
     """Số thứ tự tiếp theo trong năm của đơn vị (lớn nhất + 1)."""
-    prefix = f'{ma_cn}-{year}.'
+    prefix = _so_prefix(branch, ma_cn, year)
     nums = [
         int(s[len(prefix):])
         for s in BiaChungTu.objects.filter(branch=branch, so_ho_so__startswith=prefix).values_list('so_ho_so', flat=True)
@@ -118,8 +125,8 @@ def _next_so(branch, ma_cn, year):
     return max(nums, default=0) + 1
 
 
-def _format_so(ma_cn, year, n):
-    return f'{ma_cn}-{year}.{n:04d}'
+def _format_so(branch, ma_cn, year, n):
+    return f'{_so_prefix(branch, ma_cn, year)}{n:04d}'
 
 
 def _lech_tap_days(branch, days):
@@ -247,7 +254,7 @@ def bia_cap_so(request):
                 da_co = cung_ngay.count()
                 tong = da_co + sum(n for _, _, n in chon)
                 start = int(so_bat_dau)
-                so_moi = [_format_so(ma_cn, ngay.year, start + i) for i in range(tong - da_co)]
+                so_moi = [_format_so(branch, ma_cn, ngay.year, start + i) for i in range(tong - da_co)]
                 trung = list(BiaChungTu.objects.filter(branch=branch, so_ho_so__in=so_moi)
                              .values_list('so_ho_so', flat=True))
                 if trung:
@@ -272,6 +279,7 @@ def bia_cap_so(request):
         'gdv_rows': gdv_rows,
         'so_bat_dau': request.POST.get('so_bat_dau', ''),
         'so_goi_y': _next_so(branch, ma_cn, ngay.year) if ma_cn else '',
+        'mau_so': _so_prefix(branch, ma_cn, ngay.year) + 'NNNN',
         'ma_cn': ma_cn,
         'ipcas': _ipcas(request.user),
         'da_co': BiaChungTu.objects.filter(branch=branch, ngay_chung_tu=ngay).count(),
@@ -505,7 +513,7 @@ def bia_import_confirm(request):
 # In PDF
 # ---------------------------------------------------------------------------
 
-def _draw_nhan_qr(c, bia, ma_cn, ten_cn, x0, y_top):
+def _draw_nhan_qr(c, bia, ma_cn, ten_cn, nguoi_in, x0, y_top):
     """Khối nhãn QR như sheet "Mau_in Kho A4" của file xlsb (rộng 130mm, cao 65mm).
     y_top: toạ độ cạnh trên (điểm PDF)."""
     w = 130 * mm
@@ -554,8 +562,14 @@ def _draw_nhan_qr(c, bia, ma_cn, ten_cn, x0, y_top):
     center('Tập', xa, xb, 4, 12)
     center(f'{bia.tap_so}/{bia.tong_tap}', xb, xr, 4, 12)
 
-    c.setFont(FONT_REGULAR, 12)
+    # Người hậu kiểm / đóng chứng từ = Trưởng/Phó phòng đang in bìa; chưa có họ tên thì để dòng chấm
     for i, label in ((5, 'Người hậu kiểm chứng từ: '), (6, 'Người đóng chứng từ: ')):
+        c.setFont(FONT_REGULAR, 12)
+        if nguoi_in:
+            c.drawString(x0 + 2 * mm, mid(i, 12), label)
+            c.setFont(FONT_BOLD, 12)
+            c.drawString(x0 + 2 * mm + c.stringWidth(label, FONT_REGULAR, 12), mid(i, 12), nguoi_in)
+            continue
         text = label
         while c.stringWidth(text + '.', FONT_REGULAR, 12) < w - 6 * mm:
             text += '.'
@@ -637,6 +651,7 @@ def bia_print(request):
     ma_cn = _ma_cn(branch)
     cfg = BranchConfig.objects.filter(branch_code=branch).first()
     ten_cn, ten_cn_hoa = (cfg.ten_chi_nhanh, cfg.ten_chi_nhanh_hoa) if cfg else ('', '')
+    nguoi_in = request.user.profile.full_name  # _manager_branch đã bảo đảm có hồ sơ
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
@@ -645,7 +660,7 @@ def bia_print(request):
         _draw_bia(c, bia, ten_cn_hoa)
         c.showPage()
         # Trang sau: nhãn QR riêng, căn giữa phía trên trang
-        _draw_nhan_qr(c, bia, ma_cn, ten_cn, A4[0] / 2 - 65 * mm, A4[1] - 20 * mm)
+        _draw_nhan_qr(c, bia, ma_cn, ten_cn, nguoi_in, A4[0] / 2 - 65 * mm, A4[1] - 20 * mm)
         c.showPage()
     c.save()
     BiaChungTu.objects.filter(pk__in=[b.pk for b in bias]).update(ngay_in=timezone.now())
