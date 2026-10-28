@@ -260,6 +260,7 @@ urlpatterns = [
     path('bia-chung-tu/import/', bia_chung_tu_views.bia_import, name='bia_chung_tu_import'),
     path('bia-chung-tu/import/xac-nhan/', bia_chung_tu_views.bia_import_confirm, name='bia_chung_tu_import_confirm'),
     path('bia-chung-tu/in/', bia_chung_tu_views.bia_print, name='bia_chung_tu_print'),
+    path('bia-chung-tu/huong-dan/', bia_chung_tu_views.bia_huong_dan, name='bia_chung_tu_huong_dan'),
 
     # Permission Management
     path('permissions/', views.permission_management_view, name='permission_management'),

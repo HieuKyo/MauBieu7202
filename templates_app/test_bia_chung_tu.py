@@ -137,6 +137,31 @@ class BiaChungTuTests(TestCase):
         self.assertIsNotNone(bia.ngay_in)
         self.assertEqual(bia.so_to, 7)
 
+    def test_nhan_qr_hau_kiem_va_nguoi_dong(self):
+        import fitz
+        hkv = _user('hkv', branch='PGD_P1', job='HAU_KIEM_VIEN')  # role chung, khác đơn vị vẫn in
+        self._cap_so(date(2026, 9, 14), 8, {self.gdvs[0]: 1})
+        bia = BiaChungTu.objects.get()
+
+        def text_trang_2():
+            pdf = self.client.get(reverse('bia_chung_tu_print') + f'?id={bia.pk}').content
+            return fitz.open(stream=pdf, filetype='pdf')[1].get_text()
+
+        t = text_trang_2()
+        self.assertIn('Người hậu kiểm chứng từ: HKV', t)
+        self.assertIn('Người đóng chứng từ: A', t)  # GDV của tập
+        # Đổi Hậu kiểm viên → bìa in sau mang tên người mới
+        hkv.profile.job_function = 'GIAO_DICH_VIEN'
+        hkv.profile.save()
+        UserProfile.objects.filter(user=self.gdvs[1]).update(job_function='HAU_KIEM_VIEN')
+        self.assertIn('Người hậu kiểm chứng từ: B', text_trang_2())
+
+    def test_tai_huong_dan(self):
+        resp = self.client.get(reverse('bia_chung_tu_huong_dan'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('attachment', resp['Content-Disposition'])
+        self.assertTrue(b''.join(resp.streaming_content).startswith(b'PK'))  # .docx = zip
+
     def _import_sample(self):
         with open(SAMPLE_FILE, 'rb') as f:
             resp = self.client.post(reverse('bia_chung_tu_import'), {'file': SimpleUploadedFile('x.xlsx', f.read())})

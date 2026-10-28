@@ -18,7 +18,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.http import HttpResponse
+from django.conf import settings
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -513,7 +514,7 @@ def bia_import_confirm(request):
 # In PDF
 # ---------------------------------------------------------------------------
 
-def _draw_nhan_qr(c, bia, ma_cn, ten_cn, nguoi_in, x0, y_top):
+def _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, x0, y_top):
     """Khối nhãn QR như sheet "Mau_in Kho A4" của file xlsb (rộng 130mm, cao 65mm).
     y_top: toạ độ cạnh trên (điểm PDF)."""
     w = 130 * mm
@@ -562,13 +563,14 @@ def _draw_nhan_qr(c, bia, ma_cn, ten_cn, nguoi_in, x0, y_top):
     center('Tập', xa, xb, 4, 12)
     center(f'{bia.tap_so}/{bia.tong_tap}', xb, xr, 4, 12)
 
-    # Người hậu kiểm / đóng chứng từ = Trưởng/Phó phòng đang in bìa; chưa có họ tên thì để dòng chấm
-    for i, label in ((5, 'Người hậu kiểm chứng từ: '), (6, 'Người đóng chứng từ: ')):
+    # Người hậu kiểm = Hậu kiểm viên của đơn vị; người đóng = GDV của tập. Chưa có thì để dòng chấm
+    dong_ct = getattr(getattr(bia.gdv, 'profile', None), 'full_name', '')
+    for i, label, ten in ((5, 'Người hậu kiểm chứng từ: ', hau_kiem), (6, 'Người đóng chứng từ: ', dong_ct)):
         c.setFont(FONT_REGULAR, 12)
-        if nguoi_in:
+        if ten:
             c.drawString(x0 + 2 * mm, mid(i, 12), label)
             c.setFont(FONT_BOLD, 12)
-            c.drawString(x0 + 2 * mm + c.stringWidth(label, FONT_REGULAR, 12), mid(i, 12), nguoi_in)
+            c.drawString(x0 + 2 * mm + c.stringWidth(label, FONT_REGULAR, 12), mid(i, 12), ten)
             continue
         text = label
         while c.stringWidth(text + '.', FONT_REGULAR, 12) < w - 6 * mm:
@@ -633,6 +635,13 @@ def _draw_bia(c, bia, ten_cn_hoa):
 
 
 @login_required
+def bia_huong_dan(request):
+    """Tải hướng dẫn dạng Word (bản .docx sinh từ docs/HUONG_DAN_TAO_BIA_CHUNG_TU.md)."""
+    path = os.path.join(settings.BASE_DIR, 'docs', 'HUONG_DAN_TAO_BIA_CHUNG_TU.docx')
+    return FileResponse(open(path, 'rb'), as_attachment=True, filename='Huong_dan_Tao_bia_chung_tu.docx')
+
+
+@login_required
 @require_http_methods(['GET', 'POST'])
 def bia_print(request):
     """In PDF: POST ids=<id>... (in nhiều, tích chọn trên danh sách) hoặc GET ?id=<id> (in 1 bìa)."""
@@ -651,7 +660,11 @@ def bia_print(request):
     ma_cn = _ma_cn(branch)
     cfg = BranchConfig.objects.filter(branch_code=branch).first()
     ten_cn, ten_cn_hoa = (cfg.ten_chi_nhanh, cfg.ten_chi_nhanh_hoa) if cfg else ('', '')
-    nguoi_in = request.user.profile.full_name  # _manager_branch đã bảo đảm có hồ sơ
+    # Hậu kiểm viên dùng chung cho Hội sở + 2 PGD, lấy theo hồ sơ nhân viên lúc in
+    # → đổi nghiệp vụ Hậu kiểm viên thì bìa in sau đổi theo
+    hau_kiem = ', '.join(UserProfile.objects.filter(
+        job_function='HAU_KIEM_VIEN', user__is_active=True,
+    ).order_by('full_name').values_list('full_name', flat=True))
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
@@ -660,7 +673,7 @@ def bia_print(request):
         _draw_bia(c, bia, ten_cn_hoa)
         c.showPage()
         # Trang sau: nhãn QR riêng, căn giữa phía trên trang
-        _draw_nhan_qr(c, bia, ma_cn, ten_cn, nguoi_in, A4[0] / 2 - 65 * mm, A4[1] - 20 * mm)
+        _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, A4[0] / 2 - 65 * mm, A4[1] - 20 * mm)
         c.showPage()
     c.save()
     BiaChungTu.objects.filter(pk__in=[b.pk for b in bias]).update(ngay_in=timezone.now())
