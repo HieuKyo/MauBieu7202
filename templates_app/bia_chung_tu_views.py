@@ -585,6 +585,14 @@ def _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, x0, y_top):
     renderPDF.draw(d, c, x0 + (c1 - size) / 2, (ys[1] + ys[5]) / 2 - size / 2)
 
 
+# Dòng dưới tên chi nhánh trên bìa, theo đơn vị của bìa
+PHONG_BIA = {
+    'HOI_SO': 'PHÒNG KẾ TOÁN VÀ NGÂN QUỸ',
+    'PGD_LANG_TRON': 'PHÒNG GIAO DỊCH LÁNG TRÒN',
+    'PGD_P1': 'PHÒNG GIAO DỊCH PHƯỜNG 1',
+}
+
+
 def _draw_bia(c, bia, ten_cn_hoa):
     W, _ = A4
     cx = W / 2
@@ -609,7 +617,7 @@ def _draw_bia(c, bia, ten_cn_hoa):
     line('NGÂN HÀNG NÔNG NGHIỆP', 11, 12)
     line('VÀ PHÁT TRIỂN NÔNG THÔN VIỆT NAM', 18, 12)
     line(f'CHI NHÁNH {ten_cn_hoa}', 25.5, 11, bold=True)
-    line('PHÒNG KẾ TOÁN VÀ NGÂN QUỸ', 32, 11, bold=True)
+    line(PHONG_BIA.get(bia.branch, PHONG_BIA['HOI_SO']), 32, 11, bold=True)
     c.setLineWidth(0.6)
     c.line(cx - 19.5 * mm, top - 34 * mm, cx + 19.5 * mm, top - 34 * mm)
 
@@ -659,7 +667,10 @@ def bia_print(request):
 
     ma_cn = _ma_cn(branch)
     cfg = BranchConfig.objects.filter(branch_code=branch).first()
-    ten_cn, ten_cn_hoa = (cfg.ten_chi_nhanh, cfg.ten_chi_nhanh_hoa) if cfg else ('', '')
+    ten_cn = cfg.ten_chi_nhanh if cfg else ''
+    # Bìa luôn ghi tên chi nhánh (Hội sở), tên PGD nằm ở dòng PHONG_BIA bên dưới
+    cfg_hs = BranchConfig.objects.filter(branch_code='HOI_SO').first()
+    ten_cn_hoa = cfg_hs.ten_chi_nhanh_hoa if cfg_hs else ''
     # Hậu kiểm viên dùng chung cho Hội sở + 2 PGD, lấy theo hồ sơ nhân viên lúc in
     # → đổi nghiệp vụ Hậu kiểm viên thì bìa in sau đổi theo
     hau_kiem = ', '.join(UserProfile.objects.filter(

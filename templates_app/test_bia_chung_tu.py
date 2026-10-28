@@ -156,6 +156,22 @@ class BiaChungTuTests(TestCase):
         UserProfile.objects.filter(user=self.gdvs[1]).update(job_function='HAU_KIEM_VIEN')
         self.assertIn('Người hậu kiểm chứng từ: B', text_trang_2())
 
+    def test_bia_ten_chi_nhanh_va_phong(self):
+        import fitz
+        BranchConfig.objects.filter(branch_code='PGD_P1').update(ten_chi_nhanh_hoa='GIÁ RAI BẠC LIÊU - PGD PHƯỜNG 1')
+        hs = BiaChungTu.objects.create(branch='HOI_SO', so_ho_so='7202-2026.0001', ngay_chung_tu=date(2026, 1, 2), user_ipcas='X')
+        pgd = BiaChungTu.objects.create(branch='PGD_P1', so_ho_so='7202P1-2026.0001', ngay_chung_tu=date(2026, 1, 2), user_ipcas='X')
+
+        def trang_bia(bia, user):
+            self.client.force_login(user)
+            pdf = self.client.get(reverse('bia_chung_tu_print') + f'?id={bia.pk}').content
+            return fitz.open(stream=pdf, filetype='pdf')[0].get_text()
+
+        t = trang_bia(hs, self.pp)
+        self.assertIn('CHI NHÁNH GIÁ RAI BẠC LIÊU\nPHÒNG KẾ TOÁN VÀ NGÂN QUỸ', t)
+        t = trang_bia(pgd, _user('pp_p1', branch='PGD_P1', position='TRUONG_PHONG'))
+        self.assertIn('CHI NHÁNH GIÁ RAI BẠC LIÊU\nPHÒNG GIAO DỊCH PHƯỜNG 1', t)
+
     def test_tai_huong_dan(self):
         resp = self.client.get(reverse('bia_chung_tu_huong_dan'))
         self.assertEqual(resp.status_code, 200)
