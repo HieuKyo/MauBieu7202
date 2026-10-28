@@ -466,6 +466,14 @@ class BankStatementViewTests(TestCase):
         trans2 = upload().transactions.get()
         self.assertEqual((trans2.beneficiary_name, trans2.source), ('NGUYEN VAN X', 'Danh bạ'))
 
+    def test_tai_huong_dan(self):
+        resp = self.client.get(reverse('bank_statement_huong_dan'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('attachment', resp['Content-Disposition'])
+        self.assertTrue(b''.join(resp.streaming_content).startswith(b'PK'))  # .docx = zip
+        page = self.client.get(reverse('bank_statement_upload'))
+        self.assertContains(page, reverse('bank_statement_huong_dan'))
+
     def test_import_names_rejects_wrong_file(self):
         statement = BankStatement.objects.create(file_name='x', total_transactions=0, uploaded_by=self.user)
         response = self.client.post(

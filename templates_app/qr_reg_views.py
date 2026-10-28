@@ -8,6 +8,9 @@ from datetime import date, timedelta
 
 import openpyxl
 import pandas as pd
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
 from openpyxl.styles import Alignment, Font, PatternFill
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -22,6 +25,42 @@ from .models import BranchConfig, QRRegistration
 from .report_views import _find_col, _hdv_clean_str
 
 TEN_CUA_HANG_MAC_DINH = "Quét mã QR để chuyển khoản"
+
+# Nội dung hướng dẫn — dùng chung cho modal "Hướng dẫn" và file Word tải về.
+QR_HUONG_DAN = [
+    ("1. Giới thiệu", [
+        "Chức năng Đăng ký bảng QR giúp cán bộ ghi nhận các bảng QR chuyển khoản đã phát hành cho khách hàng/cửa hàng.",
+        "Gồm 2 trang: Dashboard (thống kê theo tháng) và Đăng ký QR (nhập, sửa, xóa, upload hàng loạt).",
+        "Mỗi cán bộ chỉ thấy và chỉnh sửa các bản ghi do mình đăng ký.",
+    ]),
+    ("2. Đăng ký từng bảng QR", [
+        "Vào menu Đăng ký QR, bấm nút \"Đăng ký\".",
+        "Nhập Tên khách hàng và Số tài khoản (bắt buộc).",
+        "Tên cửa hàng có thể bỏ trống — hệ thống tự điền \"Quét mã QR để chuyển khoản\".",
+        "Tên cán bộ đăng ký tự lấy theo hồ sơ, có thể sửa lại; Phòng giao dịch tự lấy theo hồ sơ và không sửa được.",
+        "Bấm \"Đăng ký\" để lưu.",
+    ]),
+    ("3. Đăng ký hàng loạt bằng file Excel", [
+        "Bấm \"Tải file mẫu\" để tải file Mau_Dang_Ky_QR.xlsx.",
+        "Điền mỗi dòng một khách hàng với các cột: Tên khách hàng, Số tài khoản, Tên cửa hàng (nếu có). Xóa dòng ví dụ trước khi upload.",
+        "Bấm \"Upload đăng ký QR\", chọn file và bấm \"Upload\".",
+        "Dòng thiếu Tên khách hàng hoặc Số tài khoản sẽ bị bỏ qua; hệ thống báo số dòng đã tạo và số dòng bỏ qua.",
+        "Tên cán bộ và Phòng giao dịch lấy theo hồ sơ người upload.",
+    ]),
+    ("4. Tìm kiếm, sửa, xóa", [
+        "Dùng Bộ lọc tìm kiếm theo Tên khách hàng, Số tài khoản, Tên cửa hàng rồi bấm \"Lọc\".",
+        "Bấm biểu tượng bút chì để sửa, biểu tượng thùng rác để xóa bản ghi.",
+    ]),
+    ("5. Bộ đếm và Dashboard", [
+        "Trang Đăng ký QR hiển thị số QR đã phát hành trong tháng hiện tại và tổng số QR toàn bộ (tính trên toàn hệ thống).",
+        "Trang Dashboard thống kê theo tháng được chọn: tổng số QR, số cán bộ, số phòng giao dịch, biểu đồ theo ngày và bảng xếp hạng theo cán bộ/phòng giao dịch.",
+    ]),
+    ("6. Tải danh sách QR (chỉ Admin)", [
+        "Tài khoản Admin có thêm nút \"Tải danh sách QR (Admin)\" để tải file Excel danh sách QR của tất cả cán bộ.",
+        "File áp dụng theo bộ lọc đang chọn; để tải toàn bộ, hãy để trống bộ lọc.",
+        "Tài khoản không phải Admin không thấy nút và không tải được file.",
+    ]),
+]
 
 
 def _current_month_range(today):
@@ -104,6 +143,7 @@ def qr_dashboard_view(request):
         'chart_values_json': json.dumps(chart_values),
         'by_can_bo': by_can_bo,
         'by_pgd': by_pgd,
+        'qr_huong_dan': QR_HUONG_DAN,
     }
     return render(request, 'templates_app/qr/dashboard.html', context)
 
@@ -146,6 +186,7 @@ def qr_registration_list_view(request):
         'thang_hien_tai': today.strftime('%m/%Y'),
         'tong_qr_thang': tong_qr_thang,
         'tong_qr_toan_bo': tong_qr_toan_bo,
+        'qr_huong_dan': QR_HUONG_DAN,
         'filters': {'ten_kh': ten_kh, 'so_tai_khoan': so_tai_khoan, 'ten_cua_hang': ten_cua_hang},
         'ten_cb_default': ten_cb_default,
         'pgd_default': pgd_default,
@@ -302,6 +343,34 @@ def qr_registration_export_view(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
     resp['Content-Disposition'] = f'attachment; filename="Danh_Sach_QR_{date.today():%Y%m%d}.xlsx"'
+    return resp
+
+
+@login_required
+def qr_huong_dan_word_view(request):
+    """Tải hướng dẫn sử dụng chức năng Đăng ký bảng QR dạng Word (.docx)."""
+    doc = Document()
+    normal = doc.styles['Normal']
+    normal.font.name = 'Times New Roman'
+    normal.font.size = Pt(13)
+
+    title = doc.add_heading('HƯỚNG DẪN SỬ DỤNG CHỨC NĂNG ĐĂNG KÝ BẢNG QR', level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    for heading, items in QR_HUONG_DAN:
+        doc.add_heading(heading, level=1)
+        for item in items:
+            doc.add_paragraph(item, style='List Bullet')
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    resp['Content-Disposition'] = 'attachment; filename="Huong_dan_Dang_ky_QR.docx"'
     return resp
 
 

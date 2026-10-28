@@ -3652,6 +3652,15 @@ def bank_statement_import_names(request, statement_id):
 
 
 @login_required
+def bank_statement_huong_dan(request):
+    """Tải hướng dẫn dạng Word (bản .docx sinh từ docs/HUONG_DAN_PHAN_TICH_SAO_KE.md)."""
+    from django.conf import settings
+    from django.http import FileResponse
+    path = os.path.join(settings.BASE_DIR, 'docs', 'HUONG_DAN_PHAN_TICH_SAO_KE.docx')
+    return FileResponse(open(path, 'rb'), as_attachment=True, filename='Huong_dan_Phan_tich_sao_ke.docx')
+
+
+@login_required
 def bank_statement_export(request, statement_id):
     """
     Export báo cáo sao kê ra file Excel
@@ -5482,6 +5491,114 @@ def atm_dashboard(request):
         'templates': templates,
     }
     return render(request, 'templates_app/atm/dashboard.html', context)
+
+
+@login_required
+def atm_guide_download(request):
+    """Tạo và tải file Word hướng dẫn sử dụng chức năng quản lý ATM."""
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền truy cập trang này')
+        return redirect('dashboard')
+
+    from docx import Document as DocxDocument
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    doc = DocxDocument()
+
+    def add_title(text):
+        p = doc.add_heading(text, level=0)
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    def add_h(text, level=1):
+        doc.add_heading(text, level=level)
+
+    def add_p(text, bold=False):
+        p = doc.add_paragraph()
+        run = p.add_run(text)
+        run.bold = bold
+        return p
+
+    def add_bullets(items):
+        for item in items:
+            doc.add_paragraph(item, style='List Bullet')
+
+    add_title('HƯỚNG DẪN SỬ DỤNG CHỨC NĂNG QUẢN LÝ ATM')
+    add_p('Tài liệu này hướng dẫn các chức năng chính trong mục Quản lý ATM: Tiếp quỹ, '
+          'Thừa/thiếu quỹ, Bảng kê thanh toán công tác phí và Ban quản lý ATM.')
+
+    add_h('1. Tiếp quỹ ATM')
+    add_p('Dùng để lập phiếu tiếp quỹ cho từng máy ATM theo ngày, kèm số lượng tờ tiền '
+          'theo từng mệnh giá và thông tin lệnh điều chuyển (phương tiện, tài xế, bảo vệ).')
+    add_bullets([
+        'Vào Quản lý ATM → "Tạo phiếu tiếp quỹ", chọn máy ATM, ngày tiếp quỹ, nhập số tờ '
+        'từng mệnh giá (50k/100k/200k/500k) — hệ thống tự tính tổng số tiền.',
+        'Mỗi phiếu được tự động gán "Số văn bản giấy đi đường" tăng dần theo từng năm '
+        '(sang năm mới tự reset về 1) — dùng để in lên giấy đi đường, không cần nhập tay.',
+        'Sau khi lưu, chọn mẫu biểu (Tiếp quỹ ATM 04/06, Tiếp quỹ ATM 05...) để tạo file Word.',
+    ])
+
+    add_h('2. Thừa/thiếu quỹ ATM')
+    add_p('Dùng để ghi nhận các giao dịch thừa hoặc thiếu quỹ phát hiện khi đối chiếu, và '
+          'in giấy đề nghị hạch toán gửi bộ phận kế toán.')
+    add_bullets([
+        'Thêm từng giao dịch: Họ tên, Số tài khoản là bắt buộc; Số thẻ, ID giao dịch, '
+        'Số trace có thể để trống nếu không có — khi in, các nhãn tương ứng (SO THE/ID/'
+        'TRACE) sẽ tự động ẩn nếu để trống, không in nhãn kèm chỗ trống.',
+        'Có thể nhập nhiều giao dịch cùng lúc (nhập hàng loạt) cho cùng 1 chu kỳ kiểm quỹ.',
+        'Khi in theo cả chu kỳ (nhiều giao dịch của cùng 1 máy ATM, cùng khoảng ngày): '
+        'Mẫu 03/THE/QTGD sẽ gộp tất cả giao dịch vào 1 trang, mỗi giao dịch 1 dòng, số tiền '
+        'của từng người hiển thị đúng riêng từng giao dịch; riêng ô "Số tiền bằng số/chữ" '
+        'ở đầu trang hiển thị TỔNG của cả chu kỳ. Mẫu 04/THE/QTGD in mỗi giao dịch 1 trang riêng.',
+    ])
+
+    add_h('3. Bảng kê thanh toán công tác phí (Giấy đi đường)')
+    add_p('Xem trước và xuất file Word Bảng kê thanh toán + Giấy đi đường cho Ban quản lý '
+          'ATM theo khoảng ngày bất kỳ.')
+    add_bullets([
+        'Hệ thống tự tính đúng ai là người trực/phụ trách để thanh toán cho TỪNG NGÀY cụ thể, '
+        'kể cả khi trong cùng 1 khoảng ngày có nhiều người luân phiên (vd: người A trực vài '
+        'ngày, chuyển sang người B, rồi A quay lại) — mỗi giai đoạn được tính và liệt kê riêng, '
+        'không gộp nhầm hay bỏ sót.',
+        'Điều kiện để tính đúng: mỗi lần đổi người phụ trách PHẢI tạo một bản ghi MỚI trong '
+        '"Ban quản lý ATM" (xem mục 4) — không sửa lại bản ghi cũ của người đã từng giữ vị trí.',
+    ])
+
+    add_h('4. Ban quản lý ATM')
+    add_p('Quản lý danh sách người giữ các vị trí trong Ban quản lý ATM (Trưởng ban, Trưởng '
+          'phòng KTNQ, Cán bộ phụ trách ATM) theo từng giai đoạn, kèm số/ngày quyết định thành lập.')
+    add_bullets([
+        'Quản lý qua trang Admin (/admin/) → "Ban quản lý ATM". Mỗi lần một người được phân '
+        'công vào 1 vị trí (kể cả người đã từng giữ vị trí đó quay lại), bấm "Thêm" để tạo '
+        'bản ghi mới — hệ thống tự động kết thúc hiệu lực của người đang giữ vị trí trước đó.',
+        'Một bản ghi đã kết thúc hiệu lực (đã có người khác tiếp nhận sau đó) sẽ tự động bị '
+        'khóa, không cho sửa — để không làm sai lệch số quyết định và bảng kê thanh toán của '
+        'giai đoạn đã qua. Muốn thay đổi, luôn tạo bản ghi mới.',
+        'Số quyết định/Ngày quyết định của Trưởng ban được dùng làm biến chung cho các mẫu '
+        'in liên quan (board_decision_number, board_decision_date, disc_board_decision_number, '
+        'disc_board_decision_date) — xem chi tiết tại trang "Thư viện Biến".',
+    ])
+
+    add_h('5. Mẫu in và Thư viện Biến')
+    add_p('Toàn bộ biến có thể chèn vào các mẫu Word (file .docx) cho ATM được liệt kê tại '
+          'trang "Thư viện Biến" (menu chính), thẻ "Biến ATM" và "Biến Thừa/Thiếu quỹ ATM" — '
+          'tìm theo tên biến hoặc mô tả, bấm nút copy để sao chép tên biến dạng {{tên_biến}}.')
+
+    for section in doc.sections:
+        footer = section.footer
+        footer.paragraphs[0].text = 'Hướng dẫn sử dụng — Quản lý ATM'
+        footer.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    from io import BytesIO
+    output_stream = BytesIO()
+    doc.save(output_stream)
+    output_stream.seek(0)
+
+    response = HttpResponse(
+        output_stream.read(),
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = 'attachment; filename="Huong_Dan_Su_Dung_ATM.docx"'
+    return response
 
 
 @login_required

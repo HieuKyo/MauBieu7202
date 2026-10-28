@@ -112,6 +112,7 @@ urlpatterns = [
     path('bank-statement/upload/', views.bank_statement_upload, name='bank_statement_upload'),
     path('bank-statement/result/<int:statement_id>/', views.bank_statement_result, name='bank_statement_result'),
     path('bank-statement/export/<int:statement_id>/', views.bank_statement_export, name='bank_statement_export'),
+    path('bank-statement/huong-dan/', views.bank_statement_huong_dan, name='bank_statement_huong_dan'),
     path('bank-statement/import-names/<int:statement_id>/', views.bank_statement_import_names, name='bank_statement_import_names'),
 
     # Employee Management
@@ -137,6 +138,7 @@ urlpatterns = [
 
     # ATM Management
     path('atm/', views.atm_dashboard, name='atm_dashboard'),
+    path('atm/guide/download/', views.atm_guide_download, name='atm_guide_download'),
     path('atm/replenishment/create/', views.atm_replenishment_create, name='atm_replenishment_create'),
     path('atm/replenishment/list/', views.atm_replenishment_list, name='atm_replenishment_list'),
     path('atm/replenishment/<int:replenishment_id>/edit/', views.atm_replenishment_edit, name='atm_replenishment_edit'),
@@ -213,6 +215,7 @@ urlpatterns = [
     path('qr/dang-ky/mau-tai-ve/', qr_reg_views.qr_registration_template_download_view, name='qr_registration_template_download'),
     path('qr/dang-ky/upload/', qr_reg_views.qr_registration_import_view, name='qr_registration_import'),
     path('qr/dang-ky/xuat-file/', qr_reg_views.qr_registration_export_view, name='qr_registration_export'),
+    path('qr/huong-dan/', qr_reg_views.qr_huong_dan_word_view, name='qr_huong_dan'),
     path('hdv/import/', hdv_reg_views.hdv_import_upload_view, name='hdv_import_upload'),
 
     # Thống kê chỉ tiêu Sản phẩm dịch vụ (Kế toán Ngân quỹ)
