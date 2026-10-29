@@ -13,6 +13,7 @@ from . import elearning_views
 from . import employee_views
 from . import atm_views
 from . import report_views
+from . import report_dien_luc_views
 from . import report_atm_views
 from . import report_dong_mo_tk_views
 from . import report_huy_dong_von_views
@@ -192,8 +193,8 @@ urlpatterns = [
     path('reports/tiet-kiem-tra-lai/', report_views.tiet_kiem_tra_lai_view, name='tiet_kiem_tra_lai'),
     path('reports/tiet-kiem-tra-lai/detail/<str:metric_key>/', report_views.tiet_kiem_tra_lai_detail, name='tiet_kiem_tra_lai_detail'),
     path('reports/tiet-kiem-tra-lai/download/<str:metric_key>/', report_views.tiet_kiem_tra_lai_download, name='tiet_kiem_tra_lai_download'),
-    path('reports/dien-luc/', report_views.dien_luc_report_view, name='dien_luc_report'),
-    path('reports/dien-luc/process/', report_views.process_dien_luc_report, name='process_dien_luc'),
+    path('reports/dien-luc/', report_dien_luc_views.dien_luc_report_view, name='dien_luc_report'),
+    path('reports/dien-luc/process/', report_dien_luc_views.process_dien_luc_report, name='process_dien_luc'),
     path('reports/atm-fund-balance/', report_atm_views.atm_fund_balance_view, name='atm_fund_balance'),
     path('reports/huy-dong-von/', report_huy_dong_von_views.huy_dong_von_report_view, name='huy_dong_von_report'),
     path('reports/huy-dong-von/process/', report_huy_dong_von_views.process_huy_dong_von_report, name='process_huy_dong_von'),
