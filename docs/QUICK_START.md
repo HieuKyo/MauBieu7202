@@ -176,7 +176,7 @@ Tìm "IPv4 Address"
 
 - **WINDOWS_SETUP.md** - Hướng dẫn chi tiết cho Windows
 - **STATIC_FILES_SETUP.md** - Hướng dẫn xử lý static files
-- **OFFLINE_SETUP.md** - Triển khai offline
+- **INSTALL_LAN.md** (thư mục gốc) - Triển khai offline
 - **README.md** - Tổng quan ứng dụng
 
 ---

@@ -40,9 +40,9 @@ python run_waitress.py
 |----------|-------|
 | [QUICK_START.md](docs/QUICK_START.md) | Bắt đầu nhanh trong 3 bước |
 | [WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md) | Hướng dẫn chi tiết cho Windows |
-| [URGENT_FIX_CSS.md](docs/URGENT_FIX_CSS.md) | Khắc phục lỗi CSS không hiển thị |
+| [FIX_CSS_ISSUE.md](docs/FIX_CSS_ISSUE.md) | Khắc phục lỗi CSS không hiển thị |
 | [STATIC_FILES_SETUP.md](docs/STATIC_FILES_SETUP.md) | Cài đặt Bootstrap CSS/JS |
-| [OFFLINE_SETUP.md](docs/OFFLINE_SETUP.md) | Triển khai offline/mạng nội bộ |
+| [INSTALL_LAN.md](INSTALL_LAN.md) | Triển khai offline/mạng nội bộ |
 
 ---
 
@@ -111,7 +111,7 @@ MauBieu7202/
 ├── docs/                  # 📚 Tài liệu
 │   ├── QUICK_START.md
 │   ├── WINDOWS_SETUP.md
-│   ├── URGENT_FIX_CSS.md
+│   ├── FIX_CSS_ISSUE.md
 │   └── ...
 ├── scripts/               # 🔧 Scripts
 │   ├── setup_first_time.bat
@@ -137,7 +137,7 @@ MauBieu7202/
 scripts\fix_static_files.bat
 ```
 
-Xem chi tiết: [docs/URGENT_FIX_CSS.md](docs/URGENT_FIX_CSS.md)
+Xem chi tiết: [docs/FIX_CSS_ISSUE.md](docs/FIX_CSS_ISSUE.md)
 
 ### Các lỗi thường gặp
 
