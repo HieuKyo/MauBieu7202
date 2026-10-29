@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import atm_views
 from . import report_views
 from . import kpi_views
 from . import td_views
@@ -137,30 +138,30 @@ urlpatterns = [
     path('elearning/search/department/', views.course_search_by_department, name='course_search_by_department'),
 
     # ATM Management
-    path('atm/', views.atm_dashboard, name='atm_dashboard'),
-    path('atm/guide/download/', views.atm_guide_download, name='atm_guide_download'),
-    path('atm/replenishment/create/', views.atm_replenishment_create, name='atm_replenishment_create'),
-    path('atm/replenishment/list/', views.atm_replenishment_list, name='atm_replenishment_list'),
-    path('atm/replenishment/<int:replenishment_id>/edit/', views.atm_replenishment_edit, name='atm_replenishment_edit'),
-    path('atm/replenishment/<int:replenishment_id>/delete/', views.atm_replenishment_delete, name='atm_replenishment_delete'),
-    path('atm/replenishment/<int:replenishment_id>/template/<int:template_id>/', views.atm_load_replenishment_data, name='atm_load_replenishment_data'),
+    path('atm/', atm_views.atm_dashboard, name='atm_dashboard'),
+    path('atm/guide/download/', atm_views.atm_guide_download, name='atm_guide_download'),
+    path('atm/replenishment/create/', atm_views.atm_replenishment_create, name='atm_replenishment_create'),
+    path('atm/replenishment/list/', atm_views.atm_replenishment_list, name='atm_replenishment_list'),
+    path('atm/replenishment/<int:replenishment_id>/edit/', atm_views.atm_replenishment_edit, name='atm_replenishment_edit'),
+    path('atm/replenishment/<int:replenishment_id>/delete/', atm_views.atm_replenishment_delete, name='atm_replenishment_delete'),
+    path('atm/replenishment/<int:replenishment_id>/template/<int:template_id>/', atm_views.atm_load_replenishment_data, name='atm_load_replenishment_data'),
 
     # ATM Discrepancy Management
-    path('atm/discrepancy/list/', views.atm_discrepancy_list, name='atm_discrepancy_list'),
-    path('atm/discrepancy/create/', views.atm_discrepancy_create, name='atm_discrepancy_create'),
-    path('atm/discrepancy/<int:discrepancy_id>/edit/', views.atm_discrepancy_edit, name='atm_discrepancy_edit'),
-    path('atm/discrepancy/<int:discrepancy_id>/delete/', views.atm_discrepancy_delete, name='atm_discrepancy_delete'),
-    path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/word/', views.atm_discrepancy_group_word, name='atm_discrepancy_group_word'),
-    path('atm/discrepancy/<int:discrepancy_id>/template/<int:template_id>/', views.atm_load_discrepancy_data, name='atm_load_discrepancy_data'),
-    path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/template/<int:template_id>/', views.atm_load_discrepancy_cycle_template, name='atm_load_discrepancy_cycle_template'),
+    path('atm/discrepancy/list/', atm_views.atm_discrepancy_list, name='atm_discrepancy_list'),
+    path('atm/discrepancy/create/', atm_views.atm_discrepancy_create, name='atm_discrepancy_create'),
+    path('atm/discrepancy/<int:discrepancy_id>/edit/', atm_views.atm_discrepancy_edit, name='atm_discrepancy_edit'),
+    path('atm/discrepancy/<int:discrepancy_id>/delete/', atm_views.atm_discrepancy_delete, name='atm_discrepancy_delete'),
+    path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/word/', atm_views.atm_discrepancy_group_word, name='atm_discrepancy_group_word'),
+    path('atm/discrepancy/<int:discrepancy_id>/template/<int:template_id>/', atm_views.atm_load_discrepancy_data, name='atm_load_discrepancy_data'),
+    path('atm/discrepancy/cycle/<str:atm_id>/<str:start_date>/<str:end_date>/template/<int:template_id>/', atm_views.atm_load_discrepancy_cycle_template, name='atm_load_discrepancy_cycle_template'),
 
     # Lịch trực xe
-    path('atm/vehicle-duty-schedule/', views.vehicle_duty_schedule, name='vehicle_duty_schedule'),
+    path('atm/vehicle-duty-schedule/', atm_views.vehicle_duty_schedule, name='vehicle_duty_schedule'),
 
     # ATM Travel Claim (Bảng kê thanh toán + Giấy đi đường)
-    path('atm/travel-claim/', views.atm_travel_claim, name='atm_travel_claim'),
-    path('atm/travel-claim/payment-statement/word/', views.atm_payment_statement_word, name='atm_payment_statement_word'),
-    path('atm/travel-claim/travel-log/zip/', views.atm_travel_log_word, name='atm_travel_log_zip'),
+    path('atm/travel-claim/', atm_views.atm_travel_claim, name='atm_travel_claim'),
+    path('atm/travel-claim/payment-statement/word/', atm_views.atm_payment_statement_word, name='atm_payment_statement_word'),
+    path('atm/travel-claim/travel-log/zip/', atm_views.atm_travel_log_word, name='atm_travel_log_zip'),
 
     # Reports Module
     path('reports/', report_views.report_hub, name='report_hub'),
