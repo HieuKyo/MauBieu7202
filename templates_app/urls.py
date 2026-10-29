@@ -13,6 +13,7 @@ from . import elearning_views
 from . import employee_views
 from . import atm_views
 from . import report_views
+from . import report_thu_ho_views
 from . import kpi_views
 from . import td_views
 from . import hdv_reg_views
@@ -193,9 +194,9 @@ urlpatterns = [
     path('reports/atm-fund-balance/', report_views.atm_fund_balance_view, name='atm_fund_balance'),
     path('reports/huy-dong-von/', report_views.huy_dong_von_report_view, name='huy_dong_von_report'),
     path('reports/huy-dong-von/process/', report_views.process_huy_dong_von_report, name='process_huy_dong_von'),
-    path('reports/thu-ho-hoc-phi-dien-luc/', report_views.thu_ho_hoc_phi_report_view, name='thu_ho_hoc_phi_report'),
-    path('reports/thu-ho-hoc-phi-dien-luc/process/', report_views.process_thu_ho_hoc_phi_report, name='process_thu_ho_hoc_phi'),
-    path('reports/thu-ho-hoc-phi-dien-luc/download/', report_views.download_thu_ho_hoc_phi_report, name='download_thu_ho_hoc_phi'),
+    path('reports/thu-ho-hoc-phi-dien-luc/', report_thu_ho_views.thu_ho_hoc_phi_report_view, name='thu_ho_hoc_phi_report'),
+    path('reports/thu-ho-hoc-phi-dien-luc/process/', report_thu_ho_views.process_thu_ho_hoc_phi_report, name='process_thu_ho_hoc_phi'),
+    path('reports/thu-ho-hoc-phi-dien-luc/download/', report_thu_ho_views.download_thu_ho_hoc_phi_report, name='download_thu_ho_hoc_phi'),
 
     # Đăng ký chỉ tiêu Huy động vốn
     path('hdv/dashboard/', hdv_reg_views.hdv_dashboard_view, name='hdv_dashboard'),
