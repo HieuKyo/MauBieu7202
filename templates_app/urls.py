@@ -13,6 +13,7 @@ from . import elearning_views
 from . import employee_views
 from . import atm_views
 from . import report_views
+from . import report_phat_hanh_the_views
 from . import report_tiet_kiem_tra_lai_views
 from . import report_dien_luc_views
 from . import report_atm_views
@@ -181,13 +182,13 @@ urlpatterns = [
     path('reports/', report_views.report_hub, name='report_hub'),
     path('reports/lai-ton-dong/', report_views.lai_ton_dong_report_view, name='lai_ton_dong_report'),
     path('reports/lai-ton-dong/process/', report_views.process_lai_ton_dong_report, name='process_lai_ton_dong'),
-    path('reports/phat-hanh-the/', report_views.phat_hanh_the_report_view, name='phat_hanh_the_report'),
-    path('reports/phat-hanh-the/process/', report_views.process_phat_hanh_the_report, name='process_phat_hanh_the'),
-    path('reports/phat-hanh-the/process-print/', report_views.process_phat_hanh_the_for_print, name='process_phat_hanh_the_for_print'),
-    path('reports/phat-hanh-the/process-thang/', report_views.process_phat_hanh_the_thang, name='process_phat_hanh_the_thang'),
-    path('reports/phat-hanh-the/print-preview/', report_views.phat_hanh_the_print_preview, name='phat_hanh_the_print_preview'),
-    path('reports/phat-hanh-the/process-visa/', report_views.process_visa_card_report, name='process_visa_card'),
-    path('reports/phat-hanh-the/process-visa-print/', report_views.process_visa_card_for_print, name='process_visa_card_for_print'),
+    path('reports/phat-hanh-the/', report_phat_hanh_the_views.phat_hanh_the_report_view, name='phat_hanh_the_report'),
+    path('reports/phat-hanh-the/process/', report_phat_hanh_the_views.process_phat_hanh_the_report, name='process_phat_hanh_the'),
+    path('reports/phat-hanh-the/process-print/', report_phat_hanh_the_views.process_phat_hanh_the_for_print, name='process_phat_hanh_the_for_print'),
+    path('reports/phat-hanh-the/process-thang/', report_phat_hanh_the_views.process_phat_hanh_the_thang, name='process_phat_hanh_the_thang'),
+    path('reports/phat-hanh-the/print-preview/', report_phat_hanh_the_views.phat_hanh_the_print_preview, name='phat_hanh_the_print_preview'),
+    path('reports/phat-hanh-the/process-visa/', report_phat_hanh_the_views.process_visa_card_report, name='process_visa_card'),
+    path('reports/phat-hanh-the/process-visa-print/', report_phat_hanh_the_views.process_visa_card_for_print, name='process_visa_card_for_print'),
     path('reports/mail-envelope/', report_views.mail_envelope_tracking_view, name='mail_envelope_tracking'),
     path('reports/mail-envelope/save/', report_views.save_mail_envelope, name='save_mail_envelope'),
     path('reports/mail-envelope/report/', report_views.mail_envelope_report_view, name='mail_envelope_report'),
