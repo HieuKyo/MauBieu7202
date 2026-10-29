@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import customer_views
 from . import tools_views
 from . import permission_views
 from . import business_views
@@ -51,7 +52,7 @@ urlpatterns = [
     path('template/<int:template_id>/generate-direct/', views.generate_document_direct, name='generate_document_direct'),
 
     # Customer
-    path('customers/', views.customer_list_view, name='customer_list'),
+    path('customers/', customer_views.customer_list_view, name='customer_list'),
     path('customers/export/', customer_export.customer_export_view, name='customer_export'),
     path('customers/update-codes/', customer_cif_tools.customer_update_codes_view, name='customer_update_codes'),
     path('customers/signature-folders/', customer_cif_tools.customer_signature_folders_view, name='customer_signature_folders'),
@@ -63,15 +64,15 @@ urlpatterns = [
     path('customers/<int:customer_id>/signatures/', customer_signature.customer_signatures_view, name='customer_signatures'),
     path('customers/<int:customer_id>/signatures/<str:name>/', customer_signature.customer_signature_file_view, name='customer_signature_file'),
     path('customers/<int:customer_id>/signatures/<str:name>/delete/', customer_signature.customer_signature_delete_view, name='customer_signature_delete'),
-    path('api/customers/search/', views.customer_search_api, name='customer_search_api'),
-    path('api/customers/<int:customer_id>/', views.customer_get, name='customer_get'),
-    path('api/customers/<int:customer_id>/data/', views.customer_data_api, name='customer_data_api'),
-    path('api/customers/<int:customer_id>/detail/', views.customer_detail_api, name='customer_detail_api'),
-    path('api/customers/create/', views.customer_create_view, name='customer_create'),
-    path('api/customers/<int:customer_id>/update/', views.customer_update_view, name='customer_update'),
-    path('api/customers/<int:customer_id>/delete/', views.customer_delete_view, name='customer_delete'),
-    path('api/customers/import-excel/', views.customer_import_excel, name='customer_import_excel'),
-    path('api/customers/import/tsv/', views.customer_import_tsv, name='customer_import_tsv'),
+    path('api/customers/search/', customer_views.customer_search_api, name='customer_search_api'),
+    path('api/customers/<int:customer_id>/', customer_views.customer_get, name='customer_get'),
+    path('api/customers/<int:customer_id>/data/', customer_views.customer_data_api, name='customer_data_api'),
+    path('api/customers/<int:customer_id>/detail/', customer_views.customer_detail_api, name='customer_detail_api'),
+    path('api/customers/create/', customer_views.customer_create_view, name='customer_create'),
+    path('api/customers/<int:customer_id>/update/', customer_views.customer_update_view, name='customer_update'),
+    path('api/customers/<int:customer_id>/delete/', customer_views.customer_delete_view, name='customer_delete'),
+    path('api/customers/import-excel/', customer_views.customer_import_excel, name='customer_import_excel'),
+    path('api/customers/import/tsv/', customer_views.customer_import_tsv, name='customer_import_tsv'),
 
     # Business (Doanh nghiệp)
     path('businesses/', business_views.business_list_view, name='business_list'),

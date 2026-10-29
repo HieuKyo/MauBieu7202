@@ -15,7 +15,7 @@ from .forms import BusinessForm
 from .issueby_mapping import get_issueby_name
 from .models import Template, Business, BranchConfig
 from .utils import render_word_template
-from .views import parse_tsv_date
+from .customer_views import parse_tsv_date
 
 
 # ============================================

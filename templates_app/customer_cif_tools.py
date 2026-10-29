@@ -226,7 +226,7 @@ def customer_update_codes_view(request):
                 if code:
                     updated_ids.append(c.pk)
             except Exception as e:
-                from .views import _customer_error_text
+                from .customer_views import _customer_error_text
                 status, loi, c = 'error', _customer_error_text(e), None
         rows.append({'cccd': cccd, 'ma_moi': code, 'nguon': where, 'trang_thai': status, 'loi': loi,
                      'ho_ten': c.ho_ten if c else data.get('ho_ten', ''), 'lop': data.get('lop', ''),

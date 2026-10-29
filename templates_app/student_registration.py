@@ -214,7 +214,7 @@ def student_import_view(request):
                 c.save()
                 saved_ids.append(c.pk)
             except Exception as e:
-                from .views import _customer_error_text
+                from .customer_views import _customer_error_text
                 row['loi'] = _customer_error_text(e)
             else:
                 if r['co_anh']:
