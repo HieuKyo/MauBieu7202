@@ -1,200 +1,118 @@
-# Hướng dẫn cài đặt MauBieu7202 trên mạng LAN (Offline)
+# Hướng dẫn cài đặt, chạy và cập nhật MauBieu7202 (mạng LAN, offline)
 
-## 📋 Yêu cầu hệ thống
+Máy chủ LAN **không có Internet**. Mọi thư viện Python được cài từ thư mục `packages/` (file `.whl`) đi kèm mã nguồn.
 
-- Windows 10/11 hoặc Windows Server
-- Python 3.8 trở lên
-- 2GB RAM tối thiểu
-- 1GB dung lượng ổ cứng
+| Việc cần làm | Chạy trên | Lệnh |
+|---|---|---|
+| Tải thư viện về `packages/` | Máy có Internet | `download_offline_packages.bat` |
+| Kiểm tra `packages/` đủ thư viện | Máy có Internet | `verify_packages.bat` |
+| Cài đặt lần đầu | Máy LAN | `setup.bat` |
+| Chạy chương trình | Máy LAN | `run.bat` |
+| Tạo gói cập nhật | Máy phát triển | `tao_ban_cap_nhat.bat` |
+| Cập nhật / quay về bản trước | Máy LAN | `cap_nhat.bat` / `khoi_phuc.bat` (trong gói cập nhật) |
 
-## 🚀 Quy trình cài đặt
+---
 
-### Bước 1: Chuẩn bị trên máy có Internet
+## 1. Cài đặt lần đầu
 
-1. **Clone repository hoặc download source code**
-   ```bash
-   git clone <repository-url>
-   cd MauBieu7202
-   ```
+### Bước 1 – Chuẩn bị (máy có Internet)
 
-2. **Download tất cả packages offline**
-   ```bash
-   download_offline_packages.bat
-   ```
+1. Lấy mã nguồn MauBieu7202 (git clone hoặc copy thư mục).
+2. Chạy `download_offline_packages.bat` để tải toàn bộ thư viện trong `requirements.txt` vào `packages/`.
+3. Chạy `verify_packages.bat` để chắc chắn không thiếu file `.whl` nào.
+4. Tải bộ cài Python 3.11+ (Windows 64-bit) từ https://www.python.org/downloads/.
+5. Copy cả thư mục `MauBieu7202` (có `packages/`) và bộ cài Python sang máy LAN.
 
-   Script này sẽ:
-   - Tạo thư mục `offline_packages`
-   - Download tất cả dependencies từ `requirements.txt`
-   - Lưu các file `.whl` vào `offline_packages`
+> Thêm thư viện mới vào `requirements.txt` thì **phải** có file `.whl` tương ứng trong `packages/`, nếu không máy LAN sẽ không cài được.
 
-3. **Copy sang máy LAN**
-   - Copy toàn bộ thư mục `MauBieu7202` (bao gồm `offline_packages`)
-   - Có thể dùng USB, ổ mạng, hoặc phương thức khác
+### Bước 2 – Cài Python (máy LAN)
 
-### Bước 2: Cài đặt Python trên máy LAN
+Chạy bộ cài Python, **tick "Add Python to PATH"**, chọn *Install Now*. Mở Command Prompt mới và kiểm tra: `python --version`.
 
-1. **Download Python installer** (trên máy có internet):
-   - Truy cập: https://www.python.org/downloads/
-   - Download Python 3.10 hoặc 3.11 (Windows installer 64-bit)
-   - Copy file installer sang máy LAN
+### Bước 3 – Cấu hình `.env` (máy LAN)
 
-2. **Cài đặt Python**:
-   - Chạy file installer
-   - ✅ **QUAN TRỌNG**: Chọn "Add Python to PATH"
-   - Chọn "Install Now"
-   - Đợi cài đặt hoàn tất
+Copy `.env.example` thành `.env` trong thư mục MauBieu7202 và sửa:
 
-3. **Verify Python đã cài đặt**:
-   ```bash
-   python --version
-   ```
-
-### Bước 3: Cài đặt MauBieu7202 trên máy LAN
-
-1. **Mở Command Prompt** (với quyền Administrator):
-   - Nhấn `Win + X`
-   - Chọn "Command Prompt (Admin)" hoặc "Windows PowerShell (Admin)"
-
-2. **Di chuyển đến thư mục MauBieu7202**:
-   ```bash
-   cd D:\MauBieu7202
-   ```
-
-3. **Chạy script cài đặt offline**:
-   ```bash
-   install_offline.bat
-   ```
-
-   Script này sẽ:
-   - Tạo virtual environment
-   - Cài đặt tất cả packages từ `offline_packages`
-   - Không cần kết nối internet
-
-### Bước 4: Cấu hình Database
-
-1. **Copy file .env.example thành .env**:
-   ```bash
-   copy .env.example .env
-   ```
-
-2. **Chỉnh sửa file .env** (dùng Notepad hoặc editor khác):
-   ```
-   SECRET_KEY=your-secret-key-here
-   DEBUG=True
-   ALLOWED_HOSTS=localhost,127.0.0.1,192.168.x.x
-
-   # Database (SQLite mặc định - không cần cấu hình)
-   # DATABASE_URL=sqlite:///db.sqlite3
-   ```
-
-### Bước 5: Khởi tạo Database
-
-1. **Chạy migrations**:
-   ```bash
-   venv\Scripts\activate
-   python manage.py migrate
-   ```
-
-2. **Tạo superuser**:
-   ```bash
-   python manage.py createsuperuser
-   ```
-   - Nhập username (VD: admin)
-   - Nhập email (có thể để trống)
-   - Nhập password (2 lần)
-
-### Bước 6: Khởi động Server
-
-1. **Development mode** (cho testing):
-   ```bash
-   python manage.py runserver 0.0.0.0:8000
-   ```
-
-2. **Production mode** (khuyến nghị cho LAN):
-   ```bash
-   python manage.py collectstatic --noinput
-   waitress-serve --host=0.0.0.0 --port=8000 wordgen.wsgi:application
-   ```
-
-3. **Truy cập ứng dụng**:
-   - Trên máy chủ: http://localhost:8000
-   - Từ máy khác trong LAN: http://192.168.x.x:8000
-   - Login với tài khoản superuser vừa tạo
-
-## 🔧 Sửa lỗi thường gặp
-
-### Lỗi: "No module named 'dbfread'"
-
-**Nguyên nhân**: Thiếu package `dbfread` trong offline_packages
-
-**Giải pháp**:
-1. Trên máy có internet, chạy lại:
-   ```bash
-   download_offline_packages.bat
-   ```
-2. Copy lại thư mục `offline_packages` sang máy LAN
-3. Chạy lại:
-   ```bash
-   install_offline.bat
-   ```
-
-### Lỗi: "Python was not found"
-
-**Nguyên nhân**: Python chưa được cài đặt hoặc chưa có trong PATH
-
-**Giải pháp**:
-1. Cài đặt lại Python
-2. Chọn "Add Python to PATH" trong quá trình cài đặt
-3. Restart Command Prompt
-
-### Lỗi: Port 8000 đã được sử dụng
-
-**Giải pháp**: Đổi port khác:
-```bash
-python manage.py runserver 0.0.0.0:8001
+```env
+SECRET_KEY=<chuỗi ngẫu nhiên>
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1,10.135.7.108
 ```
 
-## 📦 Cập nhật ứng dụng
+- Tạo `SECRET_KEY` mới:
+  `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
+- `ALLOWED_HOSTS`: ghi đúng IP máy chủ LAN.
+- **Không** để `DEBUG=True` khi chạy thật: trang lỗi sẽ lộ cấu hình và dữ liệu cho mọi máy trong mạng.
 
-1. **Tải phiên bản mới** (trên máy có internet):
-   ```bash
-   git pull
-   download_offline_packages.bat
-   ```
+### Bước 4 – Chạy `setup.bat` (máy LAN)
 
-2. **Copy sang máy LAN**
+`setup.bat` tự làm 4 việc:
 
-3. **Cài đặt packages mới**:
-   ```bash
-   install_offline.bat
-   python manage.py migrate
-   python manage.py collectstatic --noinput
-   ```
+1. Kiểm tra Python
+2. Cài thư viện từ `packages/` (`pip install --no-index --find-links=packages`)
+3. Tạo/cập nhật database (`migrate`)
+4. Thu thập file tĩnh CSS/JS (`collectstatic`)
 
-4. **Restart server**
+Sau đó hỏi tạo tài khoản admin và có khởi động server luôn không.
 
-## 🔒 Bảo mật cho môi trường Production
+---
 
-1. **Tắt DEBUG mode** trong `.env`:
-   ```
-   DEBUG=False
-   ```
+## 2. Chạy chương trình
 
-2. **Đổi SECRET_KEY** thành giá trị ngẫu nhiên:
-   ```
-   SECRET_KEY=<random-string-here>
-   ```
+Chạy `run.bat` (kiểm tra thư viện rồi khởi động Waitress qua `run_waitress.py`).
 
-3. **Cấu hình ALLOWED_HOSTS** chính xác:
-   ```
-   ALLOWED_HOSTS=192.168.1.100,agribank.local
-   ```
+- Truy cập: `http://10.135.7.108:8888` (máy chủ: `http://localhost:8888`)
+- Trang quản trị: `http://10.135.7.108:8888/admin`
+- Dừng server: nhấn `Ctrl+C` trong cửa sổ `run.bat`.
+- Đổi cổng: sửa biến `port` trong `run_waitress.py`.
 
-4. **Sử dụng HTTPS** nếu có thể
+### Tự chạy khi bật máy (tùy chọn)
 
-## 📞 Hỗ trợ
+- **Cách 1 – Startup folder:** nhấn `Win+R`, gõ `shell:startup`, tạo shortcut của `run.bat` vào thư mục vừa mở.
+- **Cách 2 – Windows Service (NSSM):** tải NSSM (https://nssm.cc/download), rồi chạy:
+  `nssm install MauBieu7202 "C:\đường\dẫn\python.exe" "D:\MauBieu7202\run_waitress.py"`
 
-Nếu gặp vấn đề, vui lòng:
-1. Kiểm tra log trong Command Prompt
-2. Kiểm tra file `debug.log` (nếu có)
-3. Liên hệ IT support với thông tin lỗi chi tiết
+---
+
+## 3. Cập nhật lên bản mới (gói USB)
+
+**Máy phát triển:**
+
+1. Commit code mới.
+2. Chạy `tao_ban_cap_nhat.bat` (chỉ lấy file thay đổi từ bản trước) hoặc `tao_ban_cap_nhat.bat --full` (toàn bộ code).
+3. Gói `CapNhat_MauBieu_<phiên bản>/` được ghi thẳng vào USB đang cắm (không có USB → lưu ở `ban_cap_nhat/`).
+   Nếu có thư viện mới, gói tự kèm file `.whl` cần thiết.
+
+**Máy LAN:**
+
+1. Cắm USB, mở thư mục gói, chạy `cap_nhat.bat`.
+2. Nếu server đang chạy, script sẽ nhắc tắt cửa sổ `run.bat` rồi bấm Enter.
+3. Script tự: sao lưu `db.sqlite3` + file sắp bị thay vào `backups/`, chép file mới, cài thư viện (nếu cần), `migrate`, `collectstatic`.
+   Lỗi ở bất kỳ bước nào → tự khôi phục bản cũ.
+4. Chạy lại `run.bat`.
+
+**Quay về bản trước:** chạy `khoi_phuc.bat` trong cùng gói (giữ 5 bản sao lưu gần nhất).
+
+---
+
+## 4. Sao lưu dữ liệu
+
+Gói cập nhật đã tự sao lưu database trước mỗi lần cập nhật. Nên sao lưu thêm định kỳ (ra ổ khác/USB) các mục:
+
+- `db.sqlite3` – toàn bộ dữ liệu (tắt `run.bat` trước khi copy)
+- `media/` – mẫu Word, ảnh tải lên
+- `private_media/` – ảnh CCCD, chữ ký khách hàng
+- `.env` – cấu hình
+
+---
+
+## 5. Sửa lỗi thường gặp
+
+| Lỗi | Cách xử lý |
+|---|---|
+| `Python was not found` / `python is not recognized` | Cài lại Python, tick *Add Python to PATH*, mở Command Prompt mới. |
+| `No module named '...'` | Thiếu file `.whl` trong `packages/`: trên máy có Internet chạy `download_offline_packages.bat` + `verify_packages.bat`, copy `packages/` sang rồi chạy lại `setup.bat`. |
+| Trang web không có màu sắc / CSS lỗi 404 | Chạy `python manage.py collectstatic --noinput`, khởi động lại `run.bat`, nhấn `Ctrl+F5` trên trình duyệt. Bootstrap và icon đã có sẵn trong `templates_app/static/vendor/`, không cần Internet. |
+| Cổng 8888 đang bị dùng | `netstat -ano \| findstr :8888` để tìm PID, `taskkill /PID <PID> /F`; hoặc đổi cổng trong `run_waitress.py`. |
+| Máy khác không truy cập được | Kiểm tra IP trong `ALLOWED_HOSTS` (`.env`) và mở cổng 8888 trên Windows Firewall. |
+| Lỗi 500 / trang báo lỗi | Xem chi tiết trong `logs/errors.log` (log chung: `logs/app.log`). |
