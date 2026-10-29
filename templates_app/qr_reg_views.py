@@ -22,7 +22,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import BranchConfig, QRRegistration
-from .report_views import _find_col, _hdv_clean_str
+from .report_views import _find_col
+from .report_huy_dong_von_views import _hdv_clean_str
 
 TEN_CUA_HANG_MAC_DINH = "Quét mã QR để chuyển khoản"
 

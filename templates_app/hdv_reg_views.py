@@ -23,7 +23,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import BranchConfig, GlobalConfig, HDVImportRecord, HDVRegistration, UserProfile
-from .report_views import _find_col, _hdv_clean_str, _hdv_remove_leading_zeros, _hdv_to_float
+from .report_views import _find_col
+from .report_huy_dong_von_views import _hdv_clean_str, _hdv_remove_leading_zeros, _hdv_to_float
 
 
 def _current_month_range(today):
