@@ -7,7 +7,7 @@ import sys
 import django
 
 # Setup Django environment
-sys.path.insert(0, '/home/user/MauBieu7202')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # thư mục gốc dự án
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wordgen.settings')
 django.setup()
 

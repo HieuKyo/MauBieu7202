@@ -1,5 +1,8 @@
 import os
+import sys
 import django
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # thư mục gốc dự án
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'wordgen.settings')
 django.setup()

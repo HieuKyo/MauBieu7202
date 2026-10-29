@@ -295,8 +295,8 @@ EOF
         print_step "Scanning: $SCAN_DIR"
 
         # Run validation script
-        if [ -f "$PROJECT_DIR/validate_templates.py" ]; then
-            python3 "$PROJECT_DIR/validate_templates.py" "$SCAN_DIR"
+        if [ -f "$PROJECT_DIR/scripts/validate_templates.py" ]; then
+            python3 "$PROJECT_DIR/scripts/validate_templates.py" "$SCAN_DIR"
         else
             print_error "validate_templates.py not found"
             exit 1

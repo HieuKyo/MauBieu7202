@@ -138,13 +138,13 @@ def main():
         epilog="""
 Examples:
   # Validate single file
-  python validate_templates.py /path/to/template.docx
+  python scripts/validate_templates.py /path/to/template.docx
 
   # Scan entire directory
-  python validate_templates.py /home/user/maubieumoi
+  python scripts/validate_templates.py /home/user/maubieumoi
 
   # Scan media folder
-  python validate_templates.py media/templates/docx
+  python scripts/validate_templates.py media/templates/docx
         """
     )
     parser.add_argument(
@@ -181,7 +181,7 @@ Examples:
             args.path = found_path
         else:
             print("❌ No template folder found. Please specify path:")
-            print("   python validate_templates.py /path/to/templates")
+            print("   python scripts/validate_templates.py /path/to/templates")
             sys.exit(1)
 
     path = Path(args.path)

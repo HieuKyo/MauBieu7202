@@ -221,7 +221,7 @@ PR #240: ✅ Merged
 **Bạn có thể:**
 1. Pull về để sync code
 2. Chạy server: `python3 manage.py runserver`
-3. Test hybrid storage: `python3 test_hybrid_storage.py`
+3. Test hybrid storage: `python3 scripts/test_hybrid_storage.py`
 
 ---
 
