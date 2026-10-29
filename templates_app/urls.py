@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import employee_views
 from . import atm_views
 from . import report_views
 from . import kpi_views
@@ -117,13 +118,13 @@ urlpatterns = [
     path('bank-statement/import-names/<int:statement_id>/', views.bank_statement_import_names, name='bank_statement_import_names'),
 
     # Employee Management
-    path('employees/', views.employee_list, name='employee_list'),
-    path('employees/export/', views.employee_export_excel, name='employee_export_excel'),
-    path('employees/import/', views.employee_import_excel, name='employee_import_excel'),
-    path('employees/import/template/', views.download_employee_template, name='download_employee_template'),
-    path('employees/create/', views.employee_create_manual, name='employee_create_manual'),
-    path('employees/<int:employee_id>/update/', views.employee_update_manual, name='employee_update_manual'),
-    path('employees/<int:employee_id>/delete/', views.employee_delete_manual, name='employee_delete_manual'),
+    path('employees/', employee_views.employee_list, name='employee_list'),
+    path('employees/export/', employee_views.employee_export_excel, name='employee_export_excel'),
+    path('employees/import/', employee_views.employee_import_excel, name='employee_import_excel'),
+    path('employees/import/template/', employee_views.download_employee_template, name='download_employee_template'),
+    path('employees/create/', employee_views.employee_create_manual, name='employee_create_manual'),
+    path('employees/<int:employee_id>/update/', employee_views.employee_update_manual, name='employee_update_manual'),
+    path('employees/<int:employee_id>/delete/', employee_views.employee_delete_manual, name='employee_delete_manual'),
 
     # E-Learning
     path('elearning/', views.course_dashboard, name='course_dashboard'),
