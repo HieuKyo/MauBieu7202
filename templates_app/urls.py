@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import business_views
 from . import beautiful_number_views
 from . import bank_statement_views
 from . import elearning_views
@@ -71,17 +72,17 @@ urlpatterns = [
     path('api/customers/import/tsv/', views.customer_import_tsv, name='customer_import_tsv'),
 
     # Business (Doanh nghiệp)
-    path('businesses/', views.business_list_view, name='business_list'),
-    path('api/businesses/search/', views.business_search_api, name='business_search_api'),
-    path('api/businesses/<int:business_id>/data/', views.business_data_api, name='business_data_api'),
+    path('businesses/', business_views.business_list_view, name='business_list'),
+    path('api/businesses/search/', business_views.business_search_api, name='business_search_api'),
+    path('api/businesses/<int:business_id>/data/', business_views.business_data_api, name='business_data_api'),
 
     # Business Dashboard and CRUD
-    path('business/', views.business_dashboard, name='business_dashboard'),
-    path('business/create/', views.business_create, name='business_create'),
-    path('business/<int:business_id>/edit/', views.business_edit, name='business_edit'),
-    path('business/<int:business_id>/delete/', views.business_delete, name='business_delete'),
-    path('business/<int:business_id>/template/<int:template_id>/', views.business_load_data, name='business_load_data'),
-    path('api/businesses/import/tsv/', views.business_import_tsv, name='business_import_tsv'),
+    path('business/', business_views.business_dashboard, name='business_dashboard'),
+    path('business/create/', business_views.business_create, name='business_create'),
+    path('business/<int:business_id>/edit/', business_views.business_edit, name='business_edit'),
+    path('business/<int:business_id>/delete/', business_views.business_delete, name='business_delete'),
+    path('business/<int:business_id>/template/<int:template_id>/', business_views.business_load_data, name='business_load_data'),
+    path('api/businesses/import/tsv/', business_views.business_import_tsv, name='business_import_tsv'),
 
     # Global Configuration (Branch + Custom Variables)
     path('branch-config/', views.branch_config_view, name='branch_config'),
