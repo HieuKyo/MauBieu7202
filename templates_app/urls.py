@@ -13,6 +13,7 @@ from . import elearning_views
 from . import employee_views
 from . import atm_views
 from . import report_views
+from . import report_dong_mo_tk_views
 from . import report_huy_dong_von_views
 from . import report_thu_ho_views
 from . import kpi_views
@@ -293,8 +294,8 @@ urlpatterns = [
     path('reports/atm-transaction/detail/<str:atm_no>/', report_views.atm_transaction_detail, name='atm_transaction_detail'),
 
     # Báo cáo Đóng/Mở tài khoản
-    path('reports/dong-mo-tai-khoan/', report_views.dong_mo_tai_khoan_report_view, name='dong_mo_tai_khoan_report'),
-    path('reports/dong-mo-tai-khoan/process/', report_views.process_dong_mo_tai_khoan_report, name='process_dong_mo_tai_khoan'),
+    path('reports/dong-mo-tai-khoan/', report_dong_mo_tk_views.dong_mo_tai_khoan_report_view, name='dong_mo_tai_khoan_report'),
+    path('reports/dong-mo-tai-khoan/process/', report_dong_mo_tk_views.process_dong_mo_tai_khoan_report, name='process_dong_mo_tai_khoan'),
 
     # Phân tích danh mục tín dụng (MSIT80 offline)
     path('tin-dung/phan-tich/', td_views.td_upload_view, name='td_analysis'),
