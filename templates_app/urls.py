@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import bank_statement_views
 from . import elearning_views
 from . import employee_views
 from . import atm_views
@@ -112,11 +113,11 @@ urlpatterns = [
     path('pdf-tools/merge/', views.pdf_merge_view, name='pdf_merge'),
 
     # Bank Statement Analyzer
-    path('bank-statement/upload/', views.bank_statement_upload, name='bank_statement_upload'),
-    path('bank-statement/result/<int:statement_id>/', views.bank_statement_result, name='bank_statement_result'),
-    path('bank-statement/export/<int:statement_id>/', views.bank_statement_export, name='bank_statement_export'),
-    path('bank-statement/huong-dan/', views.bank_statement_huong_dan, name='bank_statement_huong_dan'),
-    path('bank-statement/import-names/<int:statement_id>/', views.bank_statement_import_names, name='bank_statement_import_names'),
+    path('bank-statement/upload/', bank_statement_views.bank_statement_upload, name='bank_statement_upload'),
+    path('bank-statement/result/<int:statement_id>/', bank_statement_views.bank_statement_result, name='bank_statement_result'),
+    path('bank-statement/export/<int:statement_id>/', bank_statement_views.bank_statement_export, name='bank_statement_export'),
+    path('bank-statement/huong-dan/', bank_statement_views.bank_statement_huong_dan, name='bank_statement_huong_dan'),
+    path('bank-statement/import-names/<int:statement_id>/', bank_statement_views.bank_statement_import_names, name='bank_statement_import_names'),
 
     # Employee Management
     path('employees/', employee_views.employee_list, name='employee_list'),
