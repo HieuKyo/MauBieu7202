@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import permission_views
 from . import business_views
 from . import beautiful_number_views
 from . import bank_statement_views
@@ -272,10 +273,10 @@ urlpatterns = [
     path('bia-chung-tu/huong-dan/', bia_chung_tu_views.bia_huong_dan, name='bia_chung_tu_huong_dan'),
 
     # Permission Management
-    path('permissions/', views.permission_management_view, name='permission_management'),
-    path('permissions/users/<int:user_id>/superuser/', views.update_superuser_status, name='update_superuser_status'),
-    path('permissions/users/<int:user_id>/groups/', views.update_user_groups, name='update_user_groups'),
-    path('permissions/users/<int:user_id>/permissions/', views.get_user_permissions_detail, name='get_user_permissions_detail'),
+    path('permissions/', permission_views.permission_management_view, name='permission_management'),
+    path('permissions/users/<int:user_id>/superuser/', permission_views.update_superuser_status, name='update_superuser_status'),
+    path('permissions/users/<int:user_id>/groups/', permission_views.update_user_groups, name='update_user_groups'),
+    path('permissions/users/<int:user_id>/permissions/', permission_views.get_user_permissions_detail, name='get_user_permissions_detail'),
 
     # KPI Dashboard (Django integrated - no Streamlit)
     path('kpi-dashboard/', kpi_views.kpi_dashboard_view, name='kpi_dashboard'),
