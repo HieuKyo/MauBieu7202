@@ -13,6 +13,7 @@ from . import elearning_views
 from . import employee_views
 from . import atm_views
 from . import report_views
+from . import report_atm_views
 from . import report_dong_mo_tk_views
 from . import report_huy_dong_von_views
 from . import report_thu_ho_views
@@ -193,7 +194,7 @@ urlpatterns = [
     path('reports/tiet-kiem-tra-lai/download/<str:metric_key>/', report_views.tiet_kiem_tra_lai_download, name='tiet_kiem_tra_lai_download'),
     path('reports/dien-luc/', report_views.dien_luc_report_view, name='dien_luc_report'),
     path('reports/dien-luc/process/', report_views.process_dien_luc_report, name='process_dien_luc'),
-    path('reports/atm-fund-balance/', report_views.atm_fund_balance_view, name='atm_fund_balance'),
+    path('reports/atm-fund-balance/', report_atm_views.atm_fund_balance_view, name='atm_fund_balance'),
     path('reports/huy-dong-von/', report_huy_dong_von_views.huy_dong_von_report_view, name='huy_dong_von_report'),
     path('reports/huy-dong-von/process/', report_huy_dong_von_views.process_huy_dong_von_report, name='process_huy_dong_von'),
     path('reports/thu-ho-hoc-phi-dien-luc/', report_thu_ho_views.thu_ho_hoc_phi_report_view, name='thu_ho_hoc_phi_report'),
@@ -288,10 +289,10 @@ urlpatterns = [
     path('kpi-dashboard/process/', kpi_views.kpi_process_view, name='kpi_process'),
 
     # ATM Transaction Report (trong hệ thống báo cáo)
-    path('reports/atm-transaction/', report_views.atm_transaction_report, name='atm_transaction_report'),
-    path('reports/atm-transaction/import/', report_views.atm_transaction_import, name='atm_transaction_import'),
-    path('reports/atm-transaction/delete/<int:upload_id>/', report_views.atm_transaction_delete, name='atm_transaction_delete'),
-    path('reports/atm-transaction/detail/<str:atm_no>/', report_views.atm_transaction_detail, name='atm_transaction_detail'),
+    path('reports/atm-transaction/', report_atm_views.atm_transaction_report, name='atm_transaction_report'),
+    path('reports/atm-transaction/import/', report_atm_views.atm_transaction_import, name='atm_transaction_import'),
+    path('reports/atm-transaction/delete/<int:upload_id>/', report_atm_views.atm_transaction_delete, name='atm_transaction_delete'),
+    path('reports/atm-transaction/detail/<str:atm_no>/', report_atm_views.atm_transaction_detail, name='atm_transaction_detail'),
 
     # Báo cáo Đóng/Mở tài khoản
     path('reports/dong-mo-tai-khoan/', report_dong_mo_tk_views.dong_mo_tai_khoan_report_view, name='dong_mo_tai_khoan_report'),
