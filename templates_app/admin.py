@@ -591,7 +591,7 @@ class BeautifulNumberAdmin(admin.ModelAdmin):
                     category = default_category
 
                 # Determine price tier
-                from .views import get_price_tier_from_fee
+                from .beautiful_number_views import get_price_tier_from_fee
                 price_tier = get_price_tier_from_fee(analysis['fee_max_vat'] or analysis['fee_min_vat'])
 
                 # Create beautiful number (mark as sold since import list = sold list)

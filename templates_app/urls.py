@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import beautiful_number_views
 from . import bank_statement_views
 from . import elearning_views
 from . import employee_views
@@ -92,11 +93,11 @@ urlpatterns = [
     path('variable-library/', views.variable_library_view, name='variable_library'),
 
     # Beautiful Number Fee Lookup
-    path('beautiful-number-lookup/', views.beautiful_number_lookup, name='beautiful_number_lookup'),
-    path('beautiful-number-list/', views.beautiful_number_list, name='beautiful_number_list'),
-    path('beautiful-number-list/export/', views.beautiful_number_list_export_csv, name='beautiful_number_list_export_csv'),
-    path('api/beautiful-numbers/generate/', views.generate_beautiful_numbers_ajax, name='generate_beautiful_numbers'),
-    path('api/beautiful-numbers/refresh/', views.refresh_beautiful_numbers_ajax, name='refresh_beautiful_numbers'),
+    path('beautiful-number-lookup/', beautiful_number_views.beautiful_number_lookup, name='beautiful_number_lookup'),
+    path('beautiful-number-list/', beautiful_number_views.beautiful_number_list, name='beautiful_number_list'),
+    path('beautiful-number-list/export/', beautiful_number_views.beautiful_number_list_export_csv, name='beautiful_number_list_export_csv'),
+    path('api/beautiful-numbers/generate/', beautiful_number_views.generate_beautiful_numbers_ajax, name='generate_beautiful_numbers'),
+    path('api/beautiful-numbers/refresh/', beautiful_number_views.refresh_beautiful_numbers_ajax, name='refresh_beautiful_numbers'),
 
     # Area Lookup
     path('area-lookup/', views.area_lookup, name='area_lookup'),

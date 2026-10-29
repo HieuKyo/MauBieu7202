@@ -483,7 +483,7 @@ def refresh_all_beautiful_numbers(dry_run=False):
     """
     from .beautiful_number_services import analyze_account_number
     from .models import BeautifulNumber
-    from .views import get_price_tier_from_fee
+    from .beautiful_number_views import get_price_tier_from_fee
 
     numbers = list(BeautifulNumber.objects.all())
     stats = {
