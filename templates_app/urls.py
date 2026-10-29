@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import tools_views
 from . import permission_views
 from . import business_views
 from . import beautiful_number_views
@@ -102,18 +103,18 @@ urlpatterns = [
     path('api/beautiful-numbers/refresh/', beautiful_number_views.refresh_beautiful_numbers_ajax, name='refresh_beautiful_numbers'),
 
     # Area Lookup
-    path('area-lookup/', views.area_lookup, name='area_lookup'),
+    path('area-lookup/', tools_views.area_lookup, name='area_lookup'),
 
     # OCR Tool
-    path('ocr-tool/', views.ocr_tool_view, name='ocr_tool'),
+    path('ocr-tool/', tools_views.ocr_tool_view, name='ocr_tool'),
 
     # Calculator
-    path('calculator/', views.calculator_view, name='calculator'),
+    path('calculator/', tools_views.calculator_view, name='calculator'),
 
     # PDF Tools
-    path('pdf-tools/', views.pdf_tools_view, name='pdf_tools'),
-    path('pdf-tools/split/', views.pdf_split_view, name='pdf_split'),
-    path('pdf-tools/merge/', views.pdf_merge_view, name='pdf_merge'),
+    path('pdf-tools/', tools_views.pdf_tools_view, name='pdf_tools'),
+    path('pdf-tools/split/', tools_views.pdf_split_view, name='pdf_split'),
+    path('pdf-tools/merge/', tools_views.pdf_merge_view, name='pdf_merge'),
 
     # Bank Statement Analyzer
     path('bank-statement/upload/', bank_statement_views.bank_statement_upload, name='bank_statement_upload'),
