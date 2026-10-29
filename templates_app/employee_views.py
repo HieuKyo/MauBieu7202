@@ -940,6 +940,3 @@ def employee_delete_manual(request, employee_id):
         return JsonResponse({'success': False, 'error': 'Không tìm thấy nhân viên'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-# ====================

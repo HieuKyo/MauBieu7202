@@ -3,6 +3,7 @@ URL configuration for templates_app
 """
 from django.urls import path
 from . import views
+from . import elearning_views
 from . import employee_views
 from . import atm_views
 from . import report_views
@@ -127,16 +128,16 @@ urlpatterns = [
     path('employees/<int:employee_id>/delete/', employee_views.employee_delete_manual, name='employee_delete_manual'),
 
     # E-Learning
-    path('elearning/', views.course_dashboard, name='course_dashboard'),
-    path('elearning/courses/create/', views.course_create, name='course_create'),
-    path('elearning/courses/<int:course_id>/edit/', views.course_edit, name='course_edit'),
-    path('elearning/courses/<int:course_id>/delete/', views.course_delete, name='course_delete'),
-    path('elearning/courses/<int:course_id>/add-students/', views.course_add_students, name='course_add_students'),
-    path('elearning/courses/<int:course_id>/remove-student/<int:user_id>/', views.course_remove_student, name='course_remove_student'),
-    path('elearning/enrollment/<int:enrollment_id>/toggle/', views.course_toggle_completion, name='course_toggle_completion'),
-    path('elearning/courses/<int:course_id>/chua-hoc/in/', views.course_print_not_enrolled, name='course_print_not_enrolled'),
-    path('elearning/search/learner/', views.course_search_by_learner, name='course_search_by_learner'),
-    path('elearning/search/department/', views.course_search_by_department, name='course_search_by_department'),
+    path('elearning/', elearning_views.course_dashboard, name='course_dashboard'),
+    path('elearning/courses/create/', elearning_views.course_create, name='course_create'),
+    path('elearning/courses/<int:course_id>/edit/', elearning_views.course_edit, name='course_edit'),
+    path('elearning/courses/<int:course_id>/delete/', elearning_views.course_delete, name='course_delete'),
+    path('elearning/courses/<int:course_id>/add-students/', elearning_views.course_add_students, name='course_add_students'),
+    path('elearning/courses/<int:course_id>/remove-student/<int:user_id>/', elearning_views.course_remove_student, name='course_remove_student'),
+    path('elearning/enrollment/<int:enrollment_id>/toggle/', elearning_views.course_toggle_completion, name='course_toggle_completion'),
+    path('elearning/courses/<int:course_id>/chua-hoc/in/', elearning_views.course_print_not_enrolled, name='course_print_not_enrolled'),
+    path('elearning/search/learner/', elearning_views.course_search_by_learner, name='course_search_by_learner'),
+    path('elearning/search/department/', elearning_views.course_search_by_department, name='course_search_by_department'),
 
     # ATM Management
     path('atm/', atm_views.atm_dashboard, name='atm_dashboard'),
