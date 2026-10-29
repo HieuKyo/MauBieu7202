@@ -3,7 +3,7 @@ from django.contrib.auth.models import Group, User
 from django.core.validators import FileExtensionValidator
 import unicodedata
 import uuid
-from .storage import HybridTemplateStorage
+from ..storage import HybridTemplateStorage
 
 
 def remove_vietnamese_diacritics(text):
