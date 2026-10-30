@@ -69,7 +69,7 @@ class Command(BaseCommand):
         total_transactions = sum(s['transactions'] for s in stats)
 
         self.stdout.write('\n' + '-' * 80)
-        self.stdout.write(f'Tổng cộng:')
+        self.stdout.write('Tổng cộng:')
         self.stdout.write(f'  - PayingUnit sẽ xóa: {len(invalid_units)}')
         self.stdout.write(f'  - BeneficiaryAccount sẽ xóa: {total_beneficiaries}')
         self.stdout.write(f'  - Transaction sẽ xóa: {total_transactions}')

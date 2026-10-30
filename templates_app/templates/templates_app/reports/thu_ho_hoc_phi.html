@@ -1,0 +1,136 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Báo cáo Thu hộ học phí và điện lực{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-1" style="color: var(--agri-red);">
+                <i class="bi bi-mortarboard-fill"></i> THU HỘ HỌC PHÍ VÀ ĐIỆN LỰC
+            </h2>
+            <p class="text-center fw-semibold mb-0">THỐNG KÊ SỐ MÓN, SỐ TIỀN THEO TỪNG TRƯỜNG VÀ ĐIỆN LỰC</p>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row justify-content-center mb-3">
+        <div class="col-12">
+            {% for msg in messages %}
+            <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+
+        <!-- Form upload -->
+        <div class="col-md-4">
+            <div class="card shadow h-100">
+                <div class="card-header fw-semibold text-white"
+                     style="background:linear-gradient(90deg,#AE1C3F,#8a1230);">
+                    <i class="bi bi-upload me-2"></i>Tải lên dữ liệu
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <form method="post" action="{% url 'process_thu_ho_hoc_phi' %}" enctype="multipart/form-data"
+                          class="flex-grow-1 d-flex flex-column">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-file-earmark-excel text-success me-1"></i>
+                                File danh sách giao dịch
+                            </label>
+                            <input type="file" class="form-control" name="data_file" accept=".xlsx,.xls" required>
+                            <div class="form-text">
+                                File bảng kê chứng từ giao dịch, header nằm ở dòng 10 (bắt đầu bằng cột STT).
+                            </div>
+                        </div>
+                        <div class="mt-auto d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-calculator"></i> Thống kê
+                            </button>
+                            <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kết quả -->
+        <div class="col-md-8">
+            {% if result %}
+            <div class="card shadow">
+                <div class="card-header fw-semibold text-white d-flex justify-content-between align-items-center"
+                     style="background:linear-gradient(90deg,#1a6e35,#145a2b);">
+                    <span><i class="bi bi-bar-chart-fill me-2"></i>Kết quả thống kê</span>
+                    <a href="{% url 'download_thu_ho_hoc_phi' %}" class="btn btn-sm btn-light">
+                        <i class="bi bi-file-earmark-excel"></i> Tải Excel
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:50px;">STT</th>
+                                <th>Đơn vị</th>
+                                <th class="text-center" style="width:100px;">Số món</th>
+                                <th class="text-end" style="width:150px;">Số tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in result.truong_list %}
+                            <tr>
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ item.nhom }}</td>
+                                <td class="text-center">{{ item.so_mon }}</td>
+                                <td class="text-end">{{ item.so_tien|floatformat:0 }}</td>
+                            </tr>
+                            {% endfor %}
+
+                            {% for item in result.unknown_list %}
+                            <tr class="table-warning">
+                                <td class="text-center">{{ result.truong_count|add:forloop.counter }}</td>
+                                <td>{{ item.nhom }}</td>
+                                <td class="text-center">{{ item.so_mon }}</td>
+                                <td class="text-end">{{ item.so_tien|floatformat:0 }}</td>
+                            </tr>
+                            {% endfor %}
+
+                            <tr class="table-info fw-semibold">
+                                <td class="text-center">
+                                    {{ result.truong_count|add:result.unknown_count|add:1 }}
+                                </td>
+                                <td><i class="bi bi-lightning-charge-fill text-warning me-1"></i>Điện lực</td>
+                                <td class="text-center">{{ result.dien_luc.so_mon }}</td>
+                                <td class="text-end">{{ result.dien_luc.so_tien|floatformat:0 }}</td>
+                            </tr>
+
+                            <tr class="table-dark fw-bold">
+                                <td></td>
+                                <td>TỔNG CỘNG</td>
+                                <td class="text-center">{{ result.tong_so_mon }}</td>
+                                <td class="text-end">{{ result.tong_so_tien|floatformat:0 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="card shadow h-100">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center text-muted py-5">
+                    <i class="bi bi-upload" style="font-size:4rem; opacity:0.3;"></i>
+                    <p class="mt-3 mb-0">Tải lên file giao dịch để xem thống kê.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}

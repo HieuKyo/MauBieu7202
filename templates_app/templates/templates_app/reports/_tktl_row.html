@@ -1,0 +1,14 @@
+<tr class="{{ style }} clickable-row" onclick="openDetail('{{ metric }}')" style="cursor:pointer;" title="Nhấn để xem danh sách">
+    <td>
+        {% if level == 1 %}<span style="padding-left:1.5rem;"></span>{% endif %}
+        {% if level == 2 %}<span style="padding-left:3rem;"></span>{% endif %}
+        <i class="bi {{ icon }} me-1"></i>{{ label }}
+    </td>
+    <td class="text-center fw-bold fs-6">{{ count }}</td>
+    <td class="text-center">
+        <button class="btn btn-outline-primary btn-sm py-0"
+                onclick="event.stopPropagation(); openDetail('{{ metric }}')">
+            <i class="bi bi-list-ul"></i>
+        </button>
+    </td>
+</tr>

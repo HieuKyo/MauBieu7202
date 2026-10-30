@@ -129,7 +129,7 @@ def parse_amount(rsltremark):
         amount_str = rsltremark_str.replace(',', '').replace('-', '')
         if amount_str and amount_str != 'nan':
             return abs(Decimal(amount_str))
-    except:
+    except Exception:
         pass
     return Decimal('0')
 
@@ -147,7 +147,7 @@ def parse_date(date_value):
         for fmt in formats:
             try:
                 return datetime.strptime(date_value, fmt).date()
-            except:
+            except Exception:
                 continue
     return None
 
@@ -263,7 +263,7 @@ def process_import_file(file_obj):
                     beneficiary.save()
 
                 # Bước 4: Lưu Transaction
-                transaction = Transaction.objects.create(
+                Transaction.objects.create(
                     unit=unit,
                     beneficiary=beneficiary,
                     transaction_type=transaction_type,

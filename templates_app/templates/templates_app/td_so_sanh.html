@@ -1,0 +1,664 @@
+{% extends "templates_app/base.html" %}
+{% block title %}So sánh 2 kỳ – Tín dụng{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Upload zones ── */
+.upload-card {
+  border-radius: .6rem;
+  transition: box-shadow .2s;
+}
+.upload-zone {
+  border: 2px dashed #adb5bd;
+  border-radius: .5rem;
+  padding: 1.6rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+}
+.upload-zone:hover   { border-color: #1976d2; background: #f0f6ff; }
+.upload-zone.drag-over{ border-color: #1976d2; background: #ddeeff; }
+.upload-zone.loaded  { border-color: #198754; border-style: solid; background: #f0faf4; cursor: default; }
+
+/* ── Compare button ── */
+#btnCompare {
+  min-width: 200px;
+  transition: opacity .3s;
+}
+#btnCompare:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Progress ── */
+#progressWrap { display:none; }
+
+/* ── KPI compare table ── */
+.kpi-cmp-table th,
+.kpi-cmp-table td { font-size: .83rem; white-space: nowrap; }
+.delta-pos-good { color: #198754; font-weight:600; }
+.delta-neg-good { color: #dc3545; font-weight:600; }
+.delta-pos-bad  { color: #dc3545; font-weight:600; }
+.delta-neg-bad  { color: #198754; font-weight:600; }
+
+/* ── Record rows ── */
+.tbl-records    { font-size: .78rem; }
+.tbl-records th { position: sticky; top: 0; z-index: 2; background: #212529; color:#fff; }
+.row-tang td    { background-color: #d4edda !important; }
+.row-giam td    { background-color: #f8d7da !important; }
+.badge-moi  { background: #1976d2; }
+.badge-tat  { background: #6c757d; }
+.badge-hh   { background: #198754; }
+
+/* ── Result sections (hidden until comparison done) ── */
+#resultSection { display:none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-3 px-md-4">
+
+  <!-- ── Header ── -->
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h5 class="fw-bold mb-0"><i class="bi bi-arrow-left-right me-2 text-primary"></i>So sánh 2 kỳ dữ liệu tín dụng</h5>
+      <small class="text-muted">Chọn 2 file MSIT80 từ 2 kỳ khác nhau để xem bảng so sánh tổng thể và chi tiết</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'td_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-speedometer2 me-1"></i>Dashboard
+      </a>
+      <button class="btn btn-outline-success btn-sm" id="btnExportExcel" style="display:none" onclick="exportExcel()">
+        <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Alert ── -->
+  <div id="alertBox" style="display:none" class="alert mb-3"></div>
+
+  <!-- ══════ 2 Upload Zones ══════ -->
+  <div class="row g-3 mb-3">
+
+    <!-- Kỳ hiện tại -->
+    <div class="col-12 col-md-6">
+      <div class="card upload-card h-100 border-success">
+        <div class="card-header bg-success text-white py-2 d-flex align-items-center gap-2">
+          <i class="bi bi-calendar-check"></i>
+          <strong>Kỳ hiện tại</strong>
+          <span class="ms-auto badge bg-white text-success" id="labelCur" style="display:none">Đã chọn</span>
+        </div>
+        <div class="card-body py-3">
+          <div id="zoneCur" class="upload-zone"
+               onclick="document.getElementById('inputCur').click()"
+               ondragover="event.preventDefault();this.classList.add('drag-over')"
+               ondragleave="this.classList.remove('drag-over')"
+               ondrop="handleDrop(event,'cur')">
+            <i class="bi bi-cloud-upload fs-2 text-success"></i>
+            <div class="fw-semibold">Kéo thả hoặc click chọn file</div>
+            <div class="text-muted small">File MSIT80 (.xls / .xlsx)</div>
+          </div>
+          <input type="file" id="inputCur" accept=".xls,.xlsx" style="display:none"
+                 onchange="selectFile(this.files[0],'cur')">
+          <!-- File info -->
+          <div id="infoCur" class="mt-2" style="display:none">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-check text-success fs-5"></i>
+              <div>
+                <div class="fw-semibold small" id="nameCur"></div>
+                <div class="text-muted" style="font-size:.75rem" id="sizeCur"></div>
+              </div>
+              <button class="btn btn-sm btn-outline-danger ms-auto py-0 px-2"
+                      onclick="clearFile('cur')" title="Xóa">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kỳ so sánh -->
+    <div class="col-12 col-md-6">
+      <div class="card upload-card h-100 border-primary">
+        <div class="card-header bg-primary text-white py-2 d-flex align-items-center gap-2">
+          <i class="bi bi-calendar2-range"></i>
+          <strong>Kỳ so sánh</strong>
+          <span class="ms-auto badge bg-white text-primary" id="labelCmp" style="display:none">Đã chọn</span>
+        </div>
+        <div class="card-body py-3">
+          <div id="zoneCmp" class="upload-zone"
+               onclick="document.getElementById('inputCmp').click()"
+               ondragover="event.preventDefault();this.classList.add('drag-over')"
+               ondragleave="this.classList.remove('drag-over')"
+               ondrop="handleDrop(event,'cmp')">
+            <i class="bi bi-cloud-upload fs-2 text-primary"></i>
+            <div class="fw-semibold">Kéo thả hoặc click chọn file</div>
+            <div class="text-muted small">File MSIT80 (.xls / .xlsx)</div>
+          </div>
+          <input type="file" id="inputCmp" accept=".xls,.xlsx" style="display:none"
+                 onchange="selectFile(this.files[0],'cmp')">
+          <!-- File info -->
+          <div id="infoCmp" class="mt-2" style="display:none">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-check text-primary fs-5"></i>
+              <div>
+                <div class="fw-semibold small" id="nameCmp"></div>
+                <div class="text-muted" style="font-size:.75rem" id="sizeCmp"></div>
+              </div>
+              <button class="btn btn-sm btn-outline-danger ms-auto py-0 px-2"
+                      onclick="clearFile('cmp')" title="Xóa">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /row upload -->
+
+  <!-- ── Compare button + Progress ── -->
+  <div class="text-center mb-4">
+    <button id="btnCompare" class="btn btn-lg btn-danger px-5" disabled onclick="runComparison()">
+      <i class="bi bi-arrow-left-right me-2"></i>Tiến hành so sánh
+    </button>
+    <div id="progressWrap" class="mt-3">
+      <div class="progress mx-auto" style="max-width:400px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%">
+          Đang phân tích 2 file...
+        </div>
+      </div>
+      <div class="text-muted small mt-1">Vui lòng chờ, có thể mất 10-30 giây</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ RESULT SECTION ══════════════ -->
+  <div id="resultSection">
+
+    <!-- KPI Summary cards row -->
+    <div class="row g-3 mb-4" id="kpiSummaryRow"></div>
+
+    <!-- KPI Table -->
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header fw-semibold py-2">
+        <i class="bi bi-table me-2 text-primary"></i>So sánh tổng thể các chỉ tiêu KPI
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover mb-0 kpi-cmp-table">
+            <thead class="table-dark">
+              <tr>
+                <th>Chỉ tiêu</th>
+                <th class="text-end">Kỳ hiện tại</th>
+                <th class="text-end">Kỳ so sánh</th>
+                <th class="text-end">Chênh lệch</th>
+                <th class="text-end">% thay đổi</th>
+              </tr>
+            </thead>
+            <tbody id="kpiCmpBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CBTD Table -->
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header fw-semibold py-2">
+        <i class="bi bi-people me-2 text-secondary"></i>So sánh theo Cán bộ Tín dụng
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover mb-0" style="font-size:.82rem;">
+            <thead class="table-dark">
+              <tr>
+                <th rowspan="2" style="vertical-align:middle">Cán bộ Tín dụng</th>
+                <th class="text-center" colspan="3">Kỳ hiện tại</th>
+                <th class="text-center" colspan="3">Kỳ so sánh</th>
+                <th class="text-center" colspan="3">Chênh lệch</th>
+              </tr>
+              <tr>
+                <th class="text-end">Món</th><th class="text-end">Dư nợ (tỷ)</th><th class="text-end">QH (tỷ)</th>
+                <th class="text-end">Món</th><th class="text-end">Dư nợ (tỷ)</th><th class="text-end">QH (tỷ)</th>
+                <th class="text-end">Δ Món</th><th class="text-end">Δ Dư nợ</th><th class="text-end">Δ QH</th>
+              </tr>
+            </thead>
+            <tbody id="cbtdCmpBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Records detail -->
+    <div class="card shadow-sm">
+      <div class="card-header d-flex align-items-center justify-content-between py-2 flex-wrap gap-2">
+        <div class="fw-semibold">
+          <i class="bi bi-list-ul me-2 text-info"></i>Chi tiết từng khoản vay
+          <span id="recordsCountBadge" class="badge bg-secondary ms-2">0</span>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <span class="badge badge-moi" id="badgeMoi">Mới: 0</span>
+          <span class="badge badge-tat" id="badgeTat">Tất toán: 0</span>
+          <span class="badge badge-hh"  id="badgeHH">Hiện hữu: 0</span>
+          <span class="badge bg-danger" id="badgeTang">Nhóm tăng: 0</span>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="card-body py-2 border-bottom">
+        <div class="d-flex gap-3 flex-wrap align-items-center" style="font-size:.8rem;">
+          <span><span class="d-inline-block me-1" style="width:14px;height:14px;background:#d4edda;border:1px solid #b8dfc4;border-radius:2px;"></span>Tăng dư nợ / Mới phát sinh</span>
+          <span><span class="d-inline-block me-1" style="width:14px;height:14px;background:#f8d7da;border:1px solid #f1aeb5;border-radius:2px;"></span>Giảm dư nợ / Tất toán</span>
+          <span><span class="d-inline-block me-1" style="width:14px;height:14px;background:#fff;border:1px solid #dee2e6;border-radius:2px;"></span>Không thay đổi</span>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="card-body border-bottom py-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-6 col-md-3">
+            <label class="form-label form-label-sm mb-1">Cán bộ TD</label>
+            <select id="fsCBTD" class="form-select form-select-sm"></select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label form-label-sm mb-1">Nhóm nợ</label>
+            <select id="fsNhomNo" class="form-select form-select-sm">
+              <option value="">Tất cả</option>
+              <option value="1">Nhóm 1</option>
+              <option value="2">Nhóm 2</option>
+              <option value="3">Nhóm 3</option>
+              <option value="4">Nhóm 4</option>
+              <option value="5">Nhóm 5</option>
+              <option value="35">Nhóm 3-5</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label form-label-sm mb-1">Trạng thái</label>
+            <select id="fsTrangThai" class="form-select form-select-sm">
+              <option value="">Tất cả</option>
+              <option value="Bình thường">Bình thường</option>
+              <option value="Quá hạn">Quá hạn</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label form-label-sm mb-1">Biến động</label>
+            <select id="fsDiff" class="form-select form-select-sm">
+              <option value="">Tất cả</option>
+              <option value="Mới phát sinh">Mới phát sinh</option>
+              <option value="Tất toán">Tất toán</option>
+              <option value="Hiện hữu">Hiện hữu</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-3">
+            <button class="btn btn-primary btn-sm w-100" onclick="loadRecords()">
+              <i class="bi bi-funnel me-1"></i>Lọc
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:500px;overflow-y:auto;">
+          <table class="table table-bordered table-hover mb-0 tbl-records">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Biến động</th>
+                <th>Mã LAV</th>
+                <th>Mã KH</th>
+                <th>Khách hàng</th>
+                <th>CBTD</th>
+                <th class="text-end">Dư nợ KT (tr)</th>
+                <th class="text-end">Dư nợ SS (tr)</th>
+                <th class="text-end">Δ Dư nợ (tr)</th>
+                <th class="text-center">Nhóm KT</th>
+                <th class="text-center">Nhóm SS</th>
+                <th class="text-center">Δ Nhóm</th>
+                <th>Trạng thái</th>
+                <th class="text-end">LS (%)</th>
+              </tr>
+            </thead>
+            <tbody id="recordsTBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /resultSection -->
+
+</div><!-- /container -->
+
+<script>
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+/* ════ File state ════ */
+const _files = { cur: null, cmp: null };
+
+function handleDrop(e, side) {
+  e.preventDefault();
+  document.getElementById('zone' + cap(side)).classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) selectFile(f, side);
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function selectFile(file, side) {
+  if (!file) return;
+  _files[side] = file;
+  const S = cap(side);
+  // Show zone as loaded
+  const zone = document.getElementById('zone' + S);
+  zone.classList.add('loaded');
+  zone.innerHTML = `<i class="bi bi-check-circle-fill fs-2 text-${side === 'cur' ? 'success' : 'primary'}"></i>
+    <div class="fw-semibold">${file.name}</div>
+    <div class="text-muted small">${(file.size / 1024).toFixed(0)} KB</div>`;
+  zone.onclick = null; // disable click after loaded
+
+  // Show badge
+  document.getElementById('label' + S).style.display = 'inline-block';
+
+  // Enable compare button when both selected
+  if (_files.cur && _files.cmp) {
+    document.getElementById('btnCompare').disabled = false;
+  }
+}
+
+function clearFile(side) {
+  _files[side] = null;
+  const S = cap(side);
+  const isGreen = side === 'cur';
+  const zone = document.getElementById('zone' + S);
+  zone.classList.remove('loaded');
+  zone.innerHTML = `<i class="bi bi-cloud-upload fs-2 text-${isGreen ? 'success' : 'primary'}"></i>
+    <div class="fw-semibold">Kéo thả hoặc click chọn file</div>
+    <div class="text-muted small">File MSIT80 (.xls / .xlsx)</div>`;
+  zone.onclick = () => document.getElementById('input' + S).click();
+  document.getElementById('label' + S).style.display = 'none';
+  document.getElementById('btnCompare').disabled = true;
+  // Reset input so same file can be reselected
+  document.getElementById('input' + S).value = '';
+}
+
+/* ════ Run comparison ════ */
+function runComparison() {
+  if (!_files.cur || !_files.cmp) return;
+
+  document.getElementById('btnCompare').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('resultSection').style.display = 'none';
+  showAlert('', '');
+
+  const fd = new FormData();
+  fd.append('file_cur', _files.cur);
+  fd.append('file_cmp', _files.cmp);
+
+  fetch('{% url "td_so_sanh" %}', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF },
+    body: fd,
+  })
+  .then(r => r.json())
+  .then(res => {
+    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('btnCompare').style.display = 'inline-block';
+    if (res.error) { showAlert(res.error, 'danger'); return; }
+
+    _kpiCur = res.kpi_cur;
+    _kpiCmp = res.kpi_cmp;
+
+    renderKpiSummary(res.kpi_cur, res.kpi_cmp, res.file_cur, res.file_cmp);
+    renderKpiTable(res.kpi_cur, res.kpi_cmp);
+    loadRecords();       // fills CBTD table + records
+    document.getElementById('resultSection').style.display = 'block';
+    document.getElementById('btnExportExcel').style.display = 'inline-block';
+  })
+  .catch(err => {
+    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('btnCompare').style.display = 'inline-block';
+    showAlert('Lỗi kết nối: ' + err, 'danger');
+  });
+}
+
+/* ════ KPI Definitions ════ */
+let _kpiCur = {}, _kpiCmp = {};
+const KPI_DEFS = [
+  { key: 'so_khach_hang', label: 'Số khách hàng',   unit: 'KH',  bad: false },
+  { key: 'so_hop_dong',   label: 'Số hợp đồng',      unit: 'HĐ',  bad: false },
+  { key: 'tong_du_no_ty', label: 'Tổng dư nợ',       unit: 'tỷ',  bad: false },
+  { key: 'qua_han_pct',   label: 'Tỷ lệ quá hạn',    unit: '%',   bad: true  },
+  { key: 'qua_han_ty',    label: 'Dư nợ quá hạn',    unit: 'tỷ',  bad: true  },
+  { key: 'nhom2_ty',      label: 'Nợ nhóm 2',         unit: 'tỷ',  bad: true  },
+  { key: 'nhom35_ty',     label: 'Nợ nhóm 3-5',       unit: 'tỷ',  bad: true  },
+  { key: 'kh_dac_biet',   label: 'KH đặc biệt',       unit: 'KH',  bad: true  },
+  { key: 'nim_tb_pct',    label: 'NIM trung bình',    unit: '%',   bad: false },
+];
+
+function renderKpiSummary(cur, cmp, fCur, fCmp) {
+  const row = document.getElementById('kpiSummaryRow');
+  const totalCur = parseFloat(cur.tong_du_no_ty) || 0;
+  const totalCmp = parseFloat(cmp.tong_du_no_ty) || 0;
+  const delta    = totalCur - totalCmp;
+  const deltaPct = totalCmp ? (delta / totalCmp * 100) : 0;
+
+  const qhCur = parseFloat(cur.qua_han_pct) || 0;
+  const qhCmp = parseFloat(cmp.qua_han_pct) || 0;
+  const dQH   = qhCur - qhCmp;
+
+  row.innerHTML = `
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-success p-3 h-100">
+      <div class="small text-muted mb-1">Dư nợ kỳ hiện tại</div>
+      <div class="fs-4 fw-bold text-success">${totalCur.toLocaleString('vi-VN',{maximumFractionDigits:2})} tỷ</div>
+      <div class="small text-muted mt-1"><i class="bi bi-file-earmark me-1"></i>${fCur||'—'}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-primary p-3 h-100">
+      <div class="small text-muted mb-1">Dư nợ kỳ so sánh</div>
+      <div class="fs-4 fw-bold text-primary">${totalCmp.toLocaleString('vi-VN',{maximumFractionDigits:2})} tỷ</div>
+      <div class="small text-muted mt-1"><i class="bi bi-file-earmark me-1"></i>${fCmp||'—'}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3 h-100 ${delta>=0?'border-success':'border-danger'}">
+      <div class="small text-muted mb-1">Thay đổi dư nợ</div>
+      <div class="fs-4 fw-bold ${delta>=0?'text-success':'text-danger'}">${delta>=0?'+':''}${delta.toLocaleString('vi-VN',{maximumFractionDigits:2})} tỷ</div>
+      <div class="small ${delta>=0?'text-success':'text-danger'}">${deltaPct>=0?'+':''}${deltaPct.toFixed(1)}%</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3 h-100 ${dQH<=0?'border-success':'border-danger'}">
+      <div class="small text-muted mb-1">Thay đổi tỷ lệ QH</div>
+      <div class="fs-4 fw-bold ${dQH<=0?'text-success':'text-danger'}">${dQH>=0?'+':''}${dQH.toFixed(2)}%</div>
+      <div class="small text-muted">KT: ${qhCur.toFixed(2)}% | SS: ${qhCmp.toFixed(2)}%</div>
+    </div>
+  </div>`;
+}
+
+function renderKpiTable(cur, cmp) {
+  const tbody = document.getElementById('kpiCmpBody');
+  tbody.innerHTML = '';
+  KPI_DEFS.forEach(d => {
+    const c = parseFloat(cur[d.key]) || 0;
+    const p = parseFloat(cmp[d.key]) || 0;
+    const delta = c - p;
+    const pct   = p !== 0 ? (delta / Math.abs(p) * 100) : null;
+
+    let cls = '';
+    if (delta !== 0) {
+      const good = d.bad ? delta < 0 : delta > 0;
+      cls = good ? (delta > 0 ? 'delta-pos-good' : 'delta-neg-good')
+                 : (delta > 0 ? 'delta-pos-bad'  : 'delta-neg-bad');
+    }
+    const fD = delta === 0 ? '—' : (delta > 0 ? '+' : '') + delta.toLocaleString('vi-VN',{maximumFractionDigits:2});
+    const fP = pct  === null ? '—' : (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
+
+    tbody.insertAdjacentHTML('beforeend', `<tr>
+      <td class="fw-semibold">${d.label} <span class="text-muted small">(${d.unit})</span></td>
+      <td class="text-end">${c || '—'}</td>
+      <td class="text-end">${p || '—'}</td>
+      <td class="text-end ${cls}">${fD}</td>
+      <td class="text-end ${cls}">${fP}</td>
+    </tr>`);
+  });
+}
+
+/* ════ Records with diff (calls backend) ════ */
+function loadRecords() {
+  const body = {
+    cbtd:            document.getElementById('fsCBTD')?.value || '',
+    nhomno:          document.getElementById('fsNhomNo')?.value || '',
+    trangthai:       document.getElementById('fsTrangThai')?.value || '',
+    trang_thai_diff: document.getElementById('fsDiff')?.value || '',
+  };
+
+  fetch('{% url "td_so_sanh_records_api" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+    body: JSON.stringify(body),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { showAlert(data.error, 'warning'); return; }
+    renderRecords(data);
+    buildCBTDFromRecords(data.records || []);
+  })
+  .catch(err => showAlert('Lỗi: ' + err, 'danger'));
+}
+
+const DIFF_BADGE = {
+  'Mới phát sinh': '<span class="badge badge-moi">Mới</span>',
+  'Tất toán':      '<span class="badge badge-tat">Tất toán</span>',
+  'Hiện hữu':      '<span class="badge badge-hh">Hiện hữu</span>',
+};
+
+function renderRecords(data) {
+  document.getElementById('recordsCountBadge').textContent = data.count;
+  document.getElementById('badgeMoi').textContent  = 'Mới: '     + (data.moi || 0);
+  document.getElementById('badgeTat').textContent  = 'Tất toán: '+ (data.tat_toan || 0);
+  document.getElementById('badgeHH').textContent   = 'Hiện hữu: '+ (data.hien_huu || 0);
+  document.getElementById('badgeTang').textContent = 'Nhóm tăng: '+(data.nhom_tang || 0);
+
+  const tbody = document.getElementById('recordsTBody');
+  tbody.innerHTML = '';
+
+  (data.records || []).forEach((r, i) => {
+    const diff = r._diff || 'Hiện hữu';
+    const dBal = (r._delta_bal !== null && r._delta_bal !== undefined) ? parseFloat(r._delta_bal) : null;
+
+    // Xác định màu hàng: tăng=xanh, giảm=đỏ
+    let rowCls = '';
+    if (diff === 'Mới phát sinh' || (dBal !== null && dBal > 0))       rowCls = 'row-tang';
+    else if (diff === 'Tất toán' || (dBal !== null && dBal < 0))       rowCls = 'row-giam';
+
+    const badge  = DIFF_BADGE[diff] || diff;
+    const balCur = ((parseFloat(r.dsbsbal) || 0) / 1e6).toFixed(1);
+    // Dư nợ kỳ so sánh = balCur - delta
+    const balCmp = dBal !== null ? ((parseFloat(r.dsbsbal) - dBal) / 1e6).toFixed(1) : '—';
+    const dBalFmt = dBal !== null && dBal !== 0
+      ? `<span class="${dBal>0?'text-success fw-bold':'text-danger fw-bold'}">${dBal>0?'+':''}${(dBal/1e6).toFixed(1)}</span>`
+      : '—';
+
+    const grpCur = r.grpno || 1;
+    const dGrp   = r._delta_grp !== null && r._delta_grp !== undefined ? parseInt(r._delta_grp) : null;
+    const grpCmp = dGrp !== null ? (grpCur - dGrp) : '—';
+    const dGrpFmt = dGrp !== null && dGrp !== 0
+      ? `<span class="${dGrp>0?'text-danger fw-bold':'text-success fw-bold'}">${dGrp>0?'+':''}${dGrp}</span>`
+      : '—';
+
+    tbody.insertAdjacentHTML('beforeend', `<tr class="${rowCls}">
+      <td class="text-muted">${i+1}</td>
+      <td>${badge}</td>
+      <td class="font-monospace small">${r.dsbsseq||'—'}</td>
+      <td class="font-monospace small">${r.custseq||'—'}</td>
+      <td class="fw-semibold">${r.custnm||'—'}</td>
+      <td>${r.ofcnm||'—'}</td>
+      <td class="text-end">${diff==='Tất toán'?'—':parseFloat(balCur).toLocaleString('vi-VN')}</td>
+      <td class="text-end text-muted">${diff==='Mới phát sinh'?'—':balCmp}</td>
+      <td class="text-end">${dBalFmt}</td>
+      <td class="text-center fw-bold">${diff==='Tất toán'?'—':grpCur}</td>
+      <td class="text-center text-muted">${diff==='Mới phát sinh'?'—':grpCmp}</td>
+      <td class="text-center">${dGrpFmt}</td>
+      <td>${r._trangthai||'—'}</td>
+      <td class="text-end">${parseFloat(r.sprd||0).toFixed(2)}</td>
+    </tr>`);
+  });
+}
+
+/* ════ Build CBTD table from diff records ════ */
+function buildCBTDFromRecords(records) {
+  const curMap = {}, cmpMap = {};
+  records.forEach(r => {
+    const name = (r.ofcnm || '').trim();
+    const bal  = parseFloat(r.dsbsbal) || 0;
+    const qh   = r._trangthai === 'Quá hạn' ? bal : 0;
+    const dBal = r._delta_bal !== null ? parseFloat(r._delta_bal) : 0;
+
+    if (r._diff === 'Tất toán') {
+      if (!cmpMap[name]) cmpMap[name] = {mon:0, du_no:0, qua_han:0};
+      cmpMap[name].mon++; cmpMap[name].du_no += bal; cmpMap[name].qua_han += qh;
+    } else {
+      if (!curMap[name]) curMap[name] = {mon:0, du_no:0, qua_han:0};
+      curMap[name].mon++; curMap[name].du_no += bal; curMap[name].qua_han += qh;
+      if (r._diff === 'Hiện hữu') {
+        const prevBal = bal - dBal;
+        const prevQH  = r._trangthai === 'Quá hạn' ? prevBal : 0;
+        if (!cmpMap[name]) cmpMap[name] = {mon:0, du_no:0, qua_han:0};
+        cmpMap[name].mon++; cmpMap[name].du_no += prevBal; cmpMap[name].qua_han += prevQH;
+      }
+    }
+  });
+
+  const names = [...new Set([...Object.keys(curMap), ...Object.keys(cmpMap)])].sort();
+  const tbody = document.getElementById('cbtdCmpBody');
+  tbody.innerHTML = '';
+
+  names.forEach(name => {
+    const c = curMap[name] || {mon:0, du_no:0, qua_han:0};
+    const p = cmpMap[name] || {mon:0, du_no:0, qua_han:0};
+    const cB = c.du_no/1e9, pB = p.du_no/1e9;
+    const cQ = c.qua_han/1e9, pQ = p.qua_han/1e9;
+    const dM = c.mon - p.mon, dB = cB - pB, dQ = cQ - pQ;
+    const clsB = dB>0?'text-success':dB<0?'text-danger':'';
+    const clsQ = dQ<0?'text-success':dQ>0?'text-danger':'';
+    const clsM = dM>0?'text-success':dM<0?'text-danger':'';
+    tbody.insertAdjacentHTML('beforeend', `<tr>
+      <td class="fw-semibold">${name}</td>
+      <td class="text-end">${c.mon||'—'}</td>
+      <td class="text-end">${cB?cB.toFixed(2):'—'}</td>
+      <td class="text-end">${cQ?cQ.toFixed(2):'—'}</td>
+      <td class="text-end text-muted">${p.mon||'—'}</td>
+      <td class="text-end text-muted">${pB?pB.toFixed(2):'—'}</td>
+      <td class="text-end text-muted">${pQ?pQ.toFixed(2):'—'}</td>
+      <td class="text-end ${clsM}">${dM?((dM>0?'+':'')+dM):'—'}</td>
+      <td class="text-end ${clsB}">${dB?((dB>0?'+':'')+dB.toFixed(2)):'—'}</td>
+      <td class="text-end ${clsQ}">${dQ?((dQ>0?'+':'')+dQ.toFixed(2)):'—'}</td>
+    </tr>`);
+  });
+
+  // Fill CBTD filter dropdown
+  const sel = document.getElementById('fsCBTD');
+  sel.innerHTML = '<option value="">Tất cả CBTD</option>';
+  names.forEach(n => { sel.insertAdjacentHTML('beforeend',`<option value="${n}">${n}</option>`); });
+}
+
+/* ════ Export ════ */
+function exportExcel() {
+  showAlert('Tính năng xuất Excel đang được phát triển', 'info');
+}
+
+/* ════ Alert ════ */
+function showAlert(msg, type) {
+  const box = document.getElementById('alertBox');
+  if (!msg) { box.style.display = 'none'; return; }
+  box.className = `alert alert-${type}`;
+  box.textContent = msg;
+  box.style.display = 'block';
+  if (type !== 'danger') setTimeout(() => { box.style.display='none'; }, 5000);
+}
+</script>
+{% endblock %}

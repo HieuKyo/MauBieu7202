@@ -121,7 +121,7 @@ Get-ChildItem "C:\maubieumoi\*.docx" -Recurse | Select-Object FullName
 ### **Bước 5: Test**
 
 ```powershell
-python test_hybrid_storage.py
+python scripts/test_hybrid_storage.py
 ```
 
 **Kết quả:**
@@ -256,7 +256,7 @@ Get-ChildItem "C:\maubieumoi" -Filter "MauMoThe.docx" -Recurse
 - [ ] Copy folder maubieumoi vào C:\ (bao gồm subdirectories)
 - [ ] Verify subdirectories: `Get-ChildItem "C:\maubieumoi" -Directory`
 - [ ] Count templates: `(Get-ChildItem "C:\maubieumoi\*.docx" -Recurse).Count`
-- [ ] Test: `python test_hybrid_storage.py`
+- [ ] Test: `python scripts/test_hybrid_storage.py`
 - [ ] Check tên file không trùng
 - [ ] Run server: `python manage.py runserver`
 - [ ] Test generate document

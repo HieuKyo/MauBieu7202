@@ -58,6 +58,9 @@ INSTALLED_APPS = [
     "kpi_tool",
     "tasks",
     "savings_calculator",
+    "quiz",
+    "messaging",
+    "document_registry",
 ]
 
 MIDDLEWARE = [
@@ -83,6 +86,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "templates_app.context_processors.app_version",
             ],
         },
     },
@@ -173,6 +177,66 @@ CSRF_USE_SESSIONS = False  # Use cookie-based CSRF tokens (default)
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Default is 1000, increase for large imports
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB in bytes (default is 2.5MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB for file uploads
+
+# Logging - ghi ra logs/app.log (INFO trở lên) và logs/errors.log (chỉ lỗi, kèm traceback)
+# Mỗi file tối đa 5MB, giữ 5 bản cũ (app.log.1 ... app.log.5)
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} [{levelname}] {name}: {message}',
+            'style': '{',
+        },
+        'django.server': {
+            '()': 'django.utils.log.ServerFormatter',
+            'format': '[{server_time}] {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'django.server': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'django.server',
+        },
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'app_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'app.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'encoding': 'utf-8',
+            'delay': True,
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'errors.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'encoding': 'utf-8',
+            'delay': True,
+            'level': 'ERROR',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'app_file', 'error_file'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        # Bỏ handler mặc định của Django (console/mail_admins), để log đi lên root -> ghi file
+        'django': {'handlers': [], 'level': 'INFO', 'propagate': True},
+        # Dòng request của runserver: chỉ in ra console như mặc định, không ghi file
+        'django.server': {'handlers': ['django.server'], 'level': 'INFO', 'propagate': False},
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

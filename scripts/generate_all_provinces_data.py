@@ -12,7 +12,6 @@ Provinces covered:
 """
 
 import json
-import os
 
 # Base path for data files
 DATA_PATH = '/home/user/MauBieu7202/templates_app/static/data'
@@ -672,7 +671,7 @@ def main():
     with open(f'{DATA_PATH}/chuyen_doi.json', 'w', encoding='utf-8') as f:
         json.dump(main_chuyen_doi, f, ensure_ascii=False, indent=2)
 
-    print(f"\nFinal totals:")
+    print("\nFinal totals:")
     print(f"  - dia_danh provinces: {len(main_dia_danh)}")
     print(f"  - chuyen_doi mappings: {len(main_chuyen_doi)}")
 

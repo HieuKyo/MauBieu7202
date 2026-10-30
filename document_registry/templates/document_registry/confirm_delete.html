@@ -1,0 +1,29 @@
+{% extends "templates_app/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container main-container" style="max-width:500px;">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-danger text-white fw-semibold">
+            <i class="bi bi-exclamation-triangle"></i> {{ title }}
+        </div>
+        <div class="card-body">
+            <p>Bạn có chắc chắn muốn xóa:</p>
+            <p class="fw-semibold">{{ obj }}</p>
+            <p class="text-muted small">Hành động này không thể hoàn tác.</p>
+        </div>
+        <div class="card-footer d-flex gap-2 justify-content-end">
+            <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Hủy
+            </a>
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Xác nhận xóa
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

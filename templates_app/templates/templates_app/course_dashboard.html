@@ -1,5 +1,5 @@
 {% extends 'templates_app/base.html' %}
-{% load humanize %}
+{% load humanize l10n %}
 
 {% block title %}E-Learning - Quản lý Khóa học{% endblock %}
 
@@ -7,11 +7,21 @@
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-mortarboard"></i> Quản lý Khóa học E-Learning</h2>
-        {% if has_permission %}
-        <a href="{% url 'course_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Tạo khóa học mới
-        </a>
-        {% endif %}
+        <div class="d-flex gap-2">
+            {% if can_search %}
+            <a href="{% url 'course_search_by_learner' %}" class="btn btn-outline-info">
+                <i class="bi bi-person-search"></i> Tra cứu theo người học
+            </a>
+            <a href="{% url 'course_search_by_department' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-building"></i> Tra cứu theo phòng ban
+            </a>
+            {% endif %}
+            {% if has_permission %}
+            <a href="{% url 'course_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Tạo khóa học mới
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     {% if messages %}
@@ -35,24 +45,24 @@
     {% else %}
     <div class="accordion" id="coursesAccordion">
         {% for course in courses %}
-        <div class="accordion-item" data-course-id="{{ course.id }}">
-            <h2 class="accordion-header" id="heading{{ course.id }}">
+        <div class="accordion-item" data-course-id="{{ course.id|unlocalize }}">
+            <h2 class="accordion-header" id="heading{{ course.id|unlocalize }}">
                 <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#collapse{{ course.id }}"
+                        data-bs-toggle="collapse" data-bs-target="#collapse{{ course.id|unlocalize }}"
                         aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
-                        aria-controls="collapse{{ course.id }}">
+                        aria-controls="collapse{{ course.id|unlocalize }}">
                     <div class="w-100 d-flex justify-content-between align-items-center me-3">
                         <span>
                             <i class="bi bi-book"></i> <strong>{{ course.name }}</strong>
                         </span>
-                        <span class="badge {% if course.completed_count == course.total_count and course.total_count > 0 %}bg-success{% else %}bg-warning text-dark{% endif %} ms-2 course-badge" id="badge{{ course.id }}">
+                        <span class="badge {% if course.completed_count == course.total_count and course.total_count > 0 %}bg-success{% else %}bg-warning text-dark{% endif %} ms-2 course-badge" id="badge{{ course.id|unlocalize }}">
                             (<span class="completed-count">{{ course.completed_count }}</span>/<span class="total-count">{{ course.total_count }}</span>)
                         </span>
                     </div>
                 </button>
             </h2>
-            <div id="collapse{{ course.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
-                 aria-labelledby="heading{{ course.id }}" data-bs-parent="#coursesAccordion">
+            <div id="collapse{{ course.id|unlocalize }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                 aria-labelledby="heading{{ course.id|unlocalize }}" data-bs-parent="#coursesAccordion">
                 <div class="accordion-body">
                     <div class="mb-3">
                         <p><strong>Ngày bắt đầu:</strong> {{ course.start_date|date:"d/m/Y" }}</p>
@@ -70,9 +80,12 @@
                                 <i class="bi bi-pencil"></i> Sửa
                             </a>
                             <button type="button" class="btn btn-sm btn-danger btn-delete-course"
-                                    data-course-id="{{ course.id }}" data-course-name="{{ course.name }}">
+                                    data-course-id="{{ course.id|unlocalize }}" data-course-name="{{ course.name }}">
                                 <i class="bi bi-trash"></i> Xóa
                             </button>
+                            <a href="{% url 'course_print_not_enrolled' course.id %}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                <i class="bi bi-printer"></i> In danh sách chưa học
+                            </a>
                         </div>
                         {% endif %}
                     </div>
@@ -95,7 +108,7 @@
                             </thead>
                             <tbody>
                                 {% for enrollment in course.enrollment_list %}
-                                <tr class="{% if not enrollment.is_completed %}table-danger{% endif %}" id="enrollment-row-{{ enrollment.id }}">
+                                <tr class="{% if not enrollment.is_completed %}table-danger{% endif %}" id="enrollment-row-{{ enrollment.id|unlocalize }}">
                                     <td>{{ forloop.counter }}</td>
                                     <td>
                                         {% if enrollment.user.profile %}
@@ -122,12 +135,12 @@
                                         <div class="form-check">
                                             <input class="form-check-input completion-checkbox"
                                                    type="checkbox"
-                                                   id="enrollment{{ enrollment.id }}"
-                                                   data-enrollment-id="{{ enrollment.id }}"
-                                                   data-course-id="{{ course.id }}"
+                                                   id="enrollment{{ enrollment.id|unlocalize }}"
+                                                   data-enrollment-id="{{ enrollment.id|unlocalize }}"
+                                                   data-course-id="{{ course.id|unlocalize }}"
                                                    {% if enrollment.is_completed %}checked{% endif %}
                                                    {% if not has_permission %}disabled{% endif %}>
-                                            <label class="form-check-label" for="enrollment{{ enrollment.id }}">
+                                            <label class="form-check-label" for="enrollment{{ enrollment.id|unlocalize }}">
                                                 {% if enrollment.is_completed %}
                                                     <span class="text-success">Hoàn thành</span>
                                                 {% else %}
@@ -139,9 +152,9 @@
                                     {% if has_permission %}
                                     <td>
                                         <button type="button" class="btn btn-sm btn-outline-danger btn-remove-student"
-                                                data-course-id="{{ course.id }}"
-                                                data-user-id="{{ enrollment.user.id }}"
-                                                data-enrollment-id="{{ enrollment.id }}"
+                                                data-course-id="{{ course.id|unlocalize }}"
+                                                data-user-id="{{ enrollment.user.id|unlocalize }}"
+                                                data-enrollment-id="{{ enrollment.id|unlocalize }}"
                                                 title="Xóa học viên">
                                             <i class="bi bi-x"></i>
                                         </button>

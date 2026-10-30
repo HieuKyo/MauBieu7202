@@ -1,0 +1,41 @@
+{% load static %}
+<style>
+    .hdv-nav.nav-pills .nav-link.active,
+    .hdv-nav.nav-pills .show > .nav-link {
+        background-color: var(--agri-red);
+        color: #fff;
+    }
+</style>
+<ul class="nav nav-pills hdv-nav mb-4 gap-2">
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="{% url 'hdv_dashboard' %}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'dang_ky' %}active{% endif %}" href="{% url 'hdv_registration_list' %}">
+            <i class="bi bi-person-plus"></i> Đăng ký KH
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'bao_cao' %}active{% endif %}" href="{% url 'hdv_reports' %}">
+            <i class="bi bi-bar-chart-line"></i> Báo cáo
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'duyet' %}active{% endif %}" href="{% url 'hdv_approval_list' %}">
+            <i class="bi bi-check2-circle"></i> Duyệt
+            {% if hdv_cho_duyet_count %}
+            <span class="badge text-bg-warning ms-1">{{ hdv_cho_duyet_count }}</span>
+            {% endif %}
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'add_chi_tieu' %}active{% endif %}" href="{% url 'hdv_add_chi_tieu_list' %}">
+            <i class="bi bi-plus-square"></i> Add chỉ tiêu
+            {% if hdv_cho_add_count %}
+            <span class="badge text-bg-warning ms-1">{{ hdv_cho_add_count }}</span>
+            {% endif %}
+        </a>
+    </li>
+</ul>

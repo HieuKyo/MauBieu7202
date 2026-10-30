@@ -1,0 +1,74 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Chi tiết chỉ tiêu SPDV{% endblock %}
+
+{% block extra_css %}
+<style>
+    .spdv-table.table thead th {
+        background-color: var(--agri-red) !important;
+        color: #fff;
+        border-color: var(--agri-red-dark);
+    }
+    .spdv-table.table,
+    .spdv-table.table th,
+    .spdv-table.table td {
+        border: 1px solid #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-list-ul"></i> CHI TIẾT CHỈ TIÊU: {{ metric_label }}</h2>
+            <p class="text-muted mb-0">{{ profile.full_name }} — {{ period_label }} — Tổng cộng: {{ total|stringformat:"d" }} giao dịch</p>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="{% url 'spdv_kpi_dashboard' %}?year={{ year|stringformat:"d" }}{% if quarter %}&quarter={{ quarter|stringformat:"d" }}{% else %}&month={{ month|stringformat:"d" }}{% endif %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Quay lại báo cáo
+            </a>
+            <a href="{% url 'spdv_kpi_gdv_detail_export' profile.user_id metric_type %}?year={{ year|stringformat:"d" }}{% if quarter %}&quarter={{ quarter|stringformat:"d" }}{% else %}&month={{ month|stringformat:"d" }}{% endif %}" class="btn btn-danger">
+                <i class="bi bi-download"></i> Tải file Excel
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            {% if details %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 spdv-table">
+                    <thead>
+                        <tr>
+                            <th>Ngày phát hành</th>
+                            <th>Nguồn</th>
+                            <th>Họ tên</th>
+                            <th>{{ account_label }}</th>
+                            <th>Mã khách hàng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in details %}
+                        <tr>
+                            <td>{{ d.transaction_date|date:"d/m/Y" }}</td>
+                            <td>{{ d.get_source_display }}</td>
+                            <td>{{ d.customer_name }}</td>
+                            <td>{{ d.account_number }}</td>
+                            <td>{{ d.customer_code }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted p-3 mb-0">Không có dữ liệu chi tiết cho kỳ này.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
