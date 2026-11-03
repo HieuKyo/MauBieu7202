@@ -12,9 +12,8 @@ import openpyxl
 import io
 import json
 import traceback
-from openpyxl.utils.dataframe import dataframe_to_rows
 from copy import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 @login_required
@@ -25,8 +24,14 @@ def report_hub(request):
 
 @login_required
 def lai_ton_dong_report_view(request):
-    """Giao diện báo cáo Lãi tồn đọng"""
-    return render(request, 'templates_app/reports/lai_ton_dong.html')
+    """Giao diện báo cáo Lãi tồn đọng (GLST07) và Lãi dự thu 6 tháng (GLST80)"""
+    # Mặc định kỳ báo cáo = ngày cuối tháng trước, kỳ so sánh = ngày cuối tháng trước nữa
+    default_report_date = datetime.now().replace(day=1) - timedelta(days=1)
+    default_comparison_date = default_report_date.replace(day=1) - timedelta(days=1)
+    return render(request, 'templates_app/reports/lai_ton_dong.html', {
+        'default_report_date': default_report_date.strftime('%Y-%m-%d'),
+        'default_comparison_date': default_comparison_date.strftime('%Y-%m-%d'),
+    })
 
 
 @login_required
@@ -42,16 +47,18 @@ def process_lai_ton_dong_report(request):
             # Cấu hình mặc định
             ltd_config = {
                 'allowed_acctcd': [701001, 701002, 701003],
-                'template_row_index': 11,
-                'start_row': 11
             }
 
         current_file = request.FILES.get('current_file')
         comparison_file = request.FILES.get('comparison_file')
+        report_date_str = request.POST.get('report_date', '')
+        comparison_date_str = request.POST.get('comparison_date', '')
 
-        if not all([current_file, comparison_file]):
-            messages.error(request, "Vui lòng tải lên đủ 2 file.")
+        if not all([current_file, comparison_file, report_date_str, comparison_date_str]):
+            messages.error(request, "Vui lòng tải lên đủ 2 file và chọn ngày của 2 kỳ.")
             return redirect('lai_ton_dong_report')
+        report_date = datetime.strptime(report_date_str, '%Y-%m-%d')
+        comparison_date = datetime.strptime(comparison_date_str, '%Y-%m-%d')
 
         def process_raw_file(file):
             # Đọc custseq như text để tránh bị format thành số thập phân (7.20201)
@@ -104,9 +111,6 @@ def process_lai_ton_dong_report(request):
         # Điền 0 cho các giá trị số còn thiếu
         merged_df.fillna(0, inplace=True)
 
-        merged_df['Lãi Tăng'] = (merged_df['Lãi kỳ này'] - merged_df['Lãi kỳ SS']).clip(lower=0)
-        merged_df['Lãi Giảm'] = (merged_df['Lãi kỳ SS'] - merged_df['Lãi kỳ này']).clip(lower=0)
-
         final_df = merged_df[
             (merged_df['Dư nợ gốc kỳ này'] != 0) |
             (merged_df['Lãi kỳ này'] != 0) |
@@ -114,74 +118,49 @@ def process_lai_ton_dong_report(request):
             (merged_df['Lãi kỳ SS'] != 0)
         ].copy()
 
-        output_cols = [
-            'Mã khách hàng', 'Tên khách hàng', 'LDS',
-            'Dư nợ gốc kỳ SS', 'Lãi kỳ SS',
-            'Dư nợ gốc kỳ này', 'Lãi kỳ này',
-            'Lãi Tăng', 'Lãi Giảm'
-        ]
-        final_df = final_df[output_cols]
+        # KHDN lên trước, trong nhóm giữ thứ tự theo LDS (merge outer đã sắp theo LDS)
+        name_upper = final_df['Tên khách hàng'].astype(str).str.upper()
+        final_df['is_khdn'] = name_upper.apply(lambda n: any(k in n for k in KHDN_NAME_KEYWORDS))
+        final_df = final_df.sort_values('is_khdn', ascending=False, kind='stable')
 
-        # Tạo file Excel từ template
-        template_path = 'packages/mau_lai_tondong.xlsx'  # Cần copy template vào đây
         try:
-            workbook = openpyxl.load_workbook(template_path)
-            sheet = workbook.active
+            workbook = openpyxl.load_workbook('packages/mau_lai_tondong.xlsx')
         except FileNotFoundError:
             return HttpResponse("Không tìm thấy file mẫu. Vui lòng liên hệ quản trị viên.", status=500)
+        sheet = workbook.active
+        # B5 và G6 trong mẫu là công thức lấy ngày kỳ báo cáo từ K1
+        sheet['K1'] = report_date.strftime('%d/%m/%Y')
+        sheet['E6'] = f"Kỳ {comparison_date.strftime('%d/%m/%Y')}"
 
-        template_row_index = ltd_config.get('template_row_index', 11)
-        start_row = ltd_config.get('start_row', 11)
+        # Mẫu: dòng 9 = dòng dữ liệu, 10-12 = Cộng KHCN / Cộng KHDN / Cộng
+        data_style = _capture_row(sheet, 9, 2, 10)
+        total_styles = [_capture_row(sheet, r, 2, 10) for r in (10, 11, 12)]
+        sheet.delete_rows(9, 4)
 
-        # Xóa merged cells cũ
-        merged_ranges = list(sheet.merged_cells.ranges)
-        for merged_cell_range in merged_ranges:
-            if merged_cell_range.min_row >= start_row:
-                sheet.unmerge_cells(str(merged_cell_range))
+        # KHDN đã được xếp liền nhau ở đầu nên Cộng KHDN/KHCN là SUM theo đoạn dòng của từng nhóm
+        row = 9
+        ranges = {}
+        for is_khdn, label in ((True, 'KHDN'), (False, 'KHCN')):
+            first = row
+            for rec in final_df[final_df['is_khdn'] == is_khdn].to_dict('records'):
+                _write_row(sheet, row, data_style, {
+                    2: rec['Mã khách hàng'], 3: rec['Tên khách hàng'], 4: rec['LDS'],
+                    5: rec['Dư nợ gốc kỳ SS'], 6: rec['Lãi kỳ SS'],
+                    7: rec['Dư nợ gốc kỳ này'], 8: rec['Lãi kỳ này'],
+                    9: f'=IF(H{row}>F{row},H{row}-F{row},0)',
+                    10: f'=IF(F{row}>H{row},F{row}-H{row},0)',
+                })
+                row += 1
+            ranges[label] = (first, row - 1) if row > first else None
 
-        # Xóa dữ liệu cũ
-        if sheet.max_row >= start_row:
-            for row in sheet.iter_rows(min_row=start_row, max_row=sheet.max_row + 10):
-                for cell in row:
-                    cell.value = None
-
-        # Copy style từ template row
-        template_cells = sheet[template_row_index]
-        rows_to_write = dataframe_to_rows(final_df, index=False, header=False)
-
-        for r_idx, row_data in enumerate(rows_to_write, start_row):
-            for c_idx, value in enumerate(row_data, 1):
-                new_cell = sheet.cell(row=r_idx, column=c_idx)
-                if c_idx <= len(template_cells):
-                    template_cell = template_cells[c_idx - 1]
-                    if template_cell.has_style:
-                        new_cell.font = copy(template_cell.font)
-                        new_cell.border = copy(template_cell.border)
-                        new_cell.fill = copy(template_cell.fill)
-                        new_cell.number_format = template_cell.number_format
-                        new_cell.protection = copy(template_cell.protection)
-                        new_cell.alignment = copy(template_cell.alignment)
-                new_cell.value = value
-
-        # Thêm dòng tổng
-        total_row_index = start_row + len(final_df)
-        sheet.cell(row=total_row_index, column=1, value='TỔNG CỘNG')
-        numeric_cols_to_sum = ['Dư nợ gốc kỳ này', 'Lãi kỳ này', 'Dư nợ gốc kỳ SS', 'Lãi kỳ SS', 'Lãi Tăng', 'Lãi Giảm']
-        col_index_map = {name: i+1 for i, name in enumerate(output_cols)}
-
-        for col_name in numeric_cols_to_sum:
-            col_sum = final_df[col_name].sum()
-            if col_name in col_index_map:
-                total_cell = sheet.cell(row=total_row_index, column=col_index_map[col_name])
-                template_cell = template_cells[col_index_map[col_name] - 1]
-                if template_cell.has_style:
-                    total_cell.font = copy(template_cell.font)
-                    total_cell.border = copy(template_cell.border)
-                    total_cell.fill = copy(template_cell.fill)
-                    total_cell.number_format = template_cell.number_format
-                    total_cell.protection = copy(template_cell.protection)
-                    total_cell.alignment = copy(template_cell.alignment)
-                total_cell.value = col_sum
+        khcn_row, khdn_row, sum_row = row, row + 1, row + 2
+        for r, style in zip((khcn_row, khdn_row, sum_row), total_styles):
+            _write_row(sheet, r, style)
+        for c in 'EFGHIJ':
+            for r, label in ((khcn_row, 'KHCN'), (khdn_row, 'KHDN')):
+                rng = ranges[label]
+                sheet[f'{c}{r}'] = f'=SUM({c}{rng[0]}:{c}{rng[1]})' if rng else 0
+            sheet[f'{c}{sum_row}'] = f'={c}{khcn_row}+{c}{khdn_row}'
 
         # Xuất file
         output = io.BytesIO()
@@ -192,7 +171,118 @@ def process_lai_ton_dong_report(request):
             output.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = 'attachment; filename="BaoCao_SoSanh_LaiTonDong_KetQua.xlsx"'
+        response['Content-Disposition'] = (
+            f'attachment; filename="BaoCao_LaiTonDong_{report_date.strftime("%d%m%Y")}'
+            f'_ss_{comparison_date.strftime("%d%m%Y")}.xlsx"'
+        )
+        return response
+
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"Đã xảy ra lỗi: {e}")
+        return redirect('lai_ton_dong_report')
+
+
+# Tên KH chứa các cụm này được xếp vào nhóm KHDN, còn lại là KHCN (file GLST80 không có cột loại KH)
+KHDN_NAME_KEYWORDS = ('CONG TY', 'CTY', 'TNHH', 'CTCP', 'DNTN', 'DOANH NGHIEP', 'HTX', 'HOP TAC XA')
+
+
+def _capture_row(sheet, r, first_col, last_col):
+    """Lưu style + giá trị mặc định của 1 dòng mẫu (cột first_col..last_col) và chiều cao dòng"""
+    cells = {c: (copy(sheet.cell(r, c)._style), sheet.cell(r, c).value) for c in range(first_col, last_col + 1)}
+    return cells, sheet.row_dimensions[r].height
+
+
+def _write_row(sheet, r, captured, values=None):
+    """Ghi 1 dòng theo dòng mẫu đã lưu; values {cột: giá trị} ghi đè giá trị mặc định"""
+    cells, height = captured
+    for c, (style, default) in cells.items():
+        cell = sheet.cell(r, c)
+        cell._style = copy(style)
+        cell.value = (values or {}).get(c, default)
+    sheet.row_dimensions[r].height = height
+
+
+@login_required
+@require_http_methods(["POST"])
+def process_lai_du_thu_6_thang_report(request):
+    """Báo cáo Lãi dự thu trên 6 tháng (GLST80): lấy các LDS của kỳ hiện tại, so với dư nợ kỳ trước"""
+    try:
+        current_file = request.FILES.get('ldt_current_file')
+        previous_file = request.FILES.get('ldt_previous_file')
+        report_date_str = request.POST.get('ldt_report_date', '')
+
+        if not all([current_file, previous_file, report_date_str]):
+            messages.error(request, "Vui lòng tải lên đủ 2 file và chọn ngày báo cáo.")
+            return redirect('lai_ton_dong_report')
+        report_date = datetime.strptime(report_date_str, '%Y-%m-%d')
+
+        cols = ['custseq', 'custnm', 'refno', 'acrbamt', 'bceqa']
+        df_cur = _read_excel_safe(current_file, dtype={'custseq': str, 'refno': str})
+        df_prev = _read_excel_safe(previous_file, dtype={'custseq': str, 'refno': str})
+        missing = [c for c in cols if c not in df_cur.columns or c not in df_prev.columns]
+        if missing:
+            messages.error(request, f"File thiếu cột: {', '.join(missing)}")
+            return redirect('lai_ton_dong_report')
+
+        df_cur = df_cur[cols].dropna(subset=['refno'])
+        df_prev = df_prev[['refno', 'acrbamt', 'bceqa']].dropna(subset=['refno'])
+        df_prev = df_prev.drop_duplicates('refno').rename(columns={'acrbamt': 'acrbamt_ss', 'bceqa': 'bceqa_ss'})
+
+        # Chỉ giữ LDS có ở kỳ hiện tại; LDS mới phát sinh thì số kỳ trước = 0
+        merged = df_cur.merge(df_prev, on='refno', how='left').fillna({'acrbamt_ss': 0, 'bceqa_ss': 0})
+        merged['custseq'] = merged['custseq'].str.strip()
+        merged = merged.sort_values(['custseq', 'refno'], kind='stable')
+        name_upper = merged['custnm'].fillna('').str.upper()
+        merged['is_khdn'] = name_upper.apply(lambda n: any(k in n for k in KHDN_NAME_KEYWORDS))
+
+        try:
+            workbook = openpyxl.load_workbook('packages/mau_lai_du_thu_6_thang.xlsx')
+        except FileNotFoundError:
+            return HttpResponse("Không tìm thấy file mẫu. Vui lòng liên hệ quản trị viên.", status=500)
+        sheet = workbook.active
+        sheet['C6'] = f"KỲ {report_date.strftime('%d-%m-%Y')}"
+
+        # Mẫu: dòng 8 = nhãn KHDN, 9 = nhãn KHCN, 10 = dòng dữ liệu, 11-13 = Cộng KHCN / Cộng KHDN / Cộng
+        label_style = _capture_row(sheet, 8, 2, 9)
+        data_style = _capture_row(sheet, 10, 2, 9)
+        total_styles = [_capture_row(sheet, r, 2, 9) for r in (11, 12, 13)]
+        sheet.delete_rows(8, 6)
+
+        row = 8
+        ranges = {}
+        for is_khdn, label in ((True, 'KHDN'), (False, 'KHCN')):
+            _write_row(sheet, row, label_style, {3: label})
+            row += 1
+            group = merged[merged['is_khdn'] == is_khdn]
+            first = row
+            for stt, rec in enumerate(group.itertuples(index=False), 1):
+                _write_row(sheet, row, data_style, {
+                    2: stt, 3: rec.custseq, 4: rec.custnm, 5: rec.refno,
+                    6: rec.acrbamt, 7: rec.bceqa, 8: rec.acrbamt_ss, 9: rec.bceqa_ss,
+                })
+                row += 1
+            ranges[label] = (first, row - 1) if row > first else None
+
+        khcn_row, khdn_row, sum_row = row, row + 1, row + 2
+        for r, style in zip((khcn_row, khdn_row, sum_row), total_styles):
+            _write_row(sheet, r, style)
+        for c in 'FGHI':
+            for r, label in ((khcn_row, 'KHCN'), (khdn_row, 'KHDN')):
+                rng = ranges[label]
+                sheet[f'{c}{r}'] = f'=SUM({c}{rng[0]}:{c}{rng[1]})' if rng else 0
+            sheet[f'{c}{sum_row}'] = f'={c}{khcn_row}+{c}{khdn_row}'
+
+        output = io.BytesIO()
+        workbook.save(output)
+        output.seek(0)
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = (
+            f'attachment; filename="BaoCao_LaiDuThu6Thang_{report_date.strftime("%d%m%Y")}.xlsx"'
+        )
         return response
 
     except Exception as e:

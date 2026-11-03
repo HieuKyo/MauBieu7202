@@ -11,6 +11,7 @@ kèm mã QR, thay cho file "Mau in bia chung tu.xlsb" + mail merge Word.
 import io
 import os
 import re
+from collections import defaultdict
 from datetime import date, datetime
 
 import openpyxl
@@ -158,8 +159,19 @@ def _parse_date(val):
     return None
 
 
-def _qr_text(bia, ma_cn):
-    return f'{ma_cn}-{bia.user_ipcas}-{bia.ngay_chung_tu:%d/%m/%Y}-{bia.tap_so}/{bia.tong_tap}-{bia.so_ho_so}'
+def _tap_gdv(branch, bias):
+    """Tập x/y của riêng GDV (theo UserIPCAS) trong ngày, dùng cho QR/nhãn: {pk: 'x/y'}.
+    Khác Tập x/N trên bìa (đánh chung cả đơn vị trong ngày)."""
+    nhom = defaultdict(list)
+    for pk, ngay, ipcas in (BiaChungTu.objects
+                            .filter(branch=branch, ngay_chung_tu__in={b.ngay_chung_tu for b in bias})
+                            .order_by('tap_so', 'so_ho_so').values_list('pk', 'ngay_chung_tu', 'user_ipcas')):
+        nhom[(ngay, ipcas)].append(pk)
+    return {pk: f'{i}/{len(pks)}' for pks in nhom.values() for i, pk in enumerate(pks, 1)}
+
+
+def _qr_text(bia, ma_cn, tap):
+    return f'{ma_cn}-{bia.user_ipcas}-{bia.ngay_chung_tu:%d/%m/%Y}-{tap}-{bia.so_ho_so}'
 
 
 # ---------------------------------------------------------------------------
@@ -514,7 +526,7 @@ def bia_import_confirm(request):
 # In PDF
 # ---------------------------------------------------------------------------
 
-def _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, x0, y_top):
+def _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, tap, x0, y_top):
     """Khối nhãn QR như sheet "Mau_in Kho A4" của file xlsb (rộng 130mm, cao 65mm).
     y_top: toạ độ cạnh trên (điểm PDF)."""
     w = 130 * mm
@@ -551,7 +563,7 @@ def _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, x0, y_top):
     center(f'Số tập chứng từ trong ngày: {bia.tong_tap}', xa, xr, 1, 12, -3 * mm)
     center(_ho_ten(bia), xa, xr, 2, 12)
 
-    qr_text = _qr_text(bia, ma_cn)
+    qr_text = _qr_text(bia, ma_cn, tap)
     lines = ['']  # chuỗi QR không có dấu cách → ngắt dòng sau dấu "-"
     for part in re.findall(r'[^-]+-?', qr_text):
         if lines[-1] and pdfmetrics.stringWidth(lines[-1] + part, FONT_BOLD, 11) > xr - xb - 4 * mm:
@@ -561,7 +573,7 @@ def _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, x0, y_top):
     for k, ln in enumerate(lines):
         center(ln, xb, xr, 3, 11, (len(lines) - 1) * 2.2 * mm - k * 4.4 * mm)
     center('Tập', xa, xb, 4, 12)
-    center(f'{bia.tap_so}/{bia.tong_tap}', xb, xr, 4, 12)
+    center(tap, xb, xr, 4, 12)
 
     # Người hậu kiểm = Hậu kiểm viên của đơn vị; người đóng = GDV của tập. Chưa có thì để dòng chấm
     dong_ct = getattr(getattr(bia.gdv, 'profile', None), 'full_name', '')
@@ -677,6 +689,8 @@ def bia_print(request):
         job_function='HAU_KIEM_VIEN', user__is_active=True,
     ).order_by('full_name').values_list('full_name', flat=True))
 
+    tap_gdv = _tap_gdv(branch, bias)
+
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     c.setTitle('Bìa chứng từ')
@@ -684,7 +698,7 @@ def bia_print(request):
         _draw_bia(c, bia, ten_cn_hoa)
         c.showPage()
         # Trang sau: nhãn QR riêng, căn giữa phía trên trang
-        _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, A4[0] / 2 - 65 * mm, A4[1] - 20 * mm)
+        _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, tap_gdv[bia.pk], A4[0] / 2 - 65 * mm, A4[1] - 20 * mm)
         c.showPage()
     c.save()
     BiaChungTu.objects.filter(pk__in=[b.pk for b in bias]).update(ngay_in=timezone.now())

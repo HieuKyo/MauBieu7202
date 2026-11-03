@@ -182,6 +182,7 @@ urlpatterns = [
     path('reports/', report_views.report_hub, name='report_hub'),
     path('reports/lai-ton-dong/', report_views.lai_ton_dong_report_view, name='lai_ton_dong_report'),
     path('reports/lai-ton-dong/process/', report_views.process_lai_ton_dong_report, name='process_lai_ton_dong'),
+    path('reports/lai-du-thu-6-thang/process/', report_views.process_lai_du_thu_6_thang_report, name='process_lai_du_thu_6_thang'),
     path('reports/phat-hanh-the/', report_phat_hanh_the_views.phat_hanh_the_report_view, name='phat_hanh_the_report'),
     path('reports/phat-hanh-the/process/', report_phat_hanh_the_views.process_phat_hanh_the_report, name='process_phat_hanh_the'),
     path('reports/phat-hanh-the/process-print/', report_phat_hanh_the_views.process_phat_hanh_the_for_print, name='process_phat_hanh_the_for_print'),

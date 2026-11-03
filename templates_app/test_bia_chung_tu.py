@@ -11,7 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from .bia_chung_tu_views import _format_so, _next_so, _qr_text
+from .bia_chung_tu_views import _format_so, _next_so, _qr_text, _tap_gdv
 from .models import BiaChungTu, BranchConfig, UserProfile
 
 SAMPLE_FILE = os.path.join(settings.BASE_DIR, 'samples', 'FILE THANG 01 DEN THANG 7.2026.xlsx')
@@ -128,7 +128,7 @@ class BiaChungTuTests(TestCase):
     def test_in_pdf_va_qr(self):
         self._cap_so(date(2026, 9, 14), 8, {self.gdvs[0]: 1})
         bia = BiaChungTu.objects.get()
-        self.assertEqual(_qr_text(bia, '7202'), '7202-GRAA-14/09/2026-1/1-7202-2026.0008')
+        self.assertEqual(_qr_text(bia, '7202', '1/1'), '7202-GRAA-14/09/2026-1/1-7202-2026.0008')
         resp = self.client.post(reverse('bia_chung_tu_print'), {'ids': [bia.pk], f'so_to_{bia.pk}': '7'})
         self.assertEqual(resp['Content-Type'], 'application/pdf')
         self.assertTrue(resp.content.startswith(b'%PDF'))
@@ -171,6 +171,15 @@ class BiaChungTuTests(TestCase):
         self.assertIn('CHI NHÁNH GIÁ RAI BẠC LIÊU\nPHÒNG KẾ TOÁN VÀ NGÂN QUỸ', t)
         t = trang_bia(pgd, _user('pp_p1', branch='PGD_P1', position='TRUONG_PHONG'))
         self.assertIn('CHI NHÁNH GIÁ RAI BẠC LIÊU\nPHÒNG GIAO DỊCH PHƯỜNG 1', t)
+
+    def test_qr_tap_rieng_tung_gdv(self):
+        a, b, c, d = self.gdvs
+        self._cap_so(date(2026, 10, 26), 30, {a: 1, b: 2, c: 1, d: 1})
+        bias = list(BiaChungTu.objects.order_by('so_ho_so'))
+        tap = _tap_gdv('HOI_SO', bias)
+        # Bìa vẫn Tập x/5 chung cả ngày; QR thì A 1/1, B 1/2 và 2/2
+        self.assertEqual([tap[x.pk] for x in bias], ['1/1', '1/2', '2/2', '1/1', '1/1'])
+        self.assertEqual(_qr_text(bias[2], '7202', tap[bias[2].pk]), '7202-GRAB-26/10/2026-2/2-7202-2026.0032')
 
     def test_tai_huong_dan(self):
         resp = self.client.get(reverse('bia_chung_tu_huong_dan'))

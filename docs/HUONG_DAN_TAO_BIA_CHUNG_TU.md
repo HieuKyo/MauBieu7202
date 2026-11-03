@@ -89,13 +89,15 @@ Bìa đã in hiện nhãn **"Đã in"** trên danh sách. Bìa nào cũng in l�
 ## 🔳 Nội dung mã QR
 
 ```
-7202-GRANSINH-05/01/2026-2/5-7202-2026.0002
+7202-GRANSINH-05/01/2026-2/2-7202-2026.0003
  │      │          │       │        └ Số hồ sơ
- │      │          │       └ Tập / Tổng số tập trong ngày
+ │      │          │       └ Tập thứ mấy / Số tập của GDV đó trong ngày
  │      │          └ Ngày chứng từ
  │      └ UserIPCAS của GDV
  └ Mã chi nhánh
 ```
+
+> Tập trong QR (và dòng **Tập** trên nhãn) đếm **riêng từng GDV**: GDV có 1 tập trong ngày là 1/1, GDV có 2 tập là 1/2 và 2/2. Còn trên **bìa** (trang 1), "Tập x/N" vẫn đánh chung cả đơn vị trong ngày.
 
 ---
 
