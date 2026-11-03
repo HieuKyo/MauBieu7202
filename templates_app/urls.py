@@ -10,6 +10,7 @@ from . import business_views
 from . import beautiful_number_views
 from . import bank_statement_views
 from . import elearning_views
+from . import changelog_views
 from . import employee_views
 from . import atm_views
 from . import report_views
@@ -281,6 +282,7 @@ urlpatterns = [
     path('bia-chung-tu/import/xac-nhan/', bia_chung_tu_views.bia_import_confirm, name='bia_chung_tu_import_confirm'),
     path('bia-chung-tu/in/', bia_chung_tu_views.bia_print, name='bia_chung_tu_print'),
     path('bia-chung-tu/huong-dan/', bia_chung_tu_views.bia_huong_dan, name='bia_chung_tu_huong_dan'),
+    path('ghi-chu-cap-nhat/', changelog_views.ghi_chu_cap_nhat, name='ghi_chu_cap_nhat'),
 
     # Permission Management
     path('permissions/', permission_views.permission_management_view, name='permission_management'),

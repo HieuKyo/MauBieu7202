@@ -205,11 +205,16 @@
                                     <small class="d-block text-muted ms-4">Tách và ghép file PDF</small>
                                 </a></li>
 
-                                {% if user.is_superuser %}
                                 <li><hr class="dropdown-divider"></li>
+                                {% if user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'branch_config' %}">
                                     <i class="bi bi-gear"></i> Cấu hình hệ thống
                                 </a></li>
+                                {% endif %}
+                                <li><a class="dropdown-item" href="{% url 'ghi_chu_cap_nhat' %}">
+                                    <i class="bi bi-journal-text"></i> Ghi chú cập nhật
+                                </a></li>
+                                {% if user.is_superuser %}
                                 <li><a class="dropdown-item" href="/admin/">
                                     <i class="bi bi-shield-lock"></i> Quản trị
                                 </a></li>

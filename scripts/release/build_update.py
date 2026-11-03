@@ -29,6 +29,9 @@ KEEP_LOCAL = 3
 EXCLUDE_PREFIXES = ('db.sqlite3', 'media/', 'private_media/', 'staticfiles/', 'venv/',
                     '.env', 'samples/', 'backups/', 'logs/', 'ban_cap_nhat/', '.claude/', 'VERSION')
 PIP_TRIGGERS = ('requirements.txt', 'packages/')
+# Ghi chú cập nhật: mục "## Bản tiếp theo" được đổi thành phiên bản + ngày khi đóng gói
+GHI_CHU = 'docs/GHI_CHU_CAP_NHAT.md'
+BAN_TIEP_THEO = '## Bản tiếp theo'
 
 
 def git(*args, binary=False):
@@ -112,6 +115,10 @@ def choose_destination():
     return LOCAL_OUT
 
 
+def dat_phien_ban_ghi_chu(text, version):
+    return text.replace(BAN_TIEP_THEO, f'## {version} — {datetime.now():%d/%m/%Y}', 1)
+
+
 def build_payload(version, base_version, full, changed, deleted):
     pip_install = any(p.startswith(PIP_TRIGGERS) for p in changed + deleted)
     manifest = {
@@ -133,7 +140,10 @@ def build_payload(version, base_version, full, changed, deleted):
             with tarfile.open(fileobj=io.BytesIO(tar_bytes)) as tf:
                 for member in tf:
                     if member.isfile() and member.name in wanted:
-                        zf.writestr(member.name, tf.extractfile(member).read())
+                        content = tf.extractfile(member).read()
+                        if member.name == GHI_CHU:
+                            content = dat_phien_ban_ghi_chu(content.decode('utf-8'), version).encode('utf-8')
+                        zf.writestr(member.name, content)
                         wanted.discard(member.name)
         if wanted:
             raise RuntimeError(f'Không lấy được {len(wanted)} file từ git: {sorted(wanted)[:5]}')
@@ -179,6 +189,11 @@ def main():
     print(f'File thêm/sửa : {len(changed)}')
     print(f'File xóa      : {len(deleted)}')
 
+    if GHI_CHU not in changed or BAN_TIEP_THEO not in git('show', f'HEAD:{GHI_CHU}'):
+        print(f'CẢNH BÁO: chưa có mục "{BAN_TIEP_THEO}" trong {GHI_CHU} -> bản này sẽ không có ghi chú cập nhật.')
+        if not ask('Vẫn tạo gói? [y/N]: '):
+            return 1
+
     manifest, data = build_payload(version, base_version, full, changed, deleted)
     if manifest['pip_install']:
         print('Có thay đổi thư viện -> máy LAN sẽ tự cài lại từ packages/.')
@@ -200,6 +215,13 @@ def main():
     tmp.rename(target)
 
     git('tag', '-a', f'release-{version}', '-m', f'Gói cập nhật LAN {version}')
+
+    # Ghi phiên bản vào file ghi chú trên máy dev (giống bản trong gói); commit cùng lần sửa sau
+    ghi_chu = ROOT / GHI_CHU
+    text = ghi_chu.read_bytes().decode('utf-8') if ghi_chu.exists() else ''
+    if BAN_TIEP_THEO in text:
+        ghi_chu.write_bytes(dat_phien_ban_ghi_chu(text, version).encode('utf-8'))
+        print(f'Đã ghi phiên bản {version} vào {GHI_CHU} - nhớ commit file này.')
 
     if dest == LOCAL_OUT:
         old = sorted(LOCAL_OUT.glob('CapNhat_MauBieu_*'), key=lambda p: p.stat().st_mtime)
