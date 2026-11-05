@@ -53,8 +53,8 @@
     </div>
     <table id="rate-table">
       <thead>
-        <tr><th rowspan="2">Ngoại tệ</th><th colspan="2">Tiền mặt</th><th colspan="2">Chuyển khoản</th></tr>
-        <tr><th>Mua</th><th>Bán</th><th>Mua</th><th>Bán</th></tr>
+        <tr><th rowspan="2">Ngoại tệ</th><th>Tiền mặt</th><th colspan="2">Chuyển khoản</th></tr>
+        <tr><th>Mua</th><th>Mua</th><th>Bán</th></tr>
       </thead>
       <tbody id="rate-rows"></tbody>
     </table>
@@ -110,7 +110,7 @@
     const rateRows = document.getElementById('rate-rows');
     rateRows.textContent = '';
     for (const r of data.rates) {
-      fillRow(rateRows, [r.code, r.buy_cash, r.sell_cash, r.buy_transfer, r.sell_transfer]);
+      fillRow(rateRows, [r.code, r.buy_cash, r.buy_transfer, r.sell_transfer]);
     }
     const savingsRows = document.getElementById('savings-rows');
     savingsRows.textContent = '';

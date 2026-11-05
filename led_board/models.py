@@ -7,7 +7,7 @@ from django.core.validators import (
 )
 from django.db import models
 
-RATE_FIELDS = ('buy_cash', 'sell_cash', 'buy_transfer', 'sell_transfer')
+RATE_FIELDS = ('buy_cash', 'buy_transfer', 'sell_transfer')
 SECONDS_VALIDATORS = [MinValueValidator(3), MaxValueValidator(3600)]
 
 
@@ -23,7 +23,6 @@ class ExchangeRate(models.Model):
     code = models.CharField(max_length=10, unique=True, verbose_name='Ngoại tệ')
     order = models.PositiveIntegerField(default=0, verbose_name='Thứ tự')
     buy_cash = _rate_field('Mua tiền mặt')
-    sell_cash = _rate_field('Bán tiền mặt')
     buy_transfer = _rate_field('Mua chuyển khoản')
     sell_transfer = _rate_field('Bán chuyển khoản')
     updated_at = models.DateTimeField(null=True, blank=True, editable=False)

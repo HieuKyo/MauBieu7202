@@ -44,7 +44,7 @@ def rate_post(rows):
 def usd_row(**overrides):
     row = {
         'id': ExchangeRate.objects.get(code='USD').pk, 'code': 'USD', 'order': 1,
-        'buy_cash': '25900', 'sell_cash': '26200',
+        'buy_cash': '25900',
         'buy_transfer': '25950', 'sell_transfer': '26200',
     }
     row.update(overrides)
@@ -54,7 +54,7 @@ def usd_row(**overrides):
 def eur_row():
     return {
         'id': ExchangeRate.objects.get(code='EUR').pk, 'code': 'EUR', 'order': 2,
-        'buy_cash': '30100.50', 'sell_cash': '31000',
+        'buy_cash': '30100.50',
         'buy_transfer': '30200', 'sell_transfer': '31000',
     }
 
@@ -378,18 +378,18 @@ class RateEditTests(TestCase):
         self.assertIsNone(ExchangeRate.objects.get(code='USD').buy_cash)
 
     def test_missing_rate_rejected(self):
-        response = self.client.post(self.url, rate_post([usd_row(sell_cash=''), eur_row()]))
+        response = self.client.post(self.url, rate_post([usd_row(sell_transfer=''), eur_row()]))
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(ExchangeRate.objects.get(code='USD').buy_cash)
 
     def test_add_currency_uppercased(self):
-        new = {'code': 'jpy', 'order': 3, 'buy_cash': '165', 'sell_cash': '175',
+        new = {'code': 'jpy', 'order': 3, 'buy_cash': '165',
                'buy_transfer': '166', 'sell_transfer': '175'}
         self.client.post(self.url, rate_post([usd_row(), eur_row(), new]))
         self.assertTrue(ExchangeRate.objects.filter(code='JPY').exists())
 
     def test_blank_extra_row_ignored(self):
-        blank = {'code': '', 'order': 0, 'buy_cash': '', 'sell_cash': '',
+        blank = {'code': '', 'order': 0, 'buy_cash': '',
                  'buy_transfer': '', 'sell_transfer': ''}
         response = self.client.post(self.url, rate_post([usd_row(), eur_row(), blank]))
         self.assertRedirects(response, self.url)
@@ -398,6 +398,29 @@ class RateEditTests(TestCase):
     def test_delete_currency(self):
         self.client.post(self.url, rate_post([usd_row(), {**eur_row(), 'DELETE': 'on'}]))
         self.assertFalse(ExchangeRate.objects.filter(code='EUR').exists())
+
+    def test_cash_sell_column_removed(self):
+        self.assertNotContains(self.client.get(self.url), 'Bán tiền mặt')
+        self.client.post(self.url, rate_post([usd_row(), eur_row()]))
+        rate = self.client.get(reverse('led_board:data')).json()['rates'][0]
+        self.assertEqual(set(rate), {'code', 'buy_cash', 'buy_transfer', 'sell_transfer'})
+
+    def test_transfer_buy_above_sell_rejected(self):
+        response = self.client.post(self.url, rate_post([usd_row(buy_transfer='27000'), eur_row()]))
+        self.assertContains(response, 'Giá bán phải lớn hơn')
+
+    def test_add_row_template_and_button_present(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, 'data-add-row="form"')
+        self.assertContains(response, 'form-__prefix__-code')
+
+    def test_add_many_currencies_in_one_save(self):
+        rows = [usd_row(), eur_row()]
+        for order, code in enumerate(('JPY', 'AUD', 'GBP', 'SGD'), start=3):
+            rows.append({'code': code, 'order': order, 'buy_cash': '100',
+                         'buy_transfer': '101', 'sell_transfer': '110'})
+        self.assertRedirects(self.client.post(self.url, rate_post(rows)), self.url)
+        self.assertEqual(ExchangeRate.objects.count(), 6)
 
     def test_history_records_change_with_old_and_new(self):
         self.client.post(self.url, rate_post([usd_row(), eur_row()]))
@@ -421,7 +444,7 @@ class RateEditTests(TestCase):
 
     def test_history_records_add_and_delete(self):
         self.client.post(self.url, rate_post([usd_row(), eur_row()]))
-        new = {'code': 'JPY', 'order': 3, 'buy_cash': '165', 'sell_cash': '175',
+        new = {'code': 'JPY', 'order': 3, 'buy_cash': '165',
                'buy_transfer': '166', 'sell_transfer': '175'}
         self.client.post(self.url, rate_post([usd_row(), {**eur_row(), 'DELETE': 'on'}, new]))
         actions = dict(RateHistory.objects.filter(code__in=['EUR', 'JPY']).exclude(action='Sửa')

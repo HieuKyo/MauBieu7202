@@ -3,10 +3,10 @@
 Mỗi mục là một bản cập nhật (gói `CapNhat_MauBieu_<phiên bản>`), mới nhất ở trên.
 Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `tao_ban_cap_nhat.bat`, tiêu đề này được đổi thành số phiên bản và ngày.
 
-## Bản tiếp theo
+## 2026.11.05 — 05/11/2026
 
 ### Chức năng mới
-- **Bảng LED tỷ giá** (menu Tiện ích, cần quyền `led_board | Tỷ giá | Can change`): nhập tỷ giá mua/bán tiền mặt và chuyển khoản, xem lịch sử sửa tỷ giá, nhập và hiện bảng lãi suất của sản phẩm tiết kiệm đã chọn, dòng chữ chạy, ảnh trình chiếu có ngày hiệu lực và số giây riêng, xem trước khung cắt ảnh, nhắc khi chưa nhập tỷ giá, hẹn giờ tắt PC LED. PC nối bảng LED mở trang `/led/`, không cần đăng nhập, tự cập nhật sau tối đa 5 phút.
+- **Bảng LED tỷ giá** (menu Tiện ích, cần quyền `led_board | Tỷ giá | Can change`): nhập tỷ giá mua tiền mặt, mua/bán chuyển khoản, xem lịch sử sửa tỷ giá, nhập và hiện bảng lãi suất của sản phẩm tiết kiệm đã chọn, dòng chữ chạy, ảnh trình chiếu có ngày hiệu lực và số giây riêng, xem trước khung cắt ảnh, nhắc khi chưa nhập tỷ giá, hẹn giờ tắt PC LED. PC nối bảng LED mở trang `/led/`, không cần đăng nhập, tự cập nhật sau tối đa 5 phút.
 
 ### Chỉnh sửa
 - **Tạo bìa chứng từ:** nhãn QR ở trang 2 chuyển xuống giữa trang.

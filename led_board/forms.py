@@ -24,9 +24,9 @@ class ExchangeRateForm(forms.ModelForm):
 
     def clean(self):
         data = super().clean()
-        for buy, sell in (('buy_cash', 'sell_cash'), ('buy_transfer', 'sell_transfer')):
-            if data.get(buy) and data.get(sell) and data[buy] > data[sell]:
-                self.add_error(sell, 'Giá bán phải lớn hơn hoặc bằng giá mua.')
+        sell = data.get('sell_transfer')
+        if sell and any(data.get(buy) and data[buy] > sell for buy in ('buy_cash', 'buy_transfer')):
+            self.add_error('sell_transfer', 'Giá bán phải lớn hơn hoặc bằng giá mua.')
         return data
 
 
