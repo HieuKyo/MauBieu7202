@@ -1,0 +1,213 @@
+{% load static %}<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bảng tỷ giá</title>
+<style>
+  :root { --green: #005326; --tick: 0vh; }
+  html, body { margin: 0; height: 100%; background: var(--green); color: #fff; overflow: hidden; cursor: none; }
+  body { font-family: Arial, Helvetica, sans-serif; font-weight: 700; }
+  #stage { position: fixed; top: 0; left: 0; right: 0; bottom: var(--tick); }
+  #panel {
+    --rows: 2;
+    --h: calc((100vh - var(--tick)) / (var(--rows) + 4));
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    font-size: min(calc(var(--h) * .62), 3.7vw);
+  }
+  #header {
+    height: calc(var(--h) * 1.5); background: #AE1C3F;
+    display: flex; align-items: center; justify-content: center; gap: .6em;
+  }
+  #logo {
+    height: calc(var(--h) * 1.2); width: calc(var(--h) * 1.2); box-sizing: border-box;
+    padding: calc(var(--h) * .06); background: #fff; border-radius: calc(var(--h) * .1);
+  }
+  #heading { text-align: center; line-height: 1.2; }
+  #branch { font-size: .72em; }
+  #title { font-size: .9em; }
+  table { flex: 1; width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { border: 1px solid rgba(255, 255, 255, .4); text-align: center; padding: 0; white-space: nowrap; }
+  th { color: #ffd54a; font-size: .8em; }
+  td { color: #fff; }
+  td.label { color: #ffd54a; }
+  #savings-table.single .second { display: none; }
+  #footer { height: calc(var(--h) * .5); line-height: calc(var(--h) * .5); font-size: .5em; text-align: center; color: #e8f5e9; }
+  #slides img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--green); display: none; }
+  #ticker {
+    position: fixed; left: 0; right: 0; bottom: 0; height: var(--tick); line-height: var(--tick);
+    background: #AE1C3F; color: #fff; font-size: calc(var(--tick) * .7); overflow: hidden; white-space: nowrap;
+  }
+  #ticker span { display: inline-block; padding-left: 100%; animation: ticker linear infinite; }
+  @keyframes ticker { to { transform: translateX(-100%); } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="panel">
+    <div id="header">
+      <img id="logo" src="{% static 'images/agribank_logo.png' %}" alt="">
+      <div id="heading">
+        <div id="branch">Agribank Chi nhánh Giá Rai Bạc Liêu</div>
+        <div id="title"></div>
+      </div>
+    </div>
+    <table id="rate-table">
+      <thead>
+        <tr><th rowspan="2">Ngoại tệ</th><th colspan="2">Tiền mặt</th><th colspan="2">Chuyển khoản</th></tr>
+        <tr><th>Mua</th><th>Bán</th><th>Mua</th><th>Bán</th></tr>
+      </thead>
+      <tbody id="rate-rows"></tbody>
+    </table>
+    <table id="savings-table">
+      <thead>
+        <tr><th>Kỳ hạn</th><th>Lãi suất</th><th class="second">Kỳ hạn</th><th class="second">Lãi suất</th></tr>
+      </thead>
+      <tbody id="savings-rows"></tbody>
+    </table>
+    <div id="footer"></div>
+  </div>
+  <div id="slides"></div>
+</div>
+<div id="ticker"><span></span></div>
+{{ payload|json_script:"board-data" }}
+<script>
+  const DATA_URL = "{% url 'led_board:data' %}";
+  const POLL_MS = 5 * 60 * 1000;
+  const RELOAD_HOUR = 3;
+  const TWO_COLUMNS_FROM = 5;
+  const TICKER_HEIGHT = '12vh';
+  const TICKER_SECONDS_PER_SCREEN = 10;  // số giây để chữ chạy hết một chiều rộng bảng
+
+  const panel = document.getElementById('panel');
+  const slidesEl = document.getElementById('slides');
+  const rateTable = document.getElementById('rate-table');
+  const savingsTable = document.getElementById('savings-table');
+  const tickerSpan = document.querySelector('#ticker span');
+  const loadedDay = new Date().toDateString();
+
+  let data = JSON.parse(document.getElementById('board-data').textContent);
+  let slideKey = null;
+  let images = [];
+  let step = 0;
+
+  function fillRow(tbody, cells) {
+    const tr = tbody.insertRow();
+    cells.forEach((text, i) => {
+      const td = tr.insertCell();
+      td.textContent = text;
+      if (i % 2 === 0 && tbody.id === 'savings-rows') td.className = 'label';
+      if (i >= 2 && tbody.id === 'savings-rows') td.classList.add('second');
+      if (i === 0) td.classList.add('label');
+    });
+  }
+
+  function savingsRowCount() {
+    const count = data.savings.rows.length;
+    return count >= TWO_COLUMNS_FROM ? Math.ceil(count / 2) : count;
+  }
+
+  function renderTables() {
+    const rateRows = document.getElementById('rate-rows');
+    rateRows.textContent = '';
+    for (const r of data.rates) {
+      fillRow(rateRows, [r.code, r.buy_cash, r.sell_cash, r.buy_transfer, r.sell_transfer]);
+    }
+    const savingsRows = document.getElementById('savings-rows');
+    savingsRows.textContent = '';
+    const rows = data.savings.rows;
+    const lines = savingsRowCount();
+    savingsTable.classList.toggle('single', rows.length < TWO_COLUMNS_FROM);
+    for (let i = 0; i < lines; i += 1) {
+      const right = rows.length >= TWO_COLUMNS_FROM ? rows[i + lines] : null;
+      fillRow(savingsRows, [rows[i].term, rows[i].rate + '%', right ? right.term : '', right ? right.rate + '%' : '']);
+    }
+  }
+
+  function renderTicker() {
+    const text = data.ticker;
+    if (tickerSpan.textContent === text) return;
+    tickerSpan.textContent = text;
+    document.documentElement.style.setProperty('--tick', text ? TICKER_HEIGHT : '0vh');
+    if (text) {
+      const screens = tickerSpan.offsetWidth / window.innerWidth;
+      tickerSpan.style.animationDuration = screens * TICKER_SECONDS_PER_SCREEN + 's';
+    }
+  }
+
+  function syncSlides() {
+    const key = JSON.stringify(data.slides);
+    if (key === slideKey) return;
+    slideKey = key;
+    slidesEl.textContent = '';
+    images = data.slides.map((slide) => {
+      const img = new Image();
+      img.src = slide.url;
+      img.dataset.seconds = slide.seconds;
+      slidesEl.appendChild(img);
+      return img;
+    });
+  }
+
+  function showPanel(kind) {
+    const savings = kind === 'savings';
+    rateTable.style.display = savings ? 'none' : '';
+    savingsTable.style.display = savings ? '' : 'none';
+    panel.style.setProperty('--rows', savings ? savingsRowCount() : data.rates.length);
+    document.getElementById('title').textContent = savings ? 'LÃI SUẤT TIẾT KIỆM (%/NĂM)' : 'TỶ GIÁ NGOẠI TỆ';
+    let footer = data.updated ? 'Cập nhật lúc ' + data.updated : 'Chưa cập nhật';
+    if (savings) {
+      footer = data.savings.product + (data.savings.effective ? ' - Hiệu lực từ ' + data.savings.effective : '');
+    }
+    document.getElementById('footer').textContent = footer;
+  }
+
+  function next() {
+    // Bỏ qua ảnh chưa tải được để bảng không bao giờ hiện khung trống.
+    const ready = images.filter((i) => i.complete && i.naturalWidth > 0);
+    const screens = ['rates'];
+    if (data.savings.rows.length) screens.push('savings');
+    screens.push(...ready);
+    if (step >= screens.length) step = 0;
+    const current = screens[step];
+    step += 1;
+
+    const isPanel = typeof current === 'string';
+    panel.style.display = isPanel ? 'flex' : 'none';
+    images.forEach((i) => { i.style.display = i === current ? 'block' : 'none'; });
+    let seconds;
+    if (isPanel) {
+      showPanel(current);
+      seconds = current === 'savings' ? data.savings_seconds : data.rate_seconds;
+    } else {
+      seconds = Number(current.dataset.seconds);
+    }
+    setTimeout(next, seconds * 1000);
+  }
+
+  async function poll() {
+    try {
+      const response = await fetch(DATA_URL, { cache: 'no-store' });
+      if (!response.ok) return;
+      data = await response.json();
+      // Chỉ tải lại trang khi máy chủ vừa trả lời tốt, để nhận giao diện mới sau bản cập nhật.
+      const now = new Date();
+      if (now.toDateString() !== loadedDay && now.getHours() >= RELOAD_HOUR) {
+        location.reload();
+        return;
+      }
+      renderTables();
+      renderTicker();
+      syncSlides();
+    } catch (error) {
+      // Mất kết nối: giữ nguyên số đã tải, lần sau thử lại.
+    }
+  }
+
+  renderTables();
+  renderTicker();
+  syncSlides();
+  next();
+  setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>

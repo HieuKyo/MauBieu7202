@@ -147,6 +147,12 @@ class BiaChungTuTests(TestCase):
             pdf = self.client.get(reverse('bia_chung_tu_print') + f'?id={bia.pk}').content
             return fitz.open(stream=pdf, filetype='pdf')[1].get_text()
 
+        # Nhãn nằm giữa trang theo chiều dọc: khung cao 65mm, tâm khung = 1/2 trang
+        pdf = self.client.get(reverse('bia_chung_tu_print') + f'?id={bia.pk}').content
+        trang = fitz.open(stream=pdf, filetype='pdf')[1]
+        khung = max((d['rect'] for d in trang.get_drawings()), key=lambda r: r.width * r.height)
+        self.assertAlmostEqual((khung.y0 + khung.y1) / 2, trang.rect.height / 2, delta=1)
+
         t = text_trang_2()
         self.assertIn('Người hậu kiểm chứng từ: HKV', t)
         self.assertIn('Người đóng chứng từ: A', t)  # GDV của tập

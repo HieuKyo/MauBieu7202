@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "quiz",
     "messaging",
     "document_registry",
+    "led_board",
 ]
 
 MIDDLEWARE = [
@@ -87,6 +88,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "templates_app.context_processors.app_version",
+                "led_board.context_processors.rate_reminder",
             ],
         },
     },

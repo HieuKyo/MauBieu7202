@@ -6,6 +6,18 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 ## Bản tiếp theo
 
 ### Chức năng mới
+- **Bảng LED tỷ giá** (menu Tiện ích, cần quyền `led_board | Tỷ giá | Can change`): nhập tỷ giá mua/bán tiền mặt và chuyển khoản, xem lịch sử sửa tỷ giá, nhập và hiện bảng lãi suất của sản phẩm tiết kiệm đã chọn, dòng chữ chạy, ảnh trình chiếu có ngày hiệu lực và số giây riêng, xem trước khung cắt ảnh, nhắc khi chưa nhập tỷ giá, hẹn giờ tắt PC LED. PC nối bảng LED mở trang `/led/`, không cần đăng nhập, tự cập nhật sau tối đa 5 phút.
+
+### Chỉnh sửa
+- **Tạo bìa chứng từ:** nhãn QR ở trang 2 chuyển xuống giữa trang.
+
+### File
+- Thêm: `led_board/`, `scripts/led/mo_bang_led.bat`
+- Sửa: `templates_app/bia_chung_tu_views.py`, `templates_app/test_bia_chung_tu.py`, `templates_app/templates/templates_app/base.html`, `wordgen/settings.py`, `wordgen/urls.py`
+
+## 2026.11.03.2 — 03/11/2026
+
+### Chức năng mới
 - **Ghi chú cập nhật** (menu Tiện ích, giữa Cấu hình hệ thống và Quản trị; mọi người dùng đều xem được): xem các bản cập nhật đã cài, mỗi bản ghi file nào thay đổi và chức năng nào được thêm hoặc sửa. Bản máy đang chạy được đánh dấu.
 
 ### Chỉnh sửa

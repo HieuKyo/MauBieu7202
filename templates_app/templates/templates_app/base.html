@@ -204,6 +204,11 @@
                                     <i class="bi bi-file-earmark-pdf"></i> Công cụ PDF
                                     <small class="d-block text-muted ms-4">Tách và ghép file PDF</small>
                                 </a></li>
+                                {% if perms.led_board.change_exchangerate %}
+                                <li><a class="dropdown-item" href="{% url 'led_board:rate_edit' %}">
+                                    <i class="bi bi-currency-exchange"></i> Bảng LED tỷ giá
+                                </a></li>
+                                {% endif %}
 
                                 <li><hr class="dropdown-divider"></li>
                                 {% if user.is_superuser %}
@@ -276,6 +281,15 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if led_rate_reminder %}
+    <div class="container mt-2">
+        <div class="alert alert-warning mb-0" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> Hôm nay chưa lưu tỷ giá cho bảng LED.
+            <a href="{% url 'led_board:rate_edit' %}" class="alert-link">Nhập tỷ giá</a>
+        </div>
     </div>
     {% endif %}
 

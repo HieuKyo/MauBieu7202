@@ -697,8 +697,8 @@ def bia_print(request):
     for bia in bias:
         _draw_bia(c, bia, ten_cn_hoa)
         c.showPage()
-        # Trang sau: nhãn QR riêng, căn giữa phía trên trang
-        _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, tap_gdv[bia.pk], A4[0] / 2 - 65 * mm, A4[1] - 20 * mm)
+        # Trang sau: nhãn QR riêng (130x65mm), căn giữa trang theo cả chiều ngang và chiều dọc
+        _draw_nhan_qr(c, bia, ma_cn, ten_cn, hau_kiem, tap_gdv[bia.pk], A4[0] / 2 - 65 * mm, A4[1] / 2 + 32.5 * mm)
         c.showPage()
     c.save()
     BiaChungTu.objects.filter(pk__in=[b.pk for b in bias]).update(ngay_in=timezone.now())
