@@ -3,7 +3,7 @@
 Mỗi mục là một bản cập nhật (gói `CapNhat_MauBieu_<phiên bản>`), mới nhất ở trên.
 Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `tao_ban_cap_nhat.bat`, tiêu đề này được đổi thành số phiên bản và ngày.
 
-## Bản tiếp theo
+## 2026.11.05.3 — 05/11/2026
 
 ### Chức năng mới
 - **Đăng ký Loa Thần tài:** nút mới trên trang Đăng ký QR / Loa, nhập Số tài khoản, Họ tên khách hàng, Địa chỉ, Số điện thoại. Sửa, xóa, đánh dấu đã in, tải danh sách (Admin) làm giống bảng QR.
