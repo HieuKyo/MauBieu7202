@@ -3,6 +3,27 @@
 Mỗi mục là một bản cập nhật (gói `CapNhat_MauBieu_<phiên bản>`), mới nhất ở trên.
 Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `tao_ban_cap_nhat.bat`, tiêu đề này được đổi thành số phiên bản và ngày.
 
+## Bản tiếp theo
+
+### Chức năng mới
+- **Đăng ký Loa Thần tài:** nút mới trên trang Đăng ký QR / Loa, nhập Số tài khoản, Họ tên khách hàng, Địa chỉ, Số điện thoại. Sửa, xóa, đánh dấu đã in, tải danh sách (Admin) làm giống bảng QR.
+- **Đăng ký bảng QR / Loa Thần tài — ô Đã in:** Admin tích ô "Đã in" sau khi in; tên người đánh dấu và thời gian hiện ở cột Đã in. Cán bộ đăng ký thấy ô này nhưng không tích được. Có thể lọc theo Đã in / Chưa in.
+
+### Chỉnh sửa
+- **Đổi tên thành Đăng ký bảng QR / Loa Thần tài; Dashboard QR thành Dashboard QR / Loa Thần tài:** Dashboard thống kê riêng bảng QR và Loa theo ngày, cán bộ, phòng giao dịch. Danh sách có thêm bộ lọc Loại và bộ đếm Loa.
+- **Bộ đếm và Dashboard QR / Loa:** đếm số đã đăng ký (gồm cả chưa in) trong tháng và trong năm; Dashboard có thêm biểu đồ 12 tháng trong năm. Biểu đồ theo ngày tính đúng theo giờ Việt Nam.
+- **Đăng ký bảng QR:**
+  - Admin xem được toàn bộ đăng ký của tất cả các phòng ngay trên trang Đăng ký QR.
+  - Bản ghi đã in thì cán bộ không sửa, xóa được nữa (Admin vẫn làm được).
+  - File danh sách QR của Admin có thêm cột Trạng thái (Đã in / Chưa in); hướng dẫn sử dụng có thêm mục mới.
+
+### Lưu ý
+- Có migration `0091`, `0092`, `0093`: thêm loại đăng ký, địa chỉ, số điện thoại và ô Đã in. Các đăng ký cũ đều là loại Bảng QR, chưa in.
+
+### File
+- Thêm: `templates_app/migrations/0091_qr_trang_thai_in.py`, `templates_app/migrations/0092_qr_loa_than_tai.py`, `templates_app/migrations/0093_qr_da_in.py`, `templates_app/test_qr_registration.py`
+- Sửa: `templates_app/models/registration.py`, `templates_app/qr_reg_views.py`, `templates_app/urls.py`, `templates_app/templates/templates_app/qr/registration_list.html`, `templates_app/templates/templates_app/qr/dashboard.html`, `templates_app/templates/templates_app/qr/_nav.html`, `templates_app/templates/templates_app/base.html`
+
 ## 2026.11.05 — 05/11/2026
 
 ### Chức năng mới

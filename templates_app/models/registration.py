@@ -115,27 +115,42 @@ class HDVImportRecord(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# Đăng ký bảng QR (Kế toán Ngân quỹ)
+# Đăng ký bảng QR / Loa Thần tài (Kế toán Ngân quỹ)
 # ---------------------------------------------------------------------------
 
 class QRRegistration(models.Model):
-    """Đăng ký bảng QR cho khách hàng/cửa hàng — Phòng Kế toán & Ngân quỹ."""
+    """Đăng ký bảng QR / Loa Thần tài cho khách hàng/cửa hàng — Phòng Kế toán & Ngân quỹ."""
 
+    LOAI_QR = 'qr'
+    LOAI_LOA = 'loa'
+    LOAI_CHOICES = [
+        (LOAI_QR, 'Bảng QR'),
+        (LOAI_LOA, 'Loa Thần tài'),
+    ]
+
+    loai            = models.CharField(
+        max_length=5, choices=LOAI_CHOICES, default=LOAI_QR, db_index=True, verbose_name="Loại đăng ký",
+    )
     ten_kh          = models.CharField(max_length=200, verbose_name="Tên khách hàng")
     so_tai_khoan    = models.CharField(max_length=30, db_index=True, verbose_name="Số tài khoản")
     ten_cua_hang    = models.CharField(max_length=200, blank=True, verbose_name="Tên cửa hàng (nếu có)")
+    dia_chi         = models.CharField(max_length=300, blank=True, verbose_name="Địa chỉ (Loa Thần tài)")
+    so_dien_thoai   = models.CharField(max_length=20, blank=True, verbose_name="Số điện thoại (Loa Thần tài)")
     ten_can_bo      = models.CharField(max_length=200, blank=True, verbose_name="Tên cán bộ đăng ký")
     phong_giao_dich = models.CharField(max_length=200, blank=True, verbose_name="Phòng giao dịch")
     user_dk         = models.ForeignKey(
         'auth.User', on_delete=models.CASCADE,
         related_name='qr_registrations', verbose_name="Người đăng ký",
     )
+    da_in           = models.BooleanField(default=False, db_index=True, verbose_name="Đã in")
+    nguoi_in        = models.CharField(max_length=200, blank=True, verbose_name="Người đánh dấu đã in")
+    ngay_in         = models.DateTimeField(null=True, blank=True, verbose_name="Ngày in")
     ngay_dang_ky    = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng ký", db_index=True)
     updated_at      = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
 
     class Meta:
-        verbose_name = "Đăng ký bảng QR"
-        verbose_name_plural = "Đăng ký bảng QR"
+        verbose_name = "Đăng ký bảng QR / Loa Thần tài"
+        verbose_name_plural = "Đăng ký bảng QR / Loa Thần tài"
         ordering = ['-ngay_dang_ky']
 
     def __str__(self):

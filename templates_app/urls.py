@@ -233,6 +233,7 @@ urlpatterns = [
     path('qr/dang-ky/mau-tai-ve/', qr_reg_views.qr_registration_template_download_view, name='qr_registration_template_download'),
     path('qr/dang-ky/upload/', qr_reg_views.qr_registration_import_view, name='qr_registration_import'),
     path('qr/dang-ky/xuat-file/', qr_reg_views.qr_registration_export_view, name='qr_registration_export'),
+    path('qr/dang-ky/<int:pk>/da-in/', qr_reg_views.qr_registration_mark_printed_view, name='qr_registration_mark_printed'),
     path('qr/huong-dan/', qr_reg_views.qr_huong_dan_word_view, name='qr_huong_dan'),
     path('hdv/import/', hdv_reg_views.hdv_import_upload_view, name='hdv_import_upload'),
 

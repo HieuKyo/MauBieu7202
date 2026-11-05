@@ -2,7 +2,7 @@
 {% load static %}
 {% load humanize %}
 
-{% block title %}Dashboard QR{% endblock %}
+{% block title %}Dashboard QR / Loa Thần tài{% endblock %}
 
 {% block extra_head %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
@@ -12,7 +12,7 @@
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12">
-            <h2 style="color: var(--agri-red);"><i class="bi bi-speedometer2"></i> DASHBOARD ĐĂNG KÝ BẢNG QR</h2>
+            <h2 style="color: var(--agri-red);"><i class="bi bi-speedometer2"></i> DASHBOARD QR / LOA THẦN TÀI</h2>
         </div>
     </div>
 
@@ -36,9 +36,17 @@
         <div class="col-md-4">
             <div class="card shadow-sm h-100" style="background-color: var(--agri-red); color: #fff;">
                 <div class="card-body">
-                    <div class="small"><i class="bi bi-qr-code"></i> Tổng số bảng QR đăng ký</div>
-                    <div class="fs-3 fw-bold">{{ tong_qr }}</div>
+                    <div class="small"><i class="bi bi-qr-code"></i> Bảng QR đăng ký tháng {{ thang_hien_thi }}</div>
+                    <div class="fs-3 fw-bold">{{ tong_qr|intcomma }}</div>
                     <div class="small">{{ tu_ngay }} → {{ den_ngay }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100" style="background-color: var(--agri-red); color: #fff;">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-calendar3"></i> Bảng QR đăng ký năm {{ nam }}</div>
+                    <div class="fs-3 fw-bold">{{ tong_qr_nam|intcomma }}</div>
                 </div>
             </div>
         </div>
@@ -47,6 +55,23 @@
                 <div class="card-body">
                     <div class="small"><i class="bi bi-person-badge"></i> Cán bộ có đăng ký</div>
                     <div class="fs-3 fw-bold">{{ so_can_bo }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100 text-bg-warning">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-volume-up"></i> Loa Thần tài đăng ký tháng {{ thang_hien_thi }}</div>
+                    <div class="fs-3 fw-bold">{{ tong_loa|intcomma }}</div>
+                    <div class="small">{{ tu_ngay }} → {{ den_ngay }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100 text-bg-warning">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-calendar3"></i> Loa Thần tài đăng ký năm {{ nam }}</div>
+                    <div class="fs-3 fw-bold">{{ tong_loa_nam|intcomma }}</div>
                 </div>
             </div>
         </div>
@@ -62,8 +87,15 @@
 
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <h6>Số bảng QR đăng ký theo ngày trong tháng</h6>
+            <h6>Số bảng QR / Loa Thần tài đăng ký theo ngày trong tháng</h6>
             <canvas id="chartByDay" height="90"></canvas>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6>Số bảng QR / Loa Thần tài đăng ký theo tháng trong năm {{ nam }}</h6>
+            <canvas id="chartByMonth" height="90"></canvas>
         </div>
     </div>
 
@@ -78,7 +110,9 @@
                                 <tr>
                                     <th>Cán bộ</th>
                                     <th>Phòng giao dịch</th>
-                                    <th class="text-end">Số lượng</th>
+                                    <th class="text-end">Bảng QR</th>
+                                    <th class="text-end">Loa</th>
+                                    <th class="text-end">Tổng</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -86,10 +120,12 @@
                                 <tr>
                                     <td>{{ row.ten_can_bo }}</td>
                                     <td>{{ row.phong_giao_dich|default:"—" }}</td>
-                                    <td class="text-end">{{ row.so_luong }}</td>
+                                    <td class="text-end">{{ row.qr }}</td>
+                                    <td class="text-end">{{ row.loa }}</td>
+                                    <td class="text-end fw-bold">{{ row.so_luong }}</td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="3" class="text-center text-muted">Chưa có dữ liệu trong tháng này</td></tr>
+                                <tr><td colspan="5" class="text-center text-muted">Chưa có dữ liệu trong tháng này</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -106,17 +142,21 @@
                             <thead>
                                 <tr>
                                     <th>Phòng giao dịch</th>
-                                    <th class="text-end">Số lượng</th>
+                                    <th class="text-end">Bảng QR</th>
+                                    <th class="text-end">Loa</th>
+                                    <th class="text-end">Tổng</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for row in by_pgd %}
                                 <tr>
                                     <td>{{ row.phong_giao_dich }}</td>
-                                    <td class="text-end">{{ row.so_luong }}</td>
+                                    <td class="text-end">{{ row.qr }}</td>
+                                    <td class="text-end">{{ row.loa }}</td>
+                                    <td class="text-end fw-bold">{{ row.so_luong }}</td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="2" class="text-center text-muted">Chưa có dữ liệu trong tháng này</td></tr>
+                                <tr><td colspan="4" class="text-center text-muted">Chưa có dữ liệu trong tháng này</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -130,21 +170,30 @@
 
 {% block extra_js %}
 <script>
-    new Chart(document.getElementById('chartByDay'), {
-        type: 'bar',
-        data: {
-            labels: {{ chart_labels_json|safe }},
-            datasets: [{
-                label: 'Số bảng QR',
-                data: {{ chart_values_json|safe }},
-                backgroundColor: '#8B1E2D',
-            }],
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-        },
-    });
+    function veBieuDo(id, labels, qr, loa) {
+        new Chart(document.getElementById(id), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Bảng QR',
+                    data: qr,
+                    backgroundColor: '#8B1E2D',
+                }, {
+                    label: 'Loa Thần tài',
+                    data: loa,
+                    backgroundColor: '#E0A800',
+                }],
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: true } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            },
+        });
+    }
+
+    veBieuDo('chartByDay', {{ chart_labels_json|safe }}, {{ chart_qr_json|safe }}, {{ chart_loa_json|safe }});
+    veBieuDo('chartByMonth', {{ chart_thang_labels_json|safe }}, {{ chart_thang_qr_json|safe }}, {{ chart_thang_loa_json|safe }});
 </script>
 {% endblock %}
