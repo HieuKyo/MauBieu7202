@@ -1,0 +1,89 @@
+{% extends 'templates_app/base.html' %}
+{% load l10n %}
+
+{% block title %}Cấu hình in bảng kê{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-gear"></i> CẤU HÌNH IN BẢNG KÊ</h2>
+            <p class="text-muted">
+                Chọn mẫu cần chỉnh bên dưới. Với các mẫu in đè lên giấy in sẵn ("Bảng kê trắng"), chỉnh
+                tọa độ X/Y rồi bấm <strong>"In thử"</strong>, đặt tờ giấy in sẵn vào máy in để kiểm tra
+                khớp ô chưa. Với "Bảng kê Thu/Chi có khung" và "Đề nghị tiếp quỹ" (hệ thống tự vẽ khung),
+                chỉ cần chỉnh lề/cỡ chữ nếu muốn.
+            </p>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-3" id="configTabs">
+        {% for tab in tabs %}
+        <li class="nav-item">
+            <button type="button" class="nav-link {% if forloop.first %}active{% endif %}" data-tab="{{ tab.key }}">
+                {{ tab.label }}
+            </button>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="row">
+        <div class="col-lg-8">
+            {% for tab in tabs %}
+            <div class="card shadow-sm config-panel {% if not forloop.first %}d-none{% endif %}" data-tab="{{ tab.key }}">
+                <div class="card-body">
+                    <form method="post" action="{% url tab.submit_url %}">
+                        {% csrf_token %}
+                        <div class="row g-2 mb-3">
+                            {% for f in tab.fields %}
+                            <div class="col-md-6">
+                                <label class="form-label">{{ f.label }}</label>
+                                <input type="number" step="0.5" class="form-control" name="{{ f.name }}" value="{{ f.value|unlocalize }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-save"></i> Lưu</button>
+                            <button type="submit" name="cancel" value="1" class="btn btn-secondary flex-grow-1"><i class="bi bi-x-circle"></i> Hủy</button>
+                            <a href="{% url tab.preview_url %}" target="_blank" class="btn btn-outline-danger flex-grow-1">
+                                <i class="bi bi-printer"></i> In thử
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="col-lg-4">
+            <div class="alert alert-info">
+                <strong>Ghi chú:</strong>
+                <ul class="mb-0">
+                    <li>X = khoảng cách từ mép trái tờ giấy (mm)</li>
+                    <li>Y = khoảng cách từ mép trên tờ giấy (mm)</li>
+                    <li>Khổ giấy A5 ngang: 210mm (rộng) × 148mm (cao)</li>
+                    <li>"Dịch chuyển trục X/Y" là chỉnh nhanh toàn bộ; các vị trí cột/dòng khác chỉnh chi tiết từng phần</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    #configTabs .nav-link.active { background-color: var(--agri-red); color: #fff; }
+</style>
+<script>
+    document.querySelectorAll('#configTabs .nav-link').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('#configTabs .nav-link').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const tab = this.dataset.tab;
+            document.querySelectorAll('.config-panel').forEach(function (panel) {
+                panel.classList.toggle('d-none', panel.dataset.tab !== tab);
+            });
+        });
+    });
+</script>
+{% endblock %}

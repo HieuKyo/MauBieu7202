@@ -1,0 +1,113 @@
+{% extends 'templates_app/base.html' %}
+{% load humanize %}
+
+{% block title %}Lịch sử giao dịch quỹ{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-clock-history"></i> LỊCH SỬ GIAO DỊCH QUỸ TIỀN MẶT</h2>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end mb-3">
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Ngày</label>
+                    <input type="date" class="form-control" name="ngay" value="{{ ngay }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Xem</button>
+                </div>
+                <div class="col-auto ms-auto">
+                    <a href="{% url 'cash_statement' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Về Bảng kê</a>
+                </div>
+            </form>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <div class="card text-bg-light">
+                        <div class="card-body">
+                            <div class="small text-muted">Tổng thu trong ngày</div>
+                            <div class="fs-4 fw-bold text-success">{{ tong_thu|intcomma }} đ</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card text-bg-light">
+                        <div class="card-body">
+                            <div class="small text-muted">Tổng chi trong ngày</div>
+                            <div class="fs-4 fw-bold text-danger">{{ tong_chi|intcomma }} đ</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Loại</th>
+                            <th>Ghi chú</th>
+                            <th class="text-end">Số tiền</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in statements %}
+                        <tr>
+                            <td>{{ s.created_at|date:"d/m/Y H:i:s" }}</td>
+                            <td>
+                                <span class="badge
+                                    {% if s.loai == 'THU' %}text-bg-success
+                                    {% elif s.loai == 'CHI' %}text-bg-danger
+                                    {% elif s.loai == 'RESET' %}text-bg-secondary
+                                    {% else %}text-bg-info{% endif %}">
+                                    {{ s.get_loai_display }}
+                                </span>
+                            </td>
+                            <td>{{ s.ghi_chu }}</td>
+                            <td class="text-end">{{ s.tong_tien|intcomma }} đ</td>
+                            <td>
+                                {% if s.loai == 'THU' or s.loai == 'CHI' %}
+                                <a href="{% url 'cash_statement_print_pdf' s.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-printer"></i> In lại
+                                </a>
+                                <a href="{% url 'cash_statement_full_pdf' s.id %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-file-earmark-text"></i> Bảng kê đầy đủ
+                                </a>
+                                <a href="{% url 'cash_statement_nop_tien_pdf' s.id %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-printer"></i> Bảng kê trắng (nộp tiền)
+                                </a>
+                                {% elif s.loai == 'DE_NGHI' %}
+                                <a href="{% url 'cash_de_nghi_pdf' s.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-printer"></i> In lại đề nghị
+                                </a>
+                                {% endif %}
+                                {% if s.loai != 'RESET' %}
+                                <a href="{% url 'cash_statement_edit' s.id %}" class="btn btn-sm btn-outline-warning">
+                                    <i class="bi bi-pencil"></i> Sửa
+                                </a>
+                                <form method="post" action="{% url 'cash_statement_delete' s.id %}" class="d-inline"
+                                      onsubmit="return confirm('Xóa bút toán này và cập nhật lại tồn quỹ?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Xóa
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted">Không có giao dịch nào trong ngày này</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

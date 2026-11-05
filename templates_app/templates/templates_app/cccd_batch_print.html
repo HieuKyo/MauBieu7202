@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>In lô CCCD ({{ pages|length }} hồ sơ)</title>
+<style>
+    /* Mỗi khách 1 trang A5 ngang — giống bản in "Chụp 2 mặt" */
+    @page { size: A5 landscape; margin: 0; }
+    html, body { margin: 0; }
+    body { font-family: "Times New Roman", serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #e9ecef; }
+    .page { width: 210mm; height: 148mm; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; background: #fff; margin: 6mm auto; box-shadow: 0 0 4px rgba(0, 0, 0, .25); }
+    .cards { display: flex; gap: 10mm; }
+    .cards img { width: 85.6mm; height: 54mm; display: block; border: 0.3mm solid #555; border-radius: 3mm; object-fit: contain; background: #fff; }
+    .note { margin-top: 10mm; text-align: center; font-size: 13pt; line-height: 1.7; }
+    .sign-space { height: 20mm; }
+    .bar { font-family: system-ui, "Segoe UI", Arial, sans-serif; font-size: 14px; background: #fff; padding: 12px 16px;
+           border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 1; }
+    .bar button { font-size: 15px; padding: 6px 16px; cursor: pointer; }
+    .warn { color: #842029; margin-top: 6px; }
+    .page.chua-cat { outline: 3px dashed #dc3545; }
+    @media print {
+        body { background: none; }
+        .bar { display: none; }
+        .page { margin: 0; box-shadow: none; outline: none !important; page-break-after: always; break-after: page; }
+        .page:last-child { page-break-after: auto; break-after: auto; }
+    }
+</style>
+</head>
+<body>
+<div class="bar">
+    <strong>In lô CCCD: {{ pages|length }} hồ sơ</strong> (A5 ngang, mỗi hồ sơ 1 trang)
+    <button type="button" id="btnPrint" onclick="window.print()" disabled>🖨 In</button>
+    <span id="loading">Đang tải ảnh…</span>
+    {% if missing %}
+    <div class="warn">⚠ Bỏ qua {{ missing|length }} khách chưa có đủ ảnh 2 mặt thẻ:
+        {% for m in missing %}{{ m.ho_ten }}{% if m.lop %} ({{ m.lop }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+    {% endif %}
+    {% if chua_cat %}
+    <div class="warn">⚠ {{ chua_cat|length }} hồ sơ có ảnh chưa cắt theo thẻ (khung đỏ — in thu nhỏ cả ảnh):
+        {% for m in chua_cat %}{{ m.ho_ten }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+    {% endif %}
+</div>
+{% for p in pages %}
+<div class="page{% if p.chua_cat %} chua-cat{% endif %}">
+    <div class="cards">
+        <img src="{% url 'customer_cccd_image' p.id 'mat_truoc' %}" alt="{{ p.ho_ten }} - mặt trước">
+        <img src="{% url 'customer_cccd_image' p.id 'mat_sau' %}" alt="{{ p.ho_ten }} - mặt sau">
+    </div>
+    <div class="note">
+        <div><b>ĐÃ ĐỐI CHIẾU KHỚP ĐÚNG VỚI BẢN GỐC</b></div>
+        <div><i>{{ dia_danh }}, {{ ngay_ky }}</i></div>
+        <div><b>Người đối chiếu</b></div>
+        <div class="sign-space"></div>
+    </div>
+</div>
+{% empty %}
+<p style="text-align:center;font-family:system-ui,sans-serif;margin-top:40px">Không có hồ sơ nào có đủ ảnh 2 mặt thẻ để in.</p>
+{% endfor %}
+<script>
+    // Chờ tải hết ảnh rồi mới cho in (in khi ảnh chưa tải xong sẽ ra trang trống)
+    Promise.all([...document.images].map(img => img.decode().catch(() => {}))).then(() => {
+        document.getElementById('loading').textContent = '';
+        const btn = document.getElementById('btnPrint');
+        btn.disabled = {{ pages|length }} === 0;
+        if (!btn.disabled) window.print();
+    });
+</script>
+</body>
+</html>

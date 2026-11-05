@@ -1,0 +1,75 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Báo cáo Đối chiếu huy động vốn{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-3" style="color: var(--agri-red);">
+                <i class="bi bi-bank2"></i> ĐỐI CHIẾU HUY ĐỘNG VỐN
+            </h2>
+            <p class="text-center text-muted">So sánh số liệu đăng ký huy động vốn với số dư thực tế trên IPCAS</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="post" action="{% url 'process_huy_dong_von' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="file_chuong_trinh" class="form-label">
+                                <i class="bi bi-file-earmark-excel"></i> File Chương trình (Đăng ký HĐV)
+                            </label>
+                            <input type="file" class="form-control" id="file_chuong_trinh" name="file_chuong_trinh"
+                                   accept=".xlsx,.xls" required>
+                            <div class="form-text">File cần có các cột: CCCD/GPĐKKD/GCNĐT/Mã số DN/MST, Mã cán bộ, Số tiền</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="file_he_thong" class="form-label">
+                                <i class="bi bi-file-earmark-excel"></i> File Hệ thống (IPCAS)
+                            </label>
+                            <input type="file" class="form-control" id="file_he_thong" name="file_he_thong"
+                                   accept=".xlsx,.xls" required>
+                            <div class="form-text">File cần có các cột: ID_NUMBER, EMPLOYEE_NUMBER, EMPLOYEE_NAME, CCY, CURRENT_BALANCE, OPENING_DATE, MATURITY_DATE, MONTH_TERM, RATE, SO_TAI_KHOAN, ACCOUNT_STATUS, MA_KH, MA_CN (tùy chọn: NGUOI_GIOI_THIEU, TEN_NGUOI_GIOI_THIEU)</div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Lưu ý:</strong> Chỉ đối chiếu các khoản VND có kỳ hạn (MONTH_TERM) từ 1 tháng trở lên.
+                            Đối chiếu theo cặp CCCD/GPĐKKD/GCNĐT/Mã số DN/MST + Mã cán bộ. Kết quả kèm theo
+                            EMPLOYEE_NAME, RATE, MATURITY_DATE, MONTH_TERM, SO_TAI_KHOAN, NGUOI_GIOI_THIEU,
+                            TEN_NGUOI_GIOI_THIEU từ IPCAS để đối chiếu chi tiết
+                            (nối bằng "; " nếu khách hàng có nhiều khoản khớp cùng cán bộ). Nếu cán bộ đăng ký
+                            nhiều lần cho cùng 1 KH, chỉ lần đăng ký mới nhất được tính; các lần cũ hơn không
+                            hiển thị dữ liệu IPCAS và bị đánh dấu "Không hợp lệ do đã gửi vào ngày dd/mm/yyyy".
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="bi bi-award"></i>
+                            <strong>Tính thưởng HĐV (theo VB 329/NHNo.CT-KH&amp;QLRR ngày 05/6/2026):</strong>
+                            File kết quả có thêm sheet "Tinh Thuong HDV" tổng hợp theo cán bộ —
+                            cơ sở tính thưởng = min(số tiền đăng ký, số dư thực tế IPCAS), tỷ lệ tạm tính
+                            cố định 0,1% (mức niêm yết, do file nguồn chưa phân biệt niêm yết/chính sách),
+                            làm tròn đến 10.000đ, tối đa 5.000.000đ/cán bộ/tháng.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-gear"></i> Đối chiếu và tải kết quả
+                            </button>
+                            <a href="{% url 'report_hub' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

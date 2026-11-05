@@ -95,7 +95,6 @@ class SalaryFileProcessor:
                 self.errors.append('Phai chon tai khoan cong ty de xu ly file')
                 return {'success': False, 'errors': self.errors, 'warnings': self.warnings}
 
-            company_name_unsigned = self.normalize_text(company_account.account_name)
             current_date = datetime.now().strftime('%Y%m%d')
 
             successful_rows = []

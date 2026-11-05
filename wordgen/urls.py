@@ -28,6 +28,10 @@ urlpatterns = [
     path("kpi-tool/", include("kpi_tool.urls")),
     path("tasks/", include("tasks.urls")),
     path("savings/", include("savings_calculator.urls")),
+    path("quiz/", include("quiz.urls")),
+    path("messaging/", include("messaging.urls")),
+    path("van-ban/", include("document_registry.urls")),
+    path("led/", include("led_board.urls")),
     path("", include("templates_app.urls")),
 ]
 

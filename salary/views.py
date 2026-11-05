@@ -4,14 +4,13 @@ Views cho app Salary - Quản lý chi lương và thu hộ
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse, FileResponse, HttpResponse
+from django.http import JsonResponse, FileResponse
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum
+from django.db.models import Q
 import os
-from datetime import datetime
 
 from .models import Bank, CompanyAccount, Beneficiary, ProcessingHistory
-from .forms import BeneficiaryForm, CompanyAccountForm, FileUploadForm
+from .forms import FileUploadForm
 from .services import SalaryFileProcessor, SalaryStatisticsService
 
 
@@ -45,15 +44,8 @@ def dashboard(request):
     # Lấy thống kê
     stats = SalaryStatisticsService.get_statistics(start_date=start_date, end_date=end_date)
 
-    # Lịch sử xử lý gần đây (theo filter nếu có)
-    recent_histories = ProcessingHistory.objects.all()
-    if start_date and end_date:
-        recent_histories = recent_histories.filter(processed_at__gte=start_date, processed_at__lte=end_date)
-    recent_histories = recent_histories[:10]
-
     context = {
         'stats': stats,
-        'recent_histories': recent_histories,
         'filter_month': filter_month,
         'filter_year': filter_year,
         'years_range': years_range,

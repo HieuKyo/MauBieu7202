@@ -47,7 +47,7 @@ def merge_data():
     chuyen_doi.update(bacninh_chuyen_doi)
     chuyen_doi.update(camau_chuyen_doi)
 
-    print(f"\nAfter merge:")
+    print("\nAfter merge:")
     print(f"  dia_danh provinces: {len(dia_danh)}")
     print(f"  chuyen_doi mappings: {len(chuyen_doi)}")
 
