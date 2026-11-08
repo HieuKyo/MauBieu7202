@@ -1,0 +1,15 @@
+{% extends "templates_app/base.html" %}
+
+{% block title %}KH 360 - {{ kh.ten }}{% endblock %}
+
+{% block content %}
+{% include "kh360/_header.html" %}
+<div class="mb-2"><a href="{% url 'kh360:tra_cuu' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Tra cứu khác</a></div>
+<div class="card shadow-sm border-0" style="border-radius:1.25rem">
+    {% include "kh360/_ho_so.html" %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% include "kh360/_assets.html" %}
+{% endblock %}

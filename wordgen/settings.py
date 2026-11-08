@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "messaging",
     "document_registry",
     "led_board",
+    "kh360",
 ]
 
 MIDDLEWARE = [

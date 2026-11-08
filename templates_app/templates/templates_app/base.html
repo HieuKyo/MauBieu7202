@@ -26,6 +26,11 @@
         footer {
             flex-shrink: 0;
         }
+        /* Menu nhiều mục (admin, tên đăng nhập dài): xuống dòng thay vì tràn ngang làm trắng nền bên phải */
+        @media (min-width: 992px) {
+            .agribank-header .navbar-collapse { min-width: 0; }
+            .agribank-header .navbar-nav { flex-wrap: wrap; justify-content: flex-end; }
+        }
         .category-card {
             cursor: pointer;
             transition: all 0.3s ease;
@@ -76,10 +81,14 @@
                                 <i class="bi bi-envelope-paper"></i> Văn bản
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'customer_list' %}">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-people-fill"></i> Khách hàng
                             </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'customer_list' %}"><i class="bi bi-people me-2"></i>Danh sách khách hàng</a></li>
+                                <li><a class="dropdown-item" href="{% url 'kh360:tra_cuu' %}"><i class="bi bi-person-vcard me-2"></i>Khách hàng 360</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'business_dashboard' %}">

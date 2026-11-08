@@ -1,0 +1,177 @@
+{% extends "templates_app/base.html" %}
+{% load kh360_tags %}
+
+{% block title %}Khách hàng 360 - Thống kê{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tk-label { font-size: .8rem; color: #6c757d; margin-bottom: .2rem; }
+    .tk-dv select { font-size: .85rem; }
+    .tk-dv select.co { border-color: #198754; background-color: #eef8f1; }
+    .tk-dv select.chua { border-color: #dc3545; background-color: #fff5f5; }
+    .tk-tile { border-radius: .9rem; padding: .8rem 1rem; text-align: center; border: 1px solid #e9ecef; background: #fff; }
+    .tk-tile .nhan { font-size: .8rem; color: #6c757d; }
+    .tk-tile .gia-tri { font-size: 1.4rem; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "kh360/_header.html" %}
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <span class="small text-muted me-2"><i class="bi bi-lightning-charge"></i> Mẫu nhanh:</span>
+        {% for nhan, tham_so in mau %}
+        <a href="?{{ tham_so }}" class="btn btn-sm btn-outline-secondary mb-1">{{ nhan }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+<form method="get" class="card shadow-sm mb-3" id="formThongKe">
+    <div class="card-header fw-semibold"><i class="bi bi-funnel"></i> Điều kiện thống kê</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6 col-lg-4">
+                <div class="tk-label">Tổng số dư tiền gửi (VND)</div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Từ</span>
+                    <input type="text" inputmode="numeric" name="so_du_tu" value="{{ g.so_du_tu }}" class="form-control js-tien" placeholder="vd 1.000.000.000">
+                    <span class="input-group-text">đến</span>
+                    <input type="text" inputmode="numeric" name="so_du_den" value="{{ g.so_du_den }}" class="form-control js-tien" placeholder="không giới hạn">
+                </div>
+                <div class="mt-1">
+                    {% for v, n in muc_tien %}
+                    <button type="button" class="btn btn-link btn-sm p-0 me-2 js-chon-tien" data-v="{{ v }}">≥ {{ n }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+                <div class="tk-label">Dư nợ vay</div>
+                <select name="du_no" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    <option value="co" {% if g.du_no == 'co' %}selected{% endif %}>Đang vay</option>
+                    <option value="khong" {% if g.du_no == 'khong' %}selected{% endif %}>Không vay</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+                <div class="tk-label">Loại khách hàng</div>
+                <select name="loai" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    <option value="ca_nhan" {% if g.loai == 'ca_nhan' %}selected{% endif %}>Cá nhân</option>
+                    <option value="to_chuc" {% if g.loai == 'to_chuc' %}selected{% endif %}>Tổ chức</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="tk-label">Hạng tại CN (BC06)</div>
+                <select name="hang" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    {% for v, n in hang_loc %}<option value="{{ v }}" {% if g.hang == v %}selected{% endif %}>{{ n }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="tk-label">Điểm giao dịch</div>
+                <select name="pgd" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    {% for p in ds_pgd %}<option value="{{ p }}" {% if g.pgd == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="tk-label">Tuổi (KH cá nhân)</div>
+                <div class="input-group input-group-sm">
+                    <input type="number" min="0" name="tuoi_tu" value="{{ g.tuoi_tu }}" class="form-control" placeholder="từ">
+                    <span class="input-group-text">–</span>
+                    <input type="number" min="0" name="tuoi_den" value="{{ g.tuoi_den }}" class="form-control" placeholder="đến">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="tk-label">Loa Thần tài (kỳ mới nhất)</div>
+                <select name="loa" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    <option value="co" {% if g.loa == 'co' %}selected{% endif %}>Có loa</option>
+                    <option value="khong" {% if g.loa == 'khong' %}selected{% endif %}>Chưa có loa</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="tk-label">QR code</div>
+                <select name="qr" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    <option value="co" {% if g.qr == 'co' %}selected{% endif %}>Đã có QR</option>
+                    <option value="khong" {% if g.qr == 'khong' %}selected{% endif %}>Chưa có QR</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="tk-label">Ebanking tổ chức</div>
+                <select name="ebanking" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    <option value="co" {% if g.ebanking == 'co' %}selected{% endif %}>Đã dùng</option>
+                    <option value="khong" {% if g.ebanking == 'khong' %}selected{% endif %}>Chưa dùng</option>
+                </select>
+            </div>
+        </div>
+
+        <hr>
+        <div class="tk-label mb-2">Sản phẩm dịch vụ (CN05 – KH cá nhân). Chọn <b class="text-success">Có</b> / <b class="text-danger">Chưa có</b> cho từng dịch vụ; nhiều điều kiện thì KH phải thoả <b>tất cả</b>.</div>
+        <div class="row g-2 tk-dv">
+            {% for k, nhan, v in dich_vu %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text flex-grow-1">{{ nhan }}</span>
+                    <select name="dv_{{ k }}" class="form-select js-dv {% if v == 'co' %}co{% elif v == 'chua' %}chua{% endif %}" style="max-width:105px">
+                        <option value="">—</option>
+                        <option value="co" {% if v == 'co' %}selected{% endif %}>Có</option>
+                        <option value="chua" {% if v == 'chua' %}selected{% endif %}>Chưa có</option>
+                    </select>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="card-footer d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-danger"><i class="bi bi-bar-chart"></i> Thống kê</button>
+        <a href="{% url 'kh360:thong_ke' %}" class="btn btn-outline-secondary">Xoá điều kiện</a>
+        {% if co_loc %}
+        <button type="submit" name="xuat" value="excel" class="btn btn-success ms-auto"><i class="bi bi-file-earmark-excel"></i> Xuất Excel toàn bộ kết quả</button>
+        {% endif %}
+    </div>
+</form>
+
+{% if co_loc %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Số khách hàng</div><div class="gia-tri text-agribank">{{ tong.so_kh|tien }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Trong đó tổ chức</div><div class="gia-tri">{{ tong.to_chuc|tien }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Tổng số dư tiền gửi</div><div class="gia-tri text-success">{{ tong.so_du|tien_gon }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Tổng dư nợ</div><div class="gia-tri text-primary">{{ tong.du_no|tien_gon }}</div></div></div>
+</div>
+<div class="card shadow-sm">
+    <div class="card-header">Danh sách khách hàng thoả điều kiện</div>
+    {% include "kh360/_bang_kh.html" %}
+</div>
+{% else %}
+<div class="text-muted">Chọn điều kiện hoặc một mẫu nhanh ở trên rồi bấm <b>Thống kê</b>.</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% include "kh360/_assets.html" %}
+<script>
+(function () {
+    const fmt = v => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    document.querySelectorAll('.js-tien').forEach(el => {
+        el.value = fmt(el.value);
+        el.addEventListener('input', () => { el.value = fmt(el.value); });
+    });
+    document.querySelectorAll('.js-chon-tien').forEach(b => b.addEventListener('click', () => {
+        document.querySelector('[name=so_du_tu]').value = fmt(b.dataset.v);
+    }));
+    document.querySelectorAll('.js-dv').forEach(s => s.addEventListener('change', () => {
+        s.classList.toggle('co', s.value === 'co');
+        s.classList.toggle('chua', s.value === 'chua');
+    }));
+    // Không gửi ô trống lên URL cho gọn
+    document.getElementById('formThongKe').addEventListener('submit', function () {
+        this.querySelectorAll('input, select').forEach(el => { if (el.name && !el.value) el.disabled = true; });
+        setTimeout(() => this.querySelectorAll(':disabled').forEach(el => { el.disabled = false; }), 0);
+    });
+})();
+</script>
+{% endblock %}

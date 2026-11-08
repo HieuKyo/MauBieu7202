@@ -3,6 +3,32 @@
 Mỗi mục là một bản cập nhật (gói `CapNhat_MauBieu_<phiên bản>`), mới nhất ở trên.
 Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `tao_ban_cap_nhat.bat`, tiêu đề này được đổi thành số phiên bản và ngày.
 
+## Bản tiếp theo
+
+### Chức năng mới
+- **Khách hàng 360** (menu **KH 360**, mọi người dùng): tra cứu một khách hàng theo mã KH, tên (gõ không dấu cũng được), CCCD, số điện thoại hoặc số tài khoản. Hồ sơ gồm: thông tin cá nhân, các sản phẩm dịch vụ đã có / chưa có (TKTT, TK số đẹp, thẻ, Agribank Plus, OTT, SMS…), tài khoản tiền gửi, khoản vay (dư nợ, nhóm nợ, kỳ trả tiếp, cán bộ tín dụng), doanh số Loa Thần tài theo từng kỳ, QR code, Ebanking tổ chức và lịch sử biến động của khách hàng.
+- **Cập nhật dữ liệu KH 360:** nạp file **CN05** và **DP01** (bắt buộc), kèm **LN01**, **Thống kê doanh số Loa**, **Tổng hợp QR**, **Quản trị khách hàng tổ chức** (không bắt buộc). Có thể cập nhật bất cứ lúc nào. Nhật ký ghi "Đã cập nhật vào ngày … – dữ liệu ngày …". File nào không chọn thì giữ nguyên dữ liệu lần trước.
+- **Tra cứu KH 360:** danh sách kết quả 10 dòng mỗi trang, bấm tiêu đề cột để sắp xếp (mã KH, tên, loại, hạng, số dư, dư nợ, điểm GD). Bấm **Xem** (hoặc bấm vào dòng) để mở hồ sơ thành bảng nổi, nền phía sau làm mờ. Hồ sơ chia tab: Hồ sơ 360°, Tiền gửi, Khoản vay, Dịch vụ, Loa & QR, Biến động.
+- **Phân hạng khách hàng (BC06 / MSPL09):** nạp thêm file BC06 (không bắt buộc). Hạng (Platinum VIP, Gold VIP, Thân thiết…) hiện cạnh tên khách hàng, kèm điểm xếp hạng chi nhánh, lợi ích mang lại, số dư bình quân tiền gửi có kỳ hạn, tiền gửi thanh toán và tiền vay.
+- **Ghi chú khách hàng:** cán bộ ghi chú ngay trong hồ sơ (nhu cầu, lịch hẹn…). Ghi chú lưu tên người sửa và thời gian, không bị mất khi cập nhật lại dữ liệu.
+- **Thống kê KH 360:** lọc khách hàng theo tổng số dư tiền gửi (từ … đến …), đang vay / không vay, cá nhân / tổ chức, hạng BC06, điểm giao dịch, tuổi, có / chưa có từng dịch vụ (kết hợp nhiều điều kiện, ví dụ vừa có OTT vừa có SMS Banking), Loa, QR, Ebanking tổ chức. Có 8 mẫu lọc nhanh (tiền gửi ≥ 1 tỷ chưa có Agribank Plus, đang vay chưa có Agribank Plus…). Hiện số khách hàng, tổng số dư, tổng dư nợ; xuất Excel toàn bộ kết quả.
+- **Phân quyền KH 360:** Admin dùng toàn bộ (gồm Cập nhật dữ liệu). Ban Giám đốc (Giám đốc, Phó Giám đốc, phòng Ban Giám đốc), Giám đốc / Phó Giám đốc Phòng giao dịch, Trưởng phòng, Phó phòng, Hậu kiểm viên được Tra cứu, Thống kê, Biến động.
+- **Giao diện KH 360 theo kích thước màn hình:** màn rộng (1920×1080) hiện đủ cột; màn 1600×900 hoặc màn phóng to 125% ẩn bớt cột Điểm GD; màn đứng và màn nhỏ chỉ giữ Tên, Hạng, Số dư (mã KH hiện dưới tên). Bảng hồ sơ nổi cuộn được trên màn thấp, chiếm toàn màn hình trên màn nhỏ; tab hồ sơ cuộn ngang. Các chức vụ còn lại chỉ được Tra cứu.
+- **Biến động KH 360:** sau mỗi lần cập nhật, liệt kê những gì mới và những gì mất so với lần trước: KH mới / mất, TK mở mới / đóng, vay mới giải ngân / tất toán, đăng ký / hủy dịch vụ, Loa mới / mất, QR mới / mất, Ebanking tổ chức mới / mất. Lọc theo kỳ và loại, xuất Excel.
+
+### Chỉnh sửa
+- **Thanh menu:** khi có nhiều mục (tài khoản Admin, tên đăng nhập dài), menu tự xuống dòng thay vì tràn ngang làm trang bị cuộn ngang và trắng nền bên phải. Mục **Khách hàng** thành menu thả xuống: Danh sách khách hàng, Khách hàng 360.
+
+### Lưu ý
+- Lần đầu nạp mỗi loại file chỉ làm **mốc**, chưa tính biến động. Biến động có từ lần nạp thứ hai.
+- File ZIP tải về từ IPCAS có mật khẩu, nên phải giải nén rồi chọn file **.csv** bên trong.
+- Ebanking tổ chức được ghép với khách hàng theo **tên** (file không có mã KH). Tổ chức nào không ghép được sẽ hiện ở trang Cập nhật để nhập mã KH một lần; các lần sau hệ thống tự nhớ.
+- Có migration `kh360/0001_initial`, `kh360/0002_xep_hang_ghi_chu` (tạo bảng mới, không sửa bảng cũ).
+
+### File
+- Thêm: `kh360/` (models, parsers, importer, views, urls, templates, templatetags, tests, `migrations/0001_initial.py`, `migrations/0002_xep_hang_ghi_chu.py`)
+- Sửa: `wordgen/settings.py`, `wordgen/urls.py`, `templates_app/templates/templates_app/base.html`
+
 ## 2026.11.05.3 — 05/11/2026
 
 ### Chức năng mới

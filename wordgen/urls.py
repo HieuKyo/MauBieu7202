@@ -32,6 +32,7 @@ urlpatterns = [
     path("messaging/", include("messaging.urls")),
     path("van-ban/", include("document_registry.urls")),
     path("led/", include("led_board.urls")),
+    path("kh360/", include("kh360.urls")),
     path("", include("templates_app.urls")),
 ]
 

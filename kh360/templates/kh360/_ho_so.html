@@ -1,0 +1,253 @@
+{% load kh360_tags %}
+<div class="kh360-hs">
+<!-- ── ĐẦU HỒ SƠ ── -->
+<div class="modal-header border-0 align-items-start px-4 pt-4 pb-2">
+    <div class="d-flex gap-3 align-items-start flex-grow-1">
+        <div class="hs-avatar">{{ chu_dau }}</div>
+        <div class="flex-grow-1">
+            <div class="d-flex flex-wrap gap-2 mb-1">
+                {% if xh %}<span class="hang-badge {{ xh|hang_css }}"><i class="bi bi-award"></i> {{ xh.nhan_cn }}</span>{% endif %}
+                <span class="hs-chip font-monospace">CIF: {{ kh.ma_kh }}</span>
+                {% if kh.la_to_chuc %}<span class="hs-chip">Tổ chức</span>{% endif %}
+                {% if not kh.con_hoat_dong %}<span class="hs-chip text-danger">Không còn trong dữ liệu mới nhất</span>{% endif %}
+            </div>
+            <div class="hs-ten">{% if danh_xung %}<span class="hs-danh-xung">{{ danh_xung }}</span>{% endif %}{{ kh.ten }}</div>
+            <div class="hs-meta mt-1 d-flex flex-wrap gap-3">
+                {% if kh.sdt %}<span><i class="bi bi-telephone text-success"></i> <b>{{ kh.sdt }}</b></span>{% endif %}
+                {% if kh.cccd %}<span>CCCD: <b>{{ kh.cccd }}</b></span>{% endif %}
+                {% if kh.pgd %}<span>Điểm GD: <b class="text-agribank">{{ kh.pgd }}</b></span>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% if request.GET.modal %}<button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Đóng"></button>{% endif %}
+</div>
+
+<div class="px-4">
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#hs-tong-quan-{{ kh.ma_kh }}" type="button"><i class="bi bi-person-badge"></i> Hồ sơ 360°</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#hs-tien-gui-{{ kh.ma_kh }}" type="button"><i class="bi bi-bank"></i> Tiền gửi ({{ so_tk_active }})</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#hs-vay-{{ kh.ma_kh }}" type="button"><i class="bi bi-graph-up-arrow"></i> Khoản vay ({{ so_vay_active }})</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#hs-dich-vu-{{ kh.ma_kh }}" type="button"><i class="bi bi-stars"></i> Dịch vụ ({{ so_dv }})</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#hs-loa-{{ kh.ma_kh }}" type="button"><i class="bi bi-qr-code"></i> Loa & QR</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#hs-bien-dong-{{ kh.ma_kh }}" type="button"><i class="bi bi-clock-history"></i> Biến động ({{ bien_dong|length }})</button></li>
+    </ul>
+</div>
+
+<div class="modal-body px-4">
+<div class="tab-content">
+    <!-- ── HỒ SƠ 360 ── -->
+    <div class="tab-pane fade show active" id="hs-tong-quan-{{ kh.ma_kh }}">
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-lg-3"><div class="hs-the the-xanh"><div class="nhan">Tiền gửi thực tế (DP01)</div><div class="gia-tri">{{ tong_so_du|tien_gon }}</div></div></div>
+            <div class="col-6 col-lg-3"><div class="hs-the the-lam"><div class="nhan">Dư nợ vay (LN01)</div><div class="gia-tri">{{ tong_du_no|tien_gon }}</div></div></div>
+            <div class="col-6 col-lg-3"><div class="hs-the the-vang"><div class="nhan">Điểm xếp hạng CN (BC06)</div><div class="gia-tri">{% if xh %}{{ xh.diem_kh|tien }} điểm{% else %}—{% endif %}</div></div></div>
+            <div class="col-6 col-lg-3"><div class="hs-the the-tim"><div class="nhan">Lợi ích mang lại (BC06)</div><div class="gia-tri">{% if xh %}{{ xh.tong_loi_ich|tien_gon }}{% else %}—{% endif %}</div></div></div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-lg-6">
+                <div class="hs-panel">
+                    <h6><i class="bi bi-person-vcard text-agribank"></i> Thông tin định danh khách hàng</h6>
+                    <div class="hs-dong"><span>Mã CIF</span><span>{{ kh.ma_kh }}</span></div>
+                    <div class="hs-dong"><span>Số CCCD / Giấy tờ</span><span>{{ kh.cccd|default:"—" }}{% if kh.ngay_cap %} <small class="text-muted fw-normal">(cấp {{ kh.ngay_cap|date:"d/m/Y" }})</small>{% endif %}</span></div>
+                    {% if not kh.la_to_chuc %}
+                    <div class="hs-dong"><span>Ngày sinh / Tuổi</span><span>{% if kh.ngay_sinh %}{{ kh.ngay_sinh|date:"d/m/Y" }} ({{ tuoi }} tuổi){% else %}—{% endif %}</span></div>
+                    <div class="hs-dong"><span>Giới tính / Danh xưng</span><span>{% if kh.gioi_tinh %}{{ kh.gioi_tinh }} ({{ danh_xung }}){% else %}—{% endif %}</span></div>
+                    {% endif %}
+                    <div class="hs-dong"><span>Phân loại khách hàng</span><span>{% if kh.la_to_chuc %}Tổ chức{% if kh.ten_loai_kh %} – {{ kh.ten_loai_kh }}{% endif %}{% else %}Khách hàng cá nhân{% endif %}</span></div>
+                    <div class="hs-dong"><span>Số điện thoại</span><span>{{ kh.sdt|default:"—" }}</span></div>
+                    <div class="hs-dong"><span>Điểm giao dịch</span><span>{{ kh.pgd|default:"—" }}</span></div>
+                    <div class="hs-dong"><span>Địa chỉ</span><span>{{ kh.dia_chi|default:"—" }}</span></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="hs-panel">
+                    <h6><i class="bi bi-bank text-agribank"></i> Xếp hạng & chỉ số lợi ích (BC06){% if xh.thang %} <small class="text-muted fw-normal text-lowercase">tháng {{ xh.thang|slice:"4:" }}/{{ xh.thang|slice:":4" }}</small>{% endif %}</h6>
+                    {% if xh %}
+                    <div class="hs-dong"><span>Phân hạng tại CN</span><span><span class="hang-badge {{ xh|hang_css }}">{{ xh.nhan_cn }}</span></span></div>
+                    <div class="hs-dong"><span title="Hạng tính đúng theo điểm của kỳ này (TT). Khác hạng tại CN khi KH đang được giữ hạng cũ dù điểm đã giảm.">Hạng theo điểm kỳ này (TT) <i class="bi bi-info-circle"></i></span><span>{{ xh.nhan_tt_cn|default:"—" }}{% if xh.nhan_tt_cn != xh.nhan_cn %} <span class="badge bg-warning text-dark">khác</span>{% endif %}</span></div>
+                    <div class="hs-dong"><span title="Xét toàn bộ quan hệ của KH với Agribank (mọi chi nhánh), nên thường cao hơn hạng tại CN.">Phân hạng toàn Agribank (TT) <i class="bi bi-info-circle"></i></span><span>{{ xh.nhan_agr|default:"—" }} ({{ xh.nhan_tt_agr|default:"—" }})</span></div>
+                    <div class="hs-dong"><span title="Điểm xếp hạng = điểm cao hơn giữa điểm lợi ích (1 điểm = 10.000 đ lợi ích) và điểm số dư bình quân.">Điểm xếp hạng chi nhánh <i class="bi bi-info-circle"></i></span><span>{{ xh.diem_kh|tien }} điểm <small class="text-muted fw-normal">(lấy cao hơn: lợi ích {{ xh.diem_loi_ich|tien }} · SDBQ {{ xh.diem_sdbq|tien }})</small></span></div>
+                    <div class="hs-dong"><span>Lợi ích mang lại</span><span class="text-success">{{ xh.tong_loi_ich|tien }} đ <small class="text-muted fw-normal">(TG {{ xh.loi_ich_tg|tien_gon }} · TV {{ xh.loi_ich_tv|tien_gon }} · DV {{ xh.loi_ich_dv|tien_gon }})</small></span></div>
+                    <div class="hs-dong"><span>SDBQ tiền gửi có kỳ hạn</span><span>{{ xh.sdbq_tg_co_ky_han|tien_gon }}</span></div>
+                    <div class="hs-dong"><span>SDBQ tiền gửi thanh toán (CASA)</span><span>{{ xh.sdbq_tg_khong_ky_han|tien_gon }}</span></div>
+                    <div class="hs-dong"><span>SDBQ dư nợ tiền vay</span><span>{{ xh.sdbq_tien_vay|tien_gon }}</span></div>
+                    <div class="hs-dong"><span>Đơn vị đầu mối</span><span>{{ xh.don_vi_dau_moi|default:"—" }}</span></div>
+                    {% else %}
+                    <div class="text-muted small">Chưa có dữ liệu phân hạng (BC06) cho khách hàng này.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- Ghi chú -->
+        <form class="hs-panel js-ghi-chu" method="post" action="{% url 'kh360:luu_ghi_chu' kh.ma_kh %}">
+            {% csrf_token %}
+            <h6><i class="bi bi-pencil-square text-agribank"></i> Ghi chú</h6>
+            <textarea name="noi_dung" class="form-control mb-2" rows="3" placeholder="Ghi chú về khách hàng (nhu cầu, lịch hẹn, đã tư vấn gì…)">{{ ghi_chu.noi_dung }}</textarea>
+            <div class="d-flex justify-content-between align-items-center gap-2">
+                <span class="js-ghi-chu-info small text-muted">{% if ghi_chu %}Sửa lần cuối {{ ghi_chu.ngay_sua|date:"d/m/Y H:i" }}{% if ghi_chu.nguoi_sua %} – {{ ghi_chu.nguoi_sua.get_full_name|default:ghi_chu.nguoi_sua.username }}{% endif %}{% endif %}</span>
+                <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-save"></i> Lưu ghi chú</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── TIỀN GỬI ── -->
+    <div class="tab-pane fade" id="hs-tien-gui-{{ kh.ma_kh }}">
+        {% if tai_khoan %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle small">
+                <thead class="table-light"><tr>
+                    <th>Số TK</th><th>Loại tiền gửi</th><th class="text-end">Số dư</th><th>Kỳ hạn</th><th>Lãi suất</th>
+                    <th>Ngày mở</th><th>Đến hạn</th><th>Trạng thái</th><th>Điểm GD</th>
+                </tr></thead>
+                <tbody>
+                {% for t in tai_khoan %}
+                <tr class="{% if not t.con_hoat_dong %}text-muted text-decoration-line-through{% endif %}">
+                    <td>{{ t.so_tk }}{% if t.so_so and t.so_so != '0' %}<br><small class="text-muted">Sổ {{ t.so_so }}</small>{% endif %}</td>
+                    <td>{{ t.loai_tg|default:t.tk_hach_toan }}</td>
+                    <td class="text-end">{{ t.so_du|tien }} {{ t.ccy }}</td>
+                    <td>{% if t.ky_han %}{{ t.ky_han }} tháng{% else %}KKH{% endif %}</td>
+                    <td>{{ t.lai_suat|floatformat:"-2" }}%</td>
+                    <td>{{ t.ngay_mo|date:"d/m/Y" }}</td>
+                    <td>{{ t.ngay_den_han|date:"d/m/Y" }}</td>
+                    <td>{% if t.con_hoat_dong %}{{ t.trang_thai|default:"—" }}{% else %}Đã đóng{% endif %}</td>
+                    <td>{{ t.pgd }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}<div class="text-muted small py-3">Không có tài khoản tiền gửi.</div>{% endif %}
+    </div>
+
+    <!-- ── KHOẢN VAY ── -->
+    <div class="tab-pane fade" id="hs-vay-{{ kh.ma_kh }}">
+        {% if khoan_vay %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle small">
+                <thead class="table-light"><tr>
+                    <th>Số giải ngân</th><th>Loại vay</th><th class="text-end">Giải ngân</th><th class="text-end">Dư nợ</th>
+                    <th>Ngày GN</th><th>Đáo hạn</th><th>Lãi suất</th><th>Nhóm nợ</th><th>Kỳ trả tiếp</th><th>CB tín dụng</th><th>TK nhận GN</th>
+                </tr></thead>
+                <tbody>
+                {% for v in khoan_vay %}
+                <tr class="{% if not v.con_du_no %}text-muted{% endif %}">
+                    <td>{{ v.so_giai_ngan }}</td>
+                    <td>{{ v.loai_vay }}{% if v.muc_dich %}<br><small class="text-muted">{{ v.muc_dich }}</small>{% endif %}</td>
+                    <td class="text-end">{{ v.so_tien_giai_ngan|tien }}</td>
+                    <td class="text-end">{% if v.con_du_no %}<strong>{{ v.du_no|tien }}</strong>{% else %}Đã tất toán{% endif %}</td>
+                    <td>{{ v.ngay_giai_ngan|date:"d/m/Y" }}</td>
+                    <td>{{ v.ngay_dao_han|date:"d/m/Y" }}</td>
+                    <td>{{ v.lai_suat|floatformat:"-2" }}%</td>
+                    <td>{% if v.nhom_no and v.nhom_no != '01' %}<span class="badge bg-danger">{{ v.nhom_no }}</span>{% else %}{{ v.nhom_no }}{% endif %}</td>
+                    <td>{{ v.ngay_tra_tiep|date:"d/m/Y" }}{% if v.so_tien_tra_tiep %}<br><small>{{ v.so_tien_tra_tiep|tien }}</small>{% endif %}</td>
+                    <td>{{ v.can_bo }}</td>
+                    <td>{{ v.tk_nhan_giai_ngan }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}<div class="text-muted small py-3">Không có khoản vay.</div>{% endif %}
+    </div>
+
+    <!-- ── DỊCH VỤ ── -->
+    <div class="tab-pane fade" id="hs-dich-vu-{{ kh.ma_kh }}">
+        {% if kh.co_cn05 %}
+        <div class="row g-2">
+            {% for d in dich_vu %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="dv-item {% if d.so %}dv-co{% else %}dv-chua{% endif %}">
+                    {% if d.so %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle"></i>{% endif %}
+                    {{ d.nhan }}{% if d.so > 1 %} <span class="badge bg-success">{{ d.so }}</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif kh.la_to_chuc %}
+        <div class="text-muted small">File CN05 chỉ có khách hàng cá nhân.</div>
+        {% else %}
+        <div class="text-muted small">Khách hàng không có trong file CN05 mới nhất.</div>
+        {% endif %}
+        {% if kh.la_to_chuc or ebanking %}
+        <div class="mt-3">
+            <strong>Ebanking tổ chức:</strong>
+            {% for e in ebanking %}
+                <span class="badge bg-success">{{ e.ma_to_chuc }}</span> {{ e.trang_thai }}{% if e.ngay_dang_ky %} – đăng ký {{ e.ngay_dang_ky|date:"d/m/Y" }}{% endif %}{% if e.nguoi_tao %} ({{ e.nguoi_tao }}){% endif %}{% if not forloop.last %}; {% endif %}
+            {% empty %}
+                <span class="text-danger">Chưa sử dụng</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── LOA & QR ── -->
+    <div class="tab-pane fade" id="hs-loa-{{ kh.ma_kh }}">
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <h6 class="fw-bold"><i class="bi bi-speaker"></i> Loa Thần tài – doanh số theo kỳ</h6>
+                {% if loa_theo_ky %}
+                <table class="table table-sm small align-middle">
+                    <thead class="table-light"><tr><th>Kỳ</th><th>Loa (TK ảo → TK Agribank)</th><th class="text-end">Số món</th><th class="text-end">Doanh số</th></tr></thead>
+                    <tbody>
+                    {% for k in loa_theo_ky %}
+                    <tr>
+                        <td>{{ k.tu_ngay|date:"d/m/Y" }} – {{ k.den_ngay|date:"d/m/Y" }}</td>
+                        <td>{% for l in k.loa %}<div>{{ l.tk_ao }} → {{ l.so_tk }} <span class="text-muted">({{ l.so_giao_dich }} món)</span></div>{% endfor %}</td>
+                        <td class="text-end {% if not k.so_gd %}text-danger fw-semibold{% endif %}">{{ k.so_gd }}</td>
+                        <td class="text-end">{{ k.doanh_so|tien }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}<div class="text-muted small">Chưa có Loa Thần tài.</div>{% endif %}
+            </div>
+            <div class="col-lg-5">
+                <h6 class="fw-bold"><i class="bi bi-qr-code"></i> QR code</h6>
+                {% if qr %}
+                <ul class="list-group small">
+                    {% for x in qr %}
+                    <li class="list-group-item">
+                        <strong>{{ x.so_tk }}</strong>{% if x.ten_cua_hang %} – {{ x.ten_cua_hang }}{% endif %}
+                        <div class="text-muted">
+                            Ngày làm: {% if x.ngay_lam %}{{ x.ngay_lam|date:"d/m/Y" }}{% else %}{{ x.ngay_lam_goc|default:"—" }}{% endif %}
+                            {% if x.phong %} · {{ x.phong }}{% endif %}{% if x.ghi_chu %} · {{ x.ghi_chu }}{% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}<div class="text-muted small">Chưa phát hành QR.</div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── BIẾN ĐỘNG ── -->
+    <div class="tab-pane fade" id="hs-bien-dong-{{ kh.ma_kh }}">
+        {% if bien_dong %}
+        <table class="table table-sm small">
+            <thead class="table-light"><tr><th>Dữ liệu ngày</th><th>Biến động</th><th>Đối tượng</th><th>Chi tiết</th></tr></thead>
+            <tbody>
+            {% for b in bien_dong %}
+            <tr>
+                <td>{{ b.ky.ngay_du_lieu|date:"d/m/Y" }}</td>
+                <td><span class="badge {% if b.la_moi %}bg-success{% else %}bg-danger{% endif %}">{{ b.get_loai_display }}</span></td>
+                <td>{{ b.doi_tuong }}</td>
+                <td>{{ b.chi_tiet }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<div class="text-muted small py-3">Chưa có biến động.</div>{% endif %}
+    </div>
+</div>
+</div>
+
+<div class="modal-footer justify-content-between px-4">
+    <small class="text-muted">{% if ky %}Dữ liệu ngày <b>{{ ky.ngay_du_lieu|date:"d/m/Y" }}</b> – cập nhật {{ ky.thoi_diem|date:"d/m/Y H:i" }}{% endif %}</small>
+    <div class="d-flex gap-2">
+        {% if request.GET.modal %}
+        <a href="{% url 'kh360:ho_so' kh.ma_kh %}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-up-right"></i> Mở trang riêng</a>
+        <button type="button" class="btn btn-sm btn-danger px-4" data-bs-dismiss="modal">Đóng</button>
+        {% endif %}
+    </div>
+</div>
+</div>

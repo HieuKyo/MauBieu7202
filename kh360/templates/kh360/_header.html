@@ -1,0 +1,34 @@
+{% load kh360_tags %}
+{% with quyen=request.user|muc_quyen %}
+<style>
+    .kh360-nav .nav-link { color: #495057; }
+    .kh360-nav .nav-link.active { background: #AE1C3F; color: #fff; }
+    .kh360-nav .nav-link.active i { color: #fff; }   /* theme tô icon đỏ trùng nền */
+</style>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <h2 class="text-agribank mb-0"><i class="bi bi-person-vcard"></i> Khách hàng 360</h2>
+    <ul class="nav nav-pills kh360-nav">
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'tra_cuu' or request.resolver_match.url_name == 'ho_so' %}active{% endif %}" href="{% url 'kh360:tra_cuu' %}"><i class="bi bi-search"></i> Tra cứu</a></li>
+        {% if quyen >= 2 %}
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'thong_ke' %}active{% endif %}" href="{% url 'kh360:thong_ke' %}"><i class="bi bi-bar-chart"></i> Thống kê</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'bien_dong' %}active{% endif %}" href="{% url 'kh360:bien_dong' %}"><i class="bi bi-arrow-left-right"></i> Biến động</a></li>
+        {% endif %}
+        {% if quyen >= 3 %}
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'cap_nhat' %}active{% endif %}" href="{% url 'kh360:cap_nhat' %}"><i class="bi bi-cloud-upload"></i> Cập nhật dữ liệu</a></li>
+        {% endif %}
+    </ul>
+</div>
+{% if ky %}
+<div class="alert alert-light border py-2 small mb-3">
+    <i class="bi bi-clock-history text-agribank"></i>
+    Đã cập nhật vào ngày <strong>{{ ky.thoi_diem|date:"d/m/Y H:i" }}</strong>
+    – dữ liệu ngày <strong>{{ ky.ngay_du_lieu|date:"d/m/Y" }}</strong>
+    {% if ky.nguoi_cap_nhat %}– bởi {{ ky.nguoi_cap_nhat.get_full_name|default:ky.nguoi_cap_nhat.username }}{% endif %}
+</div>
+{% else %}
+<div class="alert alert-warning py-2 small mb-3">
+    <i class="bi bi-exclamation-triangle"></i> Chưa có dữ liệu.
+    {% if quyen >= 3 %}Vào <a href="{% url 'kh360:cap_nhat' %}">Cập nhật dữ liệu</a> để nạp file CN05 và DP01.{% else %}Liên hệ Admin để cập nhật dữ liệu.{% endif %}
+</div>
+{% endif %}
+{% endwith %}
