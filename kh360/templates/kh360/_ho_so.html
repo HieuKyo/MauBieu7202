@@ -103,7 +103,7 @@
                 {% for t in tai_khoan %}
                 <tr class="{% if not t.con_hoat_dong %}text-muted text-decoration-line-through{% endif %}">
                     <td>{{ t.so_tk }}{% if t.so_so and t.so_so != '0' %}<br><small class="text-muted">Sổ {{ t.so_so }}</small>{% endif %}</td>
-                    <td>{{ t.loai_tg|default:t.tk_hach_toan }}</td>
+                    <td>{% if t.tk_hach_toan == '211108' %}<span class="badge bg-warning text-dark">Thấu chi</span>{% else %}{{ t.loai_tg|default:t.tk_hach_toan }}{% endif %}{% if t.hinh_thuc %}<br><small class="text-muted">{{ t.hinh_thuc }}</small>{% endif %}</td>
                     <td class="text-end">{{ t.so_du|tien }} {{ t.ccy }}</td>
                     <td>{% if t.ky_han %}{{ t.ky_han }} tháng{% else %}KKH{% endif %}</td>
                     <td>{{ t.lai_suat|floatformat:"-2" }}%</td>

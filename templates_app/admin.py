@@ -800,6 +800,28 @@ class UserProfileAdmin(admin.ModelAdmin):
     )
 
 
+# Trang sửa "Người sử dụng" hiện luôn hồ sơ nhân viên (phòng ban, chức vụ...) → 2 nơi cùng 1 dữ liệu
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin  # noqa: E402
+from django.contrib.auth.models import User  # noqa: E402
+
+
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    form = UserProfileAdminForm
+    can_delete = False
+    verbose_name_plural = 'Hồ sơ nhân viên'
+    # Như UserProfileAdmin nhưng mục đầu bỏ ô "user" (chính là tài khoản đang sửa)
+    fieldsets = (('Mã nhân viên', {'fields': ('employee_code',)}),) + UserProfileAdmin.fieldsets[1:]
+
+
+admin.site.unregister(User)
+
+
+@admin.register(User)
+class UserWithProfileAdmin(BaseUserAdmin):
+    inlines = [UserProfileInline]
+
+
 # ====================
 # E-Learning Admin
 # ====================

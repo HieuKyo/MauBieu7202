@@ -12,4 +12,5 @@ urlpatterns = [
     path('cap-nhat/gan-to-chuc/', views.gan_to_chuc, name='gan_to_chuc'),
     path('bien-dong/', views.bien_dong, name='bien_dong'),
     path('thong-ke/', views.thong_ke, name='thong_ke'),
+    path('thong-ke/so-tiet-kiem/', views.thong_ke_so, name='thong_ke_so'),
 ]

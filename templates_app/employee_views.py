@@ -18,6 +18,23 @@ from .models import BranchConfig, AppProgram
 # Employee Management Views
 # ====================
 
+def _set_user_name(user, full_name):
+    """Đồng bộ họ tên hồ sơ nhân viên sang tài khoản (Người sử dụng)."""
+    parts = full_name.split()
+    user.first_name = parts[0] if parts else ''
+    user.last_name = ' '.join(parts[1:])
+    user.save(update_fields=['first_name', 'last_name'])
+
+
+def _to_code(value, choices):
+    """Nhận mã (KE_TOAN) hoặc tên hiển thị (Phòng Kế toán & Ngân quỹ) → mã; không khớp → None."""
+    v = value.strip().lower()
+    for code, name in choices:
+        if v in (str(code).lower(), str(name).strip().lower()):
+            return code
+    return None
+
+
 def check_employee_import_permission(user):
     """
     Kiểm tra quyền import nhân viên
@@ -258,17 +275,31 @@ def employee_import_excel(request):
             error_count = 0
             errors = []
 
+            # Chi nhánh / Phòng ban / Chức vụ / Nghiệp vụ: file export ghi tên hiển thị → đổi về mã
+            branch_choices = list(UserProfile.BRANCH_CHOICES) + list(
+                BranchConfig.objects.values_list('branch_code', 'ten_chi_nhanh'))
+            choice_fields = [
+                ('branch', ('Branch', 'Chi nhánh'), branch_choices),
+                ('department', ('Department', 'Phòng ban'), UserProfile.DEPARTMENT_CHOICES),
+                ('position', ('Position', 'Chức vụ'), UserProfile.POSITION_CHOICES),
+                ('job_function', ('Job Function', 'Nghiệp vụ'), UserProfile.JOB_FUNCTION_CHOICES),
+            ]
+
             for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 try:
                     data = {}
                     for col_idx, value in enumerate(row):
                         if col_idx < len(headers) and headers[col_idx]:
-                            data[headers[col_idx]] = value if value else ''
+                            data[str(headers[col_idx]).strip()] = value if value else ''
 
-                    # Extract required fields
+                    if not any(str(v).strip() for v in data.values()):
+                        continue  # dòng trống
+
+                    # Extract required fields (nhận cả tiêu đề của file mẫu lẫn file export)
                     username = str(data.get('Username', '')).strip()
                     full_name = str(data.get('Full Name', '') or data.get('Họ và tên', '')).strip()
-                    employee_code = str(data.get('Employee Code', '') or data.get('Mã nhân viên', '')).strip()
+                    employee_code = str(data.get('Employee Code', '') or data.get('Mã nhân viên', '')
+                                        or data.get('Mã NV', '')).strip()
 
                     # Validate required fields
                     if not username or not employee_code:
@@ -295,24 +326,17 @@ def employee_import_excel(request):
                         profile.employee_code = employee_code
                     if full_name:
                         profile.full_name = full_name
+                        _set_user_name(user, full_name)
 
                     # Optional fields
-                    if data.get('Branch') or data.get('Chi nhánh'):
-                        branch_value = str(data.get('Branch') or data.get('Chi nhánh', '')).strip()
-                        # Map value to choice
-                        profile.branch = branch_value
-
-                    if data.get('Department') or data.get('Phòng ban'):
-                        dept_value = str(data.get('Department') or data.get('Phòng ban', '')).strip()
-                        profile.department = dept_value
-
-                    if data.get('Position') or data.get('Chức vụ'):
-                        pos_value = str(data.get('Position') or data.get('Chức vụ', '')).strip()
-                        profile.position = pos_value
-
-                    if data.get('Job Function') or data.get('Nghiệp vụ'):
-                        job_value = str(data.get('Job Function') or data.get('Nghiệp vụ', '')).strip()
-                        profile.job_function = job_value
+                    for field, keys, choices in choice_fields:
+                        raw = str(data.get(keys[0]) or data.get(keys[1]) or '').strip()
+                        if raw:
+                            code = _to_code(raw, choices)
+                            if code:
+                                setattr(profile, field, code)
+                            else:
+                                errors.append(f"Dòng {row_idx}: {keys[1]} \"{raw}\" không có trong danh sách — giữ nguyên giá trị cũ")
 
                     if data.get('Phone') or data.get('Điện thoại'):
                         profile.phone = str(data.get('Phone') or data.get('Điện thoại', '')).strip()
@@ -384,8 +408,9 @@ def employee_import_excel(request):
                         profile.ip_address = ip_value
 
                     # Digital Certificate fields
-                    if data.get('Certificate Code') or data.get('Mã chứng thư số'):
-                        cert_code = str(data.get('Certificate Code') or data.get('Mã chứng thư số', '')).strip()
+                    if data.get('Certificate Code') or data.get('Mã chứng thư số') or data.get('Mã CTS'):
+                        cert_code = str(data.get('Certificate Code') or data.get('Mã chứng thư số')
+                                        or data.get('Mã CTS', '')).strip()
                         if cert_code:
                             profile.certificate_code = cert_code
 
@@ -436,7 +461,7 @@ def employee_import_excel(request):
             # Show results
             if success_count > 0:
                 messages.success(request, f'Đã import thành công {success_count} nhân viên')
-            if error_count > 0:
+            if errors:
                 for error in errors[:10]:
                     messages.warning(request, error)
                 if len(errors) > 10:
@@ -844,6 +869,7 @@ def employee_update_manual(request, employee_id):
         full_name = request.POST.get('full_name', '').strip()
         if full_name:
             profile.full_name = full_name
+            _set_user_name(profile.user, full_name)
 
         if request.POST.get('dob'):
             try:

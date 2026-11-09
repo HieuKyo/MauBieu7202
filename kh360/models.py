@@ -97,7 +97,10 @@ class TaiKhoanTG(models.Model):
     pgd = models.CharField(max_length=100, blank=True)
     so_so = models.CharField('Số sổ', max_length=30, blank=True)
     can_bo = models.CharField('Cán bộ', max_length=100, blank=True)
+    hinh_thuc = models.CharField('Hình thức (trả lãi / gửi góp)', max_length=60, blank=True)
     con_hoat_dong = models.BooleanField(default=True)
+
+    TK_THAU_CHI = '211108'   # DP01 có cả TK thấu chi, số dư âm = dư nợ (đã có trong LN01)
 
     class Meta:
         ordering = ['-con_hoat_dong', 'so_tk']

@@ -21,7 +21,7 @@ CN05_COT = ['MA_CN', 'MA_KH', 'TEN_KH'] + [c for c, _, _ in CN05_DICH_VU]
 DP01_COT = ['MA_CN', 'TAI_KHOAN_HACH_TOAN', 'MA_KH', 'TEN_KH', 'DP_TYPE_NAME', 'CCY', 'CURRENT_BALANCE',
             'RATE', 'SO_TAI_KHOAN', 'OPENING_DATE', 'MATURITY_DATE', 'ADDRESS', 'NOTENO', 'MONTH_TERM',
             'TEN_PGD', 'CUST_TYPE', 'CUST_TYPE_NAME', 'ID_NUMBER', 'ISSUE_DATE', 'SEX_TYPE', 'BIRTH_DATE',
-            'TELEPHONE', 'ACCOUNT_STATUS', 'EMPLOYEE_NAME']
+            'TELEPHONE', 'ACCOUNT_STATUS', 'EMPLOYEE_NAME', 'TERM_DP_NAME']
 LN01_COT = ['BRCD', 'CUSTSEQ', 'CUSTNM', 'TAI_KHOAN', 'DU_NO', 'DSBSSEQ', 'DSBSDT', 'DISBURSEMENT_AMOUNT',
             'DSBSMATDT', 'INTEREST_RATE', 'LOAN_TYPE', 'FUND_PURPOSE_CODE', 'NEXT_REPAY_DATE',
             'NEXT_REPAY_AMOUNT', 'OFFICER_NAME', 'NHOM_NO', 'TAI_KHOAN_GIAI_NGAN_1', 'CMT_HC', 'NGAY_SINH',
@@ -297,9 +297,10 @@ class GiaoDienTest(Co_so):
             return u
         self.moc()
         trang = {'tra_cuu': reverse('kh360:tra_cuu'), 'ho_so': reverse('kh360:ho_so', args=['000000001']),
-                 'thong_ke': reverse('kh360:thong_ke'), 'bien_dong': reverse('kh360:bien_dong'),
+                 'thong_ke': reverse('kh360:thong_ke'), 'thong_ke_so': reverse('kh360:thong_ke_so'),
+                 'bien_dong': reverse('kh360:bien_dong'),
                  'cap_nhat': reverse('kh360:cap_nhat')}
-        quan_ly = {'tra_cuu', 'ho_so', 'thong_ke', 'bien_dong'}
+        quan_ly = {'tra_cuu', 'ho_so', 'thong_ke', 'thong_ke_so', 'bien_dong'}
         chi_tra_cuu = {'tra_cuu', 'ho_so'}
         mong_doi = [   # (hồ sơ nhân viên, các trang được vào)
             ({'position': 'TRUONG_PHONG'}, quan_ly),
@@ -408,6 +409,60 @@ class GiaoDienTest(Co_so):
         wb = openpyxl.load_workbook(io.BytesIO(r.content))
         self.assertEqual(wb.active.max_row, 4)                # tiêu đề + 3 KH
         for _, tham_so in views.MAU_THONG_KE:                 # mẫu nhanh đều chạy được
+            self.assertEqual(self.client.get(f'{url}?{tham_so}').status_code, 200)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_thong_ke_so_tiet_kiem(self):
+        from dateutil.relativedelta import relativedelta
+        hom_nay = date.today()
+        d = lambda x: "'" + x.strftime('%Y%m%d')
+
+        def so(so_tk, ma, ten, so_du, ky_han, mo, den_han, ls, hinh_thuc='Trả lãi khi đến hạn'):
+            return tk(so_tk, ma, ten, so_du, TAI_KHOAN_HACH_TOAN='423202', DP_TYPE_NAME='Tiết kiệm có kỳ hạn',
+                      MONTH_TERM=f"'{ky_han}", OPENING_DATE=d(mo), MATURITY_DATE=d(den_han), RATE=ls,
+                      TERM_DP_NAME=hinh_thuc)
+        self.nhap(
+            CN05=cn05([kh_cn('000000001', 'Chủ Sổ Một', DK_AGRIBANK_PLUS=1), kh_cn('000000002', 'Chủ Sổ Hai')]),
+            DP01=dp01([
+                tk('7202000000001', '000000001', 'Chủ Sổ Một', 5000000),                    # TKTT, không phải sổ
+                so('S1', '000000001', 'Chủ Sổ Một', 600000000, 12, hom_nay - relativedelta(months=13),
+                   hom_nay + relativedelta(days=5), '5.2'),
+                so('S3', '000000001', 'Chủ Sổ Một', 50000000, 1, hom_nay - relativedelta(months=40),
+                   hom_nay - relativedelta(days=3), '1.6'),
+                so('S2', '000000002', 'Chủ Sổ Hai', 100000000, 6, hom_nay - relativedelta(months=2),
+                   hom_nay + relativedelta(days=60), '4', 'Gửi góp không theo định kỳ hàn'),
+                tk('7202000000002', '000000002', 'Chủ Sổ Hai', -20000000, TAI_KHOAN_HACH_TOAN='211108'),  # thấu chi
+            ]),
+        )
+        # Số dư âm của TK thấu chi không bị trừ vào tổng số dư tiền gửi
+        self.assertEqual(KhachHang.objects.get(ma_kh='000000002').tong_so_du, Decimal(100000000))
+        url = reverse('kh360:thong_ke_so')
+
+        def so_tk(q):
+            r = self.client.get(f'{url}?{q}')
+            return sorted(x.so_tk for x in r.context['page'].paginator.object_list)
+        self.assertEqual(so_tk('den_han=7'), ['S1'])
+        self.assertEqual(so_tk('den_han=30'), ['S1'])
+        self.assertEqual(so_tk('den_han=qua_han'), ['S3'])
+        self.assertEqual(so_tk(f'den_han=khoang&dh_tu={hom_nay:%Y-%m-%d}'), ['S1', 'S2'])
+        self.assertEqual(so_tk('ky_han=12&ky_han=1'), ['S1', 'S3'])
+        self.assertEqual(so_tk('ky_han_tu=6'), ['S1', 'S2'])
+        self.assertEqual(so_tk('gui_tu=36'), ['S3'])
+        self.assertEqual(so_tk('gui_den=3'), ['S2'])
+        self.assertEqual(so_tk('so_du_tu=500.000.000'), ['S1'])
+        self.assertEqual(so_tk('ls_tu=4&ls_den=5,5'), ['S1', 'S2'])
+        self.assertEqual(so_tk('hinh_thuc=gui_gop'), ['S2'])
+        self.assertEqual(so_tk('dv=agribank_plus&dv_tt=chua'), ['S2'])
+        self.assertEqual(so_tk('loai=ca_nhan'), ['S1', 'S2', 'S3'])
+        r = self.client.get(url, {'ky_han_tu': '1'})
+        tong = r.context['tong']
+        self.assertEqual((tong['so_so'], tong['so_kh'], tong['tong_du']), (3, 2, Decimal(750000000)))
+        self.assertAlmostEqual(float(tong['ls_bq']), (600 * 5.2 + 50 * 1.6 + 100 * 4) / 750, places=4)
+        self.assertContains(r, 'còn 5 ngày')
+        self.assertContains(r, 'quá 3 ngày')
+        r = self.client.get(url, {'ky_han_tu': '1', 'xuat': 'excel'})
+        self.assertEqual(openpyxl.load_workbook(io.BytesIO(r.content)).active.max_row, 4)
+        for _, tham_so in views.MAU_SO:                       # mẫu nhanh đều chạy được
             self.assertEqual(self.client.get(f'{url}?{tham_so}').status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 200)
 

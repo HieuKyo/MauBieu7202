@@ -193,7 +193,7 @@ def doc_dp01(uploaded):
     """→ (ngày, {so_tk: dict TK}, {ma_kh: dict thông tin KH})"""
     cot = ['MA_KH', 'TEN_KH', 'SO_TAI_KHOAN', 'TAI_KHOAN_HACH_TOAN', 'DP_TYPE_NAME', 'CCY',
            'CURRENT_BALANCE', 'RATE', 'MONTH_TERM', 'OPENING_DATE', 'MATURITY_DATE',
-           'ACCOUNT_STATUS', 'TEN_PGD', 'NOTENO', 'EMPLOYEE_NAME', 'CUST_TYPE', 'CUST_TYPE_NAME',
+           'ACCOUNT_STATUS', 'TEN_PGD', 'NOTENO', 'EMPLOYEE_NAME', 'TERM_DP_NAME', 'CUST_TYPE', 'CUST_TYPE_NAME',
            'ID_NUMBER', 'ISSUE_DATE', 'SEX_TYPE', 'BIRTH_DATE', 'TELEPHONE', 'ADDRESS']
     ngay_file, rows = _doc_csv(uploaded, 'DP01', cot)
     tk, kh = {}, {}
@@ -208,7 +208,8 @@ def doc_dp01(uploaded):
             'lai_suat': so(g('RATE')), 'ky_han': so_nguyen(g('MONTH_TERM')),
             'ngay_mo': ngay(g('OPENING_DATE')), 'ngay_den_han': ngay(g('MATURITY_DATE')),
             'trang_thai': trang_thai, 'pgd': s(g('TEN_PGD')), 'so_so': s(g('NOTENO')),
-            'can_bo': s(g('EMPLOYEE_NAME')), 'con_hoat_dong': trang_thai != 'Close',
+            'can_bo': s(g('EMPLOYEE_NAME')), 'hinh_thuc': s(g('TERM_DP_NAME'))[:60],
+            'con_hoat_dong': trang_thai != 'Close',
         }
         if ma not in kh or (not kh[ma]['cccd'] and s(g('ID_NUMBER'))):
             kh[ma] = {

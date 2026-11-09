@@ -6,6 +6,23 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 ## Bản tiếp theo
 
 ### Chức năng mới
+- **KH 360 – Thống kê sổ tiết kiệm** (Thống kê → tab **Sổ tiết kiệm**): lọc sổ tiết kiệm / tiền gửi có kỳ hạn theo ngày đến hạn (7 ngày tới, 30 ngày tới, tháng này, tháng sau, đã qua hạn, khoảng ngày tự chọn), kỳ hạn (chọn nhiều hoặc từ … tháng trở lên), số tháng đã gửi, số dư sổ, lãi suất, hình thức (trả lãi khi đến hạn / định kỳ / gửi góp), loại và hạng khách hàng, điểm giao dịch, khách đã có / chưa có một dịch vụ. Hiện số sổ, số khách hàng, tổng số dư, lãi suất bình quân; bảng tổng hợp theo kỳ hạn và theo tháng đến hạn; danh sách sổ có số ngày còn lại đến hạn, bấm vào để mở hồ sơ khách hàng; xuất Excel. Có 9 mẫu lọc nhanh (đến hạn trong 7 ngày, đến hạn tháng này mà khách chưa có Agribank Plus…).
+
+### Chỉnh sửa
+- **KH 360 – Tổng số dư tiền gửi:** không còn cộng số dư âm của tài khoản thấu chi (211108) vào tổng số dư tiền gửi (khoản thấu chi đã tính ở dư nợ). Tổng số dư của khách có thấu chi và của toàn chi nhánh trước đây bị thấp hơn thực tế; cần **cập nhật lại file DP01** để số liệu đúng. Hồ sơ khách hàng ghi nhãn **Thấu chi** cho các tài khoản này và hiện hình thức gửi của sổ.
+- **Quản lý nhân viên:** file **Export Excel** import lại được ngay, không cần sửa tiêu đề hay thêm bớt cột (trước đây báo "Thiếu Username hoặc Mã nhân viên"). Chi nhánh, Phòng ban, Chức vụ, Nghiệp vụ ghi bằng tên (vd. "Phòng Kế toán & Ngân quỹ") hay bằng mã (KE_TOAN) đều nhận; giá trị không có trong danh sách thì báo cảnh báo và giữ giá trị cũ. Dòng trống được bỏ qua.
+- Đồng bộ **Người sử dụng** và **Nhân viên**: sửa họ tên nhân viên thì họ tên tài khoản đổi theo; trang sửa Người sử dụng (Admin) hiện luôn hồ sơ nhân viên (chi nhánh, phòng ban, chức vụ, nghiệp vụ…).
+
+### Lưu ý
+- Có migration `kh360/0003_hinh_thuc_tien_gui` (thêm cột hình thức tiền gửi). Sau khi cập nhật, nạp lại DP01 để có hình thức gửi và tổng số dư đúng.
+
+### File
+- Thêm: `kh360/migrations/0003_hinh_thuc_tien_gui.py`, `kh360/templates/kh360/thong_ke_so.html`, `kh360/templates/kh360/_thong_ke_nav.html`
+- Sửa: `kh360/models.py`, `kh360/parsers.py`, `kh360/importer.py`, `kh360/views.py`, `kh360/urls.py`, `kh360/tests.py`, `kh360/templates/kh360/_header.html`, `kh360/templates/kh360/_ho_so.html`, `kh360/templates/kh360/thong_ke.html`
+
+## 2026.11.09.2 — 09/11/2026
+
+### Chức năng mới
 - **Nhận bì thư**: quét QR trên bì thư (webcam, máy quét cầm tay hoặc dán chuỗi) để tự điền mã bì thư, loại thẻ (Visa / Ghi nợ nội địa / Phát hành lại khác CN / Smartform / Emobile), ngày phát hành và chi nhánh gốc. Báo cáo bì thư có thêm 3 cột này.
 - Nút **Hướng dẫn** (biểu tượng ?) trên các trang **Khách hàng 360** và **Nhận bì thư / Báo cáo bì thư**: mở cửa sổ hướng dẫn sử dụng. Ở KH 360, phần Thống kê / Biến động / Cập nhật dữ liệu chỉ hiện với người có quyền dùng các chức năng đó.
 

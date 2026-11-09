@@ -10,7 +10,7 @@
     <ul class="nav nav-pills kh360-nav">
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'tra_cuu' or request.resolver_match.url_name == 'ho_so' %}active{% endif %}" href="{% url 'kh360:tra_cuu' %}"><i class="bi bi-search"></i> Tra cứu</a></li>
         {% if quyen >= 2 %}
-        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'thong_ke' %}active{% endif %}" href="{% url 'kh360:thong_ke' %}"><i class="bi bi-bar-chart"></i> Thống kê</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'thong_ke' or request.resolver_match.url_name == 'thong_ke_so' %}active{% endif %}" href="{% url 'kh360:thong_ke' %}"><i class="bi bi-bar-chart"></i> Thống kê</a></li>
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'bien_dong' %}active{% endif %}" href="{% url 'kh360:bien_dong' %}"><i class="bi bi-arrow-left-right"></i> Biến động</a></li>
         {% endif %}
         {% if quyen >= 3 %}

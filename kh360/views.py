@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import date
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 
 import openpyxl
@@ -8,8 +9,8 @@ from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Count, OuterRef, Q, Subquery, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models import Count, F, OuterRef, Q, Subquery, Sum, Value
+from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -286,7 +287,7 @@ def ho_so(request, ma_kh):
         'so_dv': sum(1 for d in dich_vu if d['so']),
         'dich_vu': dich_vu,
         'tai_khoan': tai_khoan,
-        'tong_so_du': sum(t.so_du for t in tk_active if t.ccy == 'VND'),
+        'tong_so_du': sum(t.so_du for t in tk_active if t.ccy == 'VND' and t.so_du > 0),
         'so_tk_active': len(tk_active),
         'khoan_vay': khoan_vay,
         'tong_du_no': sum(v.du_no for v in khoan_vay if v.con_du_no),
@@ -401,5 +402,212 @@ def _xuat_excel(ky, qs):
     resp = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     ten = f'BienDong_KH360_{ky.ngay_du_lieu:%Y%m%d}.xlsx' if ky else 'BienDong_KH360.xlsx'
     resp['Content-Disposition'] = f'attachment; filename="{ten}"'
+    wb.save(resp)
+    return resp
+
+
+# ── Thống kê sổ tiết kiệm (tiền gửi có kỳ hạn) ────────────────────────────────
+
+COT_SO = [  # (khoá sắp xếp, nhãn, lớp ẩn trên màn hẹp)
+    ('so_tk', 'Số TK / Sổ', ''), ('ten', 'Khách hàng', ''), ('ky_han', 'Kỳ hạn', ''),
+    ('so_du', 'Số dư', ''), ('lai_suat', 'Lãi suất', 'an-lg'), ('ngay_mo', 'Ngày gửi', 'an-xl'),
+    ('den_han', 'Đến hạn', ''), ('pgd', 'Điểm GD', 'an-xxl'),
+]
+SAP_XEP_SO = {'so_tk': 'so_tk', 'ten': 'ten_kh', 'ky_han': 'ky_han', 'so_du': 'so_du', 'lai_suat': 'lai_suat',
+              'ngay_mo': 'ngay_mo', 'den_han': 'ngay_den_han', 'pgd': 'pgd'}
+
+DEN_HAN_LOC = [
+    ('7', 'Trong 7 ngày tới'), ('30', 'Trong 30 ngày tới'), ('thang_nay', 'Trong tháng này'),
+    ('thang_sau', 'Trong tháng sau'), ('qua_han', 'Đã qua ngày đến hạn'), ('khoang', 'Chọn khoảng ngày…'),
+]
+
+MAU_SO = [
+    ('Đến hạn trong 7 ngày tới', 'den_han=7'),
+    ('Đến hạn trong tháng này', 'den_han=thang_nay'),
+    ('Đến hạn tháng sau', 'den_han=thang_sau'),
+    ('Sổ ≥ 500 triệu đến hạn trong 30 ngày', 'den_han=30&so_du_tu=500000000'),
+    ('Đến hạn tháng này, KH chưa có Agribank Plus', 'den_han=thang_nay&dv=agribank_plus&dv_tt=chua'),
+    ('Kỳ hạn ngắn (1–3 tháng)', 'ky_han=1&ky_han=2&ky_han=3'),
+    ('Kỳ hạn từ 12 tháng, sổ ≥ 1 tỷ', 'ky_han_tu=12&so_du_tu=1000000000'),
+    ('Gửi lâu năm (đã gửi từ 36 tháng)', 'gui_tu=36'),
+    ('Tiết kiệm gửi góp', 'hinh_thuc=gui_gop'),
+]
+
+
+def _so_thap_phan(v):
+    v = (v or '').strip().replace(',', '.')
+    try:
+        return Decimal(v) if v else None
+    except InvalidOperation:
+        return None
+
+
+def _ngay_iso(v):
+    try:
+        return date.fromisoformat((v or '').strip())
+    except ValueError:
+        return None
+
+
+def _loc_so(g):
+    """Bộ lọc sổ tiết kiệm (TK đang hoạt động, kỳ hạn > 0) → (queryset, có lọc gì không)."""
+    hom_nay = date.today()
+    xh = XepHangKH.objects.filter(ma_kh=OuterRef('ma_kh'))
+    kh = KhachHang.objects.filter(ma_kh=OuterRef('ma_kh'))
+    qs = TaiKhoanTG.objects.filter(con_hoat_dong=True, ky_han__gt=0).annotate(
+        nhom_hang=Subquery(xh.values('nhom_cn')[:1]), ten_hang=Subquery(xh.values('hang_cn')[:1]),
+        la_to_chuc=Subquery(kh.values('la_to_chuc')[:1]),
+    )
+    co_loc = False
+
+    den_han = g.get('den_han')
+    if den_han:
+        co_loc = True
+        dau_thang = hom_nay.replace(day=1)
+        if den_han in ('7', '30'):
+            qs = qs.filter(ngay_den_han__gte=hom_nay, ngay_den_han__lte=hom_nay + relativedelta(days=int(den_han)))
+        elif den_han == 'thang_nay':
+            qs = qs.filter(ngay_den_han__gte=dau_thang, ngay_den_han__lt=dau_thang + relativedelta(months=1))
+        elif den_han == 'thang_sau':
+            qs = qs.filter(ngay_den_han__gte=dau_thang + relativedelta(months=1),
+                           ngay_den_han__lt=dau_thang + relativedelta(months=2))
+        elif den_han == 'qua_han':
+            qs = qs.filter(ngay_den_han__lt=hom_nay)
+        elif den_han == 'khoang':
+            tu, den = _ngay_iso(g.get('dh_tu')), _ngay_iso(g.get('dh_den'))
+            if tu:
+                qs = qs.filter(ngay_den_han__gte=tu)
+            if den:
+                qs = qs.filter(ngay_den_han__lte=den)
+
+    ky_han = [int(k) for k in g.getlist('ky_han') if k.isdigit()]
+    if ky_han:
+        qs, co_loc = qs.filter(ky_han__in=ky_han), True
+    ky_han_tu = _so_nguyen(g.get('ky_han_tu'))
+    if ky_han_tu is not None:
+        qs, co_loc = qs.filter(ky_han__gte=ky_han_tu), True
+
+    gui_tu, gui_den = _so_nguyen(g.get('gui_tu')), _so_nguyen(g.get('gui_den'))   # số tháng đã gửi
+    if gui_tu is not None:
+        qs, co_loc = qs.filter(ngay_mo__lte=hom_nay - relativedelta(months=gui_tu)), True
+    if gui_den is not None:
+        qs, co_loc = qs.filter(ngay_mo__gt=hom_nay - relativedelta(months=gui_den + 1)), True
+
+    so_du_tu, so_du_den = _so_tien(g.get('so_du_tu')), _so_tien(g.get('so_du_den'))
+    if so_du_tu is not None:
+        qs, co_loc = qs.filter(so_du__gte=so_du_tu), True
+    if so_du_den is not None:
+        qs, co_loc = qs.filter(so_du__lte=so_du_den), True
+    ls_tu, ls_den = _so_thap_phan(g.get('ls_tu')), _so_thap_phan(g.get('ls_den'))
+    if ls_tu is not None:
+        qs, co_loc = qs.filter(lai_suat__gte=ls_tu), True
+    if ls_den is not None:
+        qs, co_loc = qs.filter(lai_suat__lte=ls_den), True
+
+    hinh_thuc = g.get('hinh_thuc')
+    if hinh_thuc == 'gui_gop':          # mẫu nhanh: mọi hình thức gửi góp
+        qs, co_loc = qs.filter(hinh_thuc__icontains='góp'), True
+    elif hinh_thuc:
+        qs, co_loc = qs.filter(hinh_thuc=hinh_thuc), True
+    if g.get('pgd'):
+        qs, co_loc = qs.filter(pgd=g['pgd']), True
+    if g.get('loai') in ('ca_nhan', 'to_chuc'):
+        qs, co_loc = qs.filter(la_to_chuc=g['loai'] == 'to_chuc'), True
+    hang = g.get('hang')
+    if hang:
+        co_loc = True
+        if hang == 'vip':
+            qs = qs.filter(nhom_hang='Vip')
+        elif hang == 'than_thiet':
+            qs = qs.filter(nhom_hang='Thân thiết')
+        elif hang == 'pho_thong':
+            qs = qs.filter(nhom_hang='Phổ thông')
+        elif hang == 'chua_xep':
+            qs = qs.filter(nhom_hang__isnull=True)
+        else:
+            qs = qs.filter(ten_hang=hang)
+    dv, dv_tt = g.get('dv'), g.get('dv_tt')
+    if dv in parsers.NHAN_DICH_VU and dv_tt in ('co', 'chua'):
+        co_dv = KhachHang.objects.filter(co_cn05=True, dich_vu__has_key=dv).values('ma_kh')
+        chua_dv = KhachHang.objects.filter(co_cn05=True).exclude(dich_vu__has_key=dv).values('ma_kh')
+        qs, co_loc = qs.filter(ma_kh__in=co_dv if dv_tt == 'co' else chua_dv), True
+    return qs, co_loc
+
+
+def _sap_xep_so(request, qs):
+    sort = request.GET.get('sort', 'den_han')
+    if sort.lstrip('-') not in SAP_XEP_SO:
+        sort = 'den_han'
+    truong = SAP_XEP_SO[sort.lstrip('-')]
+    return sort, qs.order_by(f'-{truong}' if sort.startswith('-') else truong, 'so_tk')
+
+
+def _them_thong_tin_so(tk, hom_nay):
+    tk.con_ngay = (tk.ngay_den_han - hom_nay).days if tk.ngay_den_han else None
+    da_gui = relativedelta(hom_nay, tk.ngay_mo) if tk.ngay_mo else None
+    tk.da_gui_thang = da_gui.years * 12 + da_gui.months if da_gui else None
+    tk.nhan_hang = XepHangKH.nhan(tk.nhom_hang or '', tk.ten_hang or '')
+    tk.css_hang = lop_hang(tk.nhom_hang, tk.ten_hang) if tk.nhom_hang else ''
+
+
+@_yeu_cau_quyen(QUYEN_QUAN_LY)
+def thong_ke_so(request):
+    qs, co_loc = _loc_so(request.GET)
+    if request.GET.get('xuat') == 'excel':
+        return _xuat_excel_so(_sap_xep_so(request, qs)[1])
+    tat_ca = TaiKhoanTG.objects.filter(con_hoat_dong=True, ky_han__gt=0)
+    ky_han_chon = request.GET.getlist('ky_han')
+    ctx = {
+        'ky': _ky_moi_nhat(), 'co_loc': co_loc, 'g': request.GET, 'mau': MAU_SO, 'hom_nay': date.today(),
+        'den_han_loc': DEN_HAN_LOC, 'hang_loc': HANG_LOC,
+        'ds_ky_han': [(k, str(k) in ky_han_chon) for k in
+                      tat_ca.order_by('ky_han').values_list('ky_han', flat=True).distinct()],
+        'ds_hinh_thuc': tat_ca.exclude(hinh_thuc='').order_by('hinh_thuc').values_list('hinh_thuc', flat=True).distinct(),
+        'ds_pgd': tat_ca.exclude(pgd='').order_by('pgd').values_list('pgd', flat=True).distinct(),
+        'dich_vu': [(k, nhan) for _, k, nhan in parsers.CN05_DICH_VU],
+        'muc_tien': [(100000000, '100 tr'), (500000000, '500 tr'), (1000000000, '1 tỷ')],
+    }
+    if co_loc:
+        tong = qs.aggregate(so_so=Count('so_tk'), so_kh=Count('ma_kh', distinct=True), tong_du=Sum('so_du'),
+                            lai_x_du=Sum(F('so_du') * F('lai_suat')))
+        tong['ls_bq'] = tong['lai_x_du'] / tong['tong_du'] if tong['tong_du'] else None
+        ctx['tong'] = tong
+        ctx['theo_ky_han'] = (qs.order_by().values('ky_han').annotate(n=Count('so_tk'), t=Sum('so_du'))
+                              .order_by('ky_han'))
+        dau_thang = date.today().replace(day=1)   # sổ đến hạn trước tháng này gộp 1 dòng, còn lại theo từng tháng
+        ctx['truoc_thang'] = qs.filter(ngay_den_han__lt=dau_thang).aggregate(n=Count('so_tk'), t=Sum('so_du'))
+        ctx['theo_thang'] = (qs.filter(ngay_den_han__gte=dau_thang).order_by()
+                             .annotate(thang=TruncMonth('ngay_den_han'))
+                             .values('thang').annotate(n=Count('so_tk'), t=Sum('so_du')).order_by('thang')[:24])
+        sort, qs = _sap_xep_so(request, qs)
+        page = Paginator(qs, 10).get_page(request.GET.get('page'))
+        hom_nay = date.today()
+        for tk in page.object_list:
+            _them_thong_tin_so(tk, hom_nay)
+        tham_so = request.GET.copy()
+        for k in ('page', 'sort', 'xuat'):
+            tham_so.pop(k, None)
+        ctx.update({'page': page, 'sort': sort, 'cot': COT_SO, 'qs_base': tham_so.urlencode()})
+    return render(request, 'kh360/thong_ke_so.html', ctx)
+
+
+def _xuat_excel_so(qs):
+    wb = openpyxl.Workbook(write_only=True)
+    ws = wb.create_sheet('Sổ tiết kiệm')
+    ws.append(['STT', 'Số TK', 'Số sổ', 'Mã KH', 'Tên KH', 'Hạng KH (BC06)', 'Loại tiền gửi', 'Hình thức',
+               'Kỳ hạn (tháng)', 'Số dư', 'Loại tiền', 'Lãi suất (%)', 'Ngày gửi', 'Ngày đến hạn',
+               'Còn (ngày)', 'Đã gửi (tháng)', 'Điểm GD', 'Cán bộ'])
+    hom_nay = date.today()
+    for i, tk in enumerate(qs.iterator(chunk_size=2000), 1):
+        _them_thong_tin_so(tk, hom_nay)
+        ws.append([
+            i, tk.so_tk, tk.so_so, tk.ma_kh, tk.ten_kh, tk.nhan_hang, tk.loai_tg, tk.hinh_thuc, tk.ky_han,
+            float(tk.so_du), tk.ccy, float(tk.lai_suat),
+            tk.ngay_mo.strftime('%d/%m/%Y') if tk.ngay_mo else '',
+            tk.ngay_den_han.strftime('%d/%m/%Y') if tk.ngay_den_han else '',
+            tk.con_ngay, tk.da_gui_thang, tk.pgd, tk.can_bo,
+        ])
+    resp = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = f'attachment; filename="SoTietKiem_KH360_{date.today():%Y%m%d}.xlsx"'
     wb.save(resp)
     return resp

@@ -150,7 +150,7 @@ class NhapKy:
                 du_no[v['ma_kh']] += v['du_no']
         so_du = defaultdict(Decimal)
         for t in self.dp_tk.values():
-            if t['con_hoat_dong'] and t['ccy'] == 'VND':
+            if t['con_hoat_dong'] and t['ccy'] == 'VND' and t['so_du'] > 0:   # bỏ TK thấu chi (số dư âm)
                 so_du[t['ma_kh']] += t['so_du']
         dang_vay = {v['ma_kh'] for v in vay.values() if v['con_du_no']}
         hoat_dong = set(self.cn05) | {tk['ma_kh'] for tk in self.dp_tk.values()} | dang_vay
@@ -271,7 +271,8 @@ def tong_hop():
         'so_kh': kh.count(),
         'so_kh_to_chuc': kh.filter(la_to_chuc=True).count(),
         'so_tk': tk.count(),
-        'tong_so_du_vnd': float(tk.filter(ccy='VND').aggregate(t=Sum('so_du'))['t'] or 0),
+        'tong_so_du_vnd': float(tk.filter(ccy='VND', so_du__gt=0).aggregate(t=Sum('so_du'))['t'] or 0),
+        'so_so_tiet_kiem': tk.filter(ky_han__gt=0).count(),
         'so_vay': vay.count(),
         'tong_du_no': float(vay.aggregate(t=Sum('du_no'))['t'] or 0),
         'so_loa': loa.count(),
