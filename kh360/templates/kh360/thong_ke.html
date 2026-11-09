@@ -19,14 +19,7 @@
 {% include "kh360/_header.html" %}
 {% include "kh360/_thong_ke_nav.html" %}
 
-<div class="card shadow-sm mb-3">
-    <div class="card-body py-2">
-        <span class="small text-muted me-2"><i class="bi bi-lightning-charge"></i> Mẫu nhanh:</span>
-        {% for nhan, tham_so in mau %}
-        <a href="?{{ tham_so }}" class="btn btn-sm btn-outline-secondary mb-1">{{ nhan }}</a>
-        {% endfor %}
-    </div>
-</div>
+{% include "kh360/_mau_nhanh.html" %}
 
 <form method="get" class="card shadow-sm mb-3" id="formThongKe">
     <div class="card-header fw-semibold"><i class="bi bi-funnel"></i> Điều kiện thống kê</div>

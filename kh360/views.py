@@ -13,6 +13,7 @@ from django.db.models import Count, F, OuterRef, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from openpyxl.styles import Font, PatternFill
@@ -22,8 +23,9 @@ from . import parsers
 from .importer import NhapKy
 from .models import (
     BienDong, EbankingToChuc, GanMaToChuc, GhiChuKH, KhachHang, KhoanVay, Ky, LoaThanTai, MaQR,
-    NguonFile, TaiKhoanTG, XepHangKH,
+    MauThongKe, NguonFile, TaiKhoanTG, XepHangKH,
 )
+from .mau_mac_dinh import tao_mau_mac_dinh
 from .templatetags.kh360_tags import QUYEN_ADMIN, QUYEN_QUAN_LY, lop_hang, muc_quyen
 
 logger = logging.getLogger(__name__)
@@ -136,17 +138,6 @@ HANG_LOC = [  # (giá trị, nhãn) cho bộ lọc hạng BC06 tại CN
     ('Silver', 'Silver VIP'), ('than_thiet', 'Thân thiết'), ('pho_thong', 'Phổ thông'), ('chua_xep', 'Chưa có trong BC06'),
 ]
 
-MAU_THONG_KE = [  # (nhãn, chuỗi tham số) — các mẫu lọc nhanh
-    ('Tiền gửi ≥ 1 tỷ, chưa có Agribank Plus', 'so_du_tu=1000000000&loai=ca_nhan&dv_agribank_plus=chua'),
-    ('Vừa đăng ký OTT vừa có SMS Banking', 'dv_agribank_plus_ott=co&dv_sms_banking=co'),
-    ('Có SMS Banking nhưng chưa dùng OTT', 'dv_sms_banking=co&dv_agribank_plus_ott=chua'),
-    ('Đang vay nhưng chưa có Agribank Plus', 'du_no=co&loai=ca_nhan&dv_agribank_plus=chua'),
-    ('VIP chưa có thẻ ghi nợ nội địa', 'hang=vip&loai=ca_nhan&dv_the_gn_noi_dia=chua'),
-    ('Có TK thanh toán nhưng chưa có thẻ', 'dv_tktt=co&dv_the_gn_noi_dia=chua&dv_the_gn_quoc_te=chua'),
-    ('Từ 60 tuổi, tiền gửi ≥ 500 triệu', 'tuoi_tu=60&so_du_tu=500000000'),
-    ('Có Loa Thần tài nhưng chưa có QR', 'loa=co&qr=khong'),
-    ('TK thanh toán ≥ 50 triệu, chưa có sổ tiết kiệm', 'kkh_tu=50000000&ckh_den=0'),
-]
 
 
 def _so_tien(v):
@@ -223,7 +214,7 @@ def thong_ke(request):
         'co_loc': co_loc,
         'g': request.GET,
         'hang_loc': HANG_LOC,
-        'mau': MAU_THONG_KE,
+        **_ctx_mau(request, 'kh'),
         'muc_tien': [(100000000, '100 tr'), (500000000, '500 tr'), (1000000000, '1 tỷ'), (5000000000, '5 tỷ')],
         'dich_vu': [(k, nhan, request.GET.get(f'dv_{k}', '')) for _, k, nhan in parsers.CN05_DICH_VU],
         'ds_pgd': (KhachHang.objects.filter(con_hoat_dong=True).exclude(pgd='')
@@ -570,17 +561,6 @@ DEN_HAN_LOC = [
     ('thang_sau', 'Trong tháng sau'), ('qua_han', 'Đã qua ngày đến hạn'), ('khoang', 'Chọn khoảng ngày…'),
 ]
 
-MAU_SO = [
-    ('Đến hạn trong 7 ngày tới', 'den_han=7'),
-    ('Đến hạn trong tháng này', 'den_han=thang_nay'),
-    ('Đến hạn tháng sau', 'den_han=thang_sau'),
-    ('Sổ ≥ 500 triệu đến hạn trong 30 ngày', 'den_han=30&so_du_tu=500000000'),
-    ('Đến hạn tháng này, KH chưa có Agribank Plus', 'den_han=thang_nay&dv=agribank_plus&dv_tt=chua'),
-    ('Kỳ hạn ngắn (1–3 tháng)', 'ky_han=1&ky_han=2&ky_han=3'),
-    ('Kỳ hạn từ 12 tháng, sổ ≥ 1 tỷ', 'ky_han_tu=12&so_du_tu=1000000000'),
-    ('Gửi lâu năm (đã gửi từ 36 tháng)', 'gui_tu=36'),
-    ('Tiết kiệm gửi góp', 'hinh_thuc=gui_gop'),
-]
 
 
 def _loc_so(g):
@@ -628,7 +608,7 @@ def thong_ke_so(request):
                        'Còn (ngày)', 'Đã gửi (tháng)', 'Điểm GD', 'Cán bộ'], dong())
     ky_han_chon = request.GET.getlist('ky_han')
     ctx = {
-        'ky': _ky_moi_nhat(), 'co_loc': co_loc, 'g': request.GET, 'mau': MAU_SO, 'hom_nay': hom_nay,
+        'ky': _ky_moi_nhat(), 'co_loc': co_loc, 'g': request.GET, **_ctx_mau(request, 'so'), 'hom_nay': hom_nay,
         'den_han_loc': DEN_HAN_LOC,
         'ds_ky_han': [(k, str(k) in ky_han_chon) for k in
                       tat_ca.order_by('ky_han').values_list('ky_han', flat=True).distinct()],
@@ -677,19 +657,6 @@ NHOM_NO = [('01', 'Nhóm 1 – Đủ tiêu chuẩn'), ('02', 'Nhóm 2 – Cần 
            ('04', 'Nhóm 4 – Nghi ngờ'), ('05', 'Nhóm 5 – Có khả năng mất vốn')]
 THOI_HAN_LOC = [('ngan', 'Ngắn hạn (≤ 12 tháng)'), ('trung', 'Trung hạn (13–60 tháng)'), ('dai', 'Dài hạn (> 60 tháng)')]
 
-MAU_VAY = [
-    ('Giải ngân 30 ngày qua, KH chưa có Agribank Plus', 'giai_ngan=qua_30&dv=agribank_plus&dv_tt=chua'),
-    ('Giải ngân trong tháng này', 'giai_ngan=thang_nay'),
-    ('Kỳ trả nợ trong 7 ngày tới', 'tra_tiep=7'),
-    ('Đáo hạn trong 30 ngày tới', 'dao_han=30'),
-    ('Đã quá ngày đáo hạn (còn dư nợ)', 'dao_han=qua_han'),
-    ('Nợ nhóm 2 trở lên', 'nhom_no=02&nhom_no=03&nhom_no=04&nhom_no=05'),
-    ('Nợ xấu (nhóm 3–5)', 'nhom_no=03&nhom_no=04&nhom_no=05'),
-    ('Dư nợ ≥ 1 tỷ', 'du_no_tu=1000000000'),
-    ('Vay ngắn hạn (≤ 12 tháng)', 'thoi_han_loai=ngan'),
-    ('Vay trung, dài hạn (> 12 tháng)', 'thoi_han_tu=13'),
-    ('Thấu chi', 'san_pham=thau_chi'),
-]
 
 
 def _loc_vay(g):
@@ -757,7 +724,7 @@ def thong_ke_vay(request):
     tat_ca = KhoanVay.objects.filter(con_du_no=True)
     ds = lambda f: tat_ca.exclude(**{f: ''}).order_by(f).values_list(f, flat=True).distinct()
     ctx = {
-        'ky': _ky_moi_nhat(), 'co_loc': co_loc, 'g': request.GET, 'mau': MAU_VAY, 'hom_nay': hom_nay,
+        'ky': _ky_moi_nhat(), 'co_loc': co_loc, 'g': request.GET, **_ctx_mau(request, 'vay'), 'hom_nay': hom_nay,
         'loc_ngay': [
             {'ten': ten, 'nhan': nhan, 'ds': ds_chon, 'chon': request.GET.get(ten, ''),
              'tu_ten': tu, 'tu': request.GET.get(tu, ''), 'den_ten': den, 'den': request.GET.get(den, '')}
@@ -794,3 +761,85 @@ def thong_ke_vay(request):
             _them_thong_tin_vay(v, hom_nay)
         ctx.update({'page': page, 'sort': sort, 'cot': COT_VAY, 'qs_base': qs_base})
     return render(request, 'kh360/thong_ke_vay.html', ctx)
+
+
+# ── Mẫu lọc nhanh (thêm / sửa / xoá) ─────────────────────────────────────────
+
+TAB_URL = {'kh': 'kh360:thong_ke', 'so': 'kh360:thong_ke_so', 'vay': 'kh360:thong_ke_vay'}
+KHOA_BO_QUA = {'page', 'sort', 'xuat', 'mau', 'csrfmiddlewaretoken'}
+
+
+def _ctx_mau(request, tab):
+    mau_id = request.GET.get('mau', '')
+    ds = list(MauThongKe.objects.filter(tab=tab))
+    return {'mau': ds, 'tab_mau': tab, 'mau_chon': next((m for m in ds if str(m.pk) == mau_id), None)}
+
+
+def _lam_sach_tham_so(chuoi):
+    """Giữ lại điều kiện lọc, bỏ trang / sắp xếp / xuất / ô trống."""
+    from django.http import QueryDict
+    q = QueryDict(chuoi.lstrip('?'), mutable=True)
+    for k in list(q.keys()):
+        gia_tri = [x for x in q.getlist(k) if x.strip()]
+        if k in KHOA_BO_QUA or not gia_tri:
+            q.pop(k)
+        else:
+            q.setlist(k, gia_tri)
+    return q.urlencode()
+
+
+@_yeu_cau_quyen(QUYEN_QUAN_LY)
+@require_POST
+def mau_luu(request):
+    """Thêm mẫu mới, hoặc sửa mẫu (tên / thứ tự / điều kiện) nếu có id."""
+    tab = request.POST.get('tab')
+    if tab not in TAB_URL:
+        messages.error(request, 'Tab thống kê không hợp lệ.')
+        return redirect('kh360:thong_ke')
+    mau = MauThongKe.objects.filter(pk=request.POST.get('id'), tab=tab).first() if request.POST.get('id') else None
+    ten = request.POST.get('ten', '').strip()[:150]
+    tham_so = request.POST.get('tham_so')
+    if tham_so is not None:
+        tham_so = _lam_sach_tham_so(tham_so)
+        if not tham_so:
+            messages.error(request, 'Chưa chọn điều kiện nào để lưu vào mẫu.')
+            return redirect(TAB_URL[tab])
+    if mau is None:
+        if not ten or not tham_so:
+            messages.error(request, 'Cần nhập tên mẫu và chọn ít nhất một điều kiện.')
+            return redirect(TAB_URL[tab])
+        cuoi = MauThongKe.objects.filter(tab=tab).order_by('-thu_tu').values_list('thu_tu', flat=True).first() or 0
+        mau = MauThongKe.objects.create(tab=tab, ten=ten, tham_so=tham_so, thu_tu=cuoi + 10, nguoi_sua=request.user)
+        messages.success(request, f'Đã thêm mẫu "{mau.ten}".')
+    else:
+        if ten:
+            mau.ten = ten
+        if tham_so:
+            mau.tham_so = tham_so
+        if (request.POST.get('thu_tu') or '').lstrip('-').isdigit():
+            mau.thu_tu = int(request.POST['thu_tu'])
+        mau.nguoi_sua = request.user
+        mau.save()
+        messages.success(request, f'Đã lưu mẫu "{mau.ten}".')
+    if request.POST.get('quay_lai') == 'quan_ly':
+        return redirect(reverse(TAB_URL[tab]) + '?quan_ly_mau=1')
+    return redirect(f'{reverse(TAB_URL[tab])}?{mau.tham_so}&mau={mau.pk}')
+
+
+@_yeu_cau_quyen(QUYEN_QUAN_LY)
+@require_POST
+def mau_xoa(request, pk):
+    mau = get_object_or_404(MauThongKe, pk=pk)
+    mau.delete()
+    messages.success(request, f'Đã xoá mẫu "{mau.ten}".')
+    return redirect(reverse(TAB_URL[mau.tab]) + '?quan_ly_mau=1')
+
+
+@_yeu_cau_quyen(QUYEN_QUAN_LY)
+@require_POST
+def mau_khoi_phuc(request):
+    tab = request.POST.get('tab')
+    if tab in TAB_URL:
+        n = tao_mau_mac_dinh(MauThongKe, tab)
+        messages.success(request, f'Đã khôi phục {n} mẫu mặc định.' if n else 'Các mẫu mặc định vẫn còn đủ.')
+    return redirect(reverse(TAB_URL.get(tab, 'kh360:thong_ke')) + '?quan_ly_mau=1')

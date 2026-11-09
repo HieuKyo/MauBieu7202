@@ -240,6 +240,23 @@ class GhiChuKH(models.Model):
     ngay_sua = models.DateTimeField(auto_now=True)
 
 
+class MauThongKe(models.Model):
+    """Mẫu lọc nhanh của các tab Thống kê — thêm / sửa / xoá trên giao diện, dùng chung mọi người."""
+    TAB_CHOICES = [('kh', 'Theo khách hàng'), ('so', 'Sổ tiết kiệm'), ('vay', 'Tiền vay')]
+    tab = models.CharField(max_length=5, choices=TAB_CHOICES, db_index=True)
+    ten = models.CharField('Tên mẫu', max_length=150)
+    tham_so = models.TextField('Điều kiện (chuỗi tham số lọc)')
+    thu_tu = models.IntegerField('Thứ tự', default=0)
+    nguoi_sua = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    ngay_sua = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['tab', 'thu_tu', 'id']
+
+    def __str__(self):
+        return f'{self.get_tab_display()}: {self.ten}'
+
+
 class GanMaToChuc(models.Model):
     """Gán tay mã KH cho tổ chức Ebanking không khớp được theo tên (nhớ cho các lần sau)."""
     ma_to_chuc = models.CharField(max_length=50, primary_key=True)

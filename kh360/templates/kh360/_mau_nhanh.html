@@ -1,0 +1,130 @@
+{# Mẫu lọc nhanh + quản lý mẫu (thêm / sửa / xoá). Cần: mau, mau_chon, tab_mau; form lọc có id="formThongKe". #}
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2 d-flex flex-wrap align-items-start gap-2">
+        <div class="flex-grow-1">
+            <span class="small text-muted me-2"><i class="bi bi-lightning-charge"></i> Mẫu nhanh:</span>
+            {% for m in mau %}
+            <a href="?{{ m.tham_so }}&mau={{ m.pk }}" class="btn btn-sm {% if m == mau_chon %}btn-danger{% else %}btn-outline-secondary{% endif %} mb-1">{{ m.ten }}</a>
+            {% empty %}
+            <span class="small text-muted">Chưa có mẫu nào — chọn điều kiện bên dưới rồi bấm <b>Lưu thành mẫu</b>.</span>
+            {% endfor %}
+        </div>
+        <div class="d-flex flex-wrap gap-1">
+            <button type="button" class="btn btn-sm btn-outline-success js-luu-mau" title="Lưu các điều kiện đang chọn trong form thành mẫu mới">
+                <i class="bi bi-plus-circle"></i> Lưu thành mẫu
+            </button>
+            {% if mau_chon %}
+            <button type="button" class="btn btn-sm btn-outline-primary js-luu-de" data-id="{{ mau_chon.pk }}" data-ten="{{ mau_chon.ten }}"
+                    title="Thay điều kiện của mẫu đang chọn bằng các điều kiện trong form">
+                <i class="bi bi-save"></i> Lưu đè mẫu “{{ mau_chon.ten|truncatechars:30 }}”
+            </button>
+            {% endif %}
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#mauModal">
+                <i class="bi bi-gear"></i> Quản lý mẫu
+            </button>
+        </div>
+    </div>
+</div>
+
+<form method="post" action="{% url 'kh360:mau_luu' %}" id="formMau" class="d-none">
+    {% csrf_token %}
+    <input type="hidden" name="tab" value="{{ tab_mau }}">
+    <input type="hidden" name="id">
+    <input type="hidden" name="ten">
+    <input type="hidden" name="tham_so">
+</form>
+
+<div class="modal fade" id="mauModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-lightning-charge"></i> Quản lý mẫu nhanh</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">
+                    Đổi tên, thứ tự (số nhỏ hiện trước) rồi bấm <b>Lưu</b> từng dòng.
+                    Muốn sửa <b>điều kiện</b> của một mẫu: bấm mẫu đó để áp dụng, chỉnh điều kiện trong form, rồi bấm <b>Lưu đè mẫu</b>.
+                    Mẫu dùng chung cho mọi người xem Thống kê.
+                </p>
+                {% for m in mau %}
+                <form method="post" action="{% url 'kh360:mau_luu' %}" id="fm{{ m.pk }}">{% csrf_token %}
+                    <input type="hidden" name="tab" value="{{ tab_mau }}"><input type="hidden" name="id" value="{{ m.pk }}">
+                    <input type="hidden" name="quay_lai" value="quan_ly"></form>
+                <form method="post" action="{% url 'kh360:mau_xoa' m.pk %}" id="fx{{ m.pk }}" onsubmit="return confirm('Xoá mẫu “{{ m.ten|escapejs }}”?');">{% csrf_token %}</form>
+                {% endfor %}
+                <table class="table table-sm align-middle">
+                    <thead class="table-light"><tr><th style="width:80px">Thứ tự</th><th>Tên mẫu</th><th class="text-end" style="width:170px"></th></tr></thead>
+                    <tbody>
+                    {% for m in mau %}
+                    <tr>
+                        <td><input type="number" name="thu_tu" value="{{ m.thu_tu }}" form="fm{{ m.pk }}" class="form-control form-control-sm"></td>
+                        <td>
+                            <input type="text" name="ten" value="{{ m.ten }}" form="fm{{ m.pk }}" maxlength="150" required class="form-control form-control-sm">
+                            <div class="small text-muted text-break mt-1"><code>{{ m.tham_so }}</code>
+                                {% if m.nguoi_sua %} · sửa {{ m.ngay_sua|date:"d/m/Y" }} bởi {{ m.nguoi_sua.get_full_name|default:m.nguoi_sua.username }}{% endif %}</div>
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a href="?{{ m.tham_so }}&mau={{ m.pk }}" class="btn btn-sm btn-outline-secondary" title="Áp dụng"><i class="bi bi-play"></i></a>
+                            <button type="submit" form="fm{{ m.pk }}" class="btn btn-sm btn-outline-success">Lưu</button>
+                            <button type="submit" form="fx{{ m.pk }}" class="btn btn-sm btn-outline-danger" title="Xoá"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-muted">Chưa có mẫu nào.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <form method="post" action="{% url 'kh360:mau_khoi_phuc' %}"
+                      onsubmit="return confirm('Thêm lại các mẫu mặc định còn thiếu (mẫu bạn tự tạo vẫn giữ nguyên)?');">
+                    {% csrf_token %}<input type="hidden" name="tab" value="{{ tab_mau }}">
+                    <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Khôi phục mẫu mặc định</button>
+                </form>
+                <button type="button" class="btn btn-sm btn-danger" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const formMau = document.getElementById('formMau');
+    function dieuKien() {
+        // Lấy điều kiện đang chọn trong form lọc (kể cả chưa bấm Thống kê), bỏ ô trống
+        const p = new URLSearchParams();
+        document.getElementById('formThongKe').querySelectorAll('input[name], select[name]').forEach(el => {
+            if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
+            let v = (el.value || '').trim();
+            if (el.classList.contains('js-tien')) v = v.replace(/\D/g, '');   // 1.000.000 → 1000000
+            if (v && el.name !== 'xuat') p.append(el.name, v);
+        });
+        return p.toString();
+    }
+    function gui(id, ten) {
+        const ts = dieuKien();
+        if (!ts) { alert('Chưa chọn điều kiện nào trong form để lưu vào mẫu.'); return; }
+        formMau.id.value = id || '';
+        formMau.ten.value = ten;
+        formMau.tham_so.value = ts;
+        formMau.submit();
+    }
+    document.querySelectorAll('.js-luu-mau').forEach(b => b.addEventListener('click', () => {
+        const ten = prompt('Tên mẫu mới:');
+        if (ten && ten.trim()) gui('', ten.trim());
+    }));
+    document.querySelectorAll('.js-luu-de').forEach(b => b.addEventListener('click', () => {
+        if (confirm('Thay điều kiện của mẫu “' + b.dataset.ten + '” bằng điều kiện đang chọn trong form?')) gui(b.dataset.id, '');
+    }));
+    {% if mau_chon %}
+    // Giữ mẫu đang chọn khi sửa điều kiện rồi bấm Thống kê, để vẫn "Lưu đè" được
+    const an = document.createElement('input');
+    an.type = 'hidden'; an.name = 'mau'; an.value = '{{ mau_chon.pk }}';
+    document.getElementById('formThongKe').appendChild(an);
+    {% endif %}
+    if (new URLSearchParams(location.search).get('quan_ly_mau')) {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('mauModal')).show();
+    }
+});
+</script>

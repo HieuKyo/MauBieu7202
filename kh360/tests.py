@@ -10,10 +10,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from . import views
+from .mau_mac_dinh import MAU_MAC_DINH, tao_mau_mac_dinh
 from .importer import NhapKy
 from .models import (
-    BienDong, EbankingToChuc, KhachHang, KhoanVay, LoaThanTai, MaQR, NguonFile, TaiKhoanTG, XepHangKH,
+    BienDong, EbankingToChuc, KhachHang, KhoanVay, LoaThanTai, MaQR, MauThongKe, NguonFile, TaiKhoanTG,
+    XepHangKH,
 )
 from .parsers import CN05_DICH_VU, FileLoi
 
@@ -409,7 +410,7 @@ class GiaoDienTest(Co_so):
         r = self.client.get(url, {'so_du_tu': '1000000000', 'xuat': 'excel'})
         wb = openpyxl.load_workbook(io.BytesIO(r.content))
         self.assertEqual(wb.active.max_row, 4)                # tiêu đề + 3 KH
-        for _, tham_so in views.MAU_THONG_KE:                 # mẫu nhanh đều chạy được
+        for _, tham_so in MAU_MAC_DINH['kh']:                 # mẫu mặc định đều chạy được
             self.assertEqual(self.client.get(f'{url}?{tham_so}').status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 200)
 
@@ -463,7 +464,7 @@ class GiaoDienTest(Co_so):
         self.assertContains(r, 'quá 3 ngày')
         r = self.client.get(url, {'ky_han_tu': '1', 'xuat': 'excel'})
         self.assertEqual(openpyxl.load_workbook(io.BytesIO(r.content)).active.max_row, 4)
-        for _, tham_so in views.MAU_SO:                       # mẫu nhanh đều chạy được
+        for _, tham_so in MAU_MAC_DINH['so']:                 # mẫu mặc định đều chạy được
             self.assertEqual(self.client.get(f'{url}?{tham_so}').status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 200)
 
@@ -545,9 +546,58 @@ class GiaoDienTest(Co_so):
         self.assertContains(r, 'Thấu chi')
         r = self.client.get(url, {'du_no_tu': '1', 'xuat': 'excel'})
         self.assertEqual(openpyxl.load_workbook(io.BytesIO(r.content)).active.max_row, 4)
-        for _, tham_so in views.MAU_VAY:                      # mẫu nhanh đều chạy được
+        for _, tham_so in MAU_MAC_DINH['vay']:                # mẫu mặc định đều chạy được
             self.assertEqual(self.client.get(f'{url}?{tham_so}').status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_quan_ly_mau_nhanh(self):
+        self.assertEqual(tao_mau_mac_dinh(MauThongKe), sum(len(v) for v in MAU_MAC_DINH.values()))
+        self.assertEqual(tao_mau_mac_dinh(MauThongKe), 0)                 # chạy lại không nhân đôi
+        url = reverse('kh360:thong_ke_so')
+        r = self.client.get(url)
+        self.assertContains(r, 'Đến hạn trong 7 ngày tới')
+        self.assertNotContains(r, 'Vay trung, dài hạn')                    # mẫu của tab khác
+        # Thêm: bỏ trang / sắp xếp / ô trống khỏi điều kiện
+        r = self.client.post(reverse('kh360:mau_luu'), {
+            'tab': 'so', 'ten': 'Sổ lớn sắp đến hạn',
+            'tham_so': 'den_han=30&so_du_tu=2000000000&so_du_den=&sort=-so_du&page=3&ky_han=6&ky_han=12'})
+        mau = MauThongKe.objects.get(ten='Sổ lớn sắp đến hạn')
+        self.assertEqual(mau.tham_so, 'den_han=30&so_du_tu=2000000000&ky_han=6&ky_han=12')
+        self.assertEqual(mau.nguoi_sua, self.user)
+        self.assertRedirects(r, f'{url}?{mau.tham_so}&mau={mau.pk}', fetch_redirect_response=False)
+        r = self.client.get(f'{url}?{mau.tham_so}&mau={mau.pk}')
+        self.assertEqual(r.context['mau_chon'], mau)
+        self.assertContains(r, 'Lưu đè mẫu')
+        # Sửa tên + thứ tự (không đụng điều kiện), rồi lưu đè điều kiện
+        self.client.post(reverse('kh360:mau_luu'), {'tab': 'so', 'id': mau.pk, 'ten': 'Sổ ≥ 2 tỷ', 'thu_tu': '-5',
+                                                     'quay_lai': 'quan_ly'})
+        mau.refresh_from_db()
+        self.assertEqual((mau.ten, mau.thu_tu, mau.tham_so[:10]), ('Sổ ≥ 2 tỷ', -5, 'den_han=30'))
+        self.assertEqual(MauThongKe.objects.filter(tab='so').first(), mau)  # thứ tự nhỏ lên đầu
+        self.client.post(reverse('kh360:mau_luu'), {'tab': 'so', 'id': mau.pk, 'tham_so': 'den_han=7'})
+        mau.refresh_from_db()
+        self.assertEqual(mau.tham_so, 'den_han=7')
+        # Không cho lưu mẫu rỗng
+        n = MauThongKe.objects.count()
+        self.client.post(reverse('kh360:mau_luu'), {'tab': 'so', 'ten': 'Rỗng', 'tham_so': 'page=2&sort=ten'})
+        self.assertEqual(MauThongKe.objects.count(), n)
+        # Xoá, rồi khôi phục mẫu mặc định chỉ thêm lại mẫu mặc định đã xoá
+        mac_dinh = MauThongKe.objects.get(tab='so', ten='Đến hạn trong 7 ngày tới')
+        self.client.post(reverse('kh360:mau_xoa', args=[mac_dinh.pk]))
+        self.client.post(reverse('kh360:mau_xoa', args=[mau.pk]))
+        self.assertFalse(MauThongKe.objects.filter(pk__in=[mac_dinh.pk, mau.pk]).exists())
+        self.client.post(reverse('kh360:mau_khoi_phuc'), {'tab': 'so'})
+        self.assertTrue(MauThongKe.objects.filter(tab='so', ten='Đến hạn trong 7 ngày tới').exists())
+        self.assertFalse(MauThongKe.objects.filter(ten='Sổ ≥ 2 tỷ').exists())
+        # Nhân viên (chỉ tra cứu) không thêm / xoá được
+        from templates_app.models import UserProfile
+        nv = User.objects.create_user('nv_mau', password='p')
+        UserProfile.objects.create(user=nv, employee_code='nv_mau', full_name='NV', position='NHAN_VIEN')
+        self.client.force_login(nv)
+        self.client.post(reverse('kh360:mau_luu'), {'tab': 'kh', 'ten': 'Lén', 'tham_so': 'loai=ca_nhan'})
+        self.client.post(reverse('kh360:mau_xoa', args=[MauThongKe.objects.first().pk]))
+        self.assertFalse(MauThongKe.objects.filter(ten='Lén').exists())
+        self.assertEqual(MauThongKe.objects.count(), sum(len(v) for v in MAU_MAC_DINH.values()))
 
     def test_bc06_hang_vip(self):
         self.moc()
