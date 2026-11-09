@@ -94,6 +94,15 @@ def chuan_ten(text):
     return re.sub(r'[^a-z0-9]', '', khong_dau(text))
 
 
+def so_thang(tu, den):
+    """Số tháng giữa 2 ngày, làm tròn (≥ 15 ngày lẻ tính thêm 1 tháng); thiếu ngày → 0."""
+    if not tu or not den or den < tu:
+        return 0
+    from dateutil.relativedelta import relativedelta
+    rd = relativedelta(den, tu)
+    return rd.years * 12 + rd.months + (1 if rd.days >= 15 else 0)
+
+
 def ngay_tu_ten_file(ten):
     m = re.search(r'(20\d{2})(\d{2})(\d{2})', ten)
     if m:
@@ -245,6 +254,7 @@ def doc_ln01(uploaded):
             'so_tien_tra_tiep': so(g('NEXT_REPAY_AMOUNT')), 'pgd': s(g('TRCTNM')),
             'cccd': s(g('CMT_HC')), 'ngay_sinh': ngay(g('NGAY_SINH')), 'dia_chi': s(g('ADDR1'))[:300],
             'con_du_no': du_no > 0,
+            'thoi_han_thang': so_thang(ngay(g('DSBSDT')), ngay(g('DSBSMATDT'))),
         }
     return ngay_file, kq
 

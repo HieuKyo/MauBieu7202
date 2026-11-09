@@ -9,4 +9,9 @@
             <i class="bi bi-journal-bookmark"></i> Sổ tiết kiệm
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'thong_ke_vay' %}active fw-semibold{% endif %}" href="{% url 'kh360:thong_ke_vay' %}">
+            <i class="bi bi-cash-coin"></i> Tiền vay
+        </a>
+    </li>
 </ul>

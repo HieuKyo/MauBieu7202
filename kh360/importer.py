@@ -148,10 +148,12 @@ class NhapKy:
                 vay[v['ma_kh']] = v
             if v['con_du_no']:
                 du_no[v['ma_kh']] += v['du_no']
-        so_du = defaultdict(Decimal)
+        so_du, so_du_ckh = defaultdict(Decimal), defaultdict(Decimal)   # tổng / riêng có kỳ hạn
         for t in self.dp_tk.values():
             if t['con_hoat_dong'] and t['ccy'] == 'VND' and t['so_du'] > 0:   # bỏ TK thấu chi (số dư âm)
                 so_du[t['ma_kh']] += t['so_du']
+                if t['ky_han'] > 0:
+                    so_du_ckh[t['ma_kh']] += t['so_du']
         dang_vay = {v['ma_kh'] for v in vay.values() if v['con_du_no']}
         hoat_dong = set(self.cn05) | {tk['ma_kh'] for tk in self.dp_tk.values()} | dang_vay
 
@@ -174,6 +176,7 @@ class NhapKy:
                 'pgd': info.get('pgd') or (ln and ln['pgd']) or '',
                 'co_cn05': cn is not None, 'dich_vu': cn['dich_vu'] if cn else {},
                 'tong_so_du': so_du.get(ma, 0), 'tong_du_no': du_no.get(ma, 0),
+                'so_du_ckh': so_du_ckh.get(ma, 0), 'so_du_kkh': so_du.get(ma, 0) - so_du_ckh.get(ma, 0),
                 'con_hoat_dong': True,
             }
             row['tim_kiem'] = ' '.join([ma, parsers.khong_dau(row['ten']), row['cccd'], row['sdt']])

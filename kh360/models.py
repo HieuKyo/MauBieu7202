@@ -70,6 +70,8 @@ class KhachHang(models.Model):
     dich_vu = models.JSONField('Dịch vụ (CN05)', default=dict, blank=True)
     tong_so_du = models.DecimalField('Tổng số dư VND', max_digits=20, decimal_places=2, default=0)
     tong_du_no = models.DecimalField('Tổng dư nợ', max_digits=20, decimal_places=2, default=0)
+    so_du_kkh = models.DecimalField('Số dư không kỳ hạn (TK thanh toán) VND', max_digits=20, decimal_places=2, default=0)
+    so_du_ckh = models.DecimalField('Số dư tiết kiệm / có kỳ hạn VND', max_digits=20, decimal_places=2, default=0)
     con_hoat_dong = models.BooleanField(default=True)
     tim_kiem = models.TextField(blank=True)  # tên không dấu + mã KH + CCCD + SĐT
 
@@ -128,6 +130,7 @@ class KhoanVay(models.Model):
     cccd = models.CharField(max_length=30, blank=True)
     ngay_sinh = models.DateField(null=True, blank=True)
     dia_chi = models.CharField(max_length=300, blank=True)
+    thoi_han_thang = models.IntegerField('Thời hạn vay (tháng)', default=0)
     con_du_no = models.BooleanField(default=True)
 
     class Meta:

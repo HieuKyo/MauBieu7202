@@ -1,6 +1,6 @@
 {% load kh360_tags %}
-{# Bảng KH dùng chung: cần page, sort, cot, qs_base (tham số lọc giữ khi sắp xếp / chuyển trang). #}
-{# Màn hẹp ẩn bớt cột (lớp an_* bên dưới); hồ sơ đầy đủ vẫn xem được khi bấm vào dòng.          #}
+{# Bảng KH dùng chung: cần page, sort, cot [(khoá, nhãn, lớp ẩn, sắp xếp được)], qs_base (tham số lọc giữ khi sắp xếp / chuyển trang). #}
+{# Màn hẹp ẩn bớt cột (lớp an_* bên dưới); hồ sơ đầy đủ vẫn xem được khi bấm vào dòng. #}
 <style>
     .kh-sort { color: inherit; text-decoration: none; white-space: nowrap; }
     .kh-sort:hover { color: #AE1C3F; }
@@ -18,54 +18,44 @@
     <table class="table table-hover table-sm mb-0 align-middle kh-bang">
         <thead class="table-light">
             <tr>
-                {% for key, nhan, an in cot %}
-                <th class="{{ an }} {% if key == 'so_du' or key == 'du_no' %}text-end{% endif %}">
+                {% for key, nhan, an, sx in cot %}
+                <th class="{{ an }} {% if key in 'so_du kkh ckh du_no' %}text-end{% endif %}">
+                    {% if sx %}
                     <a class="kh-sort" href="?{{ qs_base }}&sort={% if sort == key %}-{{ key }}{% else %}{{ key }}{% endif %}">
                         {{ nhan }}
                         {% if sort == key %}<i class="bi bi-sort-up"></i>{% elif sort == '-'|add:key %}<i class="bi bi-sort-down"></i>{% else %}<i class="bi bi-arrow-down-up text-muted small"></i>{% endif %}
                     </a>
+                    {% else %}{{ nhan }}{% endif %}
                 </th>
                 {% endfor %}
-                <th class="an-xl">CCCD/Giấy tờ</th>
-                <th class="an-lg">SĐT</th>
                 <th class="an-sm"></th>
             </tr>
         </thead>
         <tbody>
         {% for kh in page.object_list %}
             <tr class="kh-row {% if not kh.con_hoat_dong %}text-muted{% endif %}" data-kh360="{% url 'kh360:ho_so' kh.ma_kh %}">
-                <td class="font-monospace an-md">{{ kh.ma_kh }}</td>
-                <td class="fw-semibold kh-ten">{{ kh.ten }}{% if not kh.con_hoat_dong %} <span class="badge bg-secondary">Không còn</span>{% endif %}
+                {% for key, nhan, an, sx in cot %}
+                {% if key == 'ma_kh' %}<td class="font-monospace {{ an }}">{{ kh.ma_kh }}</td>
+                {% elif key == 'ten' %}<td class="fw-semibold kh-ten {{ an }}">{{ kh.ten }}{% if not kh.con_hoat_dong %} <span class="badge bg-secondary">Không còn</span>{% endif %}
                     <div class="d-md-none small text-muted font-monospace fw-normal">{{ kh.ma_kh }}</div></td>
-                <td class="an-lg">{% if kh.la_to_chuc %}<span class="badge bg-info text-dark">Tổ chức</span>{% else %}Cá nhân{% endif %}</td>
-                <td>{% if kh.nhan_hang %}<span class="hang-badge {{ kh.css_hang }}">{{ kh.nhan_hang }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
-                <td class="text-end kh-so">{{ kh.tong_so_du|tien }}</td>
-                <td class="text-end kh-so an-sm">{{ kh.tong_du_no|tien }}</td>
-                <td class="an-xxl">{{ kh.pgd }}</td>
-                <td class="an-xl">{{ kh.cccd }}</td>
-                <td class="an-lg">{{ kh.sdt }}</td>
+                {% elif key == 'loai' %}<td class="{{ an }}">{% if kh.la_to_chuc %}<span class="badge bg-info text-dark">Tổ chức</span>{% else %}Cá nhân{% endif %}</td>
+                {% elif key == 'hang' %}<td class="{{ an }}">{% if kh.nhan_hang %}<span class="hang-badge {{ kh.css_hang }}">{{ kh.nhan_hang }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                {% elif key == 'so_du' %}<td class="text-end kh-so {{ an }}">{{ kh.tong_so_du|tien }}</td>
+                {% elif key == 'kkh' %}<td class="text-end kh-so {{ an }}">{{ kh.so_du_kkh|tien }}</td>
+                {% elif key == 'ckh' %}<td class="text-end kh-so {{ an }}">{{ kh.so_du_ckh|tien }}</td>
+                {% elif key == 'du_no' %}<td class="text-end kh-so {{ an }}">{{ kh.tong_du_no|tien }}</td>
+                {% elif key == 'pgd' %}<td class="{{ an }}">{{ kh.pgd }}</td>
+                {% elif key == 'cccd' %}<td class="{{ an }}">{{ kh.cccd }}</td>
+                {% elif key == 'sdt' %}<td class="{{ an }}">{{ kh.sdt }}</td>
+                {% endif %}
+                {% endfor %}
                 <td class="an-sm"><button type="button" class="btn btn-sm btn-outline-danger text-nowrap" data-kh360="{% url 'kh360:ho_so' kh.ma_kh %}"><i class="bi bi-eye"></i> Xem</button></td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
-{% if page.has_other_pages %}
-<div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2 small">
-    <span>Trang {{ page.number }}/{{ page.paginator.num_pages }} – hiển thị {{ page.start_index }}–{{ page.end_index }} / {{ page.paginator.count }}</span>
-    <nav><ul class="pagination pagination-sm mb-0">
-        {% if page.has_previous %}
-        <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page=1">«</a></li>
-        <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.previous_page_number }}">‹</a></li>
-        {% endif %}
-        <li class="page-item active"><span class="page-link">{{ page.number }}</span></li>
-        {% if page.has_next %}
-        <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.next_page_number }}">›</a></li>
-        <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.paginator.num_pages }}">»</a></li>
-        {% endif %}
-    </ul></nav>
-</div>
-{% endif %}
+{% include "kh360/_phan_trang.html" %}
 {% else %}
 <div class="card-body text-muted">Không tìm thấy khách hàng phù hợp.</div>
 {% endif %}

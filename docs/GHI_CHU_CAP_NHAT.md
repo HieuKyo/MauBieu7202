@@ -3,22 +3,25 @@
 Mỗi mục là một bản cập nhật (gói `CapNhat_MauBieu_<phiên bản>`), mới nhất ở trên.
 Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `tao_ban_cap_nhat.bat`, tiêu đề này được đổi thành số phiên bản và ngày.
 
-## Bản tiếp theo
+## 2026.11.09.3 — 09/11/2026
 
 ### Chức năng mới
 - **KH 360 – Thống kê sổ tiết kiệm** (Thống kê → tab **Sổ tiết kiệm**): lọc sổ tiết kiệm / tiền gửi có kỳ hạn theo ngày đến hạn (7 ngày tới, 30 ngày tới, tháng này, tháng sau, đã qua hạn, khoảng ngày tự chọn), kỳ hạn (chọn nhiều hoặc từ … tháng trở lên), số tháng đã gửi, số dư sổ, lãi suất, hình thức (trả lãi khi đến hạn / định kỳ / gửi góp), loại và hạng khách hàng, điểm giao dịch, khách đã có / chưa có một dịch vụ. Hiện số sổ, số khách hàng, tổng số dư, lãi suất bình quân; bảng tổng hợp theo kỳ hạn và theo tháng đến hạn; danh sách sổ có số ngày còn lại đến hạn, bấm vào để mở hồ sơ khách hàng; xuất Excel. Có 9 mẫu lọc nhanh (đến hạn trong 7 ngày, đến hạn tháng này mà khách chưa có Agribank Plus…).
+- **KH 360 – Thống kê tiền vay** (Thống kê → tab **Tiền vay**): lọc khoản vay theo dư nợ, thời hạn vay (số tháng hoặc nhóm ngắn / trung / dài hạn), số tháng đã vay, ngày giải ngân (7 / 30 ngày qua, tháng này, tháng trước, khoảng ngày), ngày đáo hạn, kỳ trả nợ tiếp theo, nhóm nợ, cho vay / thấu chi, loại vay, mục đích, cán bộ tín dụng, lãi suất, tình trạng (còn dư nợ / đã tất toán), loại và hạng khách hàng, khách đã có / chưa có một dịch vụ. Hiện số món, số khách, tổng dư nợ, lãi suất bình quân, nợ xấu; bảng theo nhóm nợ, theo thời hạn, theo cán bộ tín dụng; danh sách khoản vay (số ngày còn đến đáo hạn, kỳ trả tiếp), bấm vào để mở hồ sơ khách hàng; xuất Excel. 11 mẫu lọc nhanh (giải ngân 30 ngày qua mà khách chưa có Agribank Plus, kỳ trả nợ trong 7 ngày tới, nợ xấu…).
 
 ### Chỉnh sửa
+- **KH 360 – Thống kê theo khách hàng:** tách số dư thành **Tổng số dư tiền gửi** (TK thanh toán + tiết kiệm), **Số dư không kỳ hạn (TK thanh toán)** và **Số dư tiết kiệm / có kỳ hạn** (cộng các sổ) — mỗi loại lọc được từ … đến … ("đến 0" = chưa có sổ tiết kiệm). Bảng kết quả, ô tóm tắt và file Excel có thêm 2 cột tương ứng. Mẫu nhanh mới: TK thanh toán ≥ 50 triệu, chưa có sổ tiết kiệm. Lưu ý: tab này tính theo **khách hàng** (cộng mọi tài khoản của khách), còn tab Sổ tiết kiệm tính theo **từng sổ**, nên số lượng hai bên khác nhau là bình thường.
 - **KH 360 – Tổng số dư tiền gửi:** không còn cộng số dư âm của tài khoản thấu chi (211108) vào tổng số dư tiền gửi (khoản thấu chi đã tính ở dư nợ). Tổng số dư của khách có thấu chi và của toàn chi nhánh trước đây bị thấp hơn thực tế; cần **cập nhật lại file DP01** để số liệu đúng. Hồ sơ khách hàng ghi nhãn **Thấu chi** cho các tài khoản này và hiện hình thức gửi của sổ.
 - **Quản lý nhân viên:** file **Export Excel** import lại được ngay, không cần sửa tiêu đề hay thêm bớt cột (trước đây báo "Thiếu Username hoặc Mã nhân viên"). Chi nhánh, Phòng ban, Chức vụ, Nghiệp vụ ghi bằng tên (vd. "Phòng Kế toán & Ngân quỹ") hay bằng mã (KE_TOAN) đều nhận; giá trị không có trong danh sách thì báo cảnh báo và giữ giá trị cũ. Dòng trống được bỏ qua.
 - Đồng bộ **Người sử dụng** và **Nhân viên**: sửa họ tên nhân viên thì họ tên tài khoản đổi theo; trang sửa Người sử dụng (Admin) hiện luôn hồ sơ nhân viên (chi nhánh, phòng ban, chức vụ, nghiệp vụ…).
 
 ### Lưu ý
 - Có migration `kh360/0003_hinh_thuc_tien_gui` (thêm cột hình thức tiền gửi). Sau khi cập nhật, nạp lại DP01 để có hình thức gửi và tổng số dư đúng.
+- Có migration `kh360/0004_so_du_tach_thoi_han_vay`: thêm số dư không kỳ hạn / có kỳ hạn của khách hàng và thời hạn vay; tự tính từ dữ liệu đã nạp nên không bắt buộc nạp lại file cho phần này.
 
 ### File
-- Thêm: `kh360/migrations/0003_hinh_thuc_tien_gui.py`, `kh360/templates/kh360/thong_ke_so.html`, `kh360/templates/kh360/_thong_ke_nav.html`
-- Sửa: `kh360/models.py`, `kh360/parsers.py`, `kh360/importer.py`, `kh360/views.py`, `kh360/urls.py`, `kh360/tests.py`, `kh360/templates/kh360/_header.html`, `kh360/templates/kh360/_ho_so.html`, `kh360/templates/kh360/thong_ke.html`
+- Thêm: `kh360/migrations/0003_hinh_thuc_tien_gui.py`, `kh360/migrations/0004_so_du_tach_thoi_han_vay.py`, `kh360/templates/kh360/thong_ke_so.html`, `kh360/templates/kh360/thong_ke_vay.html`, `kh360/templates/kh360/_thong_ke_nav.html`, `kh360/templates/kh360/_loc_chu.html`, `kh360/templates/kh360/_phan_trang.html`
+- Sửa: `kh360/models.py`, `kh360/parsers.py`, `kh360/importer.py`, `kh360/views.py`, `kh360/urls.py`, `kh360/tests.py`, `kh360/templates/kh360/_header.html`, `kh360/templates/kh360/_ho_so.html`, `kh360/templates/kh360/thong_ke.html`, `kh360/templates/kh360/_bang_kh.html`
 
 ## 2026.11.09.2 — 09/11/2026
 

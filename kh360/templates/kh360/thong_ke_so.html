@@ -91,42 +91,7 @@
                     {% for h in ds_hinh_thuc %}<option value="{{ h }}" {% if g.hinh_thuc == h %}selected{% endif %}>{{ h }}</option>{% endfor %}
                 </select>
             </div>
-            <div class="col-6 col-md-4 col-xl-2">
-                <div class="tk-label">Loại khách hàng</div>
-                <select name="loai" class="form-select form-select-sm">
-                    <option value="">Tất cả</option>
-                    <option value="ca_nhan" {% if g.loai == 'ca_nhan' %}selected{% endif %}>Cá nhân</option>
-                    <option value="to_chuc" {% if g.loai == 'to_chuc' %}selected{% endif %}>Tổ chức</option>
-                </select>
-            </div>
-            <div class="col-6 col-md-4 col-xl-2">
-                <div class="tk-label">Hạng KH (BC06)</div>
-                <select name="hang" class="form-select form-select-sm">
-                    <option value="">Tất cả</option>
-                    {% for v, n in hang_loc %}<option value="{{ v }}" {% if g.hang == v %}selected{% endif %}>{{ n }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="col-6 col-md-4 col-xl-3">
-                <div class="tk-label">Điểm giao dịch</div>
-                <select name="pgd" class="form-select form-select-sm">
-                    <option value="">Tất cả</option>
-                    {% for p in ds_pgd %}<option value="{{ p }}" {% if g.pgd == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="col-md-8 col-xl-6">
-                <div class="tk-label">Khách hàng (chủ sổ) … dịch vụ</div>
-                <div class="input-group input-group-sm">
-                    <select name="dv_tt" class="form-select" style="max-width:130px">
-                        <option value="">—</option>
-                        <option value="co" {% if g.dv_tt == 'co' %}selected{% endif %}>Đã có</option>
-                        <option value="chua" {% if g.dv_tt == 'chua' %}selected{% endif %}>Chưa có</option>
-                    </select>
-                    <select name="dv" class="form-select">
-                        <option value="">(chọn dịch vụ)</option>
-                        {% for k, nhan in dich_vu %}<option value="{{ k }}" {% if g.dv == k %}selected{% endif %}>{{ nhan }}</option>{% endfor %}
-                    </select>
-                </div>
-            </div>
+            {% include "kh360/_loc_chu.html" with chu="chủ sổ" %}
         </div>
     </div>
     <div class="card-footer d-flex flex-wrap gap-2">

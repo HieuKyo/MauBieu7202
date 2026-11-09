@@ -32,8 +32,8 @@
     <div class="card-header fw-semibold"><i class="bi bi-funnel"></i> Điều kiện thống kê</div>
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-6 col-lg-4">
-                <div class="tk-label">Tổng số dư tiền gửi (VND)</div>
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Tổng số dư tiền gửi (TK thanh toán + tiết kiệm, VND)</div>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text">Từ</span>
                     <input type="text" inputmode="numeric" name="so_du_tu" value="{{ g.so_du_tu }}" class="form-control js-tien" placeholder="vd 1.000.000.000">
@@ -44,6 +44,24 @@
                     {% for v, n in muc_tien %}
                     <button type="button" class="btn btn-link btn-sm p-0 me-2 js-chon-tien" data-v="{{ v }}">≥ {{ n }}</button>
                     {% endfor %}
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Số dư không kỳ hạn (TK thanh toán)</div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Từ</span>
+                    <input type="text" inputmode="numeric" name="kkh_tu" value="{{ g.kkh_tu }}" class="form-control js-tien" placeholder="vd 50.000.000">
+                    <span class="input-group-text">đến</span>
+                    <input type="text" inputmode="numeric" name="kkh_den" value="{{ g.kkh_den }}" class="form-control js-tien" placeholder="không giới hạn">
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Số dư tiết kiệm / có kỳ hạn (cộng các sổ) — "đến 0" = chưa có sổ</div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Từ</span>
+                    <input type="text" inputmode="numeric" name="ckh_tu" value="{{ g.ckh_tu }}" class="form-control js-tien" placeholder="vd 100.000.000">
+                    <span class="input-group-text">đến</span>
+                    <input type="text" inputmode="numeric" name="ckh_den" value="{{ g.ckh_den }}" class="form-control js-tien" placeholder="không giới hạn">
                 </div>
             </div>
             <div class="col-6 col-md-3 col-lg-2">
@@ -137,11 +155,12 @@
 </form>
 
 {% if co_loc %}
-<div class="row g-3 mb-3">
-    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Số khách hàng</div><div class="gia-tri text-agribank">{{ tong.so_kh|tien }}</div></div></div>
-    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Trong đó tổ chức</div><div class="gia-tri">{{ tong.to_chuc|tien }}</div></div></div>
-    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Tổng số dư tiền gửi</div><div class="gia-tri text-success">{{ tong.so_du|tien_gon }}</div></div></div>
-    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Tổng dư nợ</div><div class="gia-tri text-primary">{{ tong.du_no|tien_gon }}</div></div></div>
+<div class="row row-cols-2 row-cols-lg-5 g-3 mb-3">
+    <div class="col"><div class="tk-tile"><div class="nhan">Số khách hàng</div><div class="gia-tri text-agribank">{{ tong.so_kh|tien }}</div><div class="small text-muted">trong đó {{ tong.to_chuc|tien }} tổ chức</div></div></div>
+    <div class="col"><div class="tk-tile"><div class="nhan">Tổng số dư tiền gửi</div><div class="gia-tri text-success">{{ tong.so_du|tien_gon }}</div></div></div>
+    <div class="col"><div class="tk-tile"><div class="nhan">— TK thanh toán (không kỳ hạn)</div><div class="gia-tri">{{ tong.kkh|tien_gon }}</div></div></div>
+    <div class="col"><div class="tk-tile"><div class="nhan">— Tiết kiệm / có kỳ hạn</div><div class="gia-tri">{{ tong.ckh|tien_gon }}</div></div></div>
+    <div class="col"><div class="tk-tile"><div class="nhan">Tổng dư nợ</div><div class="gia-tri text-primary">{{ tong.du_no|tien_gon }}</div></div></div>
 </div>
 <div class="card shadow-sm">
     <div class="card-header">Danh sách khách hàng thoả điều kiện</div>
