@@ -366,11 +366,21 @@ def save_mail_envelope(request):
     """Lưu thông tin nhận bì thư"""
     try:
         data = json.loads(request.body)
+        code = data['ma_bithu'].strip().upper()
+
+        existing = MailEnvelopeTracking.objects.filter(envelope_code=code).first()
+        if existing:
+            return JsonResponse({'status': 'error', 'message': (
+                f'Bì thư {code} đã được nhận ngày {existing.receive_date:%d/%m/%Y} ({existing.receiver}).'
+            )}, status=400)
 
         MailEnvelopeTracking.objects.create(
-            envelope_code=data['ma_bithu'],
+            envelope_code=code,
             receive_date=data['ngay_nhan'],
-            receiver=data['nguoi_nhan']
+            receiver=data['nguoi_nhan'],
+            card_type=data.get('loai_the', ''),
+            issue_date=data.get('ngay_phat_hanh') or None,
+            branch_code=data.get('chi_nhanh', '').strip(),
         )
 
         return JsonResponse({'status': 'success', 'message': 'Đã lưu thành công!'}, status=200)

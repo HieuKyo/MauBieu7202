@@ -6,6 +6,19 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 ## Bản tiếp theo
 
 ### Chức năng mới
+- **Nhận bì thư**: quét QR trên bì thư (webcam, máy quét cầm tay hoặc dán chuỗi) để tự điền mã bì thư, loại thẻ (Visa / Ghi nợ nội địa / Phát hành lại khác CN / Smartform / Emobile), ngày phát hành và chi nhánh gốc. Báo cáo bì thư có thêm 3 cột này.
+- Nút **Hướng dẫn** (biểu tượng ?) trên các trang **Khách hàng 360** và **Nhận bì thư / Báo cáo bì thư**: mở cửa sổ hướng dẫn sử dụng. Ở KH 360, phần Thống kê / Biến động / Cập nhật dữ liệu chỉ hiện với người có quyền dùng các chức năng đó.
+
+### Chỉnh sửa
+- Trang Nhận bì thư / Báo cáo bì thư bị lỗi trên máy thiếu bảng dữ liệu: tự tạo lại bảng khi cập nhật.
+- Lưu xong giữ nguyên ngày nhận và người nhận để nhận tiếp bì thư sau; báo rõ khi bì thư đã được nhận trước đó.
+
+### Lưu ý
+- Có migration mới (0094, 0095): cần chạy cập nhật đầy đủ (migrate).
+
+## 2026.11.09 — 09/11/2026
+
+### Chức năng mới
 - **Khách hàng 360** (menu **KH 360**, mọi người dùng): tra cứu một khách hàng theo mã KH, tên (gõ không dấu cũng được), CCCD, số điện thoại hoặc số tài khoản. Hồ sơ gồm: thông tin cá nhân, các sản phẩm dịch vụ đã có / chưa có (TKTT, TK số đẹp, thẻ, Agribank Plus, OTT, SMS…), tài khoản tiền gửi, khoản vay (dư nợ, nhóm nợ, kỳ trả tiếp, cán bộ tín dụng), doanh số Loa Thần tài theo từng kỳ, QR code, Ebanking tổ chức và lịch sử biến động của khách hàng.
 - **Cập nhật dữ liệu KH 360:** nạp file **CN05** và **DP01** (bắt buộc), kèm **LN01**, **Thống kê doanh số Loa**, **Tổng hợp QR**, **Quản trị khách hàng tổ chức** (không bắt buộc). Có thể cập nhật bất cứ lúc nào. Nhật ký ghi "Đã cập nhật vào ngày … – dữ liệu ngày …". File nào không chọn thì giữ nguyên dữ liệu lần trước.
 - **Tra cứu KH 360:** danh sách kết quả 10 dòng mỗi trang, bấm tiêu đề cột để sắp xếp (mã KH, tên, loại, hạng, số dư, dư nợ, điểm GD). Bấm **Xem** (hoặc bấm vào dòng) để mở hồ sơ thành bảng nổi, nền phía sau làm mờ. Hồ sơ chia tab: Hồ sơ 360°, Tiền gửi, Khoản vay, Dịch vụ, Loa & QR, Biến động.

@@ -12,6 +12,17 @@ class MailEnvelopeTracking(models.Model):
     envelope_code = models.CharField(max_length=50, verbose_name="Mã bì thư", unique=True)
     receive_date = models.DateField(verbose_name="Ngày nhận")
     receiver = models.CharField(max_length=200, verbose_name="Người nhận")
+    # Tự điền khi quét QR bì thư (vd. EMBDB05117202200), GDV sửa được nếu bì thư khác cú pháp
+    CARD_TYPES = [
+        ('DB', 'Thẻ Visa'),
+        ('ND', 'Thẻ ghi nợ nội địa'),
+        ('PHL', 'Phát hành lại khác chi nhánh'),
+        ('SMF', 'Phát hành từ Smartform'),
+        ('EMB', 'Phát hành trên Emobile'),
+    ]
+    card_type = models.CharField(max_length=10, choices=CARD_TYPES, blank=True, verbose_name="Loại thẻ")
+    issue_date = models.DateField(null=True, blank=True, verbose_name="Ngày phát hành")
+    branch_code = models.CharField(max_length=10, blank=True, verbose_name="Chi nhánh gốc")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo record")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
 

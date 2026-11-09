@@ -1,4 +1,5 @@
 {% extends 'templates_app/base.html' %}
+{% load static %}
 
 {% block title %}Nhận bì thư{% endblock %}
 
@@ -9,7 +10,11 @@
             <h2 class="text-center mb-3" style="color: var(--agri-red);">
                 <i class="bi bi-envelope-fill"></i> NHẬN BÌ THƯ
             </h2>
-            <p class="text-center text-muted">Ghi nhận thông tin nhận bì thư</p>
+            <p class="text-center text-muted">Ghi nhận thông tin nhận bì thư
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#biThuHuongDanModal">
+                    <i class="bi bi-question-circle"></i> Hướng dẫn
+                </button>
+            </p>
         </div>
     </div>
 
@@ -24,8 +29,36 @@
                             <label for="ma_bithu" class="form-label">
                                 <i class="bi bi-upc-scan"></i> Mã bì thư
                             </label>
-                            <input type="text" class="form-control" id="ma_bithu" name="ma_bithu"
-                                   placeholder="Nhập mã bì thư" required>
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace" id="ma_bithu" name="ma_bithu"
+                                       placeholder="Quét QR hoặc nhập mã, vd. EMBDB05117202200" required autofocus autocomplete="off">
+                                <button type="button" class="btn btn-success" onclick="openEnvelopeQr()">
+                                    <i class="bi bi-qr-code-scan"></i> Quét QR
+                                </button>
+                            </div>
+                            <div id="ma_bithu_hint" class="form-text"></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-sm-5 mb-3">
+                                <label for="loai_the" class="form-label">Loại thẻ</label>
+                                <select class="form-select" id="loai_the">
+                                    <option value="">--</option>
+                                    <option value="DB">Thẻ Visa</option>
+                                    <option value="ND">Thẻ ghi nợ nội địa</option>
+                                    <option value="PHL">Phát hành lại khác CN</option>
+                                    <option value="SMF">Phát hành từ Smartform</option>
+                                    <option value="EMB">Phát hành trên Emobile</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-4 mb-3">
+                                <label for="ngay_phat_hanh" class="form-label">Ngày phát hành</label>
+                                <input type="date" class="form-control" id="ngay_phat_hanh">
+                            </div>
+                            <div class="col-sm-3 mb-3">
+                                <label for="chi_nhanh" class="form-label">CN gốc</label>
+                                <input type="text" class="form-control" id="chi_nhanh" maxlength="10">
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -70,14 +103,139 @@
     </div>
 </div>
 
+<!-- Quét QR bì thư bằng webcam (dùng chung bộ quét của QR CCCD: cccd_qr_scanner.js) -->
+<div class="modal fade" id="cccdQrModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-qr-code-scan"></i> Quét QR bì thư</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                    <select class="form-select" id="cccdQrCameraSelect" onchange="startCccdQrScan(this.value, true)"></select>
+                </div>
+                <div class="position-relative bg-dark rounded overflow-hidden text-center">
+                    <video id="cccdQrVideo" playsinline muted style="width:100%; min-height:200px; max-height:420px; object-fit:contain;"></video>
+                    <div id="cccdQrSuccess" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center text-white" style="background:rgba(25,135,84,.93);">
+                        <i class="bi bi-check-circle-fill" style="font-size:72px;"></i>
+                        <div class="fs-3 fw-bold">QUÉT THÀNH CÔNG</div>
+                        <div class="fs-5 font-monospace" id="cccdQrSuccessName"></div>
+                    </div>
+                </div>
+                <div id="cccdQrStatus" class="small text-muted mt-2">
+                    <i class="bi bi-hourglass-split"></i> Đang khởi động camera...
+                </div>
+                <div id="cccdQrHelp"></div>
+                <hr>
+                <label class="form-label small mb-1">Hoặc dùng máy quét QR cầm tay / dán chuỗi QR:</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace" id="cccdQrManualInput"
+                           placeholder="EMBDB05117202200"
+                           onkeydown="if (event.key === 'Enter') { event.preventDefault(); applyCccdQr(this.value); }">
+                    <button type="button" class="btn btn-outline-success" onclick="applyCccdQr(document.getElementById('cccdQrManualInput').value)">
+                        <i class="bi bi-arrow-down-circle"></i> Điền
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% include "templates_app/reports/_mail_envelope_huong_dan.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/jsQR.min.js' %}"></script>
+<script src="{% static 'js/cccd_qr_scanner.js' %}"></script>
 <script>
+const CARD_TYPE_LABELS = {
+    DB: 'Thẻ Visa', ND: 'Thẻ ghi nợ nội địa', PHL: 'Phát hành lại khác chi nhánh',
+    SMF: 'Phát hành từ Smartform', EMB: 'Phát hành trên Emobile',
+};
+
+// Mã bì thư: EMB + [loại thẻ] + DDMM + chi nhánh (4 số) + 3 số cuối, vd. EMBDB05117202200.
+// Không có loại thẻ (EMB026107202508) = phát hành trên Emobile.
+// Một số bì thư có thêm số 0 ở đầu phần số (EMBSMF015107202294 = 15/10) → lấy 11 số cuối, phần trước phải toàn số 0.
+// Năm không có trong mã → lấy năm của ngày nhận, nếu ra ngày sau ngày nhận thì lùi 1 năm.
+function parseEnvelopeCode(text, receiveDate) {
+    const m = String(text).trim().toUpperCase().match(/^EMB(DB|ND|PHL|SMF)?(0*)(\d{2})(\d{2})(\d{4})(\d{3})$/);
+    if (!m) return null;
+    const [, type, , dd, mm, branch] = m;
+    const day = +dd, month = +mm;
+    if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+
+    const recv = receiveDate ? new Date(receiveDate + 'T00:00:00') : new Date();
+    let year = recv.getFullYear();
+    if (new Date(year, month - 1, day) > recv) year--;
+    const pad = n => String(n).padStart(2, '0');
+    return {
+        code: m[0],
+        loai_the: type || 'EMB',
+        ngay_phat_hanh: `${year}-${pad(month)}-${pad(day)}`,
+        chi_nhanh: branch,
+    };
+}
+
+// Điền loại thẻ / ngày phát hành / chi nhánh từ mã bì thư; trả về kết quả parse hoặc null
+function fillFromEnvelopeCode() {
+    const input = document.getElementById('ma_bithu');
+    const hint = document.getElementById('ma_bithu_hint');
+    const data = parseEnvelopeCode(input.value, document.getElementById('ngay_nhan').value);
+    if (!data) {
+        hint.className = 'form-text text-warning';
+        hint.textContent = input.value.trim() ? 'Mã không đúng cú pháp — vui lòng tự chọn loại thẻ, ngày phát hành, chi nhánh.' : '';
+        return null;
+    }
+    document.getElementById('loai_the').value = data.loai_the;
+    document.getElementById('ngay_phat_hanh').value = data.ngay_phat_hanh;
+    document.getElementById('chi_nhanh').value = data.chi_nhanh;
+    hint.className = 'form-text text-success';
+    hint.textContent = `${CARD_TYPE_LABELS[data.loai_the]} · phát hành ${data.ngay_phat_hanh.split('-').reverse().join('/')} · CN ${data.chi_nhanh}`;
+    return data;
+}
+
+// Máy quét cầm tay gõ thẳng vào ô mã (kết thúc bằng Enter → lưu luôn)
+document.getElementById('ma_bithu').addEventListener('input', fillFromEnvelopeCode);
+document.getElementById('ngay_nhan').addEventListener('change', fillFromEnvelopeCode);
+
+function openEnvelopeQr() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cccdQrModal')).show();
+}
+
+// cccd_qr_scanner.js gọi hàm này khi đọc được QR (tên giữ nguyên theo bộ quét dùng chung)
+function applyCccdQr(text) {
+    const data = parseEnvelopeCode(text, document.getElementById('ngay_nhan').value);
+    if (!data) {
+        setCccdQrStatus(`<i class="bi bi-exclamation-triangle"></i> Mã QR không phải mã bì thư (EMB...): <code>${String(text).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)}</code>`, 'text-danger');
+        return false;
+    }
+    stopCccdQrScan();
+    document.getElementById('ma_bithu').value = data.code;
+    fillFromEnvelopeCode();
+    document.getElementById('cccdQrManualInput').value = '';
+
+    document.getElementById('cccdQrSuccessName').textContent = data.code;
+    document.getElementById('cccdQrSuccess').classList.replace('d-none', 'd-flex');
+    beepCccdQr();
+    setTimeout(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('cccdQrModal'));
+        if (modal) modal.hide();
+        document.getElementById('nguoi_nhan').focus();
+    }, 1000);
+    return true;
+}
+
 document.getElementById('mailEnvelopeForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
     const formData = {
         ma_bithu: document.getElementById('ma_bithu').value,
         ngay_nhan: document.getElementById('ngay_nhan').value,
-        nguoi_nhan: document.getElementById('nguoi_nhan').value
+        nguoi_nhan: document.getElementById('nguoi_nhan').value,
+        loai_the: document.getElementById('loai_the').value,
+        ngay_phat_hanh: document.getElementById('ngay_phat_hanh').value,
+        chi_nhanh: document.getElementById('chi_nhanh').value
     };
 
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -96,7 +254,10 @@ document.getElementById('mailEnvelopeForm').addEventListener('submit', async fun
 
         if (result.status === 'success') {
             alert('Đã lưu thành công!');
-            document.getElementById('mailEnvelopeForm').reset();
+            // Giữ ngày nhận + người nhận để nhận tiếp bì thư sau
+            ['ma_bithu', 'loai_the', 'ngay_phat_hanh', 'chi_nhanh'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('ma_bithu_hint').textContent = '';
+            document.getElementById('ma_bithu').focus();
         } else {
             alert('Lỗi: ' + result.message);
         }

@@ -16,8 +16,14 @@
         {% if quyen >= 3 %}
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'cap_nhat' %}active{% endif %}" href="{% url 'kh360:cap_nhat' %}"><i class="bi bi-cloud-upload"></i> Cập nhật dữ liệu</a></li>
         {% endif %}
+        <li class="nav-item ms-1">
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#kh360HuongDanModal">
+                <i class="bi bi-question-circle"></i> Hướng dẫn
+            </button>
+        </li>
     </ul>
 </div>
+{% include "kh360/_huong_dan.html" %}
 {% if ky %}
 <div class="alert alert-light border py-2 small mb-3">
     <i class="bi bi-clock-history text-agribank"></i>

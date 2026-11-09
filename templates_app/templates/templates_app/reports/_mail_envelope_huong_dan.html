@@ -1,0 +1,46 @@
+{# Hướng dẫn Nhận bì thư / Báo cáo bì thư — include ở cả 2 trang, mở bằng nút data-bs-target="#biThuHuongDanModal" #}
+<div class="modal fade" id="biThuHuongDanModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-question-circle"></i> Hướng dẫn Nhận bì thư</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6 class="fw-bold" style="color: var(--agri-red);">1. Nhận bì thư bằng quét QR</h6>
+                <ul>
+                    <li><strong>Webcam</strong>: bấm nút <strong>Quét QR</strong> cạnh ô Mã bì thư, đưa mã QR trên bì thư vào khung hình, giữ yên 1–2 giây. Quét được sẽ có tiếng bíp và cửa sổ tự đóng.</li>
+                    <li><strong>Máy quét cầm tay</strong>: bấm chuột vào ô <strong>Mã bì thư</strong> rồi quét. Máy quét tự gõ mã và nhấn Enter nên thông tin được lưu ngay; vì vậy hãy chọn <strong>Người nhận</strong> trước khi quét.</li>
+                    <li>Không quét được thì gõ tay mã in dưới QR vào ô Mã bì thư.</li>
+                    <li>Lần đầu dùng webcam, trình duyệt hỏi quyền camera: bấm <strong>Cho phép (Allow)</strong>. Nếu báo lỗi camera, làm theo hướng dẫn hiện ngay trong cửa sổ quét.</li>
+                </ul>
+
+                <h6 class="fw-bold" style="color: var(--agri-red);">2. Thông tin tự điền từ mã bì thư</h6>
+                <ul>
+                    <li>Ví dụ <code>EMBDB05117202200</code>: <code>EMB</code> là ký hiệu, <code>DB</code> là loại thẻ, <code>0511</code> là ngày 05/11, <code>7202</code> là chi nhánh gốc, 3 số cuối giữ nguyên trong mã.</li>
+                    <li>Loại thẻ: <code>DB</code> Thẻ Visa · <code>ND</code> Thẻ ghi nợ nội địa · <code>PHL</code> Phát hành lại khác chi nhánh · <code>SMF</code> Phát hành từ Smartform · không có ký hiệu (vd. <code>EMB026107202508</code>) là phát hành trên Emobile.</li>
+                    <li>Một số bì thư có thêm số 0 trước ngày (vd. <code>EMBSMF015107202294</code> là ngày 15/10): hệ thống tự hiểu đúng.</li>
+                    <li>Mã không có năm: hệ thống lấy năm của Ngày nhận; nếu ra ngày sau ngày nhận thì tính là năm trước (vd. nhận 09/11/2026, mã ghi 20/12 → 20/12/2025).</li>
+                    <li>Dưới ô Mã bì thư hiện chữ xanh là đã đọc được mã. Chữ vàng "Mã không đúng cú pháp" thì tự chọn Loại thẻ, Ngày phát hành, CN gốc. Các ô tự điền đều sửa được.</li>
+                </ul>
+
+                <h6 class="fw-bold" style="color: var(--agri-red);">3. Lưu thông tin</h6>
+                <ul>
+                    <li>Kiểm tra <strong>Ngày nhận</strong> (mặc định hôm nay) và <strong>Người nhận</strong>, rồi bấm <strong>Lưu thông tin</strong>.</li>
+                    <li>Lưu xong, Ngày nhận và Người nhận được giữ lại để quét tiếp bì thư sau.</li>
+                    <li>Bì thư đã nhận rồi thì không lưu lại được; hệ thống báo ngày nhận và người nhận lần trước.</li>
+                </ul>
+
+                <h6 class="fw-bold" style="color: var(--agri-red);">4. Báo cáo bì thư</h6>
+                <ul>
+                    <li>Bấm <strong>Xem báo cáo</strong>. Tìm theo mã bì thư (gõ một phần cũng được, vd. <code>EMBDB</code> để xem các bì thư thẻ Visa) hoặc theo khoảng ngày nhận (chọn cả Từ ngày và Đến ngày).</li>
+                    <li>Có nhập mã bì thư thì hệ thống tìm theo mã, bỏ qua khoảng ngày.</li>
+                    <li>Kết quả gồm mã bì thư, loại thẻ, ngày phát hành, chi nhánh gốc, ngày nhận, người nhận.</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
