@@ -1,0 +1,241 @@
+{% extends "templates_app/base.html" %}
+{% load kh360_tags %}
+
+{% block title %}Khách hàng 360 - Thống kê sổ tiết kiệm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tk-label { font-size: .8rem; color: #6c757d; margin-bottom: .2rem; }
+    .tk-tile { border-radius: .9rem; padding: .8rem 1rem; text-align: center; border: 1px solid #e9ecef; background: #fff; height: 100%; }
+    .tk-tile .nhan { font-size: .8rem; color: #6c757d; }
+    .tk-tile .gia-tri { font-size: 1.4rem; font-weight: 700; }
+    .ky-han-chip input { display: none; }
+    .ky-han-chip span { display: inline-block; border: 1px solid #ced4da; border-radius: 1rem; padding: .1rem .6rem; font-size: .82rem; cursor: pointer; margin: 0 .2rem .3rem 0; }
+    .ky-han-chip input:checked + span { background: #AE1C3F; border-color: #AE1C3F; color: #fff; }
+    .tk-nho td, .tk-nho th { padding: .25rem .5rem; font-size: .85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "kh360/_header.html" %}
+{% include "kh360/_thong_ke_nav.html" %}
+
+{% include "kh360/_mau_nhanh.html" %}
+
+<form method="get" class="card shadow-sm mb-3" id="formThongKe">
+    <div class="card-header fw-semibold"><i class="bi bi-funnel"></i> Điều kiện thống kê sổ tiết kiệm / tiền gửi có kỳ hạn</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Ngày đến hạn</div>
+                <select name="den_han" class="form-select form-select-sm" id="selDenHan">
+                    <option value="">Tất cả</option>
+                    {% for v, n in den_han_loc %}<option value="{{ v }}" {% if g.den_han == v %}selected{% endif %}>{{ n }}</option>{% endfor %}
+                </select>
+                <div class="input-group input-group-sm mt-1 {% if g.den_han != 'khoang' %}d-none{% endif %}" id="khoangDenHan">
+                    <span class="input-group-text">Từ</span>
+                    <input type="date" name="dh_tu" value="{{ g.dh_tu }}" class="form-control">
+                    <span class="input-group-text">đến</span>
+                    <input type="date" name="dh_den" value="{{ g.dh_den }}" class="form-control">
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Số dư sổ (VND)</div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Từ</span>
+                    <input type="text" inputmode="numeric" name="so_du_tu" value="{{ g.so_du_tu }}" class="form-control js-tien" placeholder="vd 500.000.000">
+                    <span class="input-group-text">đến</span>
+                    <input type="text" inputmode="numeric" name="so_du_den" value="{{ g.so_du_den }}" class="form-control js-tien" placeholder="không giới hạn">
+                </div>
+                <div class="mt-1">
+                    {% for v, n in muc_tien %}
+                    <button type="button" class="btn btn-link btn-sm p-0 me-2 js-chon-tien" data-v="{{ v }}">≥ {{ n }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Số tháng đã gửi (tính từ ngày gửi)</div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Từ</span>
+                    <input type="number" min="0" name="gui_tu" value="{{ g.gui_tu }}" class="form-control" placeholder="tháng">
+                    <span class="input-group-text">đến</span>
+                    <input type="number" min="0" name="gui_den" value="{{ g.gui_den }}" class="form-control" placeholder="tháng">
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="tk-label">Kỳ hạn (tháng) — chọn một hoặc nhiều; hoặc từ <input type="number" min="1" name="ky_han_tu" value="{{ g.ky_han_tu }}" class="form-control form-control-sm d-inline-block" style="width:70px"> tháng trở lên</div>
+                {% for k, chon in ds_ky_han %}
+                <label class="ky-han-chip"><input type="checkbox" name="ky_han" value="{{ k }}" {% if chon %}checked{% endif %}><span>{{ k }} tháng</span></label>
+                {% empty %}<span class="text-muted small">Chưa có dữ liệu.</span>{% endfor %}
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="tk-label">Lãi suất (%/năm)</div>
+                <div class="input-group input-group-sm">
+                    <input type="text" inputmode="decimal" name="ls_tu" value="{{ g.ls_tu }}" class="form-control" placeholder="từ">
+                    <span class="input-group-text">–</span>
+                    <input type="text" inputmode="decimal" name="ls_den" value="{{ g.ls_den }}" class="form-control" placeholder="đến">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-3">
+                <div class="tk-label">Hình thức</div>
+                <select name="hinh_thuc" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    <option value="gui_gop" {% if g.hinh_thuc == 'gui_gop' %}selected{% endif %}>Mọi loại gửi góp</option>
+                    {% for h in ds_hinh_thuc %}<option value="{{ h }}" {% if g.hinh_thuc == h %}selected{% endif %}>{{ h }}</option>{% endfor %}
+                </select>
+            </div>
+            {% include "kh360/_loc_chu.html" with chu="chủ sổ" %}
+        </div>
+    </div>
+    <div class="card-footer d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-danger"><i class="bi bi-bar-chart"></i> Thống kê</button>
+        <a href="{% url 'kh360:thong_ke_so' %}" class="btn btn-outline-secondary">Xoá điều kiện</a>
+        {% if co_loc %}
+        <button type="submit" name="xuat" value="excel" class="btn btn-success ms-auto"><i class="bi bi-file-earmark-excel"></i> Xuất Excel toàn bộ sổ</button>
+        {% endif %}
+    </div>
+</form>
+
+{% if ky and ky.ngay_du_lieu < hom_nay %}
+<div class="alert alert-warning py-2 small"><i class="bi bi-info-circle"></i>
+    Dữ liệu sổ tiết kiệm là ngày <b>{{ ky.ngay_du_lieu|date:"d/m/Y" }}</b>, còn ngày đến hạn tính theo hôm nay
+    ({{ hom_nay|date:"d/m/Y" }}). Sổ đến hạn sau ngày dữ liệu có thể đã tái tục hoặc tất toán — nên cập nhật DP01 mới.
+</div>
+{% endif %}
+{% if co_loc %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Số sổ</div><div class="gia-tri text-agribank">{{ tong.so_so|tien }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Số khách hàng</div><div class="gia-tri">{{ tong.so_kh|tien }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Tổng số dư</div><div class="gia-tri text-success">{{ tong.tong_du|tien_gon }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="tk-tile"><div class="nhan">Lãi suất bình quân (theo số dư)</div><div class="gia-tri">{% if tong.ls_bq is not None %}{{ tong.ls_bq|floatformat:2 }}%{% else %}—{% endif %}</div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold small">Theo kỳ hạn</div>
+            <table class="table table-sm mb-0 tk-nho">
+                <thead class="table-light"><tr><th>Kỳ hạn</th><th class="text-end">Số sổ</th><th class="text-end">Số dư</th></tr></thead>
+                <tbody>
+                {% for r in theo_ky_han %}
+                <tr><td>{{ r.ky_han }} tháng</td><td class="text-end">{{ r.n|tien }}</td><td class="text-end">{{ r.t|tien_gon }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold small">Theo tháng đến hạn</div>
+            <div style="max-height: 320px; overflow-y: auto;">
+            <table class="table table-sm mb-0 tk-nho">
+                <thead class="table-light"><tr><th>Tháng</th><th class="text-end">Số sổ</th><th class="text-end">Số dư</th></tr></thead>
+                <tbody>
+                {% if truoc_thang.n %}
+                <tr class="text-danger"><td>Trước tháng này (đã qua hạn)</td><td class="text-end">{{ truoc_thang.n|tien }}</td><td class="text-end">{{ truoc_thang.t|tien_gon }}</td></tr>
+                {% endif %}
+                {% for r in theo_thang %}
+                <tr><td>{{ r.thang|date:"m/Y" }}</td><td class="text-end">{{ r.n|tien }}</td><td class="text-end">{{ r.t|tien_gon }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header">Danh sách sổ — bấm vào dòng để xem hồ sơ khách hàng</div>
+    <style>
+        .kh-sort { color: inherit; text-decoration: none; white-space: nowrap; }
+        .kh-sort:hover { color: #AE1C3F; }
+        .kh-row { cursor: pointer; }
+        @media (max-width: 1399.98px) { .kh-bang .an-xxl { display: none; } }
+        @media (max-width: 1199.98px) { .kh-bang .an-xl { display: none; } }
+        @media (max-width: 991.98px)  { .kh-bang .an-lg { display: none; } }
+    </style>
+    {% if page.object_list %}
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle kh-bang">
+            <thead class="table-light">
+                <tr>
+                    {% for key, nhan, an in cot %}
+                    <th class="{{ an }} {% if key == 'so_du' %}text-end{% endif %}">
+                        <a class="kh-sort" href="?{{ qs_base }}&sort={% if sort == key %}-{{ key }}{% else %}{{ key }}{% endif %}">
+                            {{ nhan }}
+                            {% if sort == key %}<i class="bi bi-sort-up"></i>{% elif sort == '-'|add:key %}<i class="bi bi-sort-down"></i>{% else %}<i class="bi bi-arrow-down-up text-muted small"></i>{% endif %}
+                        </a>
+                    </th>
+                    {% endfor %}
+                    <th class="an-xl">Đã gửi</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for t in page.object_list %}
+                <tr class="kh-row" data-kh360="{% url 'kh360:ho_so' t.ma_kh %}">
+                    <td class="font-monospace small">{{ t.so_tk }}{% if t.so_so and t.so_so != '0' %}<div class="text-muted">{{ t.so_so }}</div>{% endif %}</td>
+                    <td><span class="fw-semibold">{{ t.ten_kh }}</span>
+                        {% if t.nhan_hang %}<span class="hang-badge {{ t.css_hang }} ms-1">{{ t.nhan_hang }}</span>{% endif %}
+                        <div class="small text-muted">{{ t.ma_kh }}{% if t.hinh_thuc %} · {{ t.hinh_thuc }}{% endif %}</div></td>
+                    <td class="text-nowrap">{{ t.ky_han }} tháng</td>
+                    <td class="text-end text-nowrap fw-semibold">{{ t.so_du|tien }}{% if t.ccy != 'VND' %} {{ t.ccy }}{% endif %}</td>
+                    <td class="an-lg">{{ t.lai_suat|floatformat:"-2" }}%</td>
+                    <td class="an-xl text-nowrap">{{ t.ngay_mo|date:"d/m/Y" }}</td>
+                    <td class="text-nowrap">{{ t.ngay_den_han|date:"d/m/Y" }}
+                        {% if t.con_ngay is not None %}
+                        <div class="small {% if t.con_ngay < 0 %}text-danger{% elif t.con_ngay <= 7 %}text-danger fw-semibold{% elif t.con_ngay <= 30 %}text-warning{% else %}text-muted{% endif %}">
+                            {% if t.con_ngay < 0 %}quá {{ t.con_ngay|stringformat:"d"|slice:"1:" }} ngày{% elif t.con_ngay == 0 %}hôm nay{% else %}còn {{ t.con_ngay }} ngày{% endif %}
+                        </div>{% endif %}</td>
+                    <td class="an-xxl">{{ t.pgd }}</td>
+                    <td class="an-xl text-nowrap">{% if t.da_gui_thang is not None %}{{ t.da_gui_thang }} tháng{% endif %}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if page.has_other_pages %}
+    <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2 small">
+        <span>Trang {{ page.number }}/{{ page.paginator.num_pages }} – hiển thị {{ page.start_index }}–{{ page.end_index }} / {{ page.paginator.count }}</span>
+        <nav><ul class="pagination pagination-sm mb-0">
+            {% if page.has_previous %}
+            <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page=1">«</a></li>
+            <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.previous_page_number }}">‹</a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ page.number }}</span></li>
+            {% if page.has_next %}
+            <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.next_page_number }}">›</a></li>
+            <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.paginator.num_pages }}">»</a></li>
+            {% endif %}
+        </ul></nav>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="card-body text-muted">Không có sổ nào thoả điều kiện.</div>
+    {% endif %}
+</div>
+{% else %}
+<div class="text-muted">Chọn điều kiện hoặc một mẫu nhanh ở trên rồi bấm <b>Thống kê</b>. Ngày đến hạn và số tháng đã gửi tính theo ngày hôm nay.</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% include "kh360/_assets.html" %}
+<script>
+(function () {
+    const fmt = v => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    document.querySelectorAll('.js-tien').forEach(el => {
+        el.value = fmt(el.value);
+        el.addEventListener('input', () => { el.value = fmt(el.value); });
+    });
+    document.querySelectorAll('.js-chon-tien').forEach(b => b.addEventListener('click', () => {
+        document.querySelector('[name=so_du_tu]').value = fmt(b.dataset.v);
+    }));
+    const sel = document.getElementById('selDenHan');
+    sel.addEventListener('change', () => document.getElementById('khoangDenHan').classList.toggle('d-none', sel.value !== 'khoang'));
+    document.getElementById('formThongKe').addEventListener('submit', function () {
+        this.querySelectorAll('input, select').forEach(el => { if (el.name && !el.value) el.disabled = true; });
+        setTimeout(() => this.querySelectorAll(':disabled').forEach(el => { el.disabled = false; }), 0);
+    });
+})();
+</script>
+{% endblock %}

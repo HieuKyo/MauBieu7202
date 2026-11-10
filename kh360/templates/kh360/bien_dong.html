@@ -1,0 +1,68 @@
+{% extends "templates_app/base.html" %}
+
+{% block title %}Khách hàng 360 - Biến động{% endblock %}
+
+{% block content %}
+{% include "kh360/_header.html" %}
+
+<form method="get" class="card shadow-sm mb-3">
+    <div class="card-body d-flex flex-wrap gap-2 align-items-end">
+        <div>
+            <label class="form-label small mb-1">Kỳ cập nhật</label>
+            <select name="ky" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for k in ky_list %}
+                <option value="{{ k.pk }}" {% if k == ky_chon %}selected{% endif %}>{{ k.thoi_diem|date:"d/m/Y H:i" }} – dữ liệu {{ k.ngay_du_lieu|date:"d/m/Y" }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small mb-1">Loại biến động</label>
+            <select name="loai" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Tất cả ({{ tong }})</option>
+                {% for k, v, n in loai_choices %}
+                <option value="{{ k }}" {% if k == loai %}selected{% endif %}>{{ v }} ({{ n }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if ky_chon %}
+        <button type="submit" name="xuat" value="excel" class="btn btn-sm btn-success"><i class="bi bi-file-earmark-excel"></i> Xuất Excel</button>
+        {% endif %}
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    {% if page.object_list %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 small align-middle">
+            <thead class="table-light"><tr><th>Biến động</th><th>Mã KH</th><th>Tên KH</th><th>Đối tượng</th><th>Chi tiết</th></tr></thead>
+            <tbody>
+            {% for b in page.object_list %}
+            <tr>
+                <td><span class="badge {% if b.la_moi %}bg-success{% else %}bg-danger{% endif %}">{{ b.get_loai_display }}</span></td>
+                <td>{% if b.ma_kh %}<a href="{% url 'kh360:ho_so' b.ma_kh %}" data-kh360="{% url 'kh360:ho_so' b.ma_kh %}">{{ b.ma_kh }}</a>{% else %}<span class="text-muted">chưa khớp</span>{% endif %}</td>
+                <td>{{ b.ten_kh }}</td>
+                <td>{{ b.doi_tuong }}</td>
+                <td>{{ b.chi_tiet }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if page.has_other_pages %}
+    <div class="card-footer d-flex justify-content-between align-items-center small">
+        <span>Trang {{ page.number }}/{{ page.paginator.num_pages }} – {{ page.paginator.count }} dòng</span>
+        <div>
+            {% if page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?ky={{ ky_chon.pk }}&loai={{ loai }}&page={{ page.previous_page_number }}">‹ Trước</a>{% endif %}
+            {% if page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?ky={{ ky_chon.pk }}&loai={{ loai }}&page={{ page.next_page_number }}">Sau ›</a>{% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="card-body text-muted">Không có biến động{% if ky_chon %} trong kỳ này (lần đầu nạp một loại file chỉ làm mốc){% endif %}.</div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% include "kh360/_assets.html" %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "templates_app/base.html" %}
+
+{% block title %}Khách hàng 360 - Tra cứu{% endblock %}
+
+{% block content %}
+{% include "kh360/_header.html" %}
+
+<form method="get" class="card shadow-sm mb-3">
+    <div class="card-body">
+        <div class="input-group input-group-lg">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" name="q" value="{{ q }}" class="form-control" autofocus
+                   placeholder="Mã KH, tên, CCCD, số điện thoại hoặc số tài khoản">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <button class="btn btn-danger" type="submit">Tra cứu</button>
+        </div>
+        <div class="form-text">Tìm tên không cần gõ dấu. Số tài khoản có thể gõ một phần (từ 6 số). Bấm vào tiêu đề cột để sắp xếp.</div>
+    </div>
+</form>
+
+{% if page is not None %}
+<div class="card shadow-sm">
+    <div class="card-header">Kết quả: <strong>{{ page.paginator.count }}</strong> khách hàng</div>
+    {% include "kh360/_bang_kh.html" %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% include "kh360/_assets.html" %}
+{% if page and page.paginator.count == 1 %}
+<script>kh360Mo("{% url 'kh360:ho_so' page.object_list.0.ma_kh %}");</script>
+{% endif %}
+{% endblock %}

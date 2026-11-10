@@ -1,0 +1,101 @@
+{% extends "templates_app/base.html" %}
+
+{% block title %}Khách hàng 360 - Cập nhật dữ liệu{% endblock %}
+
+{% block content %}
+{% include "kh360/_header.html" %}
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <form method="post" enctype="multipart/form-data" class="card shadow-sm" id="formCapNhat">
+            {% csrf_token %}
+            <div class="card-header fw-semibold"><i class="bi bi-cloud-upload"></i> Nạp file</div>
+            <div class="card-body">
+                {% for key, nhan, bat_buoc, duoi in nguon_upload %}
+                <div class="mb-3">
+                    <label class="form-label mb-1" for="f_{{ key }}">
+                        <strong>{{ nhan }}</strong>
+                        {% if bat_buoc %}<span class="text-danger">* bắt buộc</span>{% else %}<span class="text-muted small">(không bắt buộc)</span>{% endif %}
+                    </label>
+                    <input type="file" class="form-control form-control-sm" id="f_{{ key }}" name="{{ key }}" accept="{{ duoi }}" {% if bat_buoc %}required{% endif %}>
+                    {% for k, nf in nguon_moi.items %}{% if k == key %}
+                    <div class="form-text">Lần gần nhất: dữ liệu ngày {{ nf.ngay_du_lieu|date:"d/m/Y" }} ({{ nf.so_dong }} dòng) – nạp {{ nf.ky.thoi_diem|date:"d/m/Y H:i" }}</div>
+                    {% endif %}{% endfor %}
+                </div>
+                {% endfor %}
+                <div class="small text-muted mb-3">
+                    CN05/DP01/LN01: file .zip hoặc .csv xuất từ IPCAS (ngày dữ liệu lấy từ tên file).
+                    File nào không chọn thì giữ nguyên dữ liệu lần trước. Lần đầu nạp mỗi loại file chỉ làm mốc, chưa tính biến động.
+                </div>
+                <button type="submit" class="btn btn-danger" id="btnCapNhat">
+                    <i class="bi bi-upload"></i> Cập nhật
+                </button>
+                <span class="ms-2 text-muted small d-none" id="dangXuLy"><span class="spinner-border spinner-border-sm"></span> Đang xử lý, có thể mất 1–2 phút…</span>
+            </div>
+        </form>
+
+        {% if chua_gan %}
+        <div class="card shadow-sm mt-3 border-warning">
+            <div class="card-header fw-semibold bg-warning-subtle"><i class="bi bi-link-45deg"></i> Ebanking tổ chức chưa khớp mã KH ({{ chua_gan|length }})</div>
+            <div class="card-body small">
+                <p class="mb-2 text-muted">Tên không khớp với tổ chức nào trong DP01/LN01. Nhập mã KH để gán — hệ thống nhớ cho các lần cập nhật sau.</p>
+                {% for e in chua_gan %}
+                <form method="post" action="{% url 'kh360:gan_to_chuc' %}" class="d-flex gap-2 align-items-center mb-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="ma_to_chuc" value="{{ e.ma_to_chuc }}">
+                    <div class="flex-grow-1">{{ e.ten }} <span class="text-muted">({{ e.ma_to_chuc }})</span></div>
+                    <input type="text" name="ma_kh" class="form-control form-control-sm" style="width:130px" placeholder="Mã KH" required>
+                    <button class="btn btn-sm btn-outline-success">Gán</button>
+                </form>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold"><i class="bi bi-journal-text"></i> Nhật ký cập nhật</div>
+            <ul class="list-group list-group-flush small">
+                {% for k in ky_list %}
+                <li class="list-group-item">
+                    <div><strong>Đã cập nhật vào ngày {{ k.thoi_diem|date:"d/m/Y H:i" }}</strong>
+                        – dữ liệu ngày {{ k.ngay_du_lieu|date:"d/m/Y" }}
+                        {% if k.nguoi_cap_nhat %}– {{ k.nguoi_cap_nhat.get_full_name|default:k.nguoi_cap_nhat.username }}{% endif %}
+                        – <a href="{% url 'kh360:bien_dong' %}?ky={{ k.pk }}">xem biến động</a>
+                    </div>
+                    <div class="text-muted">
+                        {% for nf in k.files.all %}
+                            <span class="badge bg-light text-dark border">{{ nf.nguon }}</span> {{ nf.so_dong }} dòng{% if nf.la_moc %} (mốc){% endif %}{% if nf.khong_khop %}, <span class="text-danger">{{ nf.khong_khop|length }} không khớp</span>{% endif %}{% if not forloop.last %} · {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% if k.tong_hop %}
+                    <div class="text-muted">
+                        {{ k.tong_hop.so_kh }} KH ({{ k.tong_hop.so_kh_to_chuc }} tổ chức) · {{ k.tong_hop.so_tk }} TK · số dư {{ k.tong_hop.tong_so_du_vnd|floatformat:"0g" }}
+                        · {{ k.tong_hop.so_vay }} món vay · dư nợ {{ k.tong_hop.tong_du_no|floatformat:"0g" }}
+                        · {{ k.tong_hop.so_loa }} loa · {{ k.tong_hop.so_qr }} QR · {{ k.tong_hop.so_ebanking_tc }} Ebanking TC
+                    </div>
+                    {% endif %}
+                    {% for nf in k.files.all %}{% if nf.khong_khop and nf.nguon != 'KHTC' and forloop.parentloop.first %}
+                    <details class="mt-1"><summary class="text-danger">{{ nf.nguon }}: {{ nf.khong_khop|length }} dòng không tìm thấy STK trong DP01</summary>
+                        <ul class="mb-0">{% for x in nf.khong_khop %}<li>{{ x }}</li>{% endfor %}</ul>
+                    </details>
+                    {% endif %}{% endfor %}
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted">Chưa có lần cập nhật nào.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('formCapNhat').addEventListener('submit', function () {
+    document.getElementById('btnCapNhat').disabled = true;
+    document.getElementById('dangXuLy').classList.remove('d-none');
+});
+</script>
+{% endblock %}

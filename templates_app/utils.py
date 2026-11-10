@@ -6,7 +6,7 @@ import re
 from docx import Document
 from io import BytesIO
 from jinja2 import Environment, BaseLoader, TemplateSyntaxError
-from datetime import datetime, date
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 
@@ -585,7 +585,6 @@ class WordTemplateProcessor:
 
         # Tìm tất cả các biến dạng {{ variable }}
         pattern = r'\{\{\s*(\w+)\s*\}\}'
-        matches = re.finditer(pattern, full_text)
 
         # Nếu không có biến nào, return
         if not list(re.finditer(pattern, full_text)):

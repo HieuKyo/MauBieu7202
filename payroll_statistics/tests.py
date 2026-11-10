@@ -2,7 +2,7 @@
 Tests for payroll_statistics app
 """
 from django.test import TestCase
-from .models import PayingUnit, BeneficiaryAccount, Transaction
+from .models import PayingUnit, BeneficiaryAccount
 from .views import determine_transaction_type, is_unit_account, is_employee_account
 
 

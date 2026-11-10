@@ -1,7 +1,7 @@
 {% extends "templates_app/base.html" %}
 {% load static %}
 
-{% block title %}Tạo phiếu tiếp quỹ ATM{% endblock %}
+{% block title %}{% if is_edit %}Sửa{% else %}Tạo{% endif %} phiếu tiếp quỹ ATM{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -10,10 +10,11 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
-                    <li class="breadcrumb-item active">Tạo phiếu tiếp quỹ</li>
+                    <li class="breadcrumb-item"><a href="{% url 'atm_replenishment_list' %}">Danh sách tiếp quỹ</a></li>
+                    <li class="breadcrumb-item active">{% if is_edit %}Sửa{% else %}Tạo{% endif %} phiếu tiếp quỹ</li>
                 </ol>
             </nav>
-            <h2><i class="bi bi-file-earmark-plus"></i> Tạo phiếu tiếp quỹ ATM</h2>
+            <h2><i class="bi bi-{% if is_edit %}pencil{% else %}file-earmark-plus{% endif %}"></i> {% if is_edit %}Sửa{% else %}Tạo{% endif %} phiếu tiếp quỹ ATM</h2>
         </div>
     </div>
 
@@ -138,9 +139,9 @@
                         <!-- Buttons -->
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> Tạo phiếu và In
+                                <i class="bi bi-check-circle"></i> {% if is_edit %}Cập nhật phiếu{% else %}Tạo phiếu{% endif %}
                             </button>
-                            <a href="{% url 'atm_dashboard' %}" class="btn btn-secondary">
+                            <a href="{% url 'atm_replenishment_list' %}" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Hủy
                             </a>
                         </div>

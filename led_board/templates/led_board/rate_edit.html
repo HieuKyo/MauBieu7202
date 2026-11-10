@@ -1,0 +1,103 @@
+{% extends "templates_app/base.html" %}
+
+{% block title %}Nhập tỷ giá{% endblock %}
+
+{% block content %}
+<div class="container main-container" style="max-width:1000px;">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h3 class="fw-bold text-agribank mb-0"><i class="bi bi-currency-exchange"></i> Nhập tỷ giá</h3>
+        {% include "led_board/_nav.html" %}
+    </div>
+
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+
+    <form method="post">
+        {% csrf_token %}
+        {{ formset.management_form }}
+        {% for err in formset.non_form_errors %}<div class="alert alert-danger">{{ err }}</div>{% endfor %}
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th style="width:100px;">Ngoại tệ</th>
+                        <th>Mua tiền mặt</th>
+                        <th>Mua chuyển khoản</th><th>Bán chuyển khoản</th>
+                        <th style="width:80px;">Thứ tự</th><th style="width:50px;">Xóa</th>
+                    </tr>
+                </thead>
+                <tbody id="form-rows">
+                    {% for form in formset %}{% include "led_board/_formset_row.html" %}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <template id="form-empty-row">{% include "led_board/_formset_row.html" with form=formset.empty_form %}</template>
+        <p class="text-muted small">Bấm Thêm dòng để nhập ngoại tệ mới, dòng để trống sẽ được bỏ qua. Bấm Lưu mỗi sáng kể cả khi tỷ giá không đổi, để bảng hiện đúng ngày.</p>
+        <button type="button" class="btn btn-outline-secondary" data-add-row="form"><i class="bi bi-plus-lg"></i> Thêm dòng</button>
+        <button type="submit" class="btn btn-danger"><i class="bi bi-save"></i> Lưu tỷ giá</button>
+    </form>
+
+    <hr class="my-4">
+
+    <h4 id="lai-suat" class="fw-bold text-agribank mb-3"><i class="bi bi-piggy-bank"></i> Lãi suất tiết kiệm</h4>
+
+    <form method="post" class="mb-3" style="max-width:520px;">
+        {% csrf_token %}
+        <input type="hidden" name="pick_product" value="1">
+        <label class="form-label" for="{{ pick_form.savings_product.id_for_label }}">{{ pick_form.savings_product.label }}</label>
+        <div class="d-flex gap-2">
+            {{ pick_form.savings_product }}
+            <button type="submit" class="btn btn-outline-secondary text-nowrap">Chọn</button>
+        </div>
+        {% for err in pick_form.savings_product.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+    </form>
+
+    {% if product and not savings_on_board %}
+    <div class="alert alert-warning">Bảng LED chưa hiện lãi suất. Kiểm tra số bên dưới rồi bấm <strong>Lưu lãi suất</strong> để hiện sản phẩm <strong>{{ product.name }}</strong> lên bảng.</div>
+    {% endif %}
+
+    {% if product %}
+    <form method="post">
+        {% csrf_token %}
+        {{ savings_formset.management_form }}
+        {% for err in savings_formset.non_form_errors %}<div class="alert alert-danger">{{ err }}</div>{% endfor %}
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th style="width:100px;">Từ (tháng)</th><th style="width:100px;">Đến (tháng)</th>
+                        <th>Tên kỳ hạn (không bắt buộc)</th><th style="width:120px;">Lãi suất %/năm</th>
+                        <th style="width:160px;">Ngày hiệu lực</th><th style="width:80px;">Áp dụng</th><th style="width:50px;">Xóa</th>
+                    </tr>
+                </thead>
+                <tbody id="savings-rows">
+                    {% for form in savings_formset %}{% include "led_board/_formset_row.html" %}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <template id="savings-empty-row">{% include "led_board/_formset_row.html" with form=savings_formset.empty_form %}</template>
+        <p class="text-muted small">Bấm Thêm dòng để nhập kỳ hạn mới, dòng để trống sẽ được bỏ qua. Số này dùng chung với công cụ Tính lãi Tiết kiệm.</p>
+        <button type="button" class="btn btn-outline-secondary" data-add-row="savings"><i class="bi bi-plus-lg"></i> Thêm dòng</button>
+        <button type="submit" name="save_savings" value="1" class="btn btn-danger"><i class="bi bi-save"></i> Lưu lãi suất</button>
+    </form>
+    {% else %}
+    <p class="text-muted">Chưa có sản phẩm tiết kiệm nào đang áp dụng. Tạo sản phẩm trong trang Quản trị rồi quay lại đây.</p>
+    {% endif %}
+</div>
+
+<script>
+    document.querySelectorAll('[data-add-row]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const prefix = button.dataset.addRow;
+            const total = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+            const row = document.getElementById(`${prefix}-empty-row`).innerHTML;
+            document.getElementById(`${prefix}-rows`)
+                .insertAdjacentHTML('beforeend', row.replaceAll('__prefix__', total.value));
+            total.value = Number(total.value) + 1;
+        });
+    });
+</script>
+{% endblock %}

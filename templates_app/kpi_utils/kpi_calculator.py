@@ -7,7 +7,6 @@ Module tính toán và cập nhật KPI vào file Excel mẫu
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from io import BytesIO
-import re
 
 
 class KPICalculator:

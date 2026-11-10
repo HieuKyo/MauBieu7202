@@ -7,7 +7,7 @@ register = template.Library()
 def has_elearning_manage_permission(user):
     """
     Kiểm tra xem user có quyền quản lý e-learning không (tạo/sửa/xóa khóa học)
-    Trả về True nếu user là superuser hoặc thuộc nhóm "Phòng Tổng hợp"
+    Trả về True nếu user là superuser hoặc có hồ sơ Phòng ban = Phòng Tổng hợp
     """
     if not user or not user.is_authenticated:
         return False
@@ -15,7 +15,10 @@ def has_elearning_manage_permission(user):
     if user.is_superuser:
         return True
 
-    return user.groups.filter(name='Phòng Tổng hợp').exists()
+    try:
+        return user.profile.department == 'TONG_HOP'
+    except Exception:
+        return False
 
 
 @register.filter(name='has_employee_import_permission')

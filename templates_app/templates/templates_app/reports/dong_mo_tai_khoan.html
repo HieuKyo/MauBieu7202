@@ -1,0 +1,780 @@
+{% extends 'templates_app/base.html' %}
+{% load static humanize %}
+
+{% block title %}Báo cáo Đóng/Mở tài khoản{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card { border: none; border-radius: 10px; }
+    .stat-card .stat-number { font-size: 2.2rem; font-weight: 700; }
+    .table-sm td, .table-sm th { vertical-align: middle; }
+    .nav-tabs .nav-link.active { font-weight: 600; }
+    .badge-hssv { background: #0dcaf0; color:#000; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Tiêu đề -->
+    <div class="row mb-3">
+        <div class="col">
+            <h4 class="fw-bold" style="color:var(--agri-red);">
+                <i class="bi bi-bank2 me-2"></i>Báo cáo Mở tài khoản
+            </h4>
+            <p class="text-muted small mb-0">Thống kê số lượng tài khoản mở theo loại khách hàng</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'report_hub' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Về trang báo cáo
+            </a>
+        </div>
+    </div>
+
+    <!-- Form upload -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header fw-semibold" style="background:linear-gradient(90deg,#AE1C3F,#8a1230);color:#fff;">
+            <i class="bi bi-upload me-2"></i>Tải lên dữ liệu
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{% url 'process_dong_mo_tai_khoan' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-file-earmark-excel me-1 text-success"></i>
+                            File Mở tài khoản <span class="text-danger">*</span>
+                            <a tabindex="0" class="ms-1 text-muted" data-bs-toggle="popover" data-bs-trigger="focus" data-bs-placement="top"
+                               title="Lấy dữ liệu ở đâu?"
+                               data-bs-content="Vào màn hình DPDA 19 → Nhóm báo cáo: Daily transaction Related → Loại báo cáo: Daily open/close → Deposit Group: 200 → Search từ ngày tới ngày.">
+                                <i class="bi bi-question-circle-fill text-info"></i>
+                            </a>
+                        </label>
+                        <input type="file" name="mo_tk_file" class="form-control" accept=".xlsx,.xls" required>
+                        <div class="form-text">Cần có cột <code>locdpnm</code></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-file-earmark-excel me-1 text-danger"></i>
+                            File Đóng tài khoản
+                            <span class="badge bg-secondary fw-normal">Tùy chọn</span>
+                            <a tabindex="0" class="ms-1 text-muted" data-bs-toggle="popover" data-bs-trigger="focus" data-bs-placement="top"
+                               title="Lấy dữ liệu ở đâu?"
+                               data-bs-content="Vào màn hình DPDA 19 → Nhóm báo cáo: Daily transaction Related → Loại báo cáo: Daily open/close → Deposit Group: 200 → Search từ ngày tới ngày.">
+                                <i class="bi bi-question-circle-fill text-info"></i>
+                            </a>
+                        </label>
+                        <input type="file" name="dong_tk_file" class="form-control" accept=".xlsx,.xls">
+                        <div class="form-text">Cột <code>tellernm</code>: <code>7202DP</code> = Hệ thống tự đóng; <code>GRA...</code> = KH đóng tại quầy</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-credit-card me-1 text-primary"></i>
+                            File Phát hành thẻ
+                            <span class="badge bg-secondary fw-normal">Tùy chọn – xác định HSSV</span>
+                        </label>
+                        <input type="file" name="the_file" class="form-control" accept=".xlsx,.xls">
+                        <div class="form-text">Cần cột <code>ISSUE_TYPE</code>, <code>HASFEE_DES</code>, <code>ACCOUNT</code></div>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-calendar-month me-1 text-primary"></i>
+                            Kỳ báo cáo
+                            <span class="badge bg-secondary fw-normal">Tùy chọn – lưu lịch sử</span>
+                        </label>
+                        <input type="month" name="report_month" class="form-control"
+                               value="{{ request.POST.report_month }}">
+                        <div class="form-text">Chọn tháng để lưu vào thống kê lịch sử</div>
+                    </div>
+                    <div class="col-md-8 d-flex align-items-end">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-calculator me-1"></i> Tạo báo cáo
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for msg in messages %}
+        <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% with result=request.session.dmtk_result %}
+    {% if result %}
+
+    <!-- Cảnh báo join -->
+    {% if result.join_warning %}
+    <div class="alert alert-warning d-flex align-items-start">
+        <i class="bi bi-exclamation-triangle-fill me-2 mt-1 flex-shrink-0"></i>
+        <div>
+            <strong>Lưu ý:</strong> {{ result.join_warning }}
+            {% if result.file_columns %}
+            <br><small class="text-muted">Các cột trong file Mở TK: <code>{{ result.file_columns|join:", " }}</code></small>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Thẻ thống kê tổng -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #6c757d !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number text-secondary">{{ result.tong_mo }}</div>
+                    <div class="text-muted small">Tổng tài khoản mở</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #0d6efd !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number text-primary">{{ result.ca_nhan_count }}</div>
+                    <div class="text-muted small">Khách hàng cá nhân</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #0dcaf0 !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number" style="color:#0dcaf0;">{{ result.the_mien_phi_count }}</div>
+                    <div class="text-muted small">
+                        Thẻ miễn phí
+                        {% if not result.has_the_file %}
+                        <br><span class="badge bg-warning text-dark" style="font-size:0.65rem;">Cần file thẻ</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #6f42c1 !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number" style="color:#6f42c1;">{{ result.hssv_count }}</div>
+                    <div class="text-muted small">
+                        Trong đó: HSSV (&lt;18 tuổi)
+                        {% if not result.has_the_file %}
+                        <br><span class="badge bg-warning text-dark" style="font-size:0.65rem;">Cần file thẻ</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #198754 !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number text-success">{{ result.to_chuc_count }}</div>
+                    <div class="text-muted small">Khách hàng tổ chức</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if result.has_dong_tk_file %}
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #dc3545 !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number text-danger">{{ result.dong_tk_count }}</div>
+                    <div class="text-muted small">Tổng tài khoản đóng</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #fd7e14 !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number" style="color:#fd7e14;">{{ result.dong_he_thong_count }}</div>
+                    <div class="text-muted small">Hệ thống tự đóng</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card stat-card shadow-sm h-100" style="border-left:4px solid #e83e8c !important;">
+                <div class="card-body text-center py-3">
+                    <div class="stat-number" style="color:#e83e8c;">{{ result.dong_tai_quay_count }}</div>
+                    <div class="text-muted small">KH đóng tại quầy</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabs chi tiết -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white">
+            <ul class="nav nav-tabs card-header-tabs" id="detailTabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#tab-cn">
+                        <i class="bi bi-person me-1"></i>
+                        Cá nhân <span class="badge bg-primary ms-1">{{ result.ca_nhan_count }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-tmp">
+                        <i class="bi bi-credit-card me-1"></i>
+                        Thẻ miễn phí <span class="badge badge-hssv ms-1">{{ result.the_mien_phi_count }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-hssv">
+                        <i class="bi bi-mortarboard me-1"></i>
+                        HSSV <span class="badge ms-1" style="background:#6f42c1;">{{ result.hssv_count }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-tc">
+                        <i class="bi bi-building me-1"></i>
+                        Tổ chức <span class="badge bg-success ms-1">{{ result.to_chuc_count }}</span>
+                    </a>
+                </li>
+                {% if result.has_dong_tk_file %}
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-dong">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Đóng TK <span class="badge bg-danger ms-1">{{ result.dong_tk_count }}</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="card-body tab-content">
+
+            <!-- Tab Cá nhân -->
+            <div class="tab-pane fade show active" id="tab-cn">
+                <h6 class="fw-bold mb-3">Phân loại cá nhân theo sản phẩm</h6>
+                <div class="row">
+                    <div class="col-md-5">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr><th>Loại sản phẩm</th><th class="text-center">Số lượng</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in result.ca_nhan_breakdown %}
+                                <tr>
+                                    <td>{{ row.loai }}</td>
+                                    <td class="text-center fw-bold">{{ row.so_luong }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center text-muted">Không có dữ liệu</td></tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-secondary fw-bold">
+                                <tr>
+                                    <td>Tổng</td>
+                                    <td class="text-center">{{ result.ca_nhan_count }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small">Hiển thị tối đa 500 bản ghi</span>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="toggleTable('tbl-cn')">
+                                <i class="bi bi-eye me-1"></i> Xem/Ẩn danh sách
+                            </button>
+                        </div>
+                        <div id="tbl-cn" style="display:none; max-height:400px; overflow-y:auto;">
+                            <table class="table table-sm table-striped table-hover">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        {% for label in result.view_col_labels %}
+                                        <th>{{ label }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in result.ca_nhan_records %}
+                                    <tr>
+                                        {% for val in row %}
+                                        <td class="small">{{ val }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Thẻ miễn phí -->
+            <div class="tab-pane fade" id="tab-tmp">
+                {% if not result.has_the_file %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Vui lòng tải lên <strong>file phát hành thẻ</strong> để xác định thẻ miễn phí.
+                </div>
+                {% elif result.the_mien_phi_count == 0 %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-search me-2"></i>
+                    Không tìm thấy thẻ miễn phí nào (CSP_New + MIỄN PHÍ PHT).
+                </div>
+                {% else %}
+                <p class="mb-2 text-muted small">
+                    Điều kiện: <code>ISSUE_TYPE=CSP_New</code> &amp; <code>HASFEE_DES=MIỄN PHÍ PHT</code>
+                </p>
+                <div class="table-responsive" style="max-height:500px; overflow-y:auto;">
+                    <table class="table table-sm table-striped table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>#</th><th>Số tài khoản</th><th>Họ tên</th>
+                                <th>Ngày sinh</th><th>Tuổi</th>
+                                <th>Ngày mở thẻ</th><th>User</th><th>Phòng giao dịch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in result.the_mien_phi_records %}
+                            <tr>
+                                <td class="text-muted small">{{ forloop.counter }}</td>
+                                <td><code>{{ row.so_tai_khoan }}</code></td>
+                                <td>{{ row.ho_ten }}</td>
+                                <td class="small">{{ row.ngay_sinh }}</td>
+                                <td class="small fw-bold">{{ row.tuoi }}</td>
+                                <td class="small">{{ row.ngay_mo_the }}</td>
+                                <td class="small text-muted">{{ row.cuser }}</td>
+                                <td>
+                                    {% if row.pgd == 'PGD Láng Tròn' %}<span class="badge bg-primary">{{ row.pgd }}</span>
+                                    {% elif row.pgd == 'PGD Giá Rai' %}<span class="badge bg-success">{{ row.pgd }}</span>
+                                    {% elif row.pgd == 'Hội sở Giá Rai' %}<span class="badge bg-warning text-dark">{{ row.pgd }}</span>
+                                    {% else %}<span class="badge bg-secondary">{{ row.pgd }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab HSSV (tuổi < 18) -->
+            <div class="tab-pane fade" id="tab-hssv">
+                {% if not result.has_the_file %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Vui lòng tải lên <strong>file phát hành thẻ</strong> để xác định HSSV.
+                </div>
+                {% elif result.hssv_count == 0 %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-search me-2"></i>
+                    Không tìm thấy HSSV nào (CSP_New + MIỄN PHÍ PHT + tuổi &lt; 18).
+                </div>
+                {% else %}
+                <p class="mb-2 text-muted small">
+                    Điều kiện: <code>ISSUE_TYPE=CSP_New</code> &amp; <code>HASFEE_DES=MIỄN PHÍ PHT</code>
+                    &amp; <strong>tuổi &lt; 18</strong> (học sinh lớp 10–12)
+                </p>
+                <div class="table-responsive" style="max-height:500px; overflow-y:auto;">
+                    <table class="table table-sm table-striped table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>#</th><th>Số tài khoản</th><th>Họ tên</th>
+                                <th>Ngày sinh</th><th>Tuổi</th>
+                                <th>Ngày mở thẻ</th><th>User</th><th>Phòng giao dịch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in result.hssv_records %}
+                            <tr>
+                                <td class="text-muted small">{{ forloop.counter }}</td>
+                                <td><code>{{ row.so_tai_khoan }}</code></td>
+                                <td>{{ row.ho_ten }}</td>
+                                <td class="small">{{ row.ngay_sinh }}</td>
+                                <td class="small fw-bold text-purple">{{ row.tuoi }}</td>
+                                <td class="small">{{ row.ngay_mo_the }}</td>
+                                <td class="small text-muted">{{ row.cuser }}</td>
+                                <td>
+                                    {% if row.pgd == 'PGD Láng Tròn' %}<span class="badge bg-primary">{{ row.pgd }}</span>
+                                    {% elif row.pgd == 'PGD Giá Rai' %}<span class="badge bg-success">{{ row.pgd }}</span>
+                                    {% elif row.pgd == 'Hội sở Giá Rai' %}<span class="badge bg-warning text-dark">{{ row.pgd }}</span>
+                                    {% else %}<span class="badge bg-secondary">{{ row.pgd }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab Tổ chức -->
+            <div class="tab-pane fade" id="tab-tc">
+                <h6 class="fw-bold mb-3">Phân loại tổ chức theo sản phẩm</h6>
+                <div class="row">
+                    <div class="col-md-5">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr><th>Loại sản phẩm</th><th class="text-center">Số lượng</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for row in result.to_chuc_breakdown %}
+                                <tr>
+                                    <td>{{ row.loai }}</td>
+                                    <td class="text-center fw-bold">{{ row.so_luong }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center text-muted">Không có dữ liệu</td></tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-secondary fw-bold">
+                                <tr>
+                                    <td>Tổng</td>
+                                    <td class="text-center">{{ result.to_chuc_count }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small">Hiển thị tối đa 500 bản ghi</span>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="toggleTable('tbl-tc')">
+                                <i class="bi bi-eye me-1"></i> Xem/Ẩn danh sách
+                            </button>
+                        </div>
+                        <div id="tbl-tc" style="display:none; max-height:400px; overflow-y:auto;">
+                            <table class="table table-sm table-striped table-hover">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        {% for label in result.view_col_labels %}
+                                        <th>{{ label }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in result.to_chuc_records %}
+                                    <tr>
+                                        {% for val in row %}
+                                        <td class="small">{{ val }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if result.has_dong_tk_file %}
+            <!-- Tab Đóng tài khoản -->
+            <div class="tab-pane fade" id="tab-dong">
+                <!-- Tổng quan -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card text-center border-danger">
+                            <div class="card-body py-2">
+                                <div class="fs-4 fw-bold text-danger">{{ result.dong_tk_count }}</div>
+                                <div class="text-muted small">Tổng đóng</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center" style="border-color:#fd7e14;">
+                            <div class="card-body py-2">
+                                <div class="fs-4 fw-bold" style="color:#fd7e14;">{{ result.dong_he_thong_count }}</div>
+                                <div class="text-muted small">Hệ thống tự đóng <code class="small">(7202DP)</code></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center" style="border-color:#e83e8c;">
+                            <div class="card-body py-2">
+                                <div class="fs-4 fw-bold" style="color:#e83e8c;">{{ result.dong_tai_quay_count }}</div>
+                                <div class="text-muted small">KH đóng tại quầy <code class="small">(GRA...)</code></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phân loại theo loại khách hàng -->
+                <div class="row g-3 mb-4">
+                    <!-- Khách hàng cá nhân -->
+                    <div class="col-md-6">
+                        <div class="card border-primary">
+                            <div class="card-header fw-semibold text-white" style="background:linear-gradient(90deg,#0d6efd,#0a58ca);">
+                                <i class="bi bi-person-fill me-2"></i>Khách hàng cá nhân
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold text-primary">{{ result.dong_ca_nhan_count }}</div>
+                                            <div class="text-muted small">Tổng</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold" style="color:#fd7e14;">{{ result.dong_ca_nhan_tu_dong }}</div>
+                                            <div class="text-muted small">Tự động</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold" style="color:#e83e8c;">{{ result.dong_ca_nhan_tai_quay }}</div>
+                                            <div class="text-muted small">Tại quầy</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Khách hàng tổ chức -->
+                    <div class="col-md-6">
+                        <div class="card border-info">
+                            <div class="card-header fw-semibold text-white" style="background:linear-gradient(90deg,#0dcaf0,#0aa2c0);">
+                                <i class="bi bi-building-fill me-2"></i>Khách hàng tổ chức
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold text-info">{{ result.dong_to_chuc_count }}</div>
+                                            <div class="text-muted small">Tổng</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold" style="color:#fd7e14;">{{ result.dong_to_chuc_tu_dong }}</div>
+                                            <div class="text-muted small">Tự động</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded bg-light">
+                                            <div class="fs-5 fw-bold" style="color:#e83e8c;">{{ result.dong_to_chuc_tai_quay }}</div>
+                                            <div class="text-muted small">Tại quầy</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bảng chi tiết -->
+                <div class="table-responsive" style="max-height:500px; overflow-y:auto;">
+                    <table class="table table-sm table-striped table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>#</th>
+                                {% for label in result.dong_col_labels %}
+                                <th>{{ label }}</th>
+                                {% endfor %}
+                                <th>Loại đóng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in result.dong_tk_records %}
+                            <tr>
+                                <td class="text-muted small">{{ forloop.counter }}</td>
+                                {% for val in row.vals %}
+                                <td class="small">{{ val }}</td>
+                                {% endfor %}
+                                <td>
+                                    {% if row.loai_dong == 'Hệ thống tự đóng' %}
+                                    <span class="badge" style="background:#fd7e14;">{{ row.loai_dong }}</span>
+                                    {% elif row.loai_dong == 'KH đóng tại quầy' %}
+                                    <span class="badge" style="background:#e83e8c;">{{ row.loai_dong }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ row.loai_dong }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    {% endif %}
+    {% endwith %}
+
+    <!-- ===== THỐNG KÊ LỊCH SỬ ===== -->
+    {% if history_monthly or history_quarterly or history_yearly %}
+    <div class="card shadow-sm border-0 mt-4">
+        <div class="card-header fw-semibold" style="background:linear-gradient(90deg,#1a6e3c,#145c32);color:#fff;">
+            <i class="bi bi-graph-up me-2"></i>Thống kê lịch sử Đóng/Mở tài khoản
+        </div>
+        <div class="card-body">
+            <ul class="nav nav-tabs mb-3" id="historyTab">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-thang">
+                        <i class="bi bi-calendar-month me-1"></i>Theo tháng
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-quy">
+                        <i class="bi bi-calendar3-range me-1"></i>Theo quý
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-nam">
+                        <i class="bi bi-calendar-year me-1"></i>Theo năm
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Tab tháng -->
+                <div class="tab-pane fade show active" id="tab-thang">
+                {% if history_monthly %}
+                <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Kỳ</th>
+                            <th>Mở TK</th>
+                            <th>Cá nhân</th>
+                            <th>Tổ chức</th>
+                            <th>Thẻ MP</th>
+                            <th>HSSV</th>
+                            <th>Đóng TK</th>
+                            <th>HT tự đóng</th>
+                            <th>Đóng tại quầy</th>
+                            <th>Đóng CN</th>
+                            <th>Đóng TC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in history_monthly %}
+                        <tr>
+                            <td class="fw-semibold">{{ row.report_month|date:"m/Y" }}</td>
+                            <td class="text-secondary fw-bold">{{ row.tong_mo }}</td>
+                            <td class="text-primary">{{ row.ca_nhan_count }}</td>
+                            <td class="text-info">{{ row.to_chuc_count }}</td>
+                            <td class="text-success">{{ row.the_mien_phi_count }}</td>
+                            <td>{{ row.hssv_count }}</td>
+                            <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
+                            <td class="text-warning">{{ row.dong_he_thong_count }}</td>
+                            <td>{{ row.dong_tai_quay_count }}</td>
+                            <td class="text-primary">{{ row.dong_ca_nhan_count|default:0 }}</td>
+                            <td class="text-info">{{ row.dong_to_chuc_count|default:0 }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Chưa có dữ liệu lịch sử theo tháng.</p>
+                {% endif %}
+                </div>
+
+                <!-- Tab quý -->
+                <div class="tab-pane fade" id="tab-quy">
+                {% if history_quarterly %}
+                <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Quý</th>
+                            <th>Mở TK</th>
+                            <th>Cá nhân</th>
+                            <th>Tổ chức</th>
+                            <th>Thẻ MP</th>
+                            <th>HSSV</th>
+                            <th>Đóng TK</th>
+                            <th>HT tự đóng</th>
+                            <th>Đóng tại quầy</th>
+                            <th>Đóng CN</th>
+                            <th>Đóng TC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in history_quarterly %}
+                        <tr>
+                            <td class="fw-semibold">{{ row.quy_label }}</td>
+                            <td class="text-secondary fw-bold">{{ row.tong_mo }}</td>
+                            <td class="text-primary">{{ row.ca_nhan_count }}</td>
+                            <td class="text-info">{{ row.to_chuc_count }}</td>
+                            <td class="text-success">{{ row.the_mien_phi_count }}</td>
+                            <td>{{ row.hssv_count }}</td>
+                            <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
+                            <td class="text-warning">{{ row.dong_he_thong_count }}</td>
+                            <td>{{ row.dong_tai_quay_count }}</td>
+                            <td class="text-primary">{{ row.dong_ca_nhan_count|default:0 }}</td>
+                            <td class="text-info">{{ row.dong_to_chuc_count|default:0 }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Chưa có dữ liệu lịch sử theo quý.</p>
+                {% endif %}
+                </div>
+
+                <!-- Tab năm -->
+                <div class="tab-pane fade" id="tab-nam">
+                {% if history_yearly %}
+                <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Năm</th>
+                            <th>Mở TK</th>
+                            <th>Cá nhân</th>
+                            <th>Tổ chức</th>
+                            <th>Thẻ MP</th>
+                            <th>HSSV</th>
+                            <th>Đóng TK</th>
+                            <th>HT tự đóng</th>
+                            <th>Đóng tại quầy</th>
+                            <th>Đóng CN</th>
+                            <th>Đóng TC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in history_yearly %}
+                        <tr>
+                            <td class="fw-semibold">{{ row.nam|date:"Y" }}</td>
+                            <td class="text-secondary fw-bold">{{ row.tong_mo }}</td>
+                            <td class="text-primary">{{ row.ca_nhan_count }}</td>
+                            <td class="text-info">{{ row.to_chuc_count }}</td>
+                            <td class="text-success">{{ row.the_mien_phi_count }}</td>
+                            <td>{{ row.hssv_count }}</td>
+                            <td class="text-danger fw-bold">{{ row.dong_tk_count }}</td>
+                            <td class="text-warning">{{ row.dong_he_thong_count }}</td>
+                            <td>{{ row.dong_tai_quay_count }}</td>
+                            <td class="text-primary">{{ row.dong_ca_nhan_count|default:0 }}</td>
+                            <td class="text-info">{{ row.dong_to_chuc_count|default:0 }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Chưa có dữ liệu lịch sử theo năm.</p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+function toggleTable(id) {
+    const el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+// Khởi tạo popover Bootstrap
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
+        new bootstrap.Popover(el);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,281 @@
+{% extends "templates_app/base.html" %}
+{% load kh360_tags %}
+
+{% block title %}Khách hàng 360 - Thống kê tiền vay{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tk-label { font-size: .8rem; color: #6c757d; margin-bottom: .2rem; }
+    .tk-tile { border-radius: .9rem; padding: .8rem 1rem; text-align: center; border: 1px solid #e9ecef; background: #fff; height: 100%; }
+    .tk-tile .nhan { font-size: .8rem; color: #6c757d; }
+    .tk-tile .gia-tri { font-size: 1.4rem; font-weight: 700; }
+    .chip input { display: none; }
+    .chip span { display: inline-block; border: 1px solid #ced4da; border-radius: 1rem; padding: .1rem .6rem; font-size: .82rem; cursor: pointer; margin: 0 .2rem .3rem 0; }
+    .chip input:checked + span { background: #AE1C3F; border-color: #AE1C3F; color: #fff; }
+    .tk-nho td, .tk-nho th { padding: .25rem .5rem; font-size: .85rem; }
+    .kh-sort { color: inherit; text-decoration: none; white-space: nowrap; }
+    .kh-sort:hover { color: #AE1C3F; }
+    .kh-row { cursor: pointer; }
+    @media (max-width: 1399.98px) { .kh-bang .an-xxl { display: none; } }
+    @media (max-width: 1199.98px) { .kh-bang .an-xl { display: none; } }
+    @media (max-width: 991.98px)  { .kh-bang .an-lg { display: none; } }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "kh360/_header.html" %}
+{% include "kh360/_thong_ke_nav.html" %}
+
+{% include "kh360/_mau_nhanh.html" %}
+
+<form method="get" class="card shadow-sm mb-3" id="formThongKe">
+    <div class="card-header fw-semibold"><i class="bi bi-funnel"></i> Điều kiện thống kê tiền vay</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Dư nợ (VND)</div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Từ</span>
+                    <input type="text" inputmode="numeric" name="du_no_tu" value="{{ g.du_no_tu }}" class="form-control js-tien" placeholder="vd 500.000.000">
+                    <span class="input-group-text">đến</span>
+                    <input type="text" inputmode="numeric" name="du_no_den" value="{{ g.du_no_den }}" class="form-control js-tien" placeholder="không giới hạn">
+                </div>
+                <div class="mt-1">
+                    {% for v, n in muc_tien %}
+                    <button type="button" class="btn btn-link btn-sm p-0 me-2 js-chon-tien" data-v="{{ v }}">≥ {{ n }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Thời hạn vay (số tháng, từ ngày giải ngân đến đáo hạn)</div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Từ</span>
+                    <input type="number" min="0" name="thoi_han_tu" value="{{ g.thoi_han_tu }}" class="form-control" placeholder="tháng">
+                    <span class="input-group-text">đến</span>
+                    <input type="number" min="0" name="thoi_han_den" value="{{ g.thoi_han_den }}" class="form-control" placeholder="tháng">
+                </div>
+                <select name="thoi_han_loai" class="form-select form-select-sm mt-1">
+                    <option value="">— hoặc chọn nhóm thời hạn —</option>
+                    {% for v, n in thoi_han_loc %}<option value="{{ v }}" {% if g.thoi_han_loai == v %}selected{% endif %}>{{ n }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">Số tháng đã vay (từ ngày giải ngân đến hôm nay)</div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Từ</span>
+                    <input type="number" min="0" name="da_vay_tu" value="{{ g.da_vay_tu }}" class="form-control" placeholder="tháng">
+                    <span class="input-group-text">đến</span>
+                    <input type="number" min="0" name="da_vay_den" value="{{ g.da_vay_den }}" class="form-control" placeholder="tháng">
+                </div>
+            </div>
+            {% for o in loc_ngay %}
+            <div class="col-md-6 col-xl-4">
+                <div class="tk-label">{{ o.nhan }}</div>
+                <select name="{{ o.ten }}" class="form-select form-select-sm js-ngay" data-khoang="kh_{{ o.ten }}">
+                    <option value="">Tất cả</option>
+                    {% for v, n in o.ds %}<option value="{{ v }}" {% if v == o.chon %}selected{% endif %}>{{ n }}</option>{% endfor %}
+                </select>
+                <div class="input-group input-group-sm mt-1 {% if o.chon != 'khoang' %}d-none{% endif %}" id="kh_{{ o.ten }}">
+                    <span class="input-group-text">Từ</span>
+                    <input type="date" name="{{ o.tu_ten }}" value="{{ o.tu }}" class="form-control">
+                    <span class="input-group-text">đến</span>
+                    <input type="date" name="{{ o.den_ten }}" value="{{ o.den }}" class="form-control">
+                </div>
+            </div>
+            {% endfor %}
+            <div class="col-12">
+                <div class="tk-label">Nhóm nợ — chọn một hoặc nhiều</div>
+                {% for k, n, chon in nhom_no_loc %}
+                <label class="chip"><input type="checkbox" name="nhom_no" value="{{ k }}" {% if chon %}checked{% endif %}><span>{{ n }}</span></label>
+                {% endfor %}
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="tk-label">Sản phẩm</div>
+                <select name="san_pham" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    <option value="vay" {% if g.san_pham == 'vay' %}selected{% endif %}>Cho vay</option>
+                    <option value="thau_chi" {% if g.san_pham == 'thau_chi' %}selected{% endif %}>Thấu chi</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-4 col-xl-3">
+                <div class="tk-label">Loại vay</div>
+                <select name="loai_vay" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    {% for x in ds_loai_vay %}<option value="{{ x }}" {% if g.loai_vay == x %}selected{% endif %}>{{ x }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-xl-4">
+                <div class="tk-label">Mục đích vay</div>
+                <select name="muc_dich" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    {% for x in ds_muc_dich %}<option value="{{ x }}" {% if g.muc_dich == x %}selected{% endif %}>{{ x }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-4 col-xl-3">
+                <div class="tk-label">Cán bộ tín dụng</div>
+                <select name="can_bo" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    {% for x in ds_can_bo %}<option value="{{ x }}" {% if g.can_bo == x %}selected{% endif %}>{{ x }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="tk-label">Lãi suất (%/năm)</div>
+                <div class="input-group input-group-sm">
+                    <input type="text" inputmode="decimal" name="ls_tu" value="{{ g.ls_tu }}" class="form-control" placeholder="từ">
+                    <span class="input-group-text">–</span>
+                    <input type="text" inputmode="decimal" name="ls_den" value="{{ g.ls_den }}" class="form-control" placeholder="đến">
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-3">
+                <div class="tk-label">Tình trạng</div>
+                <select name="tinh_trang" class="form-select form-select-sm">
+                    <option value="">Đang còn dư nợ</option>
+                    <option value="tat_toan" {% if g.tinh_trang == 'tat_toan' %}selected{% endif %}>Đã tất toán</option>
+                    <option value="tat_ca" {% if g.tinh_trang == 'tat_ca' %}selected{% endif %}>Tất cả</option>
+                </select>
+            </div>
+            {% include "kh360/_loc_chu.html" with chu="người vay" %}
+        </div>
+    </div>
+    <div class="card-footer d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-danger"><i class="bi bi-bar-chart"></i> Thống kê</button>
+        <a href="{% url 'kh360:thong_ke_vay' %}" class="btn btn-outline-secondary">Xoá điều kiện</a>
+        {% if co_loc %}
+        <button type="submit" name="xuat" value="excel" class="btn btn-success ms-auto"><i class="bi bi-file-earmark-excel"></i> Xuất Excel toàn bộ khoản vay</button>
+        {% endif %}
+    </div>
+</form>
+
+{% if ky and ky.ngay_du_lieu < hom_nay %}
+<div class="alert alert-warning py-2 small"><i class="bi bi-info-circle"></i>
+    Dữ liệu khoản vay là ngày <b>{{ ky.ngay_du_lieu|date:"d/m/Y" }}</b>, còn các mốc "ngày tới / ngày qua / tháng này" tính theo hôm nay
+    ({{ hom_nay|date:"d/m/Y" }}). Khoản giải ngân, trả nợ sau ngày dữ liệu chưa có — nên cập nhật LN01 mới.
+</div>
+{% endif %}
+
+{% if co_loc %}
+<div class="row row-cols-2 row-cols-lg-5 g-3 mb-3">
+    <div class="col"><div class="tk-tile"><div class="nhan">Số món vay</div><div class="gia-tri text-agribank">{{ tong.so_mon|tien }}</div></div></div>
+    <div class="col"><div class="tk-tile"><div class="nhan">Số khách hàng</div><div class="gia-tri">{{ tong.so_kh|tien }}</div></div></div>
+    <div class="col"><div class="tk-tile"><div class="nhan">Tổng dư nợ</div><div class="gia-tri text-primary">{{ tong.tong_no|tien_gon }}</div></div></div>
+    <div class="col"><div class="tk-tile"><div class="nhan">Lãi suất bình quân (theo dư nợ)</div><div class="gia-tri">{% if tong.ls_bq is not None %}{{ tong.ls_bq|floatformat:2 }}%{% else %}—{% endif %}</div></div></div>
+    <div class="col"><div class="tk-tile"><div class="nhan">Nợ xấu (nhóm 3–5)</div><div class="gia-tri {% if tong.no_xau %}text-danger{% endif %}">{{ tong.no_xau|tien_gon }}</div><div class="small text-muted">{{ tong.mon_nhom2|tien }} món từ nhóm 2</div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold small">Theo nhóm nợ</div>
+            <table class="table table-sm mb-0 tk-nho">
+                <thead class="table-light"><tr><th>Nhóm</th><th class="text-end">Số món</th><th class="text-end">Dư nợ</th></tr></thead>
+                <tbody>
+                {% for r in theo_nhom %}
+                <tr class="{% if r.nhom_no in '03 04 05' and r.nhom_no %}text-danger{% elif r.nhom_no == '02' %}text-warning{% endif %}"><td>{{ r.nhan }}</td><td class="text-end">{{ r.n|tien }}</td><td class="text-end">{{ r.t|tien_gon }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold small">Theo thời hạn vay</div>
+            <table class="table table-sm mb-0 tk-nho">
+                <thead class="table-light"><tr><th>Thời hạn</th><th class="text-end">Số món</th><th class="text-end">Dư nợ</th></tr></thead>
+                <tbody>
+                {% for r in theo_thoi_han %}
+                <tr><td>{{ r.nhan }}</td><td class="text-end">{{ r.n|tien }}</td><td class="text-end">{{ r.t|tien_gon }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold small">Theo cán bộ tín dụng (dư nợ lớn nhất)</div>
+            <div style="max-height: 260px; overflow-y: auto;">
+            <table class="table table-sm mb-0 tk-nho">
+                <thead class="table-light"><tr><th>Cán bộ</th><th class="text-end">Số món</th><th class="text-end">Dư nợ</th></tr></thead>
+                <tbody>
+                {% for r in theo_can_bo %}
+                <tr><td>{{ r.can_bo|default:"—" }}</td><td class="text-end">{{ r.n|tien }}</td><td class="text-end">{{ r.t|tien_gon }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header">Danh sách khoản vay — bấm vào dòng để xem hồ sơ khách hàng</div>
+    {% if page.object_list %}
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle kh-bang">
+            <thead class="table-light">
+                <tr>
+                    {% for key, nhan, an in cot %}
+                    <th class="{{ an }} {% if key == 'du_no' %}text-end{% endif %}">
+                        <a class="kh-sort" href="?{{ qs_base }}&sort={% if sort == key %}-{{ key }}{% else %}{{ key }}{% endif %}">
+                            {{ nhan }}
+                            {% if sort == key %}<i class="bi bi-sort-up"></i>{% elif sort == '-'|add:key %}<i class="bi bi-sort-down"></i>{% else %}<i class="bi bi-arrow-down-up text-muted small"></i>{% endif %}
+                        </a>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for v in page.object_list %}
+                <tr class="kh-row {% if not v.con_du_no %}text-muted{% endif %}" data-kh360="{% url 'kh360:ho_so' v.ma_kh %}">
+                    <td class="an-xl font-monospace small">{{ v.so_giai_ngan }}</td>
+                    <td><span class="fw-semibold">{{ v.ten_kh }}</span>
+                        {% if v.nhan_hang %}<span class="hang-badge {{ v.css_hang }} ms-1">{{ v.nhan_hang }}</span>{% endif %}
+                        <div class="small text-muted">{{ v.ma_kh }} · {% if v.la_thau_chi %}<span class="badge bg-warning text-dark">Thấu chi</span>{% else %}{{ v.loai_vay }}{% endif %}</div></td>
+                    <td class="text-end text-nowrap fw-semibold">{% if v.con_du_no %}{{ v.du_no|tien }}{% else %}Đã tất toán{% endif %}</td>
+                    <td class="an-lg text-nowrap">{{ v.so_tien_giai_ngan|tien }}<div class="small text-muted">{{ v.ngay_giai_ngan|date:"d/m/Y" }}</div></td>
+                    <td class="text-nowrap">{% if v.thoi_han_thang %}{{ v.thoi_han_thang }} tháng{% else %}—{% endif %}
+                        {% if v.da_vay_thang is not None %}<div class="small text-muted">đã vay {{ v.da_vay_thang }} th</div>{% endif %}</td>
+                    <td class="an-xl">{{ v.lai_suat|floatformat:"-2" }}%</td>
+                    <td>{% if v.nhom_no and v.nhom_no != '01' %}<span class="badge {% if v.nhom_no == '02' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ v.nhom_no }}</span>{% else %}{{ v.nhom_no }}{% endif %}</td>
+                    <td class="text-nowrap">{{ v.ngay_dao_han|date:"d/m/Y" }}
+                        {% if v.con_ngay is not None and v.con_du_no %}
+                        <div class="small {% if v.con_ngay < 0 %}text-danger fw-semibold{% elif v.con_ngay <= 30 %}text-warning{% else %}text-muted{% endif %}">
+                            {% if v.con_ngay < 0 %}quá {{ v.con_ngay|stringformat:"d"|slice:"1:" }} ngày{% elif v.con_ngay == 0 %}hôm nay{% else %}còn {{ v.con_ngay }} ngày{% endif %}
+                        </div>{% endif %}</td>
+                    <td class="an-lg text-nowrap">{{ v.ngay_tra_tiep|date:"d/m/Y" }}{% if v.so_tien_tra_tiep %}<div class="small text-muted">{{ v.so_tien_tra_tiep|tien }}</div>{% endif %}</td>
+                    <td class="an-xxl small">{{ v.can_bo }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "kh360/_phan_trang.html" %}
+    {% else %}
+    <div class="card-body text-muted">Không có khoản vay nào thoả điều kiện.</div>
+    {% endif %}
+</div>
+{% else %}
+<div class="text-muted">Chọn điều kiện hoặc một mẫu nhanh ở trên rồi bấm <b>Thống kê</b>. Mặc định chỉ tính các khoản còn dư nợ.</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% include "kh360/_assets.html" %}
+<script>
+(function () {
+    const fmt = v => v.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    document.querySelectorAll('.js-tien').forEach(el => {
+        el.value = fmt(el.value);
+        el.addEventListener('input', () => { el.value = fmt(el.value); });
+    });
+    document.querySelectorAll('.js-chon-tien').forEach(b => b.addEventListener('click', () => {
+        document.querySelector('[name=du_no_tu]').value = fmt(b.dataset.v);
+    }));
+    document.querySelectorAll('.js-ngay').forEach(sel => sel.addEventListener('change', () =>
+        document.getElementById(sel.dataset.khoang).classList.toggle('d-none', sel.value !== 'khoang')));
+    document.getElementById('formThongKe').addEventListener('submit', function () {
+        this.querySelectorAll('input, select').forEach(el => { if (el.name && !el.value) el.disabled = true; });
+        setTimeout(() => this.querySelectorAll(':disabled').forEach(el => { el.disabled = false; }), 0);
+    });
+})();
+</script>
+{% endblock %}

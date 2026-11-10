@@ -1,0 +1,496 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Đăng ký bảng QR / Loa Thần tài{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-qr-code"></i> ĐĂNG KÝ BẢNG QR / LOA THẦN TÀI</h2>
+        </div>
+    </div>
+
+    {% include 'templates_app/qr/_nav.html' with active='dang_ky' %}
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100" style="background-color: var(--agri-red); color: #fff;">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-calendar-check"></i> QR đã đăng ký tháng {{ thang_hien_tai }}</div>
+                    <div class="fs-3 fw-bold">{{ tong_qr_thang|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 text-bg-dark">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-qr-code"></i> QR đã đăng ký năm {{ nam_hien_tai }}</div>
+                    <div class="fs-3 fw-bold">{{ tong_qr_nam|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 text-bg-warning">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-volume-up"></i> Loa Thần tài đã đăng ký tháng {{ thang_hien_tai }}</div>
+                    <div class="fs-3 fw-bold">{{ tong_loa_thang|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 text-bg-dark">
+                <div class="card-body">
+                    <div class="small"><i class="bi bi-volume-up"></i> Loa Thần tài đã đăng ký năm {{ nam_hien_tai }}</div>
+                    <div class="fs-3 fw-bold">{{ tong_loa_nam|intcomma }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6><i class="bi bi-funnel"></i> Bộ lọc tìm kiếm</h6>
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Tên khách hàng</label>
+                    <input type="text" class="form-control" name="ten_kh" value="{{ filters.ten_kh }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Số tài khoản</label>
+                    <input type="text" class="form-control" name="so_tai_khoan" value="{{ filters.so_tai_khoan }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Tên cửa hàng</label>
+                    <input type="text" class="form-control" name="ten_cua_hang" value="{{ filters.ten_cua_hang }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Đã in</label>
+                    <select class="form-select" name="da_in">
+                        <option value="">Tất cả</option>
+                        <option value="1" {% if filters.da_in == '1' %}selected{% endif %}>Đã in</option>
+                        <option value="0" {% if filters.da_in == '0' %}selected{% endif %}>Chưa in</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Loại</label>
+                    <select class="form-select" name="loai">
+                        <option value="">Tất cả</option>
+                        {% for value, label in loai_choices %}
+                        <option value="{{ value }}" {% if filters.loai == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-outline-secondary w-100"><i class="bi bi-search"></i> Lọc</button>
+                </div>
+            </form>
+            <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#addQrModal">
+                    <i class="bi bi-qr-code-scan"></i> Đăng ký bảng QR
+                </button>
+                <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#addLoaModal">
+                    <i class="bi bi-volume-up"></i> Đăng ký Loa Thần tài
+                </button>
+                <a href="{% url 'qr_registration_template_download' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-download"></i> Tải file mẫu
+                </a>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#uploadQrModal">
+                    <i class="bi bi-upload"></i> Upload đăng ký QR
+                </button>
+                {% if request.user.is_superuser %}
+                <a href="{% url 'qr_registration_export' %}?ten_kh={{ filters.ten_kh|urlencode }}&so_tai_khoan={{ filters.so_tai_khoan|urlencode }}&ten_cua_hang={{ filters.ten_cua_hang|urlencode }}&da_in={{ filters.da_in|urlencode }}&loai={{ filters.loai|urlencode }}"
+                   class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-excel"></i> Tải danh sách QR / Loa (Admin)
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Loại</th>
+                            <th>Tên khách hàng</th>
+                            <th>Số tài khoản</th>
+                            <th>Tên cửa hàng / Địa chỉ, SĐT</th>
+                            <th>Tên cán bộ đăng ký</th>
+                            <th>Phòng giao dịch</th>
+                            <th>Ngày đăng ký</th>
+                            <th>Đã in</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg in page_obj %}
+                        <tr>
+                            <td><span class="badge {% if reg.loai == 'loa' %}text-bg-warning{% else %}text-bg-danger{% endif %}">{{ reg.get_loai_display }}</span></td>
+                            <td>{{ reg.ten_kh }}</td>
+                            <td>{{ reg.so_tai_khoan }}</td>
+                            <td>{% if reg.loai == 'loa' %}{{ reg.dia_chi }}<div class="small text-muted">{{ reg.so_dien_thoai }}</div>{% else %}{{ reg.ten_cua_hang }}{% endif %}</td>
+                            <td>{{ reg.ten_can_bo }}</td>
+                            <td><span class="badge text-bg-secondary">{{ reg.phong_giao_dich|default:"—" }}</span></td>
+                            <td>{{ reg.ngay_dang_ky|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <div class="form-check mb-0">
+                                    <input type="checkbox" class="form-check-input" id="daIn{{ reg.id|stringformat:'d' }}"
+                                           {% if reg.da_in %}checked{% endif %}
+                                           {% if request.user.is_superuser %}onchange="toggleDaIn({{ reg.id|stringformat:'d' }}, this)"{% else %}disabled{% endif %}>
+                                    <label class="form-check-label" for="daIn{{ reg.id|stringformat:'d' }}">Đã in</label>
+                                </div>
+                                <div class="small text-muted" id="thongTinIn{{ reg.id|stringformat:'d' }}">{% if reg.da_in %}{{ reg.nguoi_in }} — {{ reg.ngay_in|date:"d/m/Y H:i" }}{% endif %}</div>
+                            </td>
+                            <td>
+                                {% if not reg.da_in or request.user.is_superuser %}
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="Sửa"
+                                        onclick="openEditModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}', '{{ reg.so_tai_khoan|escapejs }}', '{{ reg.ten_cua_hang|escapejs }}', '{{ reg.ten_can_bo|escapejs }}', '{{ reg.phong_giao_dich|escapejs }}', '{{ reg.loai }}', '{{ reg.dia_chi|escapejs }}', '{{ reg.so_dien_thoai|escapejs }}')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
+                                        onclick="openDeleteModal({{ reg.id|stringformat:'d' }}, '{{ reg.ten_kh|escapejs }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="9" class="text-center text-muted">Bạn chưa có đăng ký nào</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}&ten_kh={{ filters.ten_kh }}&so_tai_khoan={{ filters.so_tai_khoan }}&ten_cua_hang={{ filters.ten_cua_hang }}&da_in={{ filters.da_in }}&loai={{ filters.loai }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Thêm đăng ký -->
+<div class="modal fade" id="addQrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="addQrForm">
+            <div class="modal-header">
+                <h5 class="modal-title">Đăng ký bảng QR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addQrError" class="alert alert-danger d-none"></div>
+                <div class="mb-2">
+                    <label class="form-label">Tên khách hàng <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="ten_kh" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Số tài khoản <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="so_tai_khoan" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cửa hàng (nếu có)</label>
+                    <input type="text" class="form-control" name="ten_cua_hang" placeholder="Quét mã QR để chuyển khoản">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cán bộ đăng ký</label>
+                    <input type="text" class="form-control" name="ten_can_bo" value="{{ ten_cb_default }}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Phòng giao dịch</label>
+                    <input type="text" class="form-control" value="{{ pgd_default }}" disabled>
+                    <div class="form-text">Tự động lấy theo hồ sơ của bạn.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-danger">Đăng ký</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Đăng ký Loa Thần tài -->
+<div class="modal fade" id="addLoaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="addLoaForm">
+            <input type="hidden" name="loai" value="loa">
+            <div class="modal-header">
+                <h5 class="modal-title">Đăng ký Loa Thần tài</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addLoaError" class="alert alert-danger d-none"></div>
+                <div class="mb-2">
+                    <label class="form-label">Số tài khoản <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="so_tai_khoan" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Họ tên khách hàng <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="ten_kh" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Địa chỉ <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="dia_chi" maxlength="300" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+                    <input type="tel" class="form-control" name="so_dien_thoai" maxlength="20" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cán bộ đăng ký</label>
+                    <input type="text" class="form-control" name="ten_can_bo" value="{{ ten_cb_default }}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Phòng giao dịch</label>
+                    <input type="text" class="form-control" value="{{ pgd_default }}" disabled>
+                    <div class="form-text">Tự động lấy theo hồ sơ của bạn.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-warning">Đăng ký</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Sửa đăng ký -->
+<div class="modal fade" id="editQrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="editQrForm">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editQrTitle">Sửa đăng ký QR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="editQrError" class="alert alert-danger d-none"></div>
+                <div class="mb-2">
+                    <label class="form-label">Tên khách hàng <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="ten_kh" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Số tài khoản <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="so_tai_khoan" required>
+                </div>
+                <div class="mb-2" id="editCuaHangRow">
+                    <label class="form-label">Tên cửa hàng (nếu có)</label>
+                    <input type="text" class="form-control" name="ten_cua_hang" placeholder="Quét mã QR để chuyển khoản">
+                </div>
+                <div id="editLoaRows">
+                    <div class="mb-2">
+                        <label class="form-label">Địa chỉ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="dia_chi" maxlength="300">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" name="so_dien_thoai" maxlength="20">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cán bộ đăng ký</label>
+                    <input type="text" class="form-control" name="ten_can_bo">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Phòng giao dịch</label>
+                    <input type="text" class="form-control" id="editPgdDisplay" disabled>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Upload đăng ký QR hàng loạt -->
+<div class="modal fade" id="uploadQrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" action="{% url 'qr_registration_import' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">Upload đăng ký QR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    File phải có các cột: Tên khách hàng, Số tài khoản, Tên cửa hàng (nếu có). Bấm
+                    <a href="{% url 'qr_registration_template_download' %}">tải file mẫu</a> nếu chưa có.
+                    Tên cán bộ và Phòng giao dịch sẽ lấy theo hồ sơ của bạn.
+                </p>
+                <div class="mb-2">
+                    <label class="form-label">Chọn file (.xlsx) <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control" name="import_file" accept=".xlsx,.xls" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-danger">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Xóa đăng ký -->
+<div class="modal fade" id="deleteQrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Xóa đăng ký của <strong id="deleteQrName"></strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteQrBtn">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function csrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+// Form đăng ký bảng QR và Loa Thần tài dùng chung cách gửi
+['Qr', 'Loa'].forEach(ten => {
+    const form = document.getElementById(`add${ten}Form`);
+    const errBox = document.getElementById(`add${ten}Error`);
+    document.getElementById(`add${ten}Modal`).addEventListener('show.bs.modal', function () {
+        form.reset();
+        errBox.classList.add('d-none');
+    });
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errBox.classList.add('d-none');
+        fetch('{% url "qr_registration_create" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken() },
+            body: new FormData(this),
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    errBox.textContent = data.error || 'Đã xảy ra lỗi';
+                    errBox.classList.remove('d-none');
+                }
+            })
+            .catch(() => {
+                errBox.textContent = 'Lỗi kết nối máy chủ';
+                errBox.classList.remove('d-none');
+            });
+    });
+});
+
+let editQrId = null;
+
+function openEditModal(id, tenKh, soTaiKhoan, tenCuaHang, tenCanBo, phongGiaoDich, loai, diaChi, soDienThoai) {
+    editQrId = id;
+    const form = document.getElementById('editQrForm');
+    form.elements['ten_kh'].value = tenKh;
+    form.elements['so_tai_khoan'].value = soTaiKhoan;
+    form.elements['ten_cua_hang'].value = tenCuaHang;
+    form.elements['ten_can_bo'].value = tenCanBo;
+    form.elements['dia_chi'].value = diaChi;
+    form.elements['so_dien_thoai'].value = soDienThoai;
+    const laLoa = loai === 'loa';
+    document.getElementById('editQrTitle').textContent = laLoa ? 'Sửa đăng ký Loa Thần tài' : 'Sửa đăng ký QR';
+    document.getElementById('editCuaHangRow').classList.toggle('d-none', laLoa);
+    document.getElementById('editLoaRows').classList.toggle('d-none', !laLoa);
+    form.elements['dia_chi'].required = form.elements['so_dien_thoai'].required = laLoa;
+    document.getElementById('editPgdDisplay').value = phongGiaoDich;
+    document.getElementById('editQrError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('editQrModal')).show();
+}
+
+document.getElementById('editQrForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const errBox = document.getElementById('editQrError');
+    errBox.classList.add('d-none');
+    fetch(`/qr/dang-ky/${editQrId}/update/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+        body: new FormData(this),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                errBox.textContent = data.error || 'Đã xảy ra lỗi';
+                errBox.classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            errBox.textContent = 'Lỗi kết nối máy chủ';
+            errBox.classList.remove('d-none');
+        });
+});
+
+function toggleDaIn(id, checkbox) {
+    const body = new FormData();
+    body.append('da_in', checkbox.checked ? '1' : '0');
+    fetch(`/qr/dang-ky/${id}/da-in/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+        body: body,
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById(`thongTinIn${id}`).textContent = data.thong_tin_in;
+            } else {
+                checkbox.checked = !checkbox.checked;
+                alert(data.error || 'Đã xảy ra lỗi');
+            }
+        })
+        .catch(() => {
+            checkbox.checked = !checkbox.checked;
+            alert('Lỗi kết nối máy chủ');
+        });
+}
+
+let deleteQrId = null;
+
+function openDeleteModal(id, tenKh) {
+    deleteQrId = id;
+    document.getElementById('deleteQrName').textContent = tenKh;
+    new bootstrap.Modal(document.getElementById('deleteQrModal')).show();
+}
+
+document.getElementById('confirmDeleteQrBtn').addEventListener('click', function () {
+    fetch(`/qr/dang-ky/${deleteQrId}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.error || 'Đã xảy ra lỗi');
+            }
+        })
+        .catch(() => alert('Lỗi kết nối máy chủ'));
+});
+</script>
+{% endblock %}

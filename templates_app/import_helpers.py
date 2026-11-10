@@ -4,7 +4,6 @@ Helper functions for importing Variables and Templates
 import csv
 import openpyxl
 from io import BytesIO
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from .models import Variable, Template, Category, TemplateVariable
 
 

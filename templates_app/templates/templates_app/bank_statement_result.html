@@ -69,6 +69,7 @@
             <a href="{% url 'bank_statement_export' statement.id %}" class="btn btn-success">
                 <i class="bi bi-download"></i> Xuất Excel
             </a>
+            <a href="{% url 'bank_statement_huong_dan' %}" class="btn btn-outline-secondary"><i class="bi bi-question-circle"></i> Hướng dẫn</a>
             <a href="{% url 'bank_statement_upload' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Quay lại
             </a>
@@ -180,10 +181,37 @@
     </div>
     {% endif %}
 
-    <!-- Filter Section -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="filter-section">
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-gd-btn" data-bs-toggle="tab" data-bs-target="#tab-gd" type="button" role="tab">
+                <i class="bi bi-table"></i> Chi tiết giao dịch
+                <span class="badge bg-secondary ms-1">{{ page_obj.paginator.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-thongke-btn" data-bs-toggle="tab" data-bs-target="#tab-thongke" type="button" role="tab">
+                <i class="bi bi-graph-up"></i> Thống kê
+                {% if frequent_recipients or frequent_senders %}
+                <span class="badge bg-warning text-dark ms-1">!</span>
+                {% endif %}
+            </button>
+        </li>
+        {% if statement.unmatched_rows %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-khongkhop-btn" data-bs-toggle="tab" data-bs-target="#tab-khongkhop" type="button" role="tab">
+                <i class="bi bi-exclamation-triangle"></i> Dòng không khớp
+                <span class="badge bg-danger ms-1">{{ statement.unmatched_rows|length }}</span>
+            </button>
+        </li>
+        {% endif %}
+    </ul>
+
+    <div class="tab-content" id="mainTabContent">
+        <!-- Tab Chi tiết giao dịch -->
+        <div class="tab-pane fade show active" id="tab-gd" role="tabpanel">
+            <!-- Filter Section -->
+            <div class="filter-section mb-3">
                 <form method="get" class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-bold">
@@ -207,12 +235,7 @@
                     </div>
                 </form>
             </div>
-        </div>
-    </div>
 
-    <!-- Transactions Table -->
-    <div class="row">
-        <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-agribank text-white">
                     <h6 class="mb-0">
@@ -238,6 +261,7 @@
                                     <th style="width: 180px;">Tên người</th>
                                     <th>Nội dung</th>
                                     <th style="width: 180px;">Loại GD</th>
+                                    <th style="width: 140px;">Nguồn</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -273,10 +297,11 @@
                                             <span class="badge badge-custom bg-secondary">Chưa phân loại</span>
                                         {% endif %}
                                     </td>
+                                    <td><small class="text-muted">{{ transaction.source|default:"Nội dung GD" }}</small></td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="10" class="text-center py-4">
+                                    <td colspan="11" class="text-center py-4">
                                         <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
                                         <p class="text-muted mt-2">Không có giao dịch nào</p>
                                     </td>
@@ -329,6 +354,184 @@
                 {% endif %}
             </div>
         </div>
+
+        <!-- Tab Thống kê -->
+        <div class="tab-pane fade" id="tab-thongke" role="tabpanel">
+
+            <!-- Cập nhật tên từ file Excel đã điền -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data"
+                          action="{% url 'bank_statement_import_names' statement.id %}" class="row g-2 align-items-end">
+                        {% csrf_token %}
+                        <div class="col-md-8">
+                            <label for="names_file" class="form-label fw-semibold mb-1">
+                                <i class="bi bi-person-lines-fill"></i> Cập nhật tên từ file Excel
+                            </label>
+                            <div class="text-muted small mb-2">
+                                Xuất Excel, điền tên vào các ô tô vàng ở sheet <strong>TK giao dịch nhiều lần</strong>,
+                                lưu file rồi tải lên đây. Tên được lưu vào danh bạ dùng chung và tự điền cho các sao kê sau.
+                            </div>
+                            <input type="file" class="form-control form-control-sm" id="names_file" name="names_file" accept=".xlsx" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-agribank btn-sm w-100">
+                                <i class="bi bi-upload"></i> Cập nhật tên
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tài khoản nhận tiền nhiều lần -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-arrow-up-right-circle"></i>
+                        Tài khoản nhận tiền nhiều lần
+                        <small class="fw-normal ms-2">(tất cả)</small>
+                        {% if frequent_recipients %}
+                        <span class="badge bg-light text-dark ms-2">{{ frequent_recipients|length }} tài khoản</span>
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if frequent_recipients %}
+                    <div class="table-responsive">
+                        <table class="table table-hover transaction-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th style="width: 140px;">Ngân hàng</th>
+                                    <th style="width: 160px;">Số tài khoản</th>
+                                    <th style="width: 200px;">Tên</th>
+                                    <th class="text-center" style="width: 80px;">Số lần</th>
+                                    <th class="text-end">Tổng tiền ra (VNĐ)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for acc in frequent_recipients %}
+                                <tr>
+                                    <td class="text-center text-muted">{{ forloop.counter }}</td>
+                                    <td>{{ acc.bank_name|default:"-" }}</td>
+                                    <td class="font-monospace">{{ acc.account_number }}</td>
+                                    <td>{{ acc.name|default:"-"|truncatechars:30 }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-danger">{{ acc.count }}</span>
+                                    </td>
+                                    <td class="text-end text-danger fw-bold">{{ acc.total_amount|floatformat:0|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Không có tài khoản nào nhận tiền quá 3 lần</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tài khoản chuyển tiền đến nhiều lần -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-arrow-down-left-circle"></i>
+                        Tài khoản chuyển tiền đến nhiều lần
+                        <small class="fw-normal ms-2">(tất cả)</small>
+                        {% if frequent_senders %}
+                        <span class="badge bg-light text-dark ms-2">{{ frequent_senders|length }} tài khoản</span>
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if frequent_senders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover transaction-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th style="width: 140px;">Ngân hàng</th>
+                                    <th style="width: 160px;">Số tài khoản</th>
+                                    <th style="width: 200px;">Tên</th>
+                                    <th class="text-center" style="width: 80px;">Số lần</th>
+                                    <th class="text-end">Tổng tiền vào (VNĐ)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for acc in frequent_senders %}
+                                <tr>
+                                    <td class="text-center text-muted">{{ forloop.counter }}</td>
+                                    <td>{{ acc.bank_name|default:"-" }}</td>
+                                    <td class="font-monospace">{{ acc.account_number }}</td>
+                                    <td>{{ acc.name|default:"-"|truncatechars:30 }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">{{ acc.count }}</span>
+                                    </td>
+                                    <td class="text-end text-success fw-bold">{{ acc.total_amount|floatformat:0|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Không có tài khoản nào chuyển tiền đến quá 3 lần</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Tab Dòng không khớp -->
+        {% if statement.unmatched_rows %}
+        <div class="tab-pane fade" id="tab-khongkhop" role="tabpanel">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning">
+                    <h6 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Giao dịch thành công trong file đối soát nhưng không tìm thấy trong DPTB18
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover transaction-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">#</th>
+                                    <th style="width: 150px;">File</th>
+                                    <th style="width: 160px;">Thời gian</th>
+                                    <th class="text-end" style="width: 130px;">Số tiền</th>
+                                    <th style="width: 100px;">Trace</th>
+                                    <th style="width: 160px;">Số TK đối tác</th>
+                                    <th style="width: 180px;">Tên đối tác</th>
+                                    <th>Nội dung</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in statement.unmatched_rows %}
+                                <tr>
+                                    <td class="text-center text-muted">{{ forloop.counter }}</td>
+                                    <td>{{ row.file }}</td>
+                                    <td>{{ row.time }}</td>
+                                    <td class="text-end fw-bold">{{ row.amount|floatformat:0|intcomma }}</td>
+                                    <td class="font-monospace small">{{ row.trace|default:"-" }}</td>
+                                    <td class="font-monospace small">{{ row.account|default:"-" }}</td>
+                                    <td>{{ row.name|default:"-" }}</td>
+                                    <td><small>{{ row.content|truncatechars:80 }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 

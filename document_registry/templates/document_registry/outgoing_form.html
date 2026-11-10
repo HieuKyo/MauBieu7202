@@ -1,0 +1,315 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .section-card { border-left: 4px solid #AE1C3F; }
+    .section-card .card-header { background: rgba(174,28,63,0.07); }
+    .form-check-label { cursor: pointer; }
+    #nguoi-ky-khac-wrap, #noi-nhan-khac-wrap,
+    #section-noi-bo, #section-buu-dien { transition: all 0.2s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container" style="max-width:900px;">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h3 class="fw-bold text-agribank mb-0">
+            <i class="bi bi-send"></i> {{ title }}
+        </h3>
+        <a href="{% url 'document_registry:outgoing_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Quay lại danh sách
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for msg in messages %}
+        <div class="alert alert-{{ msg.tags }} alert-dismissible fade show" role="alert">
+            {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" id="outgoing-form" novalidate>
+        {% csrf_token %}
+
+        <!-- SECTION 1: Thông tin văn bản -->
+        <div class="card border-0 shadow-sm section-card mb-4">
+            <div class="card-header fw-semibold py-2">
+                <i class="bi bi-file-earmark-text"></i> Thông tin văn bản
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Số, ký hiệu văn bản <span class="text-danger">*</span></label>
+                        {{ form.so_ky_hieu }}
+                        {% if form.so_ky_hieu.errors %}<div class="text-danger small mt-1">{{ form.so_ky_hieu.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Ngày tháng văn bản <span class="text-danger">*</span></label>
+                        {{ form.ngay_van_ban }}
+                        {% if form.ngay_van_ban.errors %}<div class="text-danger small mt-1">{{ form.ngay_van_ban.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Tên loại và trích yếu nội dung văn bản <span class="text-danger">*</span></label>
+                        {{ form.ten_loai_trich_yeu }}
+                        {% if form.ten_loai_trich_yeu.errors %}<div class="text-danger small mt-1">{{ form.ten_loai_trich_yeu.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: Người ký -->
+        <div class="card border-0 shadow-sm section-card mb-4">
+            <div class="card-header fw-semibold py-2">
+                <i class="bi bi-person-check"></i> Người ký <span class="text-danger">*</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-3">
+                    {% for radio in form.nguoi_ky %}
+                    <div class="form-check">
+                        {{ radio.tag }}
+                        <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if form.nguoi_ky.errors %}<div class="text-danger small mt-1">{{ form.nguoi_ky.errors.0 }}</div>{% endif %}
+                <div id="nguoi-ky-khac-wrap" class="mt-2" style="display:none;">
+                    <label class="form-label small">Nhập tên người ký:</label>
+                    {{ form.nguoi_ky_khac }}
+                    {% if form.nguoi_ky_khac.errors %}<div class="text-danger small mt-1">{{ form.nguoi_ky_khac.errors.0 }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: Nơi nhận -->
+        <div class="card border-0 shadow-sm section-card mb-4">
+            <div class="card-header fw-semibold py-2">
+                <i class="bi bi-geo-alt"></i> Nơi nhận văn bản <span class="text-danger">*</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-3 mb-2">
+                    <div class="form-check">
+                        {{ form.noi_nhan_truong_phong }}
+                        <label class="form-check-label" for="{{ form.noi_nhan_truong_phong.id_for_label }}">
+                            Trưởng các phòng
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        {{ form.noi_nhan_giam_doc_pgd }}
+                        <label class="form-check-label" for="{{ form.noi_nhan_giam_doc_pgd.id_for_label }}">
+                            Giám đốc phòng Giao dịch
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="noi-nhan-khac-toggle"
+                            {% if form.noi_nhan_khac.value %}checked{% endif %}>
+                        <label class="form-check-label" for="noi-nhan-khac-toggle">Nơi nhận khác</label>
+                    </div>
+                </div>
+                <div id="noi-nhan-khac-wrap" style="display:{% if form.noi_nhan_khac.value %}block{% else %}none{% endif %};">
+                    {{ form.noi_nhan_khac }}
+                    {% if form.noi_nhan_khac.errors %}<div class="text-danger small mt-1">{{ form.noi_nhan_khac.errors.0 }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: Thông tin phát hành -->
+        <div class="card border-0 shadow-sm section-card mb-4">
+            <div class="card-header fw-semibold py-2">
+                <i class="bi bi-box-seam"></i> Thông tin phát hành
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Đơn vị, người nhận bản lưu</label>
+                        {{ form.don_vi_nhan_ban_luu }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Số lượng bản <span class="text-danger">*</span></label>
+                        {{ form.so_luong_ban }}
+                        {% if form.so_luong_ban.errors %}<div class="text-danger small mt-1">{{ form.so_luong_ban.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 5: Chuyển phát -->
+        <div class="card border-0 shadow-sm section-card mb-4">
+            <div class="card-header fw-semibold py-2">
+                <i class="bi bi-truck"></i> Loại chuyển phát
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-4 mb-3">
+                    {% for radio in form.loai_chuyen_phat %}
+                    <div class="form-check">
+                        {{ radio.tag }}
+                        <label class="form-check-label fw-semibold" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Văn bản chuyển phát nội bộ -->
+                <div id="section-noi-bo" class="border rounded p-3 bg-light" style="display:none;">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-building"></i> Văn bản chuyển phát nội bộ</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Ngày chuyển <span class="text-danger">*</span></label>
+                            {{ form.ngay_chuyen }}
+                            {% if form.ngay_chuyen.errors %}<div class="text-danger small mt-1">{{ form.ngay_chuyen.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Số ký hiệu văn bản</label>
+                            <input type="text" class="form-control form-control-sm bg-white" id="ref-so-ky-hieu-noi-bo" readonly>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small text-muted">Nơi nhận</label>
+                            <input type="text" class="form-control form-control-sm bg-white" id="ref-noi-nhan-noi-bo" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Ký nhận</label>
+                            {{ form.ky_nhan }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Ghi chú</label>
+                            {{ form.ghi_chu }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Văn bản chuyển phát bưu điện -->
+                <div id="section-buu-dien" class="border rounded p-3 bg-light" style="display:none;">
+                    <h6 class="fw-bold text-warning mb-3"><i class="bi bi-mailbox"></i> Văn bản chuyển phát bưu điện</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Ngày chuyển <span class="text-danger">*</span></label>
+                            {{ form.ngay_chuyen }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Số ký hiệu văn bản</label>
+                            <input type="text" class="form-control form-control-sm bg-white" id="ref-so-ky-hieu-buu-dien" readonly>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small text-muted">Nơi nhận</label>
+                            <input type="text" class="form-control form-control-sm bg-white" id="ref-noi-nhan-buu-dien" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Số lượng bì <span class="text-danger">*</span></label>
+                            {{ form.so_luong_bi }}
+                            {% if form.so_luong_bi.errors %}<div class="text-danger small mt-1">{{ form.so_luong_bi.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Ký nhận và dấu bưu điện</label>
+                            {{ form.ky_nhan_buu_dien }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Ghi chú</label>
+                            {{ form.ghi_chu }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fallback: no type selected -->
+                <div id="section-no-type" class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Ngày chuyển <span class="text-danger">*</span></label>
+                        {{ form.ngay_chuyen }}
+                        {% if form.ngay_chuyen.errors %}<div class="text-danger small mt-1">{{ form.ngay_chuyen.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Ký nhận</label>
+                        {{ form.ky_nhan }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Ghi chú</label>
+                        {{ form.ghi_chu }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'document_registry:outgoing_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i> Hủy
+            </a>
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-save"></i> {% if action == 'create' %}Lưu văn bản đi{% else %}Cập nhật{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    // ── Người ký toggle ──
+    function updateNguoiKy() {
+        const selected = document.querySelector('input[name="nguoi_ky"]:checked');
+        const wrap = document.getElementById('nguoi-ky-khac-wrap');
+        if (wrap) wrap.style.display = (selected && selected.value === 'other') ? 'block' : 'none';
+    }
+    document.querySelectorAll('input[name="nguoi_ky"]').forEach(r => r.addEventListener('change', updateNguoiKy));
+    updateNguoiKy();
+
+    // ── Nơi nhận khác toggle ──
+    const noiNhanToggle = document.getElementById('noi-nhan-khac-toggle');
+    const noiNhanKhacWrap = document.getElementById('noi-nhan-khac-wrap');
+    if (noiNhanToggle) {
+        noiNhanToggle.addEventListener('change', function () {
+            noiNhanKhacWrap.style.display = this.checked ? 'block' : 'none';
+            if (!this.checked) {
+                const ta = noiNhanKhacWrap.querySelector('textarea');
+                if (ta) ta.value = '';
+            }
+        });
+    }
+
+    // ── Loại chuyển phát toggle ──
+    function getNoiNhanText() {
+        const parts = [];
+        if (document.getElementById('{{ form.noi_nhan_truong_phong.id_for_label }}').checked)
+            parts.push('Trưởng các phòng');
+        if (document.getElementById('{{ form.noi_nhan_giam_doc_pgd.id_for_label }}').checked)
+            parts.push('Giám đốc phòng Giao dịch');
+        const khac = document.querySelector('#noi-nhan-khac-wrap textarea');
+        if (khac && khac.value.trim()) parts.push(khac.value.trim());
+        return parts.join('; ');
+    }
+
+    function syncRefFields() {
+        const soKyHieu = document.getElementById('{{ form.so_ky_hieu.id_for_label }}').value;
+        const noNhan = getNoiNhanText();
+        ['noi-bo', 'buu-dien'].forEach(suffix => {
+            const s = document.getElementById('ref-so-ky-hieu-' + suffix);
+            const n = document.getElementById('ref-noi-nhan-' + suffix);
+            if (s) s.value = soKyHieu;
+            if (n) n.value = noNhan;
+        });
+    }
+
+    function updateLoaiChuyenPhat() {
+        const selected = document.querySelector('input[name="loai_chuyen_phat"]:checked');
+        const val = selected ? selected.value : '';
+        document.getElementById('section-noi-bo').style.display = (val === 'noi_bo') ? 'block' : 'none';
+        document.getElementById('section-buu-dien').style.display = (val === 'buu_dien') ? 'block' : 'none';
+        document.getElementById('section-no-type').style.display = (val === '') ? 'flex' : 'none';
+        if (val !== '') syncRefFields();
+    }
+
+    document.querySelectorAll('input[name="loai_chuyen_phat"]').forEach(r => r.addEventListener('change', updateLoaiChuyenPhat));
+    document.getElementById('{{ form.so_ky_hieu.id_for_label }}').addEventListener('input', syncRefFields);
+    document.querySelectorAll('input[name="noi_nhan_truong_phong"], input[name="noi_nhan_giam_doc_pgd"]').forEach(cb => cb.addEventListener('change', syncRefFields));
+
+    updateLoaiChuyenPhat();
+})();
+</script>
+{% endblock %}

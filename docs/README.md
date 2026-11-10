@@ -1,165 +1,73 @@
-# Hệ thống Quản lý Mẫu biểu Word - AGRIBANK
+# Hệ thống Mẫu biểu - Agribank Chi nhánh Giá Rai Bạc Liêu
 
-Ứng dụng web Django cho phép nhân viên Agribank tạo file Microsoft Word (.docx) từ các mẫu có sẵn với cú pháp Jinja2.
+Ứng dụng web Django chạy trong mạng LAN nội bộ (offline): tạo file Word từ mẫu có sẵn, quản lý khách hàng, báo cáo nghiệp vụ, kế toán ngân quỹ, ATM, tín dụng...
 
-**Thiết kế giao diện theo chuẩn nhận diện thương hiệu Agribank** với màu xanh lá đặc trưng (#00923F).
-
----
-
-## 🚀 Bắt đầu nhanh (Quick Start)
-
-### Windows
+## Bắt đầu nhanh
 
 ```cmd
-# Lần đầu tiên: Chạy setup
-setup.bat
-
-# Các lần sau: Chạy server
-start.bat
+setup.bat     :: lần đầu: cài thư viện từ packages/, tạo database, thu thập CSS/JS
+run.bat       :: chạy server -> http://10.135.7.108:8888
 ```
 
-### Linux/macOS
+Hướng dẫn đầy đủ (cài đặt, cấu hình `.env`, cập nhật bằng gói USB, sao lưu, sửa lỗi): [INSTALL_LAN.md](../INSTALL_LAN.md)
 
-```bash
-# Setup
-bash scripts/setup_first_time.sh
+## Tài liệu
 
-# Chạy server
-python run_waitress.py
-```
+### Cài đặt & vận hành (thư mục gốc)
 
-**Truy cập:** http://localhost:8000
+| Tài liệu | Nội dung |
+|---|---|
+| [INSTALL_LAN.md](../INSTALL_LAN.md) | Cài đặt, chạy, cập nhật, sao lưu, sửa lỗi |
+| [HUONG_DAN_CAI_DAT_CHI_TIET.md](../HUONG_DAN_CAI_DAT_CHI_TIET.md) | Thư mục mẫu biểu offline `maubieumoi` (hybrid storage) từng bước |
+| [HUONG_DAN_SETUP_MAUBIEU.md](../HUONG_DAN_SETUP_MAUBIEU.md) | Các giải pháp lưu trữ mẫu biểu (vấn đề mẫu "hết hạn") |
+| [HUONG_DAN_SUBDIRECTORIES.md](../HUONG_DAN_SUBDIRECTORIES.md) | Tổ chức mẫu biểu theo thư mục con |
+| [ATM_DEPLOYMENT_SUMMARY.md](../ATM_DEPLOYMENT_SUMMARY.md) | Triển khai module ATM, dữ liệu ban đầu |
 
-📖 **Hướng dẫn chi tiết:** [docs/QUICK_START.md](docs/QUICK_START.md)
+### Soạn mẫu biểu Word
 
----
+| Tài liệu | Nội dung |
+|---|---|
+| [HUONG_DAN_CAP_NHAT_BIEN.md](../HUONG_DAN_CAP_NHAT_BIEN.md) | Hệ thống biến trong mẫu biểu |
+| [AUTO_CALCULATION_GUIDE.md](../AUTO_CALCULATION_GUIDE.md) | Tính toán tự động bằng Jinja2 |
+| [HUONG_DAN_CHECKBOX_WORD.md](../HUONG_DAN_CHECKBOX_WORD.md) | Checkbox trong mẫu (ký tự Unicode và Content Control) |
+| [HUONG_DAN_CONTENT_CONTROL_CHECKBOX.md](../HUONG_DAN_CONTENT_CONTROL_CHECKBOX.md) | Tạo checkbox Content Control và bảng tên tag |
 
-## 📚 Tài liệu (Documentation)
+### Sử dụng chức năng
 
-| Tài liệu | Mô tả |
-|----------|-------|
-| [QUICK_START.md](docs/QUICK_START.md) | Bắt đầu nhanh trong 3 bước |
-| [WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md) | Hướng dẫn chi tiết cho Windows |
-| [URGENT_FIX_CSS.md](docs/URGENT_FIX_CSS.md) | Khắc phục lỗi CSS không hiển thị |
-| [STATIC_FILES_SETUP.md](docs/STATIC_FILES_SETUP.md) | Cài đặt Bootstrap CSS/JS |
-| [OFFLINE_SETUP.md](docs/OFFLINE_SETUP.md) | Triển khai offline/mạng nội bộ |
+| Tài liệu | Nội dung |
+|---|---|
+| [FEATURES.md](FEATURES.md) | Danh sách chức năng |
+| [HUONG_DAN_CLIPBOARD_IMPORT.md](HUONG_DAN_CLIPBOARD_IMPORT.md) | Import khách hàng: dán dữ liệu từ AGRIBANK |
+| [HUONG_DAN_IMPORT_AGRIBANK.md](HUONG_DAN_IMPORT_AGRIBANK.md) | Import khách hàng: chọn file TSV/TXT |
+| [AGRIBANK_TSV_IMPORT_GUIDE.md](AGRIBANK_TSV_IMPORT_GUIDE.md) | Import TSV cho kỹ thuật: API, script dòng lệnh |
+| [HUONG_DAN_PHAN_TICH_SAO_KE.md](HUONG_DAN_PHAN_TICH_SAO_KE.md) | Phân tích sao kê |
+| [HUONG_DAN_TAO_BIA_CHUNG_TU.md](HUONG_DAN_TAO_BIA_CHUNG_TU.md) | Tạo bìa chứng từ |
+| [tax_payment/TROUBLESHOOTING.md](../tax_payment/TROUBLESHOOTING.md) | Sửa lỗi bảng kê nộp thuế |
 
----
+### Kỹ thuật
 
-## ⚡ Các lệnh chính (Main Commands)
+| Tài liệu | Nội dung |
+|---|---|
+| [CODE_QUALITY_AUDIT_REPORT.md](../CODE_QUALITY_AUDIT_REPORT.md) | Báo cáo rà soát chất lượng mã nguồn |
 
-```cmd
-# Setup lần đầu
-setup.bat
-
-# Chạy server
-start.bat
-
-# Tạo admin user
-python manage.py createsuperuser
-
-# Collect static files (sau khi sửa CSS)
-python manage.py collectstatic --noinput
-
-# Khắc phục lỗi CSS
-scripts\fix_static_files.bat
-```
-
----
-
-## 🎯 Tính năng chính (Key Features)
-
-### 1. Phân cấp Mẫu biểu
-- **Danh mục (Cha)**: Tổ chức mẫu biểu theo nhóm (VD: "Phát hành thẻ", "Tra soát")
-- **Mẫu biểu (Con)**: Các file .docx cụ thể thuộc một danh mục
-
-### 2. Quản lý qua Django Admin
-- Quản lý Danh mục, Mẫu biểu, Biến
-- Import/Export Biến từ CSV/Excel
-- Import hàng loạt Mẫu biểu (bulk upload)
-
-### 3. Biến thông minh (Dynamic Forms)
-- Hỗ trợ: text, textarea, date, number
-- Form tự động tạo dựa trên biến của mẫu biểu
-
-### 4. Phân quyền
-- Sử dụng Django Groups
-- Quyền gán ở cấp độ Mẫu biểu
-
----
-
-## 🛠️ Công nghệ (Technology Stack)
-
-- **Backend**: Django 5.2.7
-- **WSGI Server**: Waitress 3.0.1 (cross-platform)
-- **Static Files**: WhiteNoise 6.8.2
-- **Word Processing**: python-docx
-- **Database**: SQLite (có thể đổi PostgreSQL/MySQL)
-- **Frontend**: Bootstrap 5.3.0, Bootstrap Icons
-
----
-
-## 📁 Cấu trúc thư mục (Project Structure)
+## Cấu trúc mã nguồn
 
 ```
 MauBieu7202/
-├── setup.bat              # Launcher cho setup (gọi scripts/setup_first_time.bat)
-├── start.bat              # Launcher cho server (gọi scripts/start_server.bat)
-├── manage.py              # Django management
-├── requirements.txt       # Python dependencies
-├── run_waitress.py        # Waitress server script
-├── docs/                  # 📚 Tài liệu
-│   ├── QUICK_START.md
-│   ├── WINDOWS_SETUP.md
-│   ├── URGENT_FIX_CSS.md
-│   └── ...
-├── scripts/               # 🔧 Scripts
-│   ├── setup_first_time.bat
-│   ├── start_server.bat
-│   ├── fix_static_files.bat
-│   └── ...
-├── templates_app/         # Django app chính
-│   ├── models.py
-│   ├── views.py
-│   ├── templates/         # HTML templates
-│   └── static/            # CSS, JS, images
-├── wordgen/               # Django project settings
-└── staticfiles/           # Collected static files (tự động tạo)
+├── setup.bat, run.bat           # cài đặt / chạy server (Waitress, cổng 8888)
+├── tao_ban_cap_nhat.bat         # tạo gói cập nhật USB (scripts/release/)
+├── download_offline_packages.bat, verify_packages.bat
+├── packages/                    # file .whl cài offline
+├── wordgen/                     # cấu hình Django (settings.py, urls.py)
+├── templates_app/               # app chính
+│   ├── models/                  # model chia theo nhóm (template, customer, atm, cash, ...)
+│   ├── views.py                 # trang chủ, in mẫu biểu, cấu hình chi nhánh
+│   ├── *_views.py               # view theo chức năng (customer_views, atm_views, report_*_views, ...)
+│   └── templates/, static/
+├── salary/, payroll_statistics/, tax_payment/, kpi_tool/, tasks/,
+│   savings_calculator/, quiz/, messaging/, document_registry/   # các app khác
+├── scripts/                     # script hỗ trợ (kiểm tra mẫu, chẩn đoán thuế, phát hành)
+└── docs/                        # tài liệu sử dụng
 ```
 
----
-
-## 🐛 Troubleshooting
-
-### CSS không hiển thị?
-
-```cmd
-scripts\fix_static_files.bat
-```
-
-Xem chi tiết: [docs/URGENT_FIX_CSS.md](docs/URGENT_FIX_CSS.md)
-
-### Các lỗi thường gặp
-
-| Lỗi | Giải pháp |
-|-----|-----------|
-| `No module named 'django'` | `pip install -r requirements.txt` |
-| `Port already in use` | Đổi port trong `run_waitress.py` |
-| `python is not recognized` | Thêm Python vào PATH |
-
-Xem thêm: [docs/QUICK_START.md](docs/QUICK_START.md)
-
----
-
-## 📝 License
-
-Internal use only - Nội bộ Agribank
-
-## 👥 Liên hệ
-
-Agribank Chi nhánh Giá Rai Bạc Liêu
-
----
-
-**Phiên bản:** 1.0
-**Cập nhật:** 2025
+Nội bộ Agribank Chi nhánh Giá Rai Bạc Liêu.

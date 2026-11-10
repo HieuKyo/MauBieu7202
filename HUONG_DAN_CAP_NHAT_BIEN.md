@@ -280,7 +280,6 @@ print(category)  # Output: global_config
 ## 📚 TÀI LIỆU THAM KHẢO
 
 - `variable_mapping.py` - File ánh xạ đầy đủ biến cũ → mới
-- `TINH_NANG_UU_TIEN.md` - Các tính năng sắp phát triển
 - `README.md` - Hướng dẫn chung về hệ thống
 
 ---
