@@ -111,7 +111,19 @@ def choose_destination():
                 return LOCAL_OUT
             if choice.isdigit() and 1 <= int(choice) <= len(drives):
                 return Path(drives[int(choice) - 1][0]) / USB_FOLDER
-    print('Không tìm thấy USB nào -> lưu vào thư mục ban_cap_nhat của dự án.')
+    # Không thấy USB: hỏi lại thay vì lặng lẽ lưu vào máy (USB vừa rút / đang nhận lại thì dễ bỏ sót)
+    print('*** KHÔNG TÌM THẤY USB NÀO ***')
+    try:
+        while True:
+            chon = input('Cắm USB rồi nhấn Enter để tìm lại, hoặc gõ 0 rồi Enter để lưu vào thư mục ban_cap_nhat: ').strip()
+            if chon == '0':
+                break
+            if removable_drives():
+                return choose_destination()
+            print('Vẫn chưa thấy USB.')
+    except EOFError:   # chạy không có bàn phím (tự động) -> lưu vào máy
+        pass
+    print('-> Lưu vào thư mục ban_cap_nhat của dự án (nhớ chép sang USB).')
     return LOCAL_OUT
 
 

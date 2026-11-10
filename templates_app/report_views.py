@@ -357,7 +357,13 @@ def mail_envelope_tracking_view(request):
     except Exception:
         all_users = []
 
-    return render(request, 'templates_app/reports/mail_envelope_tracking.html', {'all_users': all_users})
+    # Người nhận mặc định = username đang đăng nhập (thêm vào danh sách nếu cấu hình chưa có)
+    current_user = request.user.username
+    if all_users and current_user not in all_users:
+        all_users.insert(0, current_user)
+
+    return render(request, 'templates_app/reports/mail_envelope_tracking.html',
+                  {'all_users': all_users, 'current_user': current_user})
 
 
 @login_required

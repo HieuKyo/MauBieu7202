@@ -3,6 +3,16 @@
 Mỗi mục là một bản cập nhật (gói `CapNhat_MauBieu_<phiên bản>`), mới nhất ở trên.
 Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `tao_ban_cap_nhat.bat`, tiêu đề này được đổi thành số phiên bản và ngày.
 
+## Bản tiếp theo
+
+### Chỉnh sửa
+- **Nhận bì thư – quét bằng camera:** nút **Bật camera** mở khung camera ngay trên trang và quét liên tục (bật 1 lần, quét lần lượt từng bì thư), thay cho cửa sổ quét QR căn cước. Đọc được **mã vạch** (Code 128) trên bì thư — to và rõ hơn QR nên camera để xa / camera tài liệu (USB Camera) vẫn đọc được — và vẫn đọc QR như trước. Có ô chọn camera khi máy gắn nhiều camera.
+- **Nhận bì thư:** ô **Người nhận** mặc định là tài khoản (username) đang đăng nhập; vẫn chọn / sửa sang người khác được.
+
+### File
+- Thêm: `templates_app/static/js/zxing.min.js` (thư viện đọc mã vạch ZXing 0.21.3, chạy offline)
+- Sửa: `templates_app/report_views.py`, `templates_app/templates/templates_app/reports/mail_envelope_tracking.html`, `templates_app/templates/templates_app/reports/_mail_envelope_huong_dan.html`
+
 ## 2026.11.09.3 — 09/11/2026
 
 ### Chức năng mới

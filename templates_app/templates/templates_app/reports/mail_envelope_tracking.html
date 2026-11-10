@@ -31,12 +31,30 @@
                             </label>
                             <div class="input-group">
                                 <input type="text" class="form-control font-monospace" id="ma_bithu" name="ma_bithu"
-                                       placeholder="Quét QR hoặc nhập mã, vd. EMBDB05117202200" required autofocus autocomplete="off">
-                                <button type="button" class="btn btn-success" onclick="openEnvelopeQr()">
-                                    <i class="bi bi-qr-code-scan"></i> Quét QR
+                                       placeholder="Quét mã vạch / QR hoặc nhập mã, vd. EMBDB05117202200" required autofocus autocomplete="off">
+                                <button type="button" class="btn btn-success" id="btnCamera" onclick="toggleEnvelopeCamera()">
+                                    <i class="bi bi-camera-video"></i> Bật camera
                                 </button>
                             </div>
                             <div id="ma_bithu_hint" class="form-text"></div>
+                        </div>
+
+                        <!-- Camera quét QR bì thư: bật 1 lần, quét liên tục từng bì thư -->
+                        <div id="cameraPanel" class="mb-3 d-none">
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                                <select class="form-select" id="envCameraSelect" onchange="startEnvelopeCamera(this.value, true)"></select>
+                            </div>
+                            <div class="position-relative bg-dark rounded overflow-hidden text-center">
+                                <video id="envVideo" playsinline muted style="width:100%; min-height:200px; max-height:360px; object-fit:contain;"></video>
+                                <div id="envSuccess" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center text-white" style="background:rgba(25,135,84,.9);">
+                                    <i class="bi bi-check-circle-fill" style="font-size:56px;"></i>
+                                    <div class="fs-4 fw-bold">ĐÃ QUÉT</div>
+                                    <div class="fs-5 font-monospace" id="envSuccessCode"></div>
+                                </div>
+                            </div>
+                            <div id="envStatus" class="small text-muted mt-1"></div>
+                            <div id="envHelp"></div>
                         </div>
 
                         <div class="row">
@@ -76,12 +94,12 @@
                             <select class="form-select" id="nguoi_nhan" name="nguoi_nhan" required>
                                 <option value="">Chọn người nhận</option>
                                 {% for user in all_users %}
-                                <option value="{{ user }}">{{ user }}</option>
+                                <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>{{ user }}</option>
                                 {% endfor %}
                             </select>
                             {% else %}
                             <input type="text" class="form-control" id="nguoi_nhan" name="nguoi_nhan"
-                                   placeholder="Nhập tên người nhận" required>
+                                   value="{{ current_user }}" placeholder="Nhập tên người nhận" required>
                             {% endif %}
                         </div>
 
@@ -103,50 +121,12 @@
     </div>
 </div>
 
-<!-- Quét QR bì thư bằng webcam (dùng chung bộ quét của QR CCCD: cccd_qr_scanner.js) -->
-<div class="modal fade" id="cccdQrModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bi bi-qr-code-scan"></i> Quét QR bì thư</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="input-group input-group-sm mb-2">
-                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
-                    <select class="form-select" id="cccdQrCameraSelect" onchange="startCccdQrScan(this.value, true)"></select>
-                </div>
-                <div class="position-relative bg-dark rounded overflow-hidden text-center">
-                    <video id="cccdQrVideo" playsinline muted style="width:100%; min-height:200px; max-height:420px; object-fit:contain;"></video>
-                    <div id="cccdQrSuccess" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center text-white" style="background:rgba(25,135,84,.93);">
-                        <i class="bi bi-check-circle-fill" style="font-size:72px;"></i>
-                        <div class="fs-3 fw-bold">QUÉT THÀNH CÔNG</div>
-                        <div class="fs-5 font-monospace" id="cccdQrSuccessName"></div>
-                    </div>
-                </div>
-                <div id="cccdQrStatus" class="small text-muted mt-2">
-                    <i class="bi bi-hourglass-split"></i> Đang khởi động camera...
-                </div>
-                <div id="cccdQrHelp"></div>
-                <hr>
-                <label class="form-label small mb-1">Hoặc dùng máy quét QR cầm tay / dán chuỗi QR:</label>
-                <div class="input-group input-group-sm">
-                    <input type="text" class="form-control font-monospace" id="cccdQrManualInput"
-                           placeholder="EMBDB05117202200"
-                           onkeydown="if (event.key === 'Enter') { event.preventDefault(); applyCccdQr(this.value); }">
-                    <button type="button" class="btn btn-outline-success" onclick="applyCccdQr(document.getElementById('cccdQrManualInput').value)">
-                        <i class="bi bi-arrow-down-circle"></i> Điền
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% include "templates_app/reports/_mail_envelope_huong_dan.html" %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/jsQR.min.js' %}"></script>
+<script src="{% static 'js/zxing.min.js' %}"></script>
 <script src="{% static 'js/cccd_qr_scanner.js' %}"></script>
 <script>
 const CARD_TYPE_LABELS = {
@@ -196,34 +176,124 @@ function fillFromEnvelopeCode() {
 }
 
 // Máy quét cầm tay gõ thẳng vào ô mã (kết thúc bằng Enter → lưu luôn)
-document.getElementById('ma_bithu').addEventListener('input', fillFromEnvelopeCode);
+document.getElementById('ma_bithu').addEventListener('input', () => { if (!document.getElementById('ma_bithu').value.trim()) envLastCode = ''; fillFromEnvelopeCode(); });
 document.getElementById('ngay_nhan').addEventListener('change', fillFromEnvelopeCode);
 
-function openEnvelopeQr() {
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('cccdQrModal')).show();
+// ---- Camera quét QR bì thư (QR thường, không phải QR CCCD) ----
+// Bật 1 lần rồi quét liên tục: đưa từng bì thư vào khung hình → tự điền → bấm Lưu → bì thư tiếp theo.
+// Dùng lại phần mở camera / chọn camera / hướng dẫn lỗi camera của cccd_qr_scanner.js.
+let envStream = null, envTimer = null, envLastCode = '', envFrame = 0;
+const envCanvas = document.createElement('canvas');
+const envDetector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats: ['qr_code', 'code_128'] }) : null;
+// ZXing (offline) đọc cả mã vạch Code 128 lẫn QR. Mã vạch trên bì thư to, rõ hơn QR (QR bị nét đứt sát viền nên khó đọc).
+const envZxing = (() => {
+    if (!window.ZXing) return null;
+    const reader = new ZXing.MultiFormatReader();
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.QR_CODE]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    reader.setHints(hints);
+    return reader;
+})();
+
+function setEnvStatus(html, cls = 'text-muted') {
+    const el = document.getElementById('envStatus');
+    el.className = `small mt-1 ${cls}`;
+    el.innerHTML = html;
 }
 
-// cccd_qr_scanner.js gọi hàm này khi đọc được QR (tên giữ nguyên theo bộ quét dùng chung)
-function applyCccdQr(text) {
-    const data = parseEnvelopeCode(text, document.getElementById('ngay_nhan').value);
-    if (!data) {
-        setCccdQrStatus(`<i class="bi bi-exclamation-triangle"></i> Mã QR không phải mã bì thư (EMB...): <code>${String(text).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)}</code>`, 'text-danger');
-        return false;
+function toggleEnvelopeCamera() {
+    if (envStream || !document.getElementById('cameraPanel').classList.contains('d-none')) stopEnvelopeCamera();
+    else startEnvelopeCamera(savedCameraId());
+}
+
+function stopEnvelopeCamera() {
+    clearTimeout(envTimer);
+    envTimer = null;
+    if (envStream) envStream.getTracks().forEach(t => t.stop());
+    envStream = null;
+    document.getElementById('cameraPanel').classList.add('d-none');
+    document.getElementById('btnCamera').innerHTML = '<i class="bi bi-camera-video"></i> Bật camera';
+}
+
+async function startEnvelopeCamera(deviceId, manual = false) {
+    clearTimeout(envTimer);
+    if (envStream) envStream.getTracks().forEach(t => t.stop());
+    envStream = null;
+    document.getElementById('cameraPanel').classList.remove('d-none');
+    document.getElementById('btnCamera').innerHTML = '<i class="bi bi-camera-video-off"></i> Tắt camera';
+    document.getElementById('envHelp').innerHTML = '';
+    setEnvStatus(cameraWaitHtml());
+    try {
+        envStream = await openCameraInto('envVideo', 'envCameraSelect', deviceId, 1920, 1080, manual);
+    } catch (error) {
+        setEnvStatus('<i class="bi bi-x-circle"></i> Chưa mở được camera — làm theo hướng dẫn bên dưới, hoặc gõ mã vào ô Mã bì thư.', 'text-danger');
+        renderCameraHelp('envHelp', error.message, 'startEnvelopeCamera(savedCameraId())', error.detail);
+        return;
     }
-    stopCccdQrScan();
+    setEnvStatus('<i class="bi bi-qr-code-scan"></i> Đang quét... Đưa mã vạch (hoặc mã QR) trên bì thư vào khung hình.', 'text-success');
+    const loop = async () => {
+        if (!envStream) return;
+        await scanEnvelopeFrame();
+        if (envStream) envTimer = setTimeout(loop, 150);
+    };
+    envTimer = setTimeout(loop, 150);
+}
+
+// Đọc mã vạch / QR trong 1 khung hình: BarcodeDetector (nếu trình duyệt có) → ZXing (mã vạch + QR, khung hình gốc)
+// → jsQR: lượt chẵn đọc cả khung hình (thu nhỏ), lượt lẻ đọc vùng giữa ở độ phân giải gốc (QR nhỏ / để xa).
+async function scanEnvelopeFrame() {
+    const video = document.getElementById('envVideo');
+    if (video.readyState < video.HAVE_ENOUGH_DATA) return;
+    let text = null;
+    if (envDetector) {
+        try {
+            const codes = await envDetector.detect(video);
+            if (codes.length) text = codes[0].rawValue;
+        } catch (e) {}
+    }
+    if (!text && envZxing) {
+        envCanvas.width = video.videoWidth;
+        envCanvas.height = video.videoHeight;
+        envCanvas.getContext('2d', { willReadFrequently: true }).drawImage(video, 0, 0);
+        try {
+            const source = new ZXing.HTMLCanvasElementLuminanceSource(envCanvas);
+            text = envZxing.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(source))).getText();
+        } catch (e) {}   // không thấy mã → ZXing ném NotFoundException
+    }
+    if (!text) {
+        const vw = video.videoWidth, vh = video.videoHeight;
+        const crop = (envFrame++ % 2) ? 0.6 : 1;
+        const sw = Math.round(vw * crop), sh = Math.round(vh * crop);
+        const scale = Math.min(1, 960 / sw);
+        envCanvas.width = Math.round(sw * scale);
+        envCanvas.height = Math.round(sh * scale);
+        const ctx = envCanvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, envCanvas.width, envCanvas.height);
+        const img = ctx.getImageData(0, 0, envCanvas.width, envCanvas.height);
+        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+        if (code && code.data) text = code.data;
+    }
+    if (text) applyEnvelopeQr(text);
+}
+
+function applyEnvelopeQr(text) {
+    const data = parseEnvelopeCode(text, document.getElementById('ngay_nhan').value);
+    const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+    if (!data) {
+        setEnvStatus(`<i class="bi bi-exclamation-triangle"></i> Mã vừa quét không phải mã bì thư (EMB...): <code>${esc(text)}</code>`, 'text-danger');
+        return;
+    }
+    if (data.code === envLastCode) return;   // bì thư vừa quét vẫn còn trong khung hình
+    envLastCode = data.code;
     document.getElementById('ma_bithu').value = data.code;
     fillFromEnvelopeCode();
-    document.getElementById('cccdQrManualInput').value = '';
-
-    document.getElementById('cccdQrSuccessName').textContent = data.code;
-    document.getElementById('cccdQrSuccess').classList.replace('d-none', 'd-flex');
     beepCccdQr();
-    setTimeout(() => {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('cccdQrModal'));
-        if (modal) modal.hide();
-        document.getElementById('nguoi_nhan').focus();
-    }, 1000);
-    return true;
+    document.getElementById('envSuccessCode').textContent = data.code;
+    const ok = document.getElementById('envSuccess');
+    ok.classList.replace('d-none', 'd-flex');
+    setTimeout(() => ok.classList.replace('d-flex', 'd-none'), 800);
+    setEnvStatus(`<i class="bi bi-check-circle"></i> Đã quét <strong>${esc(data.code)}</strong> — kiểm tra rồi bấm <strong>Lưu thông tin</strong>, sau đó đưa bì thư tiếp theo vào.`, 'text-success');
 }
 
 document.getElementById('mailEnvelopeForm').addEventListener('submit', async function(e) {
