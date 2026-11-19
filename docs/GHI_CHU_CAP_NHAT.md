@@ -6,6 +6,15 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 ## Bản tiếp theo
 
 ### Chỉnh sửa
+- **Nhận bì thư – mã có số thứ tự 4 chữ số** (vd. `EMBND041172021302` = Thẻ ghi nợ nội địa, 04/11, CN 7202): trước đây quét được nhưng báo "không phải mã bì thư"; nay nhận đúng. Mã đọc được nhiều cách (có / không có số 0 thừa ở đầu) thì chọn ngày phát hành gần ngày nhận nhất.
+- **KH 360 – bảng chi tiết khách hàng:** trên một số máy dùng Google Chrome bản cũ, bảng chi tiết chỉ hiện một khung hẹp giữa màn hình (màn 1280×768…); nay bung đủ rộng như các máy khác.
+
+### File
+- Sửa: `templates_app/templates/templates_app/reports/mail_envelope_tracking.html`, `kh360/templates/kh360/_assets.html`
+
+## 2026.11.10 — 10/11/2026
+
+### Chỉnh sửa
 - **Nhận bì thư – quét bằng camera:** nút **Bật camera** mở khung camera ngay trên trang và quét liên tục (bật 1 lần, quét lần lượt từng bì thư), thay cho cửa sổ quét QR căn cước. Đọc được **mã vạch** (Code 128) trên bì thư — to và rõ hơn QR nên camera để xa / camera tài liệu (USB Camera) vẫn đọc được — và vẫn đọc QR như trước. Có ô chọn camera khi máy gắn nhiều camera.
 - **Nhận bì thư:** ô **Người nhận** mặc định là tài khoản (username) đang đăng nhập; vẫn chọn / sửa sang người khác được.
 

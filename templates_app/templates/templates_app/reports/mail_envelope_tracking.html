@@ -134,27 +134,36 @@ const CARD_TYPE_LABELS = {
     SMF: 'Phát hành từ Smartform', EMB: 'Phát hành trên Emobile',
 };
 
-// Mã bì thư: EMB + [loại thẻ] + DDMM + chi nhánh (4 số) + 3 số cuối, vd. EMBDB05117202200.
+// Mã bì thư: EMB + [loại thẻ] + DDMM + chi nhánh (4 số) + số thứ tự (3–4 số), vd. EMBDB05117202200.
 // Không có loại thẻ (EMB026107202508) = phát hành trên Emobile.
-// Một số bì thư có thêm số 0 ở đầu phần số (EMBSMF015107202294 = 15/10) → lấy 11 số cuối, phần trước phải toàn số 0.
+// Một số bì thư có thêm số 0 ở đầu phần số (EMBSMF015107202294 = 15/10).
 // Năm không có trong mã → lấy năm của ngày nhận, nếu ra ngày sau ngày nhận thì lùi 1 năm.
+// Số thứ tự cuối có thể 3 hoặc 4 số (EMBND041172021302 = 04/11, CN 7202, số 1302) nên phần số có thể hiểu nhiều cách
+// (có / không có số 0 thừa ở đầu) → thử từng cách, bỏ ngày không hợp lệ, chọn ngày phát hành gần ngày nhận nhất.
 function parseEnvelopeCode(text, receiveDate) {
-    const m = String(text).trim().toUpperCase().match(/^EMB(DB|ND|PHL|SMF)?(0*)(\d{2})(\d{2})(\d{4})(\d{3})$/);
+    const m = String(text).trim().toUpperCase().match(/^EMB(DB|ND|PHL|SMF)?(\d{11,})$/);
     if (!m) return null;
-    const [, type, , dd, mm, branch] = m;
-    const day = +dd, month = +mm;
-    if (day < 1 || day > 31 || month < 1 || month > 12) return null;
-
+    const [code, type, digits] = m;
     const recv = receiveDate ? new Date(receiveDate + 'T00:00:00') : new Date();
-    let year = recv.getFullYear();
-    if (new Date(year, month - 1, day) > recv) year--;
     const pad = n => String(n).padStart(2, '0');
-    return {
-        code: m[0],
-        loai_the: type || 'EMB',
-        ngay_phat_hanh: `${year}-${pad(month)}-${pad(day)}`,
-        chi_nhanh: branch,
-    };
+
+    let best = null;
+    for (let z = 0; z === 0 || digits[z - 1] === '0'; z++) {   // z = số chữ số 0 thừa ở đầu
+        const rest = digits.slice(z);
+        if (rest.length < 11) break;                             // DDMM + chi nhánh 4 số + số thứ tự ≥ 3 số
+        const day = +rest.slice(0, 2), month = +rest.slice(2, 4);
+        if (month < 1 || month > 12 || day < 1) continue;
+        let year = recv.getFullYear();
+        if (new Date(year, month - 1, day) > recv) year--;
+        const issued = new Date(year, month - 1, day);
+        if (issued.getDate() !== day) continue;                  // ngày không có thật (31/11, 30/02...)
+        const gap = recv - issued;
+        if (!best || gap < best.gap) {
+            best = { gap, ngay_phat_hanh: `${year}-${pad(month)}-${pad(day)}`, chi_nhanh: rest.slice(4, 8) };
+        }
+    }
+    if (!best) return null;
+    return { code, loai_the: type || 'EMB', ngay_phat_hanh: best.ngay_phat_hanh, chi_nhanh: best.chi_nhanh };
 }
 
 // Điền loại thẻ / ngày phát hành / chi nhánh từ mã bì thư; trả về kết quả parse hoặc null

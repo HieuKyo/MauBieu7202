@@ -3,7 +3,8 @@
     .modal-backdrop.show { opacity: 1 !important; background-color: rgba(25, 25, 25, .35) !important;
                            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
     .kh360-modal .modal-content { border: 0; border-radius: 1.25rem; box-shadow: 0 1.5rem 4rem rgba(0,0,0,.25); }
-    @media (min-width: 768px) { .kh360-modal .modal-dialog { max-width: min(1180px, calc(100vw - 2rem)); } }
+    /* Không dùng min(): Chrome cũ (< 79) bỏ qua cả dòng → bảng nổi co về 500px giữa màn hình */
+    @media (min-width: 768px) { .kh360-modal .modal-dialog { width: calc(100% - 2rem); max-width: 1180px; } }
     .kh360-hs { --agri: #AE1C3F; min-width: 0; }
     /* Lớp bọc nội dung phải là flex để phần thân bảng nổi cuộn được trên màn thấp (1600x900, 1366x768) */
     .kh360-modal .kh360-hs { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
