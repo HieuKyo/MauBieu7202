@@ -20,6 +20,8 @@
                     <li>Ví dụ <code>EMBDB05117202200</code>: <code>EMB</code> là ký hiệu, <code>DB</code> là loại thẻ, <code>0511</code> là ngày 05/11, <code>7202</code> là chi nhánh gốc, 3 số cuối giữ nguyên trong mã.</li>
                     <li>Loại thẻ: <code>DB</code> Thẻ Visa · <code>ND</code> Thẻ ghi nợ nội địa · <code>PHL</code> Phát hành lại khác chi nhánh · <code>SMF</code> Phát hành từ Smartform · không có ký hiệu (vd. <code>EMB026107202508</code>) là phát hành trên Emobile.</li>
                     <li>Một số bì thư có thêm số 0 trước ngày (vd. <code>EMBSMF015107202294</code> là ngày 15/10): hệ thống tự hiểu đúng.</li>
+                    <li>Số thứ tự cuối có thể 4 số (vd. <code>EMBND041172021302</code> = ngày 04/11, số 1302). Một số bì thư ghi khoảng ngày thay cho ngày/tháng (vd. <code>EMBND013157202107</code> = từ ngày 13 đến 15): Ngày phát hành điền ngày đầu (13), tháng lấy theo Ngày nhận.</li>
+                    <li>Mã không tách được ngày thì vẫn nhận mã và loại thẻ; tự nhập Ngày phát hành, Chi nhánh.</li>
                     <li>Mã không có năm: hệ thống lấy năm của Ngày nhận; nếu ra ngày sau ngày nhận thì tính là năm trước (vd. nhận 09/11/2026, mã ghi 20/12 → 20/12/2025).</li>
                     <li>Dưới ô Mã bì thư hiện chữ xanh là đã đọc được mã. Chữ vàng "Mã không đúng cú pháp" thì tự chọn Loại thẻ, Ngày phát hành, CN gốc. Các ô tự điền đều sửa được.</li>
                 </ul>

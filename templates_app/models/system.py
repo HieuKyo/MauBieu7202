@@ -514,3 +514,19 @@ class Promotion(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class MenuAccessLog(models.Model):
+    """Một lượt mở trang (menu) của người dùng — ghi bởi MenuAccessLogMiddleware, xem ở trang Thống kê truy cập."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='menu_access_logs', verbose_name="Người dùng")
+    view_name = models.CharField(max_length=150, verbose_name="Tên trang")
+    path = models.CharField(max_length=255, verbose_name="Đường dẫn")
+    accessed_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Thời điểm")
+
+    class Meta:
+        verbose_name = "Lượt truy cập menu"
+        verbose_name_plural = "Lượt truy cập menu"
+        ordering = ['-accessed_at']
+
+    def __str__(self):
+        return f"{self.user} - {self.view_name} - {self.accessed_at:%d/%m/%Y %H:%M}"

@@ -9,7 +9,7 @@ from .template import Category, Variable, Template, TemplateVariable
 # Khách hàng, doanh nghiệp
 from .customer import Customer, Business
 # Hệ thống: cấu hình, hồ sơ người dùng, tin tức
-from .system import GlobalConfig, BranchConfig, AppProgram, UserProfile, Promotion
+from .system import GlobalConfig, BranchConfig, AppProgram, UserProfile, Promotion, MenuAccessLog
 # Số đẹp
 from .beautiful_number import DetailedFeeTier, OnRequestFeeTier, BeautifulNumber
 # E-Learning

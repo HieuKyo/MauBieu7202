@@ -74,6 +74,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "templates_app.middleware.MenuAccessLogMiddleware",  # Thống kê truy cập menu
 ]
 
 ROOT_URLCONF = "wordgen.urls"

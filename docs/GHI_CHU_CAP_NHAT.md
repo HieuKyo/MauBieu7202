@@ -5,6 +5,23 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 
 ## Bản tiếp theo
 
+### Chức năng mới
+- **Thống kê truy cập menu** (chỉ Superuser, menu **Tiện ích → Thống kê truy cập**): xem số lượt mở từng menu theo **ngày / tuần / tháng** (chọn số kỳ gần nhất), số người dùng và lần mở cuối của từng menu; bảng theo từng người dùng, lọc xem riêng 1 người. Mặc định chỉ hiện các mục có trên menu; bỏ chọn để xem cả trang con. Lượt truy cập tự xóa sau 400 ngày.
+
+### Lưu ý
+- Có migration `templates_app/0096_menu_access_log` (tạo bảng lượt truy cập). Thống kê bắt đầu đếm từ lúc cập nhật, không có số liệu của trước đó.
+
+### Chỉnh sửa
+- **Nhận bì thư – mã ghi khoảng ngày** (vd. `EMBND013157202107` = Thẻ ghi nợ nội địa, phát hành từ ngày 13 đến 15, CN 7202): trước đây báo "không phải mã bì thư"; nay nhận được, ô Ngày phát hành điền ngày đầu của khoảng (13), dòng gợi ý dưới ô mã ghi rõ "từ 13 đến 15/MM".
+- Mã bì thư dạng EMB… mà không tách được ngày / chi nhánh thì không còn bị từ chối: vẫn điền mã và loại thẻ, báo để người nhận tự nhập ngày phát hành, chi nhánh.
+
+### File
+- Sửa: `templates_app/templates/templates_app/reports/mail_envelope_tracking.html`, `templates_app/templates/templates_app/reports/_mail_envelope_huong_dan.html`
+- Thêm: `templates_app/middleware.py`, `templates_app/access_log_views.py`, `templates_app/templates/templates_app/access_stats.html`, `templates_app/migrations/0096_menu_access_log.py`, `templates_app/test_access_log.py`
+- Sửa: `templates_app/models/system.py`, `templates_app/models/__init__.py`, `templates_app/urls.py`, `templates_app/templates/templates_app/base.html`, `wordgen/settings.py`
+
+## 2026.11.19 — 19/11/2026
+
 ### Chỉnh sửa
 - **Nhận bì thư – mã có số thứ tự 4 chữ số** (vd. `EMBND041172021302` = Thẻ ghi nợ nội địa, 04/11, CN 7202): trước đây quét được nhưng báo "không phải mã bì thư"; nay nhận đúng. Mã đọc được nhiều cách (có / không có số 0 thừa ở đầu) thì chọn ngày phát hành gần ngày nhận nhất.
 - **KH 360 – bảng chi tiết khách hàng:** trên một số máy dùng Google Chrome bản cũ, bảng chi tiết chỉ hiện một khung hẹp giữa màn hình (màn 1280×768…); nay bung đủ rộng như các máy khác.

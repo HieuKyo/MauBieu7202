@@ -224,6 +224,9 @@
                                 <li><a class="dropdown-item" href="{% url 'branch_config' %}">
                                     <i class="bi bi-gear"></i> Cấu hình hệ thống
                                 </a></li>
+                                <li><a class="dropdown-item" href="{% url 'access_stats' %}">
+                                    <i class="bi bi-bar-chart-steps"></i> Thống kê truy cập
+                                </a></li>
                                 {% endif %}
                                 <li><a class="dropdown-item" href="{% url 'ghi_chu_cap_nhat' %}">
                                     <i class="bi bi-journal-text"></i> Ghi chú cập nhật
@@ -550,6 +553,7 @@
             EXTRA_FEATURES.forEach(function (f) { add(f[0], f[1], f[2]); });
             return list;
         }
+        window.collectMenuFeatures = collectFeatures;   // trang Thống kê truy cập dùng để hiện tên menu
 
         function render() {
             const words = norm(input.value).split(' ').filter(Boolean);

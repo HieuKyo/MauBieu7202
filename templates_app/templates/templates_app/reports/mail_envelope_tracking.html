@@ -134,36 +134,54 @@ const CARD_TYPE_LABELS = {
     SMF: 'Phát hành từ Smartform', EMB: 'Phát hành trên Emobile',
 };
 
-// Mã bì thư: EMB + [loại thẻ] + DDMM + chi nhánh (4 số) + số thứ tự (3–4 số), vd. EMBDB05117202200.
-// Không có loại thẻ (EMB026107202508) = phát hành trên Emobile.
-// Một số bì thư có thêm số 0 ở đầu phần số (EMBSMF015107202294 = 15/10).
-// Năm không có trong mã → lấy năm của ngày nhận, nếu ra ngày sau ngày nhận thì lùi 1 năm.
-// Số thứ tự cuối có thể 3 hoặc 4 số (EMBND041172021302 = 04/11, CN 7202, số 1302) nên phần số có thể hiểu nhiều cách
-// (có / không có số 0 thừa ở đầu) → thử từng cách, bỏ ngày không hợp lệ, chọn ngày phát hành gần ngày nhận nhất.
+// Mã bì thư: EMB + [loại thẻ] + [số 0 thừa] + 4 số ngày + chi nhánh (4 số) + số thứ tự (thường 3, có khi 4 số).
+// 4 số ngày là DDMM (EMBDB05117202200 = 05/11) hoặc, khi không ra tháng hợp lệ, khoảng ngày DD–DD
+// trong tháng (EMBND013157202107 = ngày 13 đến 15). Không có loại thẻ (EMB026107202508) = phát hành trên Emobile.
+// Năm / tháng không có trong mã → suy từ ngày nhận (không được sau ngày nhận).
+// Phần số tách được nhiều cách → ưu tiên số thứ tự 3 số, rồi DDMM hơn khoảng ngày, rồi ngày gần ngày nhận nhất.
+// Mã EMB... toàn số mà không tách được ngày thì vẫn nhận mã + loại thẻ, để người dùng tự nhập ngày.
 function parseEnvelopeCode(text, receiveDate) {
     const m = String(text).trim().toUpperCase().match(/^EMB(DB|ND|PHL|SMF)?(\d{11,})$/);
     if (!m) return null;
     const [code, type, digits] = m;
     const recv = receiveDate ? new Date(receiveDate + 'T00:00:00') : new Date();
     const pad = n => String(n).padStart(2, '0');
+    const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const lastBefore = (day, month) => {          // ngày day/month gần nhất không sau ngày nhận (month: 1–12, hoặc null = tháng bất kỳ)
+        for (let back = 0; back < 13; back++) {
+            const d = new Date(recv.getFullYear(), recv.getMonth() - back, day);
+            if (d.getDate() !== day) continue;     // tháng không có ngày này
+            if (month && d.getMonth() + 1 !== month) continue;
+            if (d <= recv) return d;
+        }
+        return null;
+    };
 
+    const truocKey = (x, y) => { const i = x.findIndex((v, k) => v !== y[k]); return i >= 0 && x[i] < y[i]; };
     let best = null;
-    for (let z = 0; z === 0 || digits[z - 1] === '0'; z++) {   // z = số chữ số 0 thừa ở đầu
-        const rest = digits.slice(z);
-        if (rest.length < 11) break;                             // DDMM + chi nhánh 4 số + số thứ tự ≥ 3 số
-        const day = +rest.slice(0, 2), month = +rest.slice(2, 4);
-        if (month < 1 || month > 12 || day < 1) continue;
-        let year = recv.getFullYear();
-        if (new Date(year, month - 1, day) > recv) year--;
-        const issued = new Date(year, month - 1, day);
-        if (issued.getDate() !== day) continue;                  // ngày không có thật (31/11, 30/02...)
-        const gap = recv - issued;
-        if (!best || gap < best.gap) {
-            best = { gap, ngay_phat_hanh: `${year}-${pad(month)}-${pad(day)}`, chi_nhanh: rest.slice(4, 8) };
+    for (const s of [3, 4]) {                                       // số chữ số của số thứ tự
+        for (let z = 0; z === 0 || digits[z - 1] === '0'; z++) {    // z = số 0 thừa ở đầu
+            const rest = digits.slice(z, digits.length - s);
+            if (rest.length !== 8) continue;                         // 4 số ngày + 4 số chi nhánh
+            const a = +rest.slice(0, 2), b = +rest.slice(2, 4), chi_nhanh = rest.slice(4, 8);
+            let cand = null;
+            const date = b >= 1 && b <= 12 && a >= 1 ? lastBefore(a, b) : null;
+            if (date) cand = { rank: 0, ngay_phat_hanh: iso(date), mo_ta: `phát hành ${pad(a)}/${pad(b)}` };
+            else if (a >= 1 && a <= b && b <= 31) {
+                const end = lastBefore(b, null);
+                if (end) {
+                    const start = new Date(end.getFullYear(), end.getMonth(), a);
+                    cand = { rank: 1, ngay_phat_hanh: iso(start), mo_ta: `phát hành từ ${pad(a)} đến ${pad(b)}/${pad(end.getMonth() + 1)}` };
+                }
+            }
+            if (!cand) continue;
+            cand.chi_nhanh = chi_nhanh;
+            cand.key = [s === 3 ? 0 : 1, cand.rank, recv - new Date(cand.ngay_phat_hanh + 'T00:00:00')];
+            if (!best || truocKey(cand.key, best.key)) best = cand;
         }
     }
-    if (!best) return null;
-    return { code, loai_the: type || 'EMB', ngay_phat_hanh: best.ngay_phat_hanh, chi_nhanh: best.chi_nhanh };
+    if (!best) return { code, loai_the: type || 'EMB', ngay_phat_hanh: '', chi_nhanh: '', mo_ta: '' };
+    return { code, loai_the: type || 'EMB', ngay_phat_hanh: best.ngay_phat_hanh, chi_nhanh: best.chi_nhanh, mo_ta: best.mo_ta };
 }
 
 // Điền loại thẻ / ngày phát hành / chi nhánh từ mã bì thư; trả về kết quả parse hoặc null
@@ -179,8 +197,13 @@ function fillFromEnvelopeCode() {
     document.getElementById('loai_the').value = data.loai_the;
     document.getElementById('ngay_phat_hanh').value = data.ngay_phat_hanh;
     document.getElementById('chi_nhanh').value = data.chi_nhanh;
+    if (!data.ngay_phat_hanh) {
+        hint.className = 'form-text text-warning';
+        hint.textContent = `${CARD_TYPE_LABELS[data.loai_the]} · không đọc được ngày phát hành / chi nhánh trong mã — vui lòng tự nhập.`;
+        return data;
+    }
     hint.className = 'form-text text-success';
-    hint.textContent = `${CARD_TYPE_LABELS[data.loai_the]} · phát hành ${data.ngay_phat_hanh.split('-').reverse().join('/')} · CN ${data.chi_nhanh}`;
+    hint.textContent = `${CARD_TYPE_LABELS[data.loai_the]} · ${data.mo_ta} · CN ${data.chi_nhanh}`;
     return data;
 }
 

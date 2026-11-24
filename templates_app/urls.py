@@ -34,6 +34,7 @@ from . import customer_cif_tools
 from . import customer_cccd_images
 from . import customer_signature
 from . import student_registration
+from . import access_log_views
 
 urlpatterns = [
     # Authentication
@@ -284,6 +285,7 @@ urlpatterns = [
     path('bia-chung-tu/in/', bia_chung_tu_views.bia_print, name='bia_chung_tu_print'),
     path('bia-chung-tu/huong-dan/', bia_chung_tu_views.bia_huong_dan, name='bia_chung_tu_huong_dan'),
     path('ghi-chu-cap-nhat/', changelog_views.ghi_chu_cap_nhat, name='ghi_chu_cap_nhat'),
+    path('thong-ke-truy-cap/', access_log_views.access_stats_view, name='access_stats'),
 
     # Permission Management
     path('permissions/', permission_views.permission_management_view, name='permission_management'),
