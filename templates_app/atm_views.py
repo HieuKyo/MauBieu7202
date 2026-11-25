@@ -18,7 +18,7 @@ from django.urls import reverse
 from .forms import ATMReplenishmentForm, ATMDiscrepancyForm
 from .models import Template, BranchConfig, remove_vietnamese_diacritics, ATM, ATMManagementBoard, ATMReplenishment, ATMDiscrepancy
 from .utils import render_word_template
-from .atm_travel_claim import ATM_TRIP_CONFIG, MAX_TRIPS_PER_SHEET, build_payment_statement_rows, build_travel_log_groups, get_position_holder
+from .atm_travel_claim import ATM_TRIP_CONFIG, MAX_TRIPS_PER_SHEET, build_payment_statement_rows, build_travel_log_groups, get_position_holder, team_leader_terms
 
 
 # ============================================================================
@@ -810,7 +810,18 @@ def _parse_travel_claim_dates(request):
     except ValueError:
         end_date = default_end
 
-    return start_date, end_date
+    # Lọc theo Trưởng ban: cắt khoảng ngày về nhiệm kỳ của Trưởng ban được chọn
+    team_leader = None
+    leader_id = request.GET.get('team_leader', '')
+    if leader_id.isdigit():
+        team_leader = ATMManagementBoard.objects.filter(pk=int(leader_id), position='team_leader').first()
+    if team_leader:
+        if team_leader.effective_from and team_leader.effective_from > start_date:
+            start_date = team_leader.effective_from
+        if team_leader.effective_to and team_leader.effective_to < end_date:
+            end_date = team_leader.effective_to
+
+    return start_date, end_date, team_leader
 
 
 @login_required
@@ -906,7 +917,7 @@ def atm_travel_claim(request):
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
-    start_date, end_date = _parse_travel_claim_dates(request)
+    start_date, end_date, team_leader = _parse_travel_claim_dates(request)
 
     rows, totals = build_payment_statement_rows(start_date, end_date)
     sheets = build_travel_log_groups(start_date, end_date)
@@ -916,9 +927,16 @@ def atm_travel_claim(request):
         key = (s['machine_id'], s['driver_name'])
         sheets_summary[key] = sheets_summary.get(key, 0) + 1
 
+    if team_leader and start_date > end_date:
+        messages.warning(request, f'Khoảng ngày đã chọn nằm ngoài nhiệm kỳ của Trưởng ban {team_leader.full_name}')
+
     context = {
         'start_date': start_date,
         'end_date': end_date,
+        'team_leader': team_leader,
+        'team_leaders': ATMManagementBoard.objects.filter(position='team_leader').order_by('-effective_from'),
+        # Nhiều nhiệm kỳ Trưởng ban trong khoảng ngày -> gợi ý xuất riêng từng nhiệm kỳ
+        'leader_terms': [] if team_leader else team_leader_terms(start_date, end_date),
         'rows': rows,
         'totals': totals,
         'sheets': sheets,
@@ -936,7 +954,7 @@ def atm_payment_statement_word(request):
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
-    start_date, end_date = _parse_travel_claim_dates(request)
+    start_date, end_date, team_leader = _parse_travel_claim_dates(request)
 
     try:
         from datetime import date as date_cls
@@ -1112,6 +1130,9 @@ def atm_payment_statement_word(request):
             content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
         filename = f"BangKeThanhToan_ATM_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.docx"
+        if team_leader:
+            leader_short = remove_vietnamese_diacritics(team_leader.full_name).replace(' ', '')
+            filename = filename.replace('.docx', f'_TB{leader_short}.docx')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
@@ -1127,7 +1148,7 @@ def atm_travel_log_word(request):
         messages.error(request, 'Bạn không có quyền truy cập trang này')
         return redirect('dashboard')
 
-    start_date, end_date = _parse_travel_claim_dates(request)
+    start_date, end_date, team_leader = _parse_travel_claim_dates(request)
 
     try:
         from docx import Document
@@ -1316,6 +1337,9 @@ def atm_travel_log_word(request):
 
         response = HttpResponse(zip_buffer.read(), content_type='application/zip')
         zip_filename = f"GiayDiDuong_ATM_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.zip"
+        if team_leader:
+            leader_short = remove_vietnamese_diacritics(team_leader.full_name).replace(' ', '')
+            zip_filename = zip_filename.replace('.zip', f'_TB{leader_short}.zip')
         response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
         return response
 

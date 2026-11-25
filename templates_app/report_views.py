@@ -305,7 +305,7 @@ def _read_excel_safe(file_obj, **kwargs):
         return pd.read_excel(wb, **kwargs)
 
 
-def _read_csv_robust(file_obj, usecols=None):
+def _read_csv_robust(file_obj, usecols=None, dtype=None):
     """
     Đọc file .csv thử qua nhiều encoding (file xuất từ IPCAS thường là Windows-1258/ANSI
     tiếng Việt, không phải UTF-8) kết hợp dấu phẩy/tab làm dấu phân cách — ưu tiên kết quả
@@ -326,7 +326,7 @@ def _read_csv_robust(file_obj, usecols=None):
             continue
         for sep in (',', '\t'):
             try:
-                df = pd.read_csv(io.StringIO(text), sep=sep)
+                df = pd.read_csv(io.StringIO(text), sep=sep, dtype=dtype)
             except pd.errors.ParserError as e:
                 last_err = e
                 continue

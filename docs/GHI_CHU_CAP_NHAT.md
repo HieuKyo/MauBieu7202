@@ -6,6 +6,26 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 ## Bản tiếp theo
 
 ### Chức năng mới
+- **So sánh HĐV theo file (theo kỳ)** (mọi người dùng, menu **Kế toán Ngân quỹ**): chọn kiểu so sánh **file DP01 / MSIT81 (file TG) / RT13**, chọn từ 2 file trở lên (.csv, .zip, .xlsx, .xls; tự sắp theo ngày trong tên file) → xem kết quả ngay trên trang và xuất Excel theo bộ lọc. So khớp theo **Mã KH + Loại tiền** (cộng số dư mọi TK của KH — tất toán rồi mở lại sổ sinh số TK mới vẫn tính đúng KH); **ngoại tệ tách riêng** từng loại tiền. Các phần:
+  - **Tổng hợp** theo loại tiền (tách Không kỳ hạn / Có kỳ hạn), số KH Mới / Tăng / Giảm / Tất toán / Không đổi; top 5 cán bộ tăng / giảm nhiều nhất.
+  - **Cán bộ huy động** (cột EMPLOYEE_NAME) và **PGD**: mỗi cán bộ / PGD tăng hay giảm bao nhiêu (có thanh so sánh), chênh lệch KKH / CKH, số KH mới / tăng / giảm / tất toán.
+  - **Loại KH** (cá nhân / tổ chức…), **Chi tiết KH** (lọc theo ngưỡng số tiền, %, trạng thái, cán bộ, PGD, loại KH, tìm mã/tên), **Cần chăm sóc** (KH tất toán / giảm, kèm số điện thoại), **Chuyển CB/PGD** (KH đổi cán bộ hoặc PGD giữa 2 kỳ).
+  - Từ 3 file trở lên: **Xu hướng** theo từng kỳ (biểu đồ tổng / KKH / CKH, số dư từng cán bộ qua các kỳ; Excel có thêm số dư từng KH qua các kỳ).
+  - Đối chiếu **Đăng ký chỉ tiêu HĐV** (khớp CCCD + loại tiền, ngày dự kiến gửi trong khoảng 2 kỳ): KH tăng có / chưa có đăng ký.
+  - Bấm Mã KH mở hồ sơ **Khách hàng 360**.
+  - Kết quả lưu tạm 24 giờ trong thư mục `tmp/` (chỉ người tải mới xem được, tự xóa), không lưu dữ liệu khách hàng vào cơ sở dữ liệu.
+
+### Chỉnh sửa
+- **ATM – Bảng kê thanh toán & Giấy đi đường: xuất theo Trưởng ban.** Có ô chọn **Trưởng ban**; chọn xong thì khoảng ngày tự điền theo nhiệm kỳ người đó (vẫn sửa được), và Bảng kê / Giấy đi đường chỉ gồm các chuyến trong nhiệm kỳ đó. Tên file có thêm tên Trưởng ban.
+- Giấy đi đường không còn gộp 2 Trưởng ban vào 1 tờ: đổi Trưởng ban (sang nhiệm kỳ mới) thì tự tách tờ mới. Nếu khoảng ngày đã chọn có từ 2 nhiệm kỳ trở lên, trang hiện cảnh báo kèm nút xem / xuất riêng cho từng nhiệm kỳ.
+
+### File
+- Thêm: `templates_app/hdv_so_sanh.py`, `templates_app/hdv_so_sanh_views.py`, `templates_app/templates/templates_app/hdv/so_sanh_file.html`, `templates_app/templates/templates_app/hdv/so_sanh_ket_qua.html`
+- Sửa: `templates_app/atm_views.py`, `templates_app/atm_travel_claim.py`, `templates_app/templates/templates_app/atm/travel_claim.html`, `templates_app/urls.py`, `templates_app/templates/templates_app/base.html`, `templates_app/report_views.py`, `.gitignore`
+
+## 2026.11.24 — 24/11/2026
+
+### Chức năng mới
 - **Thống kê truy cập menu** (chỉ Superuser, menu **Tiện ích → Thống kê truy cập**): xem số lượt mở từng menu theo **ngày / tuần / tháng** (chọn số kỳ gần nhất), số người dùng và lần mở cuối của từng menu; bảng theo từng người dùng, lọc xem riêng 1 người. Mặc định chỉ hiện các mục có trên menu; bỏ chọn để xem cả trang con. Lượt truy cập tự xóa sau 400 ngày.
 
 ### Lưu ý

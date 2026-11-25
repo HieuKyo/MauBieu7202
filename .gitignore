@@ -66,3 +66,6 @@ samples/
 
 # Log files
 logs/
+
+# Kết quả tạm (So sánh HĐV theo file, tự xóa sau 24h)
+tmp/

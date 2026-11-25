@@ -39,15 +39,26 @@
                             <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
                         </div>
                         <div class="col-auto">
+                            <label class="form-label">Trưởng ban</label>
+                            <select name="team_leader" id="team-leader-select" class="form-select">
+                                <option value="">-- Theo khoảng ngày --</option>
+                                {% for leader in team_leaders %}
+                                <option value="{{ leader.pk }}" data-from="{{ leader.effective_from|date:'Y-m-d' }}" data-to="{{ leader.effective_to|date:'Y-m-d' }}" {% if team_leader and team_leader.pk == leader.pk %}selected{% endif %}>
+                                    {{ leader.full_name }} ({{ leader.effective_from|date:"d/m/Y"|default:"?" }} - {{ leader.effective_to|date:"d/m/Y"|default:"nay" }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-auto">
                             <button type="submit" class="btn btn-outline-primary">
                                 <i class="bi bi-search"></i> Xem trước
                             </button>
                         </div>
                         <div class="col-auto ms-auto">
-                            <a href="{% url 'atm_payment_statement_word' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="btn btn-success">
+                            <a href="{% url 'atm_payment_statement_word' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% if team_leader %}&team_leader={{ team_leader.pk }}{% endif %}" class="btn btn-success">
                                 <i class="bi bi-file-earmark-word"></i> Xuất Bảng kê thanh toán (Word)
                             </a>
-                            <a href="{% url 'atm_travel_log_zip' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="btn btn-warning">
+                            <a href="{% url 'atm_travel_log_zip' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% if team_leader %}&team_leader={{ team_leader.pk }}{% endif %}" class="btn btn-warning">
                                 <i class="bi bi-file-earmark-zip"></i> Xuất Giấy đi đường (ZIP)
                             </a>
                         </div>
@@ -56,6 +67,23 @@
             </div>
         </div>
     </div>
+
+    {% if leader_terms|length > 1 %}
+    <div class="alert alert-warning">
+        <strong><i class="bi bi-exclamation-triangle"></i> Khoảng ngày này có {{ leader_terms|length }} nhiệm kỳ Trưởng ban.</strong>
+        Nên xuất Bảng kê riêng cho từng nhiệm kỳ (Giấy đi đường đã tự tách tờ theo Trưởng ban):
+        <ul class="mb-0 mt-2">
+            {% for holder, term_start, term_end in leader_terms %}
+            <li class="mb-1">
+                <strong>{{ holder.full_name }}</strong> ({{ term_start|date:"d/m/Y" }} - {{ term_end|date:"d/m/Y" }}):
+                <a href="?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&team_leader={{ holder.pk }}" class="btn btn-sm btn-outline-primary">Xem</a>
+                <a href="{% url 'atm_payment_statement_word' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&team_leader={{ holder.pk }}" class="btn btn-sm btn-success">Bảng kê (Word)</a>
+                <a href="{% url 'atm_travel_log_zip' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&team_leader={{ holder.pk }}" class="btn btn-sm btn-warning">Giấy đi đường (ZIP)</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
     <div class="row mb-4">
         <div class="col-12">
@@ -154,4 +182,15 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Chọn Trưởng ban -> tự điền khoảng ngày theo nhiệm kỳ (vẫn sửa lại được)
+document.getElementById('team-leader-select').addEventListener('change', function () {
+    var opt = this.options[this.selectedIndex];
+    if (opt.dataset.from) document.querySelector('input[name="start_date"]').value = opt.dataset.from;
+    if (opt.dataset.to) document.querySelector('input[name="end_date"]').value = opt.dataset.to;
+});
+</script>
 {% endblock %}

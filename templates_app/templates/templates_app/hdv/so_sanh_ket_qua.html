@@ -1,0 +1,357 @@
+{% extends 'templates_app/base.html' %}
+{% load static humanize %}
+
+{% block title %}Kết quả So sánh HĐV theo file{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ss-num { text-align: right; white-space: nowrap; }
+    .ss-tang { color: #198754; }
+    .ss-giam { color: #dc3545; }
+    .ss-bar { height: 8px; border-radius: 4px; min-width: 2px; }
+    .ss-table th { position: sticky; top: 0; background: #f8f9fa; z-index: 1; font-size: .85rem; vertical-align: middle; }
+    .ss-table td { font-size: .88rem; }
+    .ss-scroll { max-height: 70vh; overflow: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
+        <div>
+            <h3 class="mb-1" style="color: var(--agri-red);"><i class="bi bi-arrow-left-right"></i> So sánh HĐV theo file {{ kq.nhan_file }}</h3>
+            <div class="text-muted small">
+                Kỳ: {% for k in kq.ky %}<span class="badge bg-light text-dark border" title="{{ k.file }}">{{ k.nhan }}</span>{% if not forloop.last %} → {% endif %}{% endfor %}
+                · So sánh chi tiết <strong>{{ kq.nhan_truoc }} → {{ kq.nhan_sau }}</strong>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'hdv_so_sanh_excel' %}?{{ query }}" class="btn btn-success"><i class="bi bi-file-earmark-excel"></i> Xuất Excel (theo bộ lọc)</a>
+            <a href="{% url 'hdv_so_sanh_file' %}?loai={{ kq.loai }}" class="btn btn-outline-secondary"><i class="bi bi-upload"></i> Tải file khác</a>
+        </div>
+    </div>
+
+    <!-- Bộ lọc -->
+    <form method="get" class="card card-body py-2 mb-3">
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-0">Loại tiền</label>
+                <select name="ccy" class="form-select form-select-sm">
+                    <option value="" {% if not bl.ccy %}selected{% endif %}>Tất cả</option>
+                    {% for c in ccys %}<option value="{{ c }}" {% if bl.ccy == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                </select>
+            </div>
+            {% if co_nhom %}
+            <div class="col-auto">
+                <label class="form-label small mb-0">Tính chênh lệch theo</label>
+                <select name="theo" class="form-select form-select-sm">
+                    <option value="tong" {% if bl.theo == 'tong' %}selected{% endif %}>Tổng số dư</option>
+                    <option value="kkh" {% if bl.theo == 'kkh' %}selected{% endif %}>Không kỳ hạn</option>
+                    <option value="ckh" {% if bl.theo == 'ckh' %}selected{% endif %}>Có kỳ hạn</option>
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-auto">
+                <label class="form-label small mb-0">Chênh lệch từ (số tiền)</label>
+                <input type="text" name="nguong_tien" class="form-control form-control-sm" style="width:140px" value="{% if bl.nguong_tien %}{{ bl.nguong_tien|floatformat:0 }}{% endif %}" placeholder="vd 100000000">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Tỷ lệ từ (%)</label>
+                <input type="text" name="nguong_pct" class="form-control form-control-sm" style="width:80px" value="{% if bl.nguong_pct %}{{ bl.nguong_pct|floatformat:"-2" }}{% endif %}">
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Cán bộ huy động</label>
+                <select name="can_bo" class="form-select form-select-sm" style="max-width:200px">
+                    <option value="">Tất cả</option>
+                    {% for x in ds_can_bo %}<option value="{{ x }}" {% if bl.can_bo == x %}selected{% endif %}>{{ x }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">PGD</label>
+                <select name="pgd" class="form-select form-select-sm" style="max-width:180px">
+                    <option value="">Tất cả</option>
+                    {% for x in ds_pgd %}<option value="{{ x }}" {% if bl.pgd == x %}selected{% endif %}>{{ x }}</option>{% endfor %}
+                </select>
+            </div>
+            {% if ds_loai_kh %}
+            <div class="col-auto">
+                <label class="form-label small mb-0">Loại KH</label>
+                <select name="loai_kh" class="form-select form-select-sm" style="max-width:160px">
+                    <option value="">Tất cả</option>
+                    {% for x in ds_loai_kh %}<option value="{{ x }}" {% if bl.loai_kh == x %}selected{% endif %}>{{ x }}</option>{% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-auto">
+                <label class="form-label small mb-0">Mã / tên KH</label>
+                <input type="text" name="q" class="form-control form-control-sm" style="width:140px" value="{{ bl.q }}">
+            </div>
+            <div class="col-auto">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                        Trạng thái{% if bl.trang_thai %} ({{ bl.trang_thai|length }}){% endif %}
+                    </button>
+                    <div class="dropdown-menu p-2">
+                        {% for t in trang_thai_list %}
+                        <div class="form-check"><input class="form-check-input" type="checkbox" name="trang_thai" value="{{ t }}" id="tt{{ forloop.counter }}" {% if t in bl.trang_thai %}checked{% endif %}><label class="form-check-label" for="tt{{ forloop.counter }}">{{ t }}</label></div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% if kq.co_dk %}
+            <div class="col-auto form-check ms-1">
+                <input class="form-check-input" type="checkbox" name="chi_dk" value="1" id="chi_dk" {% if bl.chi_dk %}checked{% endif %}>
+                <label class="form-check-label small" for="chi_dk">Chỉ KH có ĐK HĐV</label>
+            </div>
+            {% endif %}
+            <div class="col-auto">
+                <button class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i> Lọc</button>
+                <a href="?tab={{ tab }}" class="btn btn-sm btn-outline-secondary">Bỏ lọc</a>
+            </div>
+        </div>
+        <div class="form-text mt-1">Ngưỡng số tiền / % áp dụng cho Chi tiết KH, Cần chăm sóc, Chuyển CB/PGD và Excel. Loại tiền áp dụng cho mọi tab.</div>
+    </form>
+
+    <ul class="nav nav-tabs mb-3">
+        {% for key, name in tabs %}
+        <li class="nav-item"><a class="nav-link {% if tab == key %}active{% endif %}" href="?tab={{ key }}&{{ query }}">{{ name }}</a></li>
+        {% endfor %}
+    </ul>
+
+    {% if tab == 'tong' %}
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered table-sm ss-table align-middle">
+            <thead><tr>
+                <th>Loại tiền</th><th>Số dư {{ kq.nhan_truoc }}</th><th>Số dư {{ kq.nhan_sau }}</th><th>Chênh lệch</th><th>Tỷ lệ</th>
+                {% if co_nhom %}<th>Chênh lệch KKH</th><th>Chênh lệch CKH</th>{% endif %}
+                <th>Số KH<br>{{ kq.nhan_truoc }}</th><th>Số KH<br>{{ kq.nhan_sau }}</th>
+                {% for t in trang_thai_list %}<th>KH {{ t }}<br><small class="fw-normal">số KH / chênh lệch</small></th>{% endfor %}
+            </tr></thead>
+            <tbody>
+            {% for r in tong %}
+            <tr {% if bl.ccy == r.ccy %}class="table-warning"{% endif %}>
+                <td><strong>{{ r.ccy }}</strong></td>
+                <td class="ss-num">{{ r.so_du_truoc|floatformat:0|intcomma }}</td>
+                <td class="ss-num">{{ r.so_du_sau|floatformat:0|intcomma }}</td>
+                <td class="ss-num fw-bold {% if r.chenh_lech > 0 %}ss-tang{% elif r.chenh_lech < 0 %}ss-giam{% endif %}">{{ r.chenh_lech|floatformat:0|intcomma }}</td>
+                <td class="ss-num">{% if r.ty_le_pct is not None %}{{ r.ty_le_pct }}%{% endif %}</td>
+                {% if co_nhom %}
+                <td class="ss-num {% if r.cl_kkh > 0 %}ss-tang{% elif r.cl_kkh < 0 %}ss-giam{% endif %}">{{ r.cl_kkh|floatformat:0|intcomma }}</td>
+                <td class="ss-num {% if r.cl_ckh > 0 %}ss-tang{% elif r.cl_ckh < 0 %}ss-giam{% endif %}">{{ r.cl_ckh|floatformat:0|intcomma }}</td>
+                {% endif %}
+                <td class="ss-num">{{ r.so_kh_truoc|intcomma }}</td>
+                <td class="ss-num">{{ r.so_kh_sau|intcomma }}</td>
+                {% for t, n, cl in r.tt %}
+                <td class="ss-num"><a href="?tab=chi_tiet&ccy={{ r.ccy }}&trang_thai={{ t|urlencode }}">{{ n|intcomma }}</a><br><small class="{% if cl > 0 %}ss-tang{% elif cl < 0 %}ss-giam{% endif %}">{{ cl|floatformat:0|intcomma }}</small></td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row g-3">
+        {% if top_tang is not None %}
+        <div class="col-lg-6">
+            <div class="card h-100"><div class="card-header ss-tang"><i class="bi bi-graph-up-arrow"></i> Cán bộ tăng nhiều nhất ({{ bl.ccy|default:"tất cả loại tiền" }})</div>
+            <ul class="list-group list-group-flush">
+                {% for r in top_tang %}<li class="list-group-item d-flex justify-content-between"><a href="?tab=chi_tiet&ccy={{ r.ccy }}&can_bo={{ r.ten|urlencode }}">{{ r.ten }}</a><span class="ss-tang fw-bold">+{{ r.chenh_lech|floatformat:0|intcomma }} {{ r.ccy }}</span></li>
+                {% empty %}<li class="list-group-item text-muted">Không có</li>{% endfor %}
+            </ul></div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100"><div class="card-header ss-giam"><i class="bi bi-graph-down-arrow"></i> Cán bộ giảm nhiều nhất ({{ bl.ccy|default:"tất cả loại tiền" }})</div>
+            <ul class="list-group list-group-flush">
+                {% for r in top_giam %}<li class="list-group-item d-flex justify-content-between"><a href="?tab=chi_tiet&ccy={{ r.ccy }}&can_bo={{ r.ten|urlencode }}">{{ r.ten }}</a><span class="ss-giam fw-bold">{{ r.chenh_lech|floatformat:0|intcomma }} {{ r.ccy }}</span></li>
+                {% empty %}<li class="list-group-item text-muted">Không có</li>{% endfor %}
+            </ul></div>
+        </div>
+        {% endif %}
+        {% if dk %}
+        <div class="col-12">
+            <div class="card"><div class="card-header"><i class="bi bi-link-45deg"></i> Đối chiếu Đăng ký chỉ tiêu HĐV (KH Mới / Tăng, {{ bl.ccy|default:"tất cả loại tiền" }})</div>
+            <div class="card-body row text-center">
+                <div class="col"><div class="fs-4 fw-bold ss-tang">{{ dk.kh_co|intcomma }}</div>KH tăng <strong>có</strong> đăng ký HĐV<br><small>tăng {{ dk.cl_co|floatformat:0|intcomma }}</small>
+                    <br><a href="?tab=chi_tiet&ccy={{ bl.ccy }}&trang_thai=M%E1%BB%9Bi&trang_thai=T%C4%83ng&chi_dk=1" class="small">Xem danh sách</a></div>
+                <div class="col"><div class="fs-4 fw-bold">{{ dk.kh_khong|intcomma }}</div>KH tăng <strong>chưa</strong> có đăng ký HĐV<br><small>tăng {{ dk.cl_khong|floatformat:0|intcomma }}</small></div>
+            </div>
+            <div class="card-footer small text-muted">Khớp theo CCCD/giấy tờ + loại tiền, đăng ký có ngày dự kiến gửi trong khoảng {{ kq.nhan_truoc }} – {{ kq.nhan_sau }}.</div>
+            </div>
+        </div>
+        {% elif not kq.co_dk %}
+        <div class="col-12"><div class="alert alert-secondary small mb-0">Không đối chiếu được Đăng ký HĐV (file không có cột CCCD hoặc tên file không có ngày dữ liệu).</div></div>
+        {% endif %}
+    </div>
+
+    {% elif tab == 'can_bo' or tab == 'pgd' %}
+    <div class="ss-scroll">
+    <table class="table table-bordered table-sm table-hover ss-table align-middle">
+        <thead><tr>
+            <th>TT</th><th>{% if tab == 'can_bo' %}Cán bộ huy động{% else %}PGD{% endif %}</th><th>Loại tiền</th>
+            <th>Số dư {{ kq.nhan_truoc }}</th><th>Số dư {{ kq.nhan_sau }}</th><th>Tăng / giảm</th><th style="width:140px"></th><th>Tỷ lệ</th>
+            {% if co_nhom %}<th>CL KKH</th><th>CL CKH</th>{% endif %}
+            <th>Số KH<br>trước</th><th>Số KH<br>sau</th><th>KH mới</th><th>KH tăng</th><th>KH giảm</th><th>KH tất toán</th>
+        </tr></thead>
+        <tbody>
+        {% for r in nhom_rows %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td><a href="?tab=chi_tiet&ccy={{ r.ccy }}&{% if tab == 'can_bo' %}can_bo{% else %}pgd{% endif %}={{ r.ten|urlencode }}">{{ r.ten }}</a></td>
+            <td>{{ r.ccy }}</td>
+            <td class="ss-num">{{ r.so_du_truoc|floatformat:0|intcomma }}</td>
+            <td class="ss-num">{{ r.so_du_sau|floatformat:0|intcomma }}</td>
+            <td class="ss-num fw-bold {% if r.chenh_lech > 0 %}ss-tang{% elif r.chenh_lech < 0 %}ss-giam{% endif %}">{% if r.chenh_lech > 0 %}+{% endif %}{{ r.chenh_lech|floatformat:0|intcomma }}</td>
+            <td><div class="ss-bar {% if r.chenh_lech >= 0 %}bg-success{% else %}bg-danger{% endif %}" style="width: {{ r.bar }}%"></div></td>
+            <td class="ss-num">{% if r.ty_le_pct is not None %}{{ r.ty_le_pct }}%{% endif %}</td>
+            {% if co_nhom %}
+            <td class="ss-num {% if r.cl_kkh > 0 %}ss-tang{% elif r.cl_kkh < 0 %}ss-giam{% endif %}">{{ r.cl_kkh|floatformat:0|intcomma }}</td>
+            <td class="ss-num {% if r.cl_ckh > 0 %}ss-tang{% elif r.cl_ckh < 0 %}ss-giam{% endif %}">{{ r.cl_ckh|floatformat:0|intcomma }}</td>
+            {% endif %}
+            <td class="ss-num">{{ r.so_kh_truoc|floatformat:0 }}</td>
+            <td class="ss-num">{{ r.so_kh_sau|floatformat:0 }}</td>
+            {% for t, n, cl in r.tt %}{% if t != 'Không đổi' %}<td class="ss-num">{{ n }}</td>{% endif %}{% endfor %}
+        </tr>
+        {% empty %}<tr><td colspan="16" class="text-center text-muted py-3">Không có dữ liệu</td></tr>
+        {% endfor %}
+        </tbody>
+        {% if nhom_rows and bl.ccy %}
+        <tfoot class="table-light fw-bold"><tr>
+            <td colspan="3" class="text-end">Tổng cộng</td>
+            <td class="ss-num">{{ nhom_tong.so_du_truoc|floatformat:0|intcomma }}</td>
+            <td class="ss-num">{{ nhom_tong.so_du_sau|floatformat:0|intcomma }}</td>
+            <td class="ss-num">{{ nhom_tong.chenh_lech|floatformat:0|intcomma }}</td><td></td><td></td>
+            {% if co_nhom %}<td class="ss-num">{{ nhom_tong.cl_kkh|floatformat:0|intcomma }}</td><td class="ss-num">{{ nhom_tong.cl_ckh|floatformat:0|intcomma }}</td>{% endif %}
+            <td colspan="6"></td>
+        </tr></tfoot>
+        {% endif %}
+    </table>
+    </div>
+    <div class="form-text">Số dư của cán bộ/PGD tính theo từng tài khoản ở mỗi kỳ. Số KH mới/tăng/giảm/tất toán: KH tính cho cán bộ/PGD hiện tại của KH (cán bộ của TK có số dư lớn nhất).</div>
+
+    {% elif tab == 'loai_kh' %}
+    <table class="table table-bordered table-sm ss-table align-middle">
+        <thead><tr><th>Loại tiền</th><th>Loại KH</th><th>Số dư {{ kq.nhan_truoc }}</th><th>Số dư {{ kq.nhan_sau }}</th><th>Chênh lệch</th><th>Tỷ lệ</th>
+            {% if co_nhom %}<th>CL KKH</th><th>CL CKH</th>{% endif %}<th>Số KH trước</th><th>Số KH sau</th><th>KH mới</th><th>KH tất toán</th></tr></thead>
+        <tbody>
+        {% for r in loai_rows %}
+        <tr>
+            <td>{{ r.ccy }}</td>
+            <td><a href="?tab=chi_tiet&ccy={{ r.ccy }}&loai_kh={{ r.loai_kh|urlencode }}">{{ r.loai_kh }}</a></td>
+            <td class="ss-num">{{ r.so_du_truoc|floatformat:0|intcomma }}</td>
+            <td class="ss-num">{{ r.so_du_sau|floatformat:0|intcomma }}</td>
+            <td class="ss-num fw-bold {% if r.chenh_lech > 0 %}ss-tang{% elif r.chenh_lech < 0 %}ss-giam{% endif %}">{{ r.chenh_lech|floatformat:0|intcomma }}</td>
+            <td class="ss-num">{% if r.ty_le_pct is not None %}{{ r.ty_le_pct }}%{% endif %}</td>
+            {% if co_nhom %}<td class="ss-num">{{ r.cl_kkh|floatformat:0|intcomma }}</td><td class="ss-num">{{ r.cl_ckh|floatformat:0|intcomma }}</td>{% endif %}
+            <td class="ss-num">{{ r.so_kh_truoc }}</td><td class="ss-num">{{ r.so_kh_sau }}</td>
+            {% for t, n, cl in r.tt %}{% if t == 'Mới' or t == 'Tất toán' %}<td class="ss-num">{{ n }}</td>{% endif %}{% endfor %}
+        </tr>
+        {% empty %}<tr><td colspan="12" class="text-center text-muted py-3">Không có dữ liệu</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% elif tab == 'chi_tiet' or tab == 'cham_soc' or tab == 'chuyen' %}
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+            <strong>{{ so_dong|intcomma }}</strong> khách hàng
+            · Tổng chênh lệch: <strong class="{% if tong_cl > 0 %}ss-tang{% elif tong_cl < 0 %}ss-giam{% endif %}">{{ tong_cl|floatformat:0|intcomma }}</strong>
+            {% if tab == 'cham_soc' %}<span class="text-muted small">— KH tất toán / giảm số dư, giảm mạnh nhất ở trên.</span>{% endif %}
+            {% if tab == 'chuyen' %}<span class="text-muted small">— KH có số dư cả 2 kỳ nhưng đổi cán bộ huy động hoặc PGD chính.</span>{% endif %}
+        </div>
+    </div>
+    <div class="ss-scroll">
+    <table class="table table-bordered table-sm table-hover ss-table align-middle">
+        <thead><tr>
+            <th>TT</th><th>Mã KH</th><th>Tên KH</th><th>Tiền</th>
+            <th>Số dư {{ kq.nhan_truoc }}</th><th>Số dư {{ kq.nhan_sau }}</th><th>Chênh lệch</th><th>Tỷ lệ</th>
+            {% if co_nhom %}<th>CL KKH</th><th>CL CKH</th>{% endif %}
+            <th>Trạng thái</th>
+            {% if tab == 'chuyen' %}<th>Cán bộ trước → sau</th><th>PGD trước → sau</th>
+            {% else %}<th>Cán bộ huy động</th><th>PGD</th>{% endif %}
+            {% if tab == 'cham_soc' and co_sdt %}<th>Điện thoại</th>{% endif %}
+            {% if tab == 'chi_tiet' %}<th>Số TK trước → sau</th>{% endif %}
+            {% if kq.co_dk and tab != 'chuyen' %}<th>ĐK HĐV</th>{% endif %}
+        </tr></thead>
+        <tbody>
+        {% for r in rows %}
+        <tr>
+            <td>{{ page.start_index|add:forloop.counter0 }}</td>
+            <td><a href="{% url 'kh360:ho_so' r.ma_kh %}" target="_blank" title="Mở hồ sơ KH 360">{{ r.ma_kh }}</a></td>
+            <td>{{ r.ten_kh }}</td>
+            <td>{{ r.ccy }}</td>
+            <td class="ss-num">{{ r.so_du_truoc|floatformat:0|intcomma }}</td>
+            <td class="ss-num">{{ r.so_du_sau|floatformat:0|intcomma }}</td>
+            <td class="ss-num fw-bold {% if r.chenh_lech > 0 %}ss-tang{% elif r.chenh_lech < 0 %}ss-giam{% endif %}">{{ r.chenh_lech|floatformat:0|intcomma }}</td>
+            <td class="ss-num">{% if r.ty_le_pct is not None %}{{ r.ty_le_pct }}%{% endif %}</td>
+            {% if co_nhom %}
+            <td class="ss-num {% if r.cl_kkh > 0 %}ss-tang{% elif r.cl_kkh < 0 %}ss-giam{% endif %}">{{ r.cl_kkh|floatformat:0|intcomma }}</td>
+            <td class="ss-num {% if r.cl_ckh > 0 %}ss-tang{% elif r.cl_ckh < 0 %}ss-giam{% endif %}">{{ r.cl_ckh|floatformat:0|intcomma }}</td>
+            {% endif %}
+            <td><span class="badge {% if r.trang_thai == 'Mới' or r.trang_thai == 'Tăng' %}bg-success{% elif r.trang_thai == 'Giảm' %}bg-warning text-dark{% elif r.trang_thai == 'Tất toán' %}bg-danger{% else %}bg-secondary{% endif %}">{{ r.trang_thai }}</span></td>
+            {% if tab == 'chuyen' %}
+            <td>{% if r.doi_can_bo %}{{ r.can_bo_truoc }} → <strong>{{ r.can_bo_sau }}</strong>{% else %}<span class="text-muted">{{ r.can_bo_sau }}</span>{% endif %}</td>
+            <td>{% if r.doi_pgd %}{{ r.pgd_truoc }} → <strong>{{ r.pgd_sau }}</strong>{% else %}<span class="text-muted">{{ r.pgd_sau }}</span>{% endif %}</td>
+            {% else %}
+            <td>{{ r.can_bo }}</td><td>{{ r.pgd }}</td>
+            {% endif %}
+            {% if tab == 'cham_soc' and co_sdt %}<td>{{ r.sdt }}</td>{% endif %}
+            {% if tab == 'chi_tiet' %}<td class="small">{{ r.so_tk_truoc|default:"—" }}<br>→ {{ r.so_tk_sau|default:"—" }}</td>{% endif %}
+            {% if kq.co_dk and tab != 'chuyen' %}<td class="small">{% if r.dk_so_tien %}{{ r.dk_so_tien|floatformat:0|intcomma }}<br><span class="text-muted">{{ r.dk_can_bo }}</span>{% endif %}</td>{% endif %}
+        </tr>
+        {% empty %}<tr><td colspan="16" class="text-center text-muted py-3">Không có khách hàng phù hợp bộ lọc</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if page.has_other_pages %}
+    <nav class="mt-2"><ul class="pagination pagination-sm">
+        {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?tab={{ tab }}&{{ query }}&page={{ page.previous_page_number }}">«</a></li>{% endif %}
+        <li class="page-item disabled"><span class="page-link">Trang {{ page.number }} / {{ page.paginator.num_pages }}</span></li>
+        {% if page.has_next %}<li class="page-item"><a class="page-link" href="?tab={{ tab }}&{{ query }}&page={{ page.next_page_number }}">»</a></li>{% endif %}
+    </ul></nav>
+    {% endif %}
+
+    {% elif tab == 'xu_huong' %}
+    <div class="card mb-3"><div class="card-body">
+        <canvas id="chartXuHuong" height="90"></canvas>
+        {% if not bl.ccy %}<div class="form-text">Đang cộng chung mọi loại tiền — chọn 1 loại tiền ở bộ lọc để xem đúng.</div>{% endif %}
+    </div></div>
+    <div class="ss-scroll">
+    <table class="table table-bordered table-sm table-hover ss-table align-middle">
+        <thead><tr><th>Cán bộ huy động</th><th>Tiền</th>{% for n in xh_nhan %}<th>{{ n }}</th>{% endfor %}<th>Chênh lệch {{ xh_nhan|first }} → {{ xh_nhan|last }}</th></tr></thead>
+        <tbody>
+        {% for r in xh_cb %}
+        <tr><td>{{ r.ten }}</td><td>{{ r.ccy }}</td>
+            {% for v in r.gia_tri %}<td class="ss-num">{{ v|floatformat:0|intcomma }}</td>{% endfor %}
+            <td class="ss-num fw-bold {% if r.chenh_lech > 0 %}ss-tang{% elif r.chenh_lech < 0 %}ss-giam{% endif %}">{{ r.chenh_lech|floatformat:0|intcomma }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="form-text">Số dư khách hàng theo từng kỳ có trong file Excel (sheet "Xu huong KH").</div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if tab == 'xu_huong' %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+    var d = {{ xh_chart|safe }};
+    var ds = [{label: 'Tổng số dư', data: d.tong, borderColor: '#9C1C2B', backgroundColor: '#9C1C2B', tension: .2}];
+    {% if co_nhom %}
+    ds.push({label: 'Không kỳ hạn', data: d.kkh, borderColor: '#0d6efd', backgroundColor: '#0d6efd', tension: .2});
+    ds.push({label: 'Có kỳ hạn', data: d.ckh, borderColor: '#198754', backgroundColor: '#198754', tension: .2});
+    {% endif %}
+    new Chart(document.getElementById('chartXuHuong'), {
+        type: 'line',
+        data: {labels: d.labels, datasets: ds},
+        options: {plugins: {tooltip: {callbacks: {label: function (c) { return c.dataset.label + ': ' + c.parsed.y.toLocaleString('vi-VN'); }}}},
+                  scales: {y: {ticks: {callback: function (v) { return v.toLocaleString('vi-VN'); }}}}}
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

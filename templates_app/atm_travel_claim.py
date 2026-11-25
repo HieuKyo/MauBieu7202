@@ -83,6 +83,11 @@ def _term_ranges_for_position(position, start_date, end_date):
     return terms
 
 
+def team_leader_terms(start_date, end_date):
+    """Các nhiệm kỳ Trưởng ban chồng lấp khoảng ngày: list (holder, term_start, term_end)."""
+    return _term_ranges_for_position('team_leader', start_date, end_date)
+
+
 def build_payment_statement_rows(start_date, end_date):
     """
     Trả về (rows, totals) cho Bảng kê thanh toán.
@@ -184,20 +189,21 @@ def build_travel_log_groups(start_date, end_date):
     """
     Trả về list "tờ" giấy đi đường, mỗi tờ tối đa MAX_TRIPS_PER_SHEET chuyến,
     gộp chung Ban quản lý ATM + tài xế của các chuyến đó vào 1 tờ.
-    Gom nhóm theo (machine_id, driver) — đổi tài xế thì tách tờ riêng.
+    Gom nhóm theo (Trưởng ban, machine_id, driver) — đổi Trưởng ban (nhiệm kỳ mới)
+    hoặc đổi tài xế thì tách tờ riêng, không gộp 2 Trưởng ban vào 1 tờ.
     Mỗi tờ: {machine_id, machine_label, driver_name, recipients: [{role, name, title}],
              trips: [...], sheet_index, sheet_count}
     """
     trips = get_counted_trips(start_date, end_date)
 
-    # (machine_id, driver_id) -> list trip
+    # (team_leader_id, machine_id, driver_id) -> list trip
     groups = {}
     for trip in trips:
-        driver_id = trip.driver_id
-        groups.setdefault((trip.atm_id, driver_id), []).append(trip)
+        leader = get_position_holder('team_leader', trip.replenishment_date)
+        groups.setdefault((leader.pk if leader else None, trip.atm_id, trip.driver_id), []).append(trip)
 
     sheets = []
-    for (machine_id, driver_id), machine_trips in groups.items():
+    for (leader_id, machine_id, driver_id), machine_trips in groups.items():
         machine_trips.sort(key=lambda t: t.replenishment_date)
         chunks = [
             machine_trips[i:i + MAX_TRIPS_PER_SHEET]
@@ -225,6 +231,8 @@ def build_travel_log_groups(start_date, end_date):
                 })
 
             sheets.append({
+                'leader_id': leader_id,
+                'first_date': chunk[0].replenishment_date,
                 'machine_id': machine_id,
                 'machine_label': ATM_TRIP_CONFIG[machine_id]['label'],
                 'driver_name': driver.full_name if driver else '',
@@ -234,5 +242,11 @@ def build_travel_log_groups(start_date, end_date):
                 'sheet_count': len(chunks),
             })
 
-    sheets.sort(key=lambda s: (s['machine_id'], s['driver_name'], s['sheet_index']))
+    # Đánh lại số tờ trong từng nhóm (machine, driver) xuyên suốt các nhiệm kỳ để tên file không trùng
+    sheets.sort(key=lambda s: (s['machine_id'], s['driver_name'], s['first_date']))
+    counters = {}
+    for s in sheets:
+        key = (s['machine_id'], s['driver_name'])
+        counters[key] = counters.get(key, 0) + 1
+        s['sheet_index'] = counters[key]
     return sheets

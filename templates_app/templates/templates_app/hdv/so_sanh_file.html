@@ -1,0 +1,86 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}So sánh Huy động vốn theo file{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-2" style="color: var(--agri-red);">
+                <i class="bi bi-arrow-left-right"></i> SO SÁNH HUY ĐỘNG VỐN THEO FILE
+            </h2>
+            <p class="text-center text-muted mb-0">So sánh số dư tiền gửi giữa các kỳ theo khách hàng, cán bộ huy động, PGD — xem trực tiếp và xuất Excel</p>
+            {% if co_ket_qua %}
+            <p class="text-center mt-2 mb-0"><a href="{% url 'hdv_so_sanh_ket_qua' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-clock-history"></i> Xem lại kết quả gần nhất</a></p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not loai %}
+    <div class="row justify-content-center g-3">
+        {% for key, item in loai_file.items %}
+        <div class="col-md-4">
+            <a href="?loai={{ key }}" class="card shadow-sm h-100 text-decoration-none">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-files fs-1" style="color: var(--agri-red);"></i>
+                    <h5 class="mt-2 mb-1 text-dark">So sánh file {{ item.nhan }}</h5>
+                    <p class="text-muted small mb-0">{{ item.mo_ta }}</p>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>So sánh file {{ cfg.nhan }}</strong>
+                    <a href="?" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Đổi kiểu so sánh</a>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="form-so-sanh">
+                        {% csrf_token %}
+                        <input type="hidden" name="loai" value="{{ loai }}">
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-files"></i> Chọn các file {{ cfg.nhan }} (2 kỳ trở lên)</label>
+                            <input type="file" class="form-control" name="files" accept=".csv,.zip,.xlsx,.xls" multiple required>
+                            <div class="form-text">Giữ Ctrl để chọn nhiều file. 2 file = so sánh 2 kỳ; từ 3 file trở lên có thêm phần <strong>Xu hướng</strong> theo từng kỳ.</div>
+                        </div>
+
+                        <div class="alert alert-info small">
+                            <i class="bi bi-info-circle"></i>
+                            <ul class="mb-0 ps-3">
+                                <li>Các kỳ tự sắp xếp theo ngày trong tên file (dạng ..._YYYYMMDD). So sánh chi tiết: <strong>kỳ đầu → kỳ cuối</strong>.</li>
+                                <li>So khớp theo <strong>Mã KH + Loại tiền</strong>: cộng số dư mọi tài khoản của KH — tất toán rồi mở lại sổ (số TK mới) vẫn tính đúng KH.</li>
+                                <li><strong>Ngoại tệ tách riêng</strong> từng loại tiền, không quy đổi. Tách <strong>Không kỳ hạn / Có kỳ hạn</strong> theo cột kỳ hạn.</li>
+                                <li>Cán bộ huy động lấy theo cột EMPLOYEE_NAME (KH nhiều TK: cán bộ của TK có số dư lớn nhất).</li>
+                                <li>Có CCCD trong file thì đối chiếu với <strong>Đăng ký chỉ tiêu HĐV</strong> có ngày dự kiến gửi trong khoảng 2 kỳ.</li>
+                                <li>Kết quả lưu tạm 24 giờ (chỉ người tải mới xem được), không lưu dữ liệu khách hàng vào hệ thống.</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="btn-so-sanh">
+                                <i class="bi bi-gear"></i> So sánh
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var f = document.getElementById('form-so-sanh');
+if (f) f.addEventListener('submit', function () {
+    var b = document.getElementById('btn-so-sanh');
+    b.disabled = true;
+    b.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý... (file lớn có thể mất 1-2 phút)';
+});
+</script>
+{% endblock %}

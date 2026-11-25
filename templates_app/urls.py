@@ -24,6 +24,7 @@ from . import report_thu_ho_views
 from . import kpi_views
 from . import td_views
 from . import hdv_reg_views
+from . import hdv_so_sanh_views
 from . import qr_reg_views
 from . import cash_drawer_views
 from . import can_doi_views
@@ -210,6 +211,9 @@ urlpatterns = [
     # Đăng ký chỉ tiêu Huy động vốn
     path('hdv/dashboard/', hdv_reg_views.hdv_dashboard_view, name='hdv_dashboard'),
     path('hdv/bao-cao/', hdv_reg_views.hdv_reports_view, name='hdv_reports'),
+    path('hdv/so-sanh-file/', hdv_so_sanh_views.hdv_so_sanh_file_view, name='hdv_so_sanh_file'),
+    path('hdv/so-sanh-file/ket-qua/', hdv_so_sanh_views.hdv_so_sanh_ket_qua_view, name='hdv_so_sanh_ket_qua'),
+    path('hdv/so-sanh-file/excel/', hdv_so_sanh_views.hdv_so_sanh_excel_view, name='hdv_so_sanh_excel'),
     path('hdv/bao-cao/export/', hdv_reg_views.hdv_reports_export_view, name='hdv_reports_export'),
     path('hdv/dang-ky/', hdv_reg_views.hdv_registration_list_view, name='hdv_registration_list'),
     path('hdv/dang-ky/in/', hdv_reg_views.hdv_registration_print_view, name='hdv_registration_print'),
