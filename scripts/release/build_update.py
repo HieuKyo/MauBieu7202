@@ -189,7 +189,13 @@ def tao_lai(version):
     versions = release_versions()
     if not version:
         print('Các bản đã phát hành gần nhất:', ', '.join(versions[-10:]))
-        version = input('Nhập phiên bản cần tạo lại (vd 2026.11.26): ').strip()
+        while True:
+            version = input('Nhập phiên bản cần tạo lại (vd 2026.11.26), bỏ trống để thoát: ').strip()
+            if not version:
+                return 0
+            if version in versions:
+                break
+            print(f'Không có bản {version} — nhập lại theo danh sách trên.')
     if version not in versions:
         print(f'\nLỖI: không có bản {version} (tag release-{version}).')
         return 1
@@ -220,8 +226,32 @@ def tao_lai(version):
     return 0
 
 
+def chon_chuc_nang():
+    """Menu khi mở tao_ban_cap_nhat.bat không kèm tham số → danh sách tham số tương ứng (None = thoát)."""
+    print('=' * 60)
+    print(' TẠO GÓI CẬP NHẬT MauBieu7202')
+    print('=' * 60)
+    print('  1. Tạo bản cập nhật MỚI NHẤT (các thay đổi từ bản trước)')
+    print('  2. Tạo LẠI bản đã phát hành trước đó (bị mất / ghi nhầm USB)')
+    print('  0. Thoát')
+    while True:
+        chon = input('Chọn chức năng (1 / 2 / 0): ').strip()
+        if chon == '1':
+            return []
+        if chon == '2':
+            return ['--lai']
+        if chon == '0':
+            return None
+        print('Chỉ nhập 1, 2 hoặc 0.')
+
+
 def main():
     args = sys.argv[1:]
+    if not args:
+        args = chon_chuc_nang()
+        if args is None:
+            return 0
+        print()
     if '--lai' in args:
         i = args.index('--lai')
         print('=' * 60)
