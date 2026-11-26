@@ -123,8 +123,10 @@ class BiaGiaoNhanTests(TestCase):
         self.client.force_login(self.hk)
         resp = self.client.get(reverse('bia_chung_tu_giao_nhan') + '?tab=tra_cuu')
         self.assertEqual(len(resp.context['bias']), 3)
-        # GDV không có tab Tạo bìa
+        # GDV có tab Tạo bìa (chỉ xem & in bìa của mình), Hậu kiểm thì không
         self.client.force_login(self.gdv)
+        self.assertContains(self.client.get(reverse('bia_chung_tu_giao_nhan')), 'Tạo bìa chứng từ')
+        self.client.force_login(self.hk)
         self.assertNotContains(self.client.get(reverse('bia_chung_tu_giao_nhan')), 'Tạo bìa chứng từ')
 
     def test_pho_phong_kiem_hau_kiem_cap_so_gdv_thay_tap(self):

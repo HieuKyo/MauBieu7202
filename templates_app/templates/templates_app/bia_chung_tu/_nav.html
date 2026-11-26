@@ -13,11 +13,15 @@
 {% if active != 'giao_nhan' %}
 <div class="d-flex flex-wrap gap-2 mb-3">
     <a href="{% url 'bia_chung_tu_list' %}" class="btn btn-sm {% if active == 'list' %}btn-danger{% else %}btn-outline-danger{% endif %}"><i class="bi bi-list-ul"></i> Danh sách</a>
+    {% if not chi_xem %}
     <a href="{% url 'bia_chung_tu_cap_so' %}" class="btn btn-sm {% if active == 'cap_so' %}btn-danger{% else %}btn-outline-danger{% endif %}"><i class="bi bi-plus-circle"></i> Cấp số theo ngày</a>
     <a href="{% url 'bia_chung_tu_import' %}" class="btn btn-sm {% if active == 'import' %}btn-danger{% else %}btn-outline-danger{% endif %}"><i class="bi bi-upload"></i> Import bìa cũ</a>
+    {% endif %}
     <a href="{% url 'bia_chung_tu_huong_dan' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-question-circle"></i> Tải hướng dẫn</a>
 </div>
-{% if not ipcas %}
+{% if chi_xem %}
+<div class="alert alert-info py-2"><i class="bi bi-info-circle"></i> Danh sách bìa chứng từ của bạn — chọn bìa để in (sửa/xoá/số tờ do Trưởng/Phó phòng KT&amp;NQ thực hiện).</div>
+{% elif not ipcas %}
 <div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle"></i> Bạn chưa khai báo <b>Tài khoản IPCAS</b> trong hồ sơ nhân viên — chưa thể import bìa cũ (QR bìa import dùng UserIPCAS của người import). Cấp số theo ngày vẫn dùng được (QR lấy UserIPCAS của GDV).</div>
 {% endif %}
 {% endif %}

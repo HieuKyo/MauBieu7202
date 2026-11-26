@@ -168,13 +168,14 @@ def doi_chieu_glcb06(ei, cb, glst30=None, cb41=None):
 
 
 CHE_DO_IMPORT = [
+    ('gom', 'Gom theo nhóm phí như Cách 1 (7202CD → Phí thường niên, 7202EI → Phí DV kiều hối, còn lại → Phí DV chuyển tiền); '
+            'lãi vay vẫn từng bút toán'),
     ('ket_hop', 'Kết hợp: tổ chức & lãi vay lập HĐ từng bút toán, cá nhân gom theo nhóm phí'),
     ('chi_tiet', 'Lập HĐ từng bút toán (tất cả)'),
-    ('gom', 'Gom theo nhóm phí (như cách cũ), lãi vay vẫn từng bút toán'),
 ]
 
 
-def lap_dong_import_glcb06(kq, ngay, gio, ty_gia=None, che_do='ket_hop', tra_kh=None, cau_hinh=None):
+def lap_dong_import_glcb06(kq, ngay, gio, ty_gia=None, che_do='gom', tra_kh=None, cau_hinh=None):
     """Bút toán chưa có HĐ → dòng file import. tra_kh(cif) → dict KH (Khách hàng 360) hoặc None.
     → (dòng, cảnh báo)."""
     from . import hddt_doi_chieu as hd
@@ -190,6 +191,28 @@ def lap_dong_import_glcb06(kq, ngay, gio, ty_gia=None, che_do='ket_hop', tra_kh=
         if cif not in cache:
             cache[cif] = tra_kh(cif) if (tra_kh and cif) else None
         return cache[cif]
+
+    # Bỏ món âm (bút toán đảo/hoàn phí) và món dương bị đảo tương ứng (cùng user, CIF, loại tiền, TK, số tiền)
+    so_tien = (can['cramt'] - can['dramt']).round(2)
+    khoa_dao = list(zip(can['user'], can['cust'], can['ccy'], can['tk'], so_tien.abs()))
+    cho_dao = {}
+    for k, st in zip(khoa_dao, so_tien):
+        if st < 0:
+            cho_dao[k] = cho_dao.get(k, 0) + 1
+    giu, so_am, so_bi_dao = [], 0, 0
+    for k, st in zip(khoa_dao, so_tien):
+        if st < 0:
+            giu.append(False); so_am += 1
+        elif st > 0 and cho_dao.get(k):
+            cho_dao[k] -= 1
+            giu.append(False); so_bi_dao += 1
+        else:
+            giu.append(st > 0)
+    can = can[giu]
+    if so_am:
+        canh_bao.append(f'Đã bỏ {so_am} món âm (đảo/hoàn phí)'
+                        + (f' và {so_bi_dao} món dương bị đảo tương ứng' if so_bi_dao else '')
+                        + ' khỏi file import — xem tab Bút toán nếu cần kiểm tra.')
 
     for r in can.itertuples(index=False):
         lai_vay = r.tk != TK_VAT             # thu không chịu thuế (702… lãi vay, thu khác)
@@ -207,13 +230,17 @@ def lap_dong_import_glcb06(kq, ngay, gio, ty_gia=None, che_do='ket_hop', tra_kh=
             if not tg:
                 thieu_ty_gia.add(r.ccy)
                 continue
+        # Ngoại tệ: số tiền ghi theo giá trị đã quy đổi = nguyên tệ × tỷ giá (cột Tiền tệ/Tỷ giá giữ nguyên)
         if lai_vay:
-            u, v = (r.don_gia_vnd if not ngoai_te else r.cramt - r.dramt) or 0, 0
+            u, v = (r.don_gia_vnd if not ngoai_te else round((r.cramt - r.dramt) * tg)) or 0, 0
+        elif ngoai_te:
+            v = round(r.vat_nt * tg)
+            u = round(r.vat_nt * 10 * tg)
         else:
-            v = r.vat_nt if ngoai_te else r.vat_vnd
-            if r.don_gia_vnd is None or ngoai_te:
+            v = r.vat_vnd
+            if r.don_gia_vnd is None:
                 u = round(v * 10, 2)
-                nhap_dg += 1 if not ngoai_te else 0
+                nhap_dg += 1
             else:
                 u = r.don_gia_vnd
         kh = kh_cua(r.cust)

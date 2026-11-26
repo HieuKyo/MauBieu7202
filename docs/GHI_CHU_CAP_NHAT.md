@@ -5,6 +5,18 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 
 ## Bản tiếp theo
 
+### Chỉnh sửa
+- **Đối chiếu Hóa đơn điện tử – file import:**
+  - Dòng ngoại tệ ghi **số tiền đã quy đổi** (nguyên tệ × tỷ giá nhập); cột Tiền tệ / Tỷ giá giữ nguyên loại tiền và tỷ giá. Cách 1: dòng Phí DV kiều hối ghi số VND từ IPCAS (không chia tỷ giá nữa).
+  - **Bỏ các món âm** khỏi file import. Cách 2: bỏ bút toán âm (đảo/hoàn phí) cùng bút toán dương bị đảo tương ứng (cùng user, CIF, loại tiền, TK, số tiền), trang báo số món đã bỏ; Cách 1: bỏ HĐ riêng có số tiền ≤ 0 và dòng kiều hối âm.
+  - Cách 2: mặc định **gom theo nhóm phí như Cách 1** (7202CD → Phí thường niên, 7202EI → Phí DV kiều hối, còn lại → Phí DV chuyển tiền); lãi vay vẫn lập từng bút toán. Chế độ "Kết hợp" và "Từng bút toán" vẫn chọn được.
+- **Chứng từ → Tạo bìa chứng từ:** GDV phòng KT&NQ vào được danh sách bìa **của chính mình** để chọn và in PDF; không sửa, xoá, cấp số, nhập số tờ (vẫn do Trưởng/Phó phòng KT&NQ làm).
+
+### File
+- Sửa: `templates_app/hddt_doi_chieu.py`, `templates_app/hddt_glcb06.py`, `templates_app/hddt_views.py`, `templates_app/test_hddt.py`, `templates_app/bia_chung_tu_views.py`, `templates_app/bia_giao_nhan_views.py`, `templates_app/test_bia_chung_tu.py`, `templates_app/test_bia_giao_nhan.py`, `templates_app/templates/templates_app/bia_chung_tu/` (list.html, _nav.html)
+
+## 2026.11.26.3 — 26/11/2026
+
 ### Chức năng mới
 - **Kế toán Ngân quỹ → Đối chiếu Hóa đơn điện tử** (phòng KT&NQ, Hậu kiểm, Superuser) — thay cho file macro "DOI CHIEU HDDT.xlsm":
   - Tải file **Einvoice** (xuất từ website / BKCT) và **IPCAS** (GLST30 – Day, SOLD), tên file theo ngày **DDMM** như trước; chọn nhiều ngày cùng lúc để đối chiếu theo lô (ghép cặp theo tên file).

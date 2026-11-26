@@ -384,13 +384,20 @@ def lap_dong_import(kq, gio, ty_gia_kh=None, rieng=(), cau_hinh=None, bo_user=No
             canh_bao.append('Có phí kiều hối (7202EI) — nhập tỷ giá quy đổi USD để đưa vào file import.')
         else:
             ten_hang, nd, ts = NHOM_IMPORT['kieu_hoi']
-            u = round(gom['kieu_hoi_tramt'] / ty_gia_kh, 2)
-            v = round((gom['kieu_hoi_amt'] or gom['kieu_hoi']) / ty_gia_kh, 2)
-            chinh.append(dong_import(len(chinh) + 1, gio, ngay, ten_hang, nd, ts, u, v, kh_chung, 'USD', ty_gia_kh))
+            # Số tiền ghi theo giá trị đã quy đổi VND (IPCAS đã là VND), cột Tiền tệ/Tỷ giá giữ USD + tỷ giá nhập
+            u = round(gom['kieu_hoi_tramt'])
+            v = round(gom['kieu_hoi_amt'] or gom['kieu_hoi'])
+            if v < 0 or u < 0:
+                canh_bao.append(f'{ten_hang}: tổng âm ({v:,}) — không đưa vào file import, kiểm tra lại.')
+            else:
+                chinh.append(dong_import(len(chinh) + 1, gio, ngay, ten_hang, nd, ts, u, v, kh_chung, 'USD', ty_gia_kh))
     rieng_files = {}
     for hd in rieng:
         ten_hang, nd, ts = HANG_RIENG[hd['loai']]
         u = round(hd['so_tien'])
+        if u <= 0:
+            canh_bao.append(f'HĐ riêng {hd["ten_kh"] or ""}: số tiền ≤ 0 — không đưa vào file import.')
+            continue
         v = round(u * ts / 100) if ts > 0 else 0
         kh = {**kh_chung, 'cif': hd['cif'] or kh_chung['cif'], 'ten_kh': hd['ten_kh'], 'mst': hd['mst'],
               'dia_chi': hd['dia_chi'], 'so_tk': hd['so_tk'], 'loai_kh': hd['loai_kh'] or 'C'}

@@ -100,11 +100,36 @@ class BiaChungTuTests(TestCase):
         self.assertEqual(resp.context['so_bat_dau'], '')  # không điền sẵn, chỉ gợi ý
         self.assertEqual(resp.context['so_goi_y'], 1)
 
-    def test_gdv_khong_duoc_vao(self):
-        # GDV không tạo bìa: vào "Chứng từ" thì sang tab Giao/Nhận, các trang tạo bìa vẫn bị chặn
-        self.client.force_login(self.gdvs[0])
-        self.assertRedirects(self.client.get(reverse('bia_chung_tu_list')), reverse('bia_chung_tu_giao_nhan'), fetch_redirect_response=False)
+    def test_gdv_chi_xem_va_in_bia_cua_minh(self):
+        a, b = self.gdvs[:2]
+        self._cap_so(date(2026, 10, 26), 30, {a: 1, b: 1})
+        bia_a, bia_b = BiaChungTu.objects.get(gdv=a), BiaChungTu.objects.get(gdv=b)
+        self.client.force_login(a)
+        resp = self.client.get(reverse('bia_chung_tu_list'))
+        self.assertEqual([x.pk for x in resp.context['page_obj']], [bia_a.pk])     # chỉ bìa của mình
+        self.assertNotContains(resp, reverse('bia_chung_tu_edit', args=[bia_a.pk]))
+        self.assertNotContains(resp, reverse('bia_chung_tu_delete', args=[bia_a.pk]))
+        self.assertNotContains(resp, reverse('bia_chung_tu_cap_so'))
+        # In được bìa của mình, không đổi được số tờ; bìa GDV khác không in được
+        resp = self.client.post(reverse('bia_chung_tu_print'), {'ids': [bia_a.pk], f'so_to_{bia_a.pk}': '9'})
+        self.assertEqual(resp['Content-Type'], 'application/pdf')
+        bia_a.refresh_from_db()
+        self.assertNotEqual(bia_a.so_to, 9)
+        self.assertIsNotNone(bia_a.ngay_in)
+        self.assertRedirects(self.client.get(reverse('bia_chung_tu_print') + f'?id={bia_b.pk}'),
+                             reverse('bia_chung_tu_list'), fetch_redirect_response=False)
+        # Sửa / xoá / cấp số vẫn bị chặn
         self.assertRedirects(self.client.get(reverse('bia_chung_tu_cap_so')), reverse('dashboard'), fetch_redirect_response=False)
+        self.client.post(reverse('bia_chung_tu_delete', args=[bia_a.pk]))
+        self.assertTrue(BiaChungTu.objects.filter(pk=bia_a.pk).exists())
+        self.client.post(reverse('bia_chung_tu_save_so_to'), {f'so_to_{bia_a.pk}': '9'})
+        bia_a.refresh_from_db()
+        self.assertNotEqual(bia_a.so_to, 9)
+
+    def test_ngoai_gdv_ktnq_khong_vao_tao_bia(self):
+        # KSV/Hậu kiểm… không tạo bìa: vào "Chứng từ" thì sang tab Giao/Nhận
+        self.client.force_login(_user('hk', job='HAU_KIEM_VIEN'))
+        self.assertRedirects(self.client.get(reverse('bia_chung_tu_list')), reverse('bia_chung_tu_giao_nhan'), fetch_redirect_response=False)
 
     def test_sua_trung_so_ho_so_bi_chan(self):
         self._cap_so(date(2026, 10, 26), 30, {self.gdvs[0]: 2})

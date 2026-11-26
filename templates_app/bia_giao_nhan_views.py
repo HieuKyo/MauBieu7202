@@ -18,7 +18,7 @@ from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from .bia_chung_tu_views import MANAGER_POSITIONS, _manager_branch, _parse_date
+from .bia_chung_tu_views import MANAGER_POSITIONS, _gdv_branch, _manager_branch, _parse_date
 from .models import GIAO_NHAN_CHOICES, BiaChungTu, BiaGiaoNhanLog, UserProfile
 
 TRANG_THAI = dict(GIAO_NHAN_CHOICES)
@@ -110,7 +110,7 @@ def bia_giao_nhan(request):
         tab = 'cho_toi' if cho_toi.exists() else ('cua_toi' if cua_toi.exclude(trang_thai_gn='hoan_thanh').exists() else 'tra_cuu')
 
     ctx = {
-        'tab': tab, 'tabs': TABS, 'an_tao_bia': not _manager_branch(user),
+        'tab': tab, 'tabs': TABS, 'an_tao_bia': not (_manager_branch(user) or _gdv_branch(user)),
         'so_cho_toi': cho_toi.count(),
         'so_cho_gd_ky': cua_toi.filter(trang_thai_gn__in=GDV_CAN_LAM).count(),
         'trang_thai_choices': GIAO_NHAN_CHOICES[1:],

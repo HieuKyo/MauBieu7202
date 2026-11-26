@@ -17,7 +17,7 @@
                     <label class="form-label small mb-0">Đến ngày CT</label>
                     <input type="text" class="form-control" name="den_ngay" value="{{ filters.den_ngay }}" placeholder="dd/mm/yyyy">
                 </div>
-                <div class="col-md-2">
+                {% if not chi_xem %}<div class="col-md-2">
                     <label class="form-label small mb-0">Giao dịch viên</label>
                     <select class="form-select" name="gdv">
                         <option value="">-- Tất cả --</option>
@@ -25,7 +25,7 @@
                         <option value="{{ uid }}" {% if filters.gdv == uid|stringformat:"s" %}selected{% endif %}>{{ name }}</option>
                         {% endfor %}
                     </select>
-                </div>
+                </div>{% endif %}
                 <div class="col-md-2">
                     <label class="form-label small mb-0">Trạng thái</label>
                     <select class="form-select" name="trang_thai">
@@ -55,6 +55,7 @@
                     <button type="submit" class="btn btn-danger btn-sm" formaction="{% url 'bia_chung_tu_print' %}" formtarget="_blank">
                         <i class="bi bi-printer"></i> In bìa đã chọn (PDF)
                     </button>
+                    {% if not chi_xem %}
                     <button type="submit" class="btn btn-outline-secondary btn-sm" formaction="{% url 'bia_chung_tu_save_so_to' %}">
                         <i class="bi bi-save"></i> Lưu số tờ
                     </button>
@@ -62,6 +63,7 @@
                             title="Bìa cấp trước khi có Giao/Nhận (trạng thái —): đưa vào luồng, GDV sẽ thấy để giao KSV">
                         <i class="bi bi-arrow-left-right"></i> Đưa vào giao nhận
                     </button>
+                    {% endif %}
                     <span class="text-muted small ms-auto">Tổng: {{ page_obj.paginator.count }} bìa</span>
                 </div>
                 <div class="table-responsive">
@@ -92,16 +94,22 @@
                                     {% if b.ngay_chung_tu in lech %}<span class="badge bg-warning text-dark" title="Các tập trong ngày không khớp 1..N">Lệch tập</span>{% endif %}
                                 </td>
                                 <td>{{ b.gdv.profile.full_name|default:"" }}</td>
+                                {% if chi_xem %}
+                                <td>{{ b.so_to }}</td><td>{{ b.so_to_tap|default_if_none:'….' }}</td>
+                                {% else %}
                                 <td><input type="number" min="1" class="form-control form-control-sm" name="so_to_{{ b.pk }}" value="{{ b.so_to }}"></td>
                                 <td><input type="number" min="1" class="form-control form-control-sm" name="so_to_tap_{{ b.pk }}" value="{{ b.so_to_tap|default_if_none:'' }}" placeholder="…."></td>
+                                {% endif %}
                                 <td>{{ b.user_ipcas }}</td>
                                 <td>{% if b.ngay_in %}<span class="badge bg-success" title="{{ b.ngay_in|date:'d/m/Y H:i' }}">Đã in</span>{% else %}<span class="badge bg-secondary">Chưa in</span>{% endif %}</td>
                                 <td>{% include 'templates_app/bia_chung_tu/_trang_thai_gn.html' %}</td>
                                 <td class="text-nowrap">
                                     <a href="{% url 'bia_chung_tu_print' %}?id={{ b.pk }}" target="_blank" class="btn btn-outline-danger btn-sm" title="In bìa"><i class="bi bi-printer"></i></a>
+                                    {% if not chi_xem %}
                                     <a href="{% url 'bia_chung_tu_edit' b.pk %}" class="btn btn-outline-primary btn-sm" title="Sửa"><i class="bi bi-pencil"></i></a>
                                     <button type="submit" form="del-{{ b.pk }}" class="btn btn-outline-secondary btn-sm" title="Xoá"
                                             onclick="return confirm('Xoá bìa {{ b.so_ho_so }}?');"><i class="bi bi-trash"></i></button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
@@ -114,12 +122,12 @@
         </div>
     </form>
 
-    {% for b in page_obj %}
+    {% if not chi_xem %}{% for b in page_obj %}
     <form method="post" action="{% url 'bia_chung_tu_delete' b.pk %}" id="del-{{ b.pk }}" class="d-none">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
     </form>
-    {% endfor %}
+    {% endfor %}{% endif %}
 
     {% if page_obj.paginator.num_pages > 1 %}
     <nav>

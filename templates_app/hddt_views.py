@@ -156,7 +156,7 @@ def _ket_qua_glcb06(request, data):
 
 def _form_glcb06(post, kq):
     gio = ''.join(ch for ch in post.get('gio', '') if ch.isdigit())[:6] or datetime.now().strftime('%H%M%S')
-    che_do = post.get('che_do') if post.get('che_do') in dict(g.CHE_DO_IMPORT) else 'ket_hop'
+    che_do = post.get('che_do') if post.get('che_do') in dict(g.CHE_DO_IMPORT) else 'gom'
     cb = kq['glcb06']
     ngoai_te = sorted(set(cb.loc[(cb['trang_thai'] != 'khop') & (cb['ccy'] != 'VND'), 'ccy']))
     ty_gia = {}

@@ -97,7 +97,8 @@ class DoiChieuHDDTTests(SimpleTestCase):
             'loai': 'lai_vay', 'so_tien': 1583562, 'noi_dung': '', 'cif': '123', 'ten_kh': 'DNTN A', 'mst': '01',
             'dia_chi': '', 'so_tk': '', 'loai_kh': 'C', 'file_rieng': True}])
         kh = chinh[-1]
-        self.assertEqual((kh[4], kh[5], kh[20], kh[21]), ('USD', 25750, 3.64, 0.36))
+        # Kiều hối: giữ USD + tỷ giá, số tiền ghi giá trị đã quy đổi VND
+        self.assertEqual((kh[4], kh[5], kh[20], kh[21]), ('USD', 25750, 93730, 9270))
         self.assertFalse(canh_bao)
         _, rieng, _ = hd.lap_dong_import(self.kq, 134000, 25750, rieng=[{
             'loai': 'lai_vay', 'so_tien': 1583562, 'noi_dung': '', 'cif': '123', 'ten_kh': 'DNTN A', 'mst': '01',
@@ -163,6 +164,19 @@ class DoiChieuGLCB06Tests(SimpleTestCase):
         dong, _ = g.lap_dong_import_glcb06(self.kq, hd._ngay('05/11/2026'), 150000, che_do='gom', tra_kh=tra_kh)
         self.assertEqual(sorted(d[24] for d in dong), ['Phí dịch vụ chuyển tiền', 'Thu lãi tiền vay'])
         self.assertEqual(next(d for d in dong if d[24] == 'Phí dịch vụ chuyển tiền')[7], 'Bán cho người tiêu dùng')
+
+    def test_import_bo_mon_am_va_quy_doi_ngoai_te(self):
+        cb = self._glcb06([
+            ('GRAC', '4', 'VND', 0, 200, '453101', '000000004', 'DP'),    # bị đảo bởi bút toán 5
+            ('GRAC', '5', 'VND', 200, 0, '453101', '000000004', 'DP'),    # món âm
+            ('GRAC', '6', 'VND', 0, 70, '453101', '000000005', 'DP'),
+            ('GRAC', '7', 'USD', 0, 1.5, '453101', '000000006', 'DP'),    # ngoại tệ
+        ])
+        kq = g.doi_chieu_glcb06(self.ei, cb)
+        dong, canh_bao = g.lap_dong_import_glcb06(kq, hd._ngay('05/11/2026'), 150000, ty_gia={'USD': 25000})
+        tom = sorted((d[4], d[5], d[20], d[21]) for d in dong)
+        self.assertEqual(tom, [('USD', 25000, 375000, 37500), ('VND', 1, 700, 70)])
+        self.assertTrue(any('1 món âm' in c and '1 món dương' in c for c in canh_bao))
 
     def test_can_doi(self):
         import pandas as pd

@@ -67,6 +67,14 @@ def _manager_branch(user):
     return None
 
 
+def _gdv_branch(user):
+    """Đơn vị của GDV phòng KT&NQ — chỉ được xem & in bìa của chính mình (không sửa, xoá)."""
+    profile = getattr(user, 'profile', None)
+    if profile and profile.branch and profile.department == 'KE_TOAN' and profile.job_function == 'GIAO_DICH_VIEN':
+        return profile.branch
+    return None
+
+
 def _deny(request):
     messages.error(request, 'Chỉ Trưởng/Phó phòng Kế toán & Ngân quỹ (đã khai báo đơn vị) mới dùng được chức năng Tạo bìa chứng từ.')
     return redirect('dashboard')
@@ -181,18 +189,23 @@ def _qr_text(bia, ma_cn, tap):
 @login_required
 def bia_list(request):
     branch = _manager_branch(request.user)
+    chi_xem = False
     if not branch:
-        # GDV / Hậu kiểm… không tạo bìa — vào thẳng tab Giao/Nhận chứng từ
+        branch, chi_xem = _gdv_branch(request.user), True
+    if not branch:
+        # KSV / Hậu kiểm… không tạo bìa — vào thẳng tab Giao/Nhận chứng từ
         return redirect('bia_chung_tu_giao_nhan')
 
     qs = BiaChungTu.objects.filter(branch=branch).select_related('gdv__profile')
+    if chi_xem:
+        qs = qs.filter(gdv=request.user)
     filters = {k: request.GET.get(k, '').strip() for k in ('tu_ngay', 'den_ngay', 'gdv', 'trang_thai', 'q')}
     tu_ngay, den_ngay = _parse_date(filters['tu_ngay']), _parse_date(filters['den_ngay'])
     if tu_ngay:
         qs = qs.filter(ngay_chung_tu__gte=tu_ngay)
     if den_ngay:
         qs = qs.filter(ngay_chung_tu__lte=den_ngay)
-    if filters['gdv'].isdigit():
+    if filters['gdv'].isdigit() and not chi_xem:
         qs = qs.filter(gdv_id=int(filters['gdv']))
     if filters['trang_thai'] == 'da_in':
         qs = qs.filter(ngay_in__isnull=False)
@@ -210,9 +223,10 @@ def bia_list(request):
         'page_obj': page_obj,
         'lech': lech,
         'filters': filters,
-        'gdv_choices': _gdv_choices(branch),
+        'gdv_choices': [] if chi_xem else _gdv_choices(branch),
         'query_string': query.urlencode(),
         'ipcas': _ipcas(request.user),
+        'chi_xem': chi_xem,
     })
 
 
@@ -695,13 +709,18 @@ def bia_huong_dan(request):
 def bia_print(request):
     """In PDF: POST ids=<id>... (in nhiều, tích chọn trên danh sách) hoặc GET ?id=<id> (in 1 bìa)."""
     branch = _manager_branch(request.user)
+    chi_xem = False
+    if not branch:
+        branch, chi_xem = _gdv_branch(request.user), True   # GDV: chỉ in bìa của mình, không sửa số tờ
     if not branch:
         return _deny(request)
-    if request.method == 'POST':
+    if request.method == 'POST' and not chi_xem:
         _apply_so_to(request, branch)  # in luôn số tờ vừa nhập trên danh sách, không cần bấm Lưu trước
     ids = request.POST.getlist('ids') if request.method == 'POST' else request.GET.getlist('id')
-    bias = list(BiaChungTu.objects.filter(branch=branch, pk__in=[i for i in ids if i.isdigit()])
-                .select_related('gdv__profile', 'nguoi_lap__profile').order_by('so_ho_so'))
+    qs = BiaChungTu.objects.filter(branch=branch, pk__in=[i for i in ids if i.isdigit()])
+    if chi_xem:
+        qs = qs.filter(gdv=request.user)
+    bias = list(qs.select_related('gdv__profile', 'nguoi_lap__profile').order_by('so_ho_so'))
     if not bias:
         messages.error(request, 'Chưa chọn bìa nào để in.')
         return redirect('bia_chung_tu_list')
