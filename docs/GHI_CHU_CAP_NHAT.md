@@ -3,7 +3,7 @@
 Mỗi mục là một bản cập nhật (gói `CapNhat_MauBieu_<phiên bản>`), mới nhất ở trên.
 Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `tao_ban_cap_nhat.bat`, tiêu đề này được đổi thành số phiên bản và ngày.
 
-## Bản tiếp theo
+## 2026.11.26 — 26/11/2026
 
 ### Chức năng mới
 - **Khách hàng 360 → Việc cần làm** (mọi người dùng; nhân viên chỉ thấy KH của đơn vị mình theo hồ sơ người dùng, cấp quản lý KH 360 và Superuser thấy toàn chi nhánh). 3 danh sách để liên hệ KH, mỗi dòng ghi được **kết quả liên hệ** (Thành công / Chưa quyết định / KH rút – từ chối / Không liên lạc được + ghi chú), có cột **Tiến độ liên hệ** theo cán bộ và xuất Excel:

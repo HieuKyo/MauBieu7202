@@ -6,6 +6,8 @@
   manifest.json, files.zip). Không cần giải nén trên máy LAN -> tránh lỗi tên file tiếng Việt.
 - Tự tìm USB đang cắm để ghi gói; không có USB -> lưu vào ban_cap_nhat/.
 - Đóng gói xong mới gắn tag release-<phiên bản> vào HEAD.
+- --lai <phiên bản>: tạo LẠI gói của một bản đã phát hành (bị mất / ghi nhầm USB) — lấy đúng
+  các file đổi từ bản liền trước tới tag release-<phiên bản>, không tạo tag mới.
 """
 import ctypes
 import io
@@ -65,11 +67,11 @@ def next_version():
     return version
 
 
-def collect_changes(tag, full):
+def collect_changes(tag, full, ref='HEAD'):
     if full:
-        files = [p for p in git('ls-tree', '-r', '-z', '--name-only', 'HEAD').split('\0') if p]
+        files = [p for p in git('ls-tree', '-r', '-z', '--name-only', ref).split('\0') if p]
         return files, []
-    parts = [p for p in git('diff', '--name-status', '-z', '--no-renames', tag, 'HEAD').split('\0') if p]
+    parts = [p for p in git('diff', '--name-status', '-z', '--no-renames', tag, ref).split('\0') if p]
     changed, deleted = [], []
     for status, path in zip(parts[0::2], parts[1::2]):
         (deleted if status == 'D' else changed).append(path)
@@ -131,13 +133,13 @@ def dat_phien_ban_ghi_chu(text, version):
     return text.replace(BAN_TIEP_THEO, f'## {version} — {datetime.now():%d/%m/%Y}', 1)
 
 
-def build_payload(version, base_version, full, changed, deleted):
+def build_payload(version, base_version, full, changed, deleted, ref='HEAD'):
     pip_install = any(p.startswith(PIP_TRIGGERS) for p in changed + deleted)
     manifest = {
         'version': version,
         'base': base_version,
         'full': full,
-        'commit': git('rev-parse', '--short', 'HEAD').strip(),
+        'commit': git('rev-parse', '--short', ref).strip(),
         'created': datetime.now().isoformat(timespec='seconds'),
         'changed': changed,
         'deleted': deleted,
@@ -148,7 +150,7 @@ def build_payload(version, base_version, full, changed, deleted):
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
         wanted = set(changed)
         if wanted:
-            tar_bytes = git('archive', '--format=tar', 'HEAD', binary=True)
+            tar_bytes = git('archive', '--format=tar', ref, binary=True)
             with tarfile.open(fileobj=io.BytesIO(tar_bytes)) as tf:
                 for member in tf:
                     if member.isfile() and member.name in wanted:
@@ -162,8 +164,71 @@ def build_payload(version, base_version, full, changed, deleted):
     return manifest, buf.getvalue()
 
 
+def ghi_goi(dest, version, manifest, data):
+    """Ghi thư mục gói vào dest (ghi vào .dang_tao rồi đổi tên — không để lại gói dở). → đường dẫn gói."""
+    target = dest / f'CapNhat_MauBieu_{version}'
+    tmp = dest / f'{target.name}.dang_tao'
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir()
+    (tmp / 'files.zip').write_bytes(data)
+    (tmp / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
+    for name in ('apply_update.py', 'cap_nhat.bat', 'khoi_phuc.bat'):
+        shutil.copy2(RELEASE_DIR / name, tmp / name)
+    shutil.rmtree(target, ignore_errors=True)
+    tmp.rename(target)
+    return target
+
+
+def release_versions():
+    """Các phiên bản đã phát hành, cũ → mới."""
+    return [t[8:] for t in git('tag', '--list', 'release-*', '--sort=version:refname').split()]
+
+
+def tao_lai(version):
+    """Tạo lại gói của bản đã phát hành `version` (không tạo tag, không sửa ghi chú trên máy dev)."""
+    versions = release_versions()
+    if not version:
+        print('Các bản đã phát hành gần nhất:', ', '.join(versions[-10:]))
+        version = input('Nhập phiên bản cần tạo lại (vd 2026.11.26): ').strip()
+    if version not in versions:
+        print(f'\nLỖI: không có bản {version} (tag release-{version}).')
+        return 1
+    ref = git('rev-parse', f'release-{version}^{{commit}}').strip()  # commit của bản (không phải object tag)
+    i = versions.index(version)
+    base_version = versions[i - 1] if i else None
+    full = base_version is None
+    changed, deleted = collect_changes(f'release-{base_version}' if base_version else None, full, ref)
+    changed = [p for p in changed if not is_excluded(p)]
+    deleted = [p for p in deleted if not is_excluded(p)]
+    print(f'\nTạo lại bản : {version}  (commit {git("rev-parse", "--short", ref).strip()})')
+    print(f'Dựa trên bản: {base_version or "(không - gói đầy đủ)"}')
+    print(f'File thêm/sửa: {len(changed)}   File xóa: {len(deleted)}')
+    manifest, data = build_payload(version, base_version, full, changed, deleted, ref)
+    if manifest['pip_install']:
+        print('Có thay đổi thư viện -> máy LAN sẽ tự cài lại từ packages/.')
+    dest = choose_destination()
+    dest.mkdir(parents=True, exist_ok=True)
+    if shutil.disk_usage(dest).free < len(data) + 1_000_000:
+        print(f'\nLỖI: {dest} không đủ chỗ trống (cần {len(data) / 2**20:.1f} MB).')
+        return 1
+    target = ghi_goi(dest, version, manifest, data)
+    print('\n' + '=' * 60)
+    print(f' ĐÃ TẠO LẠI GÓI: {target}')
+    print(f' Dung lượng    : {len(data) / 2**20:.1f} MB')
+    print('=' * 60)
+    print(f'Trên máy LAN (đang ở bản {base_version}): chép thư mục này vào máy -> tắt server -> chạy cap_nhat.bat')
+    return 0
+
+
 def main():
-    full = '--full' in sys.argv[1:]
+    args = sys.argv[1:]
+    if '--lai' in args:
+        i = args.index('--lai')
+        print('=' * 60)
+        print(' TẠO LẠI GÓI CẬP NHẬT ĐÃ PHÁT HÀNH')
+        print('=' * 60)
+        return tao_lai(args[i + 1] if i + 1 < len(args) else '')
+    full = '--full' in args
     print('=' * 60)
     print(' TẠO GÓI CẬP NHẬT MauBieu7202')
     print('=' * 60)
@@ -215,16 +280,7 @@ def main():
     if shutil.disk_usage(dest).free < len(data) + 1_000_000:
         print(f'\nLỖI: {dest} không đủ chỗ trống (cần {len(data) / 2**20:.1f} MB).')
         return 1
-    target = dest / f'CapNhat_MauBieu_{version}'
-    tmp = dest / f'{target.name}.dang_tao'
-    shutil.rmtree(tmp, ignore_errors=True)
-    tmp.mkdir()
-    (tmp / 'files.zip').write_bytes(data)
-    (tmp / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
-    for name in ('apply_update.py', 'cap_nhat.bat', 'khoi_phuc.bat'):
-        shutil.copy2(RELEASE_DIR / name, tmp / name)
-    shutil.rmtree(target, ignore_errors=True)
-    tmp.rename(target)
+    target = ghi_goi(dest, version, manifest, data)
 
     git('tag', '-a', f'release-{version}', '-m', f'Gói cập nhật LAN {version}')
 
