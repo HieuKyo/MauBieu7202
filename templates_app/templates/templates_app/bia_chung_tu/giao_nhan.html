@@ -31,11 +31,12 @@
         <div class="card-body gn-bar border-bottom d-flex flex-wrap gap-2 align-items-center">
             <button name="hanh_dong" value="ksv_nhan" class="btn btn-sm btn-info"><i class="bi bi-box-arrow-in-down"></i> KSV: Đã nhận</button>
             <button name="hanh_dong" value="ksv_ky" class="btn btn-sm btn-primary"><i class="bi bi-pen"></i> KSV: Đã ký – trả GDV chờ GĐ ký</button>
-            <button name="hanh_dong" value="hk_nhan" class="btn btn-sm btn-success"><i class="bi bi-check2-all"></i> Hậu kiểm: Xác nhận đã nhận</button>
+            <button name="hanh_dong" value="hk_nhan" class="btn btn-sm btn-success"><i class="bi bi-box-arrow-in-down"></i> Hậu kiểm: Xác nhận đã nhận</button>
+            <button name="hanh_dong" value="hk_hoan_thanh" class="btn btn-sm btn-success"><i class="bi bi-check2-all"></i> Hậu kiểm: Hoàn thành chứng từ</button>
             <span class="vr"></span>
             <input type="text" name="ly_do" class="form-control form-control-sm" style="width:240px" placeholder="Lý do trả lại (thiếu, sai chứng từ…)">
             <button name="hanh_dong" value="ksv_tra" class="btn btn-sm btn-outline-danger">KSV trả lại</button>
-            <button name="hanh_dong" value="hk_tra" class="btn btn-sm btn-outline-danger">Hậu kiểm trả lại</button>
+            <button name="hanh_dong" value="hk_tra" class="btn btn-sm btn-outline-danger">HKV trả chứng từ để GDV sửa</button>
         </div>
         {% include 'templates_app/bia_chung_tu/_bang_gn.html' %}
     </form>
@@ -49,7 +50,8 @@
                 <span class="small text-muted">Chọn nhanh:</span>
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-chon="gdv_giu">Chưa giao</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-chon="cho_gd_ky">Chờ GĐ ký</button>
-                <a href="?tab=cua_toi{% if an_xong %}&xong=1{% endif %}" class="btn btn-sm btn-link ms-auto">{% if an_xong %}Hiện cả tập Hậu kiểm đã nhận{% else %}Ẩn tập Hậu kiểm đã nhận{% endif %}</a>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-chon="hk_tra_sua">HKV trả sửa</button>
+                <a href="?tab=cua_toi{% if an_xong %}&xong=1{% endif %}" class="btn btn-sm btn-link ms-auto">{% if an_xong %}Hiện cả tập đã hoàn thành{% else %}Ẩn tập đã hoàn thành{% endif %}</a>
             </div>
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <select name="nguoi_nhan_ksv" class="form-select form-select-sm" style="width:220px">
@@ -62,7 +64,7 @@
                     <option value="">— Chọn Hậu kiểm viên —</option>
                     {% for uid, ten in hk_choices %}<option value="{{ uid }}">{{ ten }}</option>{% endfor %}
                 </select>
-                <button name="hanh_dong" value="giao_hk" class="btn btn-sm btn-success"><i class="bi bi-send-check"></i> GĐ đã ký – giao Hậu kiểm</button>
+                <button name="hanh_dong" value="giao_hk" class="btn btn-sm btn-success"><i class="bi bi-send-check"></i> Giao Hậu kiểm (GĐ đã ký / đã sửa)</button>
                 <span class="vr"></span>
                 <button name="hanh_dong" value="thu_hoi" class="btn btn-sm btn-outline-secondary" onclick="return confirm('Thu hồi các tập đã chọn (bên nhận chưa nhận)?')"><i class="bi bi-arrow-counterclockwise"></i> Thu hồi</button>
             </div>

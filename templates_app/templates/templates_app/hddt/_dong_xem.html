@@ -1,0 +1,7 @@
+{% load humanize %}<tr>
+    <td>{{ d.group }}</td><td>{{ d.ten_hang }}</td><td>{{ d.noi_dung }}</td>
+    <td class="small">{{ d.ten_kh }}{% if d.mst %}<br>MST {{ d.mst }}{% endif %}{% if d.cif != '000000000' %}<br>CIF {{ d.cif }}{% endif %}</td>
+    <td>{{ d.tien_te }}{% if d.tien_te != 'VND' %} / {{ d.ty_gia|floatformat:"-2"|intcomma }}{% endif %}</td>
+    <td class="so">{{ d.u|floatformat:"-2"|intcomma }}</td><td class="so">{{ d.v|floatformat:"-2"|intcomma }}</td><td class="so fw-bold">{{ d.w|floatformat:"-2"|intcomma }}</td>
+    <td>{{ d.thue_suat }}</td><td>{{ d.ma_ttv }}</td>
+</tr>

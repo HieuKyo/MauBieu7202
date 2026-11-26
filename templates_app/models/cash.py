@@ -47,7 +47,9 @@ GIAO_NHAN_CHOICES = [
     ('ksv_dang_ky', 'KSV đã nhận – đang ký'),
     ('cho_gd_ky', 'KSV trả chứng từ chờ GĐ ký'),
     ('cho_hk_nhan', 'GĐ đã ký – chờ Hậu kiểm nhận'),
-    ('hk_da_nhan', 'Hậu kiểm đã nhận'),
+    ('hk_da_nhan', 'Hậu kiểm đã nhận – đang kiểm tra'),
+    ('hk_tra_sua', 'HKV trả chứng từ để GDV sửa'),
+    ('hoan_thanh', 'Hoàn thành chứng từ'),
 ]
 
 

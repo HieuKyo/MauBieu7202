@@ -1,0 +1,78 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Đối chiếu Hóa đơn điện tử{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="text-center mb-2" style="color: var(--agri-red);"><i class="bi bi-receipt"></i> ĐỐI CHIẾU HÓA ĐƠN ĐIỆN TỬ</h2>
+    <p class="text-center text-muted">Đối chiếu Einvoice với IPCAS theo user, xem kết quả và lập file import lên hệ thống HĐĐT</p>
+    {% if co_ket_qua %}<p class="text-center"><a href="{% url 'hddt_ket_qua' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-clock-history"></i> Xem lại kết quả gần nhất</a></p>{% endif %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <form method="post" enctype="multipart/form-data" class="card shadow" id="form-hddt">
+                {% csrf_token %}
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Cách đối chiếu</label>
+                        <div class="form-check"><input class="form-check-input" type="radio" name="nguon" id="ng-glst30" value="glst30" checked>
+                            <label class="form-check-label" for="ng-glst30"><b>Cách 1 – GLST30</b> (như cũ): đối chiếu tổng thuế theo user, gom theo nhóm phí; đối chiếu được nhiều ngày một lần</label></div>
+                        <div class="form-check"><input class="form-check-input" type="radio" name="nguon" id="ng-glcb06" value="glcb06">
+                            <label class="form-check-label" for="ng-glcb06"><b>Cách 2 – GLCB06 + GLCB41</b> (cách mới): khớp từng bút toán (user + bút toán + số tiền + loại tiền), cân đối với sổ, nhận diện lãi vay, HĐ tổ chức chi tiết; mỗi lần 1 ngày</label></div>
+                    </div>
+                    <div id="khoi-glst30">
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-file-earmark-excel"></i> File Einvoice (xuất từ website / BKCT)</label>
+                            <input type="file" name="einvoice" class="form-control" accept=".xlsx,.xls" multiple>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-file-earmark-spreadsheet"></i> File IPCAS (màn hình GLST30 – Day, SOLD)</label>
+                            <input type="file" name="ipcas" class="form-control" accept=".xls,.xlsx" multiple>
+                        </div>
+                    </div>
+                    <div id="khoi-glcb06" class="d-none">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6"><label class="form-label small mb-0">Einvoice của ngày (1 file) <span class="text-danger">*</span></label>
+                                <input type="file" name="einvoice_cb" class="form-control form-control-sm" accept=".xlsx,.xls"></div>
+                            <div class="col-md-6"><label class="form-label small mb-0">GLCB41 – Bảng cân đối của ngày (1 file) <span class="text-danger">*</span></label>
+                                <input type="file" name="glcb41" class="form-control form-control-sm" accept=".xlsx,.xls"></div>
+                            <div class="col-md-12"><label class="form-label small mb-0">GLCB06 – Transaction List in Account: mỗi lần search <b>1 tài khoản</b> ra 1 file → chọn tất cả các file của ngày (giữ Ctrl) <span class="text-danger">*</span></label>
+                                <input type="file" name="glcb06" class="form-control form-control-sm" accept=".xlsx,.xls" multiple>
+                                <div class="form-text">Search TK <b>453101</b> (VAT đầu ra) và các TK thu lãi <b>702…</b> (nếu có), đủ các loại tiền phát sinh. Tạm thời <b>chưa đưa TK 711…</b> vào (chương trình chưa dùng dòng 711 để lấy đơn giá).</div></div>
+                            <div class="col-md-6"><label class="form-label small mb-0">GLST30 (tuỳ chọn — lấy đơn giá thật thay cho VAT × 10)</label>
+                                <input type="file" name="glst30_dg" class="form-control form-control-sm" accept=".xlsx,.xls"></div>
+                        </div>
+                        <div class="form-text mb-3">Thông tin khách hàng (tên, địa chỉ, cá nhân/tổ chức, số TK) lấy từ <b>Khách hàng 360</b> theo CIF — không cần xuất Msit81 / CMCC01 / DPCOM.</div>
+                    </div>
+                    <div class="alert alert-info small mb-3">
+                        <ul class="mb-0 ps-3">
+                            <li>Tên file đặt theo <strong>ngày tháng DDMM</strong> như trước (vd <code>0511.xlsx</code> và <code>0511.XLS</code>). Chọn nhiều ngày cùng lúc (giữ Ctrl) để đối chiếu theo lô — file 2 bên được ghép theo tên.</li>
+                            <li>Đối chiếu theo user: tiền thuế HĐ gốc trên Einvoice (theo TTV) với tổng thuế (amt) trên IPCAS; liệt kê giao dịch IPCAS chưa có hoá đơn.</li>
+                            <li>Kiểm tra lỗi hoá đơn: chưa ký, đảo doanh thu thành tổng thanh toán, sai tỷ giá, HĐ doanh nghiệp chưa có MST.</li>
+                            <li>File import: <strong>7202CD</strong> → Phí thường niên; <strong>7202EI</strong> → Phí dịch vụ kiều hối (cần tỷ giá USD); còn lại → Phí dịch vụ chuyển tiền. Thêm được hoá đơn riêng (vd Thu lãi tiền vay khi DN yêu cầu xuất riêng).</li>
+                            <li>Kết quả lưu tạm 24 giờ (chỉ người tải xem được), không lưu dữ liệu khách hàng vào hệ thống.</li>
+                        </ul>
+                    </div>
+                    <div class="d-grid"><button class="btn btn-primary btn-lg" id="btn-dc"><i class="bi bi-arrow-left-right"></i> Đối chiếu</button></div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('[name=nguon]').forEach(function (r) {
+    r.addEventListener('change', function () {
+        var cb = document.getElementById('ng-glcb06').checked;
+        document.getElementById('khoi-glcb06').classList.toggle('d-none', !cb);
+        document.getElementById('khoi-glst30').classList.toggle('d-none', cb);
+    });
+});
+document.getElementById('form-hddt').addEventListener('submit', function () {
+    var b = document.getElementById('btn-dc'); b.disabled = true;
+    b.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang đối chiếu...';
+});
+</script>
+{% endblock %}

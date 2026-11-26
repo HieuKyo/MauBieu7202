@@ -1,0 +1,24 @@
+<div class="dong-rieng border rounded p-2 mb-2 bg-light">
+    <div class="row g-1">
+        <div class="col-md-4"><select name="r_loai" class="form-select form-select-sm">
+            {% for k, ten, ts in hang_rieng %}<option value="{{ k }}" {% if r.loai == k %}selected{% endif %}>{{ ten }} ({% if ts < 0 %}không chịu thuế{% else %}{{ ts }}%{% endif %})</option>{% endfor %}
+        </select></div>
+        <div class="col-md-3"><input name="r_so_tien" class="form-control form-control-sm" placeholder="Tiền chưa thuế (âm = điều chỉnh giảm)" value="{% if r %}{{ r.so_tien|floatformat:'-2' }}{% endif %}"></div>
+        <div class="col-md-5"><input name="r_noi_dung" class="form-control form-control-sm" placeholder="Nội dung HĐ (bỏ trống = theo tên hàng)" value="{{ r.noi_dung|default:'' }}"></div>
+        <div class="col-md-5"><input name="r_ten_kh" class="form-control form-control-sm" placeholder="Tên khách hàng" value="{{ r.ten_kh|default:'' }}"></div>
+        <div class="col-md-2"><div class="input-group input-group-sm"><input name="r_cif" class="form-control" placeholder="Số CIF" value="{{ r.cif|default:'' }}"><button type="button" class="btn btn-outline-primary tra-kh360" title="Tra Khách hàng 360"><i class="bi bi-search"></i></button></div></div>
+        <div class="col-md-3"><input name="r_mst" class="form-control form-control-sm" placeholder="Mã số thuế" value="{{ r.mst|default:'' }}"></div>
+        <div class="col-md-2"><select name="r_loai_kh" class="form-select form-select-sm">
+            <option value="C" {% if r.loai_kh != 'I' %}selected{% endif %}>C - Doanh nghiệp</option>
+            <option value="I" {% if r.loai_kh == 'I' %}selected{% endif %}>I - Cá nhân</option>
+        </select></div>
+        <div class="col-md-6"><input name="r_dia_chi" class="form-control form-control-sm" placeholder="Địa chỉ" value="{{ r.dia_chi|default:'' }}"></div>
+        <div class="col-md-3"><input name="r_so_tk" class="form-control form-control-sm" placeholder="Số tài khoản" value="{{ r.so_tk|default:'' }}"></div>
+        <div class="col-md-3 d-flex align-items-center justify-content-between">
+            <label class="small mb-0"><input type="checkbox" class="form-check-input chk-file-rieng" {% if r.file_rieng %}checked{% endif %}> Xuất file riêng</label>
+            <input type="hidden" name="r_file_rieng" value="{% if r.file_rieng %}1{% else %}0{% endif %}">
+            <button type="button" class="btn btn-sm btn-link text-danger xoa-rieng" title="Xoá"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="col-12 small text-muted tra-tb"></div>
+    </div>
+</div>

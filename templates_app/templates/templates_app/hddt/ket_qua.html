@@ -1,0 +1,226 @@
+{% extends 'templates_app/base.html' %}
+{% load humanize %}
+
+{% block title %}Kết quả đối chiếu HĐĐT {{ ma }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hd td, .hd th { font-size: .86rem; vertical-align: middle; }
+    .hd .so { text-align: right; white-space: nowrap; }
+    .hd-lech { background: #fff3cd !important; }
+    .hd-scroll { max-height: 65vh; overflow: auto; }
+    .hd-scroll th { position: sticky; top: 0; background: #f8f9fa; z-index: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <h3 class="mb-0" style="color: var(--agri-red);"><i class="bi bi-receipt"></i> Đối chiếu HĐĐT – Cách 1 (GLST30) — ngày {{ kq.ngay|date:"d/m/Y"|default:ma }}</h3>
+        <div class="d-flex gap-2">
+            <a href="{% url 'hddt_tai_ket_qua' %}?ngay={{ ma }}" class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Tải kết quả ngày này</a>
+            {% if ngay_list|length > 1 %}<a href="{% url 'hddt_tai_ket_qua' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-zip"></i> Tải kết quả tất cả ngày</a>{% endif %}
+            <a href="{% url 'hddt_upload' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-upload"></i> Đối chiếu file khác</a>
+        </div>
+    </div>
+
+    {% if ngay_list|length > 1 %}
+    <div class="d-flex flex-wrap gap-1 mb-3">
+        {% for n in ngay_list %}
+        <a href="?ngay={{ n.ma }}&tab={{ tab }}" class="btn btn-sm {% if n.ma == ma %}btn-danger{% else %}btn-outline-secondary{% endif %}">
+            {{ n.ngay|date:"d/m"|default:n.ma }}{% if n.lech %} <span class="badge bg-warning text-dark">{{ n.lech }}</span>{% endif %}{% if n.loi %} <span class="badge bg-danger">{{ n.loi }}</span>{% endif %}
+        </a>
+        {% endfor %}
+        <span class="small text-muted align-self-center ms-2"><span class="badge bg-warning text-dark">n</span> số user lệch · <span class="badge bg-danger">n</span> số dòng HĐ lỗi</span>
+    </div>
+    {% endif %}
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><a class="nav-link {% if tab == 'tong_hop' %}active{% endif %}" href="?ngay={{ ma }}&tab=tong_hop">Đối chiếu theo user</a></li>
+        <li class="nav-item"><a class="nav-link {% if tab == 'thieu_hd' %}active{% endif %}" href="?ngay={{ ma }}&tab=thieu_hd">Giao dịch chưa có HĐ <span class="badge bg-secondary">{{ so_thieu_hd }}</span></a></li>
+        <li class="nav-item"><a class="nav-link {% if tab == 'loi_hd' %}active{% endif %}" href="?ngay={{ ma }}&tab=loi_hd">Lỗi hoá đơn Einvoice {% if so_loi %}<span class="badge bg-danger">{{ so_loi }}</span>{% endif %}</a></li>
+        <li class="nav-item"><a class="nav-link {% if tab == 'import' %}active{% endif %}" href="?ngay={{ ma }}&tab=import"><i class="bi bi-box-arrow-up"></i> Tạo file import</a></li>
+    </ul>
+
+    {% if tab == 'tong_hop' %}
+    <div class="row">
+        <div class="col-xl-8">
+            <table class="table table-sm table-bordered hd">
+                <thead class="table-light"><tr><th>User</th><th>Nhóm import</th><th class="text-end">Einvoice</th><th class="text-end">Ipcas</th><th class="text-end">Chênh lệch</th><th class="text-end">Số món lệch</th></tr></thead>
+                <tbody>
+                {% for r in tong %}
+                <tr {% if r.chenh_lech %}class="hd-lech"{% endif %}>
+                    <td>{{ r.user }}</td>
+                    <td class="small">{% for k, v in nhom_ten.items %}{% if k == r.nhom %}{{ v }}{% endif %}{% endfor %}</td>
+                    <td class="so">{{ r.einvoice|floatformat:0|intcomma }}</td>
+                    <td class="so">{{ r.ipcas|floatformat:0|intcomma }}</td>
+                    <td class="so fw-bold">{{ r.chenh_lech|floatformat:0|intcomma }}</td>
+                    <td class="so">{% if r.so_mon_lech %}<a href="?ngay={{ ma }}&tab=thieu_hd#u-{{ r.user }}">{{ r.so_mon_lech }}</a>{% else %}0{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+                <tfoot class="table-light fw-bold"><tr><td colspan="2">Tổng</td>
+                    <td class="so">{{ tong_cong.einvoice|floatformat:0|intcomma }}</td><td class="so">{{ tong_cong.ipcas|floatformat:0|intcomma }}</td>
+                    <td class="so">{{ tong_cong.chenh_lech|floatformat:0|intcomma }}</td><td class="so">{{ tong_cong.so_mon_lech|floatformat:0 }}</td></tr></tfoot>
+            </table>
+        </div>
+        <div class="col-xl-4 small text-muted">
+            <div class="card card-body">
+                <strong>Cách đọc</strong>
+                <ul class="mb-0 ps-3">
+                    <li><b>Einvoice</b>: tiền thuế (quy VND) các HĐ gốc có TTV = user.</li>
+                    <li><b>Ipcas</b>: tổng tiền thuế (amt) của user trên GLST30.</li>
+                    <li><b>Chênh lệch</b> = Ipcas − Einvoice: số thuế còn thiếu hoá đơn → gom vào file import.</li>
+                    <li><b>Số món lệch</b>: số giao dịch IPCAS chưa tìm thấy hoá đơn (tab "Giao dịch chưa có HĐ").</li>
+                    <li>Einvoice {{ kq.so_dong_ei }} dòng · IPCAS {{ kq.so_dong_ip }} dòng.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    {% elif tab == 'thieu_hd' %}
+    <div class="hd-scroll">
+    <table class="table table-sm table-bordered table-hover hd">
+        <thead><tr><th>User</th><th>Trseq</th><th>Ngày</th><th>Khách hàng</th><th class="text-end">Tramt</th><th class="text-end">Thuế (amt)</th><th>Remark</th><th>Serino</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+        <tr {% ifchanged r.user %}id="u-{{ r.user }}"{% endifchanged %}>
+            <td>{{ r.user }}</td><td>{{ r.trseq }}</td><td>{{ r.trdate }}</td><td>{{ r.cust }}</td>
+            <td class="so">{{ r.tramt|floatformat:0|intcomma }}</td><td class="so">{{ r.amt|floatformat:0|intcomma }}</td>
+            <td class="small">{{ r.remark }}</td><td>{{ r.serino }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="8" class="text-center text-muted py-3">Không có giao dịch nào thiếu hoá đơn</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="form-text">Giao dịch IPCAS không tìm thấy hoá đơn theo khoá user + trseq (trừ 7202CD sau 21/07/2022 và ATM/POS không có diễn giải) — tô vàng trong file kết quả.</div>
+
+    {% elif tab == 'loi_hd' %}
+    <div class="mb-2">{% for nhan, mau, n in dem_loi %}<span class="badge bg-{{ mau }}{% if mau == 'warning' %} text-dark{% endif %} me-1">{{ nhan }}: {{ n }}</span>{% endfor %}</div>
+    <div class="hd-scroll">
+    <table class="table table-sm table-bordered hd">
+        <thead><tr><th>Số HĐ</th><th>TTV</th><th>SEQ</th><th>Người mua</th><th>MST</th><th>Loại KH</th><th>Tiền tệ / tỷ giá</th><th class="text-end">Tiền thuế</th><th>Tình trạng</th><th>Lỗi</th><th>Gợi ý từ KH 360</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+        <tr>
+            <td>{{ r.so_hd }}</td><td>{{ r.ttv }}</td><td>{{ r.seq }}</td><td>{{ r.ten_nguoi_mua }}</td><td>{{ r.mst|default:"—" }}</td><td>{{ r.loai_kh }}</td>
+            <td>{{ r.tien_te }} / {{ r.ty_gia|floatformat:"-2" }}</td><td class="so">{{ r.tien_thue|floatformat:"-2"|intcomma }}</td>
+            <td>{{ r.tinh_trang }} · {{ r.tinh_trang_ky }}</td>
+            <td>{% for nhan, mau in r.loi_list %}<span class="badge bg-{{ mau }}{% if mau == 'warning' %} text-dark{% endif %}">{{ nhan }}</span> {% endfor %}</td>
+            <td class="small">{% if r.goi_y %}CIF {{ r.goi_y.cif }}{% if r.goi_y.mst %} · MST {{ r.goi_y.mst }}{% else %} · <span class="text-muted">KH 360 chưa có MST</span>{% endif %}<br><span class="text-muted">{{ r.goi_y.dia_chi }}</span>{% elif r.loi_mst %}<span class="text-muted">Không khớp KH 360</span>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="11" class="text-center text-muted py-3">Không phát hiện hoá đơn lỗi</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    {% else %}
+    {# ── Tạo file import ── #}
+    <form method="get" id="form-import">
+        {% csrf_token %}
+        <input type="hidden" name="ngay" value="{{ ma }}"><input type="hidden" name="tab" value="import"><input type="hidden" name="da_chon_user" value="1">
+        {% for c in canh_bao %}<div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle"></i> {{ c }}</div>{% endfor %}
+        <div class="row g-3">
+            <div class="col-xl-5">
+                <div class="card mb-3"><div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6"><label class="form-label small mb-0">Giờ giao dịch (HHMMSS)</label><input name="gio" class="form-control form-control-sm" value="{{ gio }}"></div>
+                        <div class="col-6"><label class="form-label small mb-0">Tỷ giá quy đổi USD {% if co_kieu_hoi %}<span class="text-danger">* (có kiều hối)</span>{% endif %}</label>
+                            <input name="ty_gia" class="form-control form-control-sm {% if co_kieu_hoi and not ty_gia %}is-invalid{% endif %}" value="{{ ty_gia|default_if_none:''|floatformat:'-2' }}" placeholder="vd 25750"></div>
+                    </div>
+                </div></div>
+                <div class="card"><div class="card-header small"><strong>User đưa vào file import</strong> (chỉ user có chênh lệch)</div>
+                <table class="table table-sm mb-0 hd">
+                    <thead class="table-light"><tr><th></th><th>User</th><th>Nhóm</th><th class="text-end">Chênh lệch</th></tr></thead>
+                    <tbody>
+                    {% for r in user_rows %}
+                    <tr {% if r.am_lon %}class="table-danger"{% endif %}>
+                        <td><input type="checkbox" class="form-check-input" name="gom_user" value="{{ r.user }}" {% if r.gom %}checked{% endif %}></td>
+                        <td>{{ r.user }}{% if r.am_lon %}<br><small class="text-danger">Âm lớn — thường là HĐ lập riêng (vd đấu giá tài sản)</small>{% endif %}</td>
+                        <td class="small">{% for k, v in nhom_ten.items %}{% if k == r.nhom %}{{ v }}{% endif %}{% endfor %}</td>
+                        <td class="so">{{ r.chenh_lech|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% empty %}<tr><td colspan="4" class="text-muted text-center">Không có chênh lệch</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table></div>
+            </div>
+            <div class="col-xl-7">
+                <div class="card mb-3">
+                    <div class="card-header small d-flex justify-content-between"><strong>Hoá đơn riêng</strong> <span class="text-muted">khi khách hàng yêu cầu xuất riêng (vd Thu lãi tiền vay cho DN); không có thì bỏ trống</span></div>
+                    <div class="card-body p-2" id="ds-rieng">
+                        {% for r in rieng %}{% include 'templates_app/hddt/_dong_rieng.html' %}{% endfor %}
+                    </div>
+                    <div class="card-footer py-1"><button type="button" class="btn btn-sm btn-outline-secondary" id="them-rieng"><i class="bi bi-plus"></i> Thêm hoá đơn riêng</button></div>
+                </div>
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-outline-primary"><i class="bi bi-eye"></i> Xem trước</button>
+                    <button class="btn btn-primary" formmethod="post" formaction="{% url 'hddt_tai_import' %}"><i class="bi bi-download"></i> Tải file import</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="card-header"><strong>Xem trước file import</strong> — LOAD {{ ma }}.xlsx</div>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0 hd">
+            <thead class="table-light"><tr><th>#</th><th>Tên hàng</th><th>Nội dung</th><th>Khách hàng</th><th>Tiền tệ / tỷ giá</th><th class="text-end">Chưa thuế</th><th class="text-end">Thuế</th><th class="text-end">Thanh toán</th><th>TS</th><th>TTV</th></tr></thead>
+            <tbody>
+            {% for d in xem_chinh %}{% include 'templates_app/hddt/_dong_xem.html' %}{% empty %}<tr><td colspan="10" class="text-center text-muted">Không có dòng nào</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% for ten, ds in xem_rieng %}
+    <div class="card mt-3">
+        <div class="card-header"><strong>File riêng</strong> — {{ ten }}</div>
+        <table class="table table-sm table-bordered mb-0 hd"><tbody>{% for d in ds %}{% include 'templates_app/hddt/_dong_xem.html' %}{% endfor %}</tbody></table>
+    </div>
+    {% endfor %}
+    {% if xem_rieng %}<div class="form-text">Có hoá đơn xuất file riêng → tải về dạng .zip gồm file chính và các file riêng.</div>{% endif %}
+
+    <template id="mau-rieng">{% include 'templates_app/hddt/_dong_rieng.html' with r=None %}</template>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var btn = document.getElementById('them-rieng');
+    if (!btn) return;
+    var ds = document.getElementById('ds-rieng'), mau = document.getElementById('mau-rieng');
+    btn.addEventListener('click', function () { ds.appendChild(mau.content.cloneNode(true)); });
+    ds.addEventListener('click', function (e) {
+        if (e.target.closest('.xoa-rieng')) { e.target.closest('.dong-rieng').remove(); return; }
+        var tra = e.target.closest('.tra-kh360');
+        if (!tra) return;
+        var d = tra.closest('.dong-rieng'), cif = d.querySelector('[name=r_cif]').value.trim(), tb = d.querySelector('.tra-tb');
+        if (!cif) { tb.textContent = 'Nhập CIF trước'; return; }
+        tb.textContent = 'Đang tra…';
+        fetch("{% url 'hddt_tra_kh' %}?cif=" + encodeURIComponent(cif), {credentials: 'same-origin'})
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (!j.ok) { tb.textContent = j.loi; return; }
+                d.querySelector('[name=r_cif]').value = j.cif;
+                d.querySelector('[name=r_ten_kh]').value = j.ten_kh;
+                d.querySelector('[name=r_dia_chi]').value = j.dia_chi;
+                d.querySelector('[name=r_so_tk]').value = j.so_tk;
+                d.querySelector('[name=r_loai_kh]').value = j.loai_kh;
+                if (j.mst) d.querySelector('[name=r_mst]').value = j.mst;
+                tb.textContent = 'Đã điền từ KH 360' + (j.loai_kh === 'C' && !j.mst ? ' — KH 360 chưa có MST, nhập tay' : '');
+            })
+            .catch(function () { tb.textContent = 'Không tra được'; });
+    });
+    // checkbox "file riêng": gửi kèm giá trị 0/1 cho từng dòng (giữ đúng thứ tự)
+    document.getElementById('form-import').addEventListener('submit', function () {
+        ds.querySelectorAll('.dong-rieng').forEach(function (d) {
+            d.querySelector('[name=r_file_rieng]').value = d.querySelector('.chk-file-rieng').checked ? '1' : '0';
+        });
+    });
+})();
+</script>
+{% endblock %}

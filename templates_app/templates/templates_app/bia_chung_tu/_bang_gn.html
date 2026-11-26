@@ -9,7 +9,7 @@
     <tbody>
     {% for b in bias %}
     <tr>
-        <td><input type="checkbox" class="form-check-input gn-chk" name="ids" value="{{ b.pk }}" data-tt="{{ b.trang_thai_gn }}" {% if b.trang_thai_gn == 'hk_da_nhan' %}disabled{% endif %}></td>
+        <td><input type="checkbox" class="form-check-input gn-chk" name="ids" value="{{ b.pk }}" data-tt="{{ b.trang_thai_gn }}" {% if b.trang_thai_gn == 'hoan_thanh' %}disabled{% endif %}></td>
         <td class="fw-semibold">{{ b.so_ho_so }}</td>
         <td>{{ b.ngay_chung_tu|date:"d/m/Y" }}</td>
         <td>{{ b.tap_so }}/{{ b.tong_tap }}</td>

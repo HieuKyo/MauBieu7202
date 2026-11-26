@@ -30,6 +30,7 @@ from . import cash_drawer_views
 from . import can_doi_views
 from . import bia_chung_tu_views
 from . import bia_giao_nhan_views
+from . import hddt_views
 from . import spdv_kpi_views
 from . import customer_export
 from . import customer_cif_tools
@@ -280,6 +281,11 @@ urlpatterns = [
     path('can-doi/result/<int:upload_id>/', can_doi_views.can_doi_result, name='can_doi_result'),
 
     # Tạo bìa chứng từ (Kế toán Ngân quỹ)
+    path('hddt/doi-chieu/', hddt_views.hddt_upload, name='hddt_upload'),
+    path('hddt/doi-chieu/ket-qua/', hddt_views.hddt_ket_qua, name='hddt_ket_qua'),
+    path('hddt/doi-chieu/tai-ket-qua/', hddt_views.hddt_tai_ket_qua, name='hddt_tai_ket_qua'),
+    path('hddt/doi-chieu/tai-import/', hddt_views.hddt_tai_import, name='hddt_tai_import'),
+    path('hddt/doi-chieu/tra-kh/', hddt_views.hddt_tra_kh, name='hddt_tra_kh'),
     path('bia-chung-tu/', bia_chung_tu_views.bia_list, name='bia_chung_tu_list'),
     path('bia-chung-tu/giao-nhan/', bia_giao_nhan_views.bia_giao_nhan, name='bia_chung_tu_giao_nhan'),
     path('bia-chung-tu/giao-nhan/xu-ly/', bia_giao_nhan_views.bia_giao_nhan_xu_ly, name='bia_chung_tu_giao_nhan_xu_ly'),

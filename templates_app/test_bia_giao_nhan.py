@@ -55,12 +55,38 @@ class BiaGiaoNhanTests(TestCase):
         self._xu_ly(self.hk, 'hk_nhan', [b1, b2])
         self.assertEqual(self._tt(b1), 'hk_da_nhan')
         self.assertEqual(b1.nguoi_xu_ly, self.hk)
+        self._xu_ly(self.hk, 'hk_hoan_thanh', [b1, b2])
+        self.assertEqual(self._tt(b1), 'hoan_thanh')
         ls = list(BiaGiaoNhanLog.objects.filter(bia=b1).values_list('den_trang_thai', 'nguoi_thuc_hien__username'))
         self.assertEqual(ls, [('cho_ksv_nhan', 'gdv'), ('ksv_dang_ky', 'ksv'), ('cho_gd_ky', 'ksv'),
-                              ('cho_hk_nhan', 'gdv'), ('hk_da_nhan', 'hk')])
+                              ('cho_hk_nhan', 'gdv'), ('hk_da_nhan', 'hk'), ('hoan_thanh', 'hk')])
         # Tra cứu hiện lịch sử
         self.client.force_login(self.ksv)
-        self.assertContains(self.client.get(reverse('bia_chung_tu_giao_nhan') + '?tab=tra_cuu'), 'Hậu kiểm xác nhận đã nhận')
+        self.assertContains(self.client.get(reverse('bia_chung_tu_giao_nhan') + '?tab=tra_cuu'), 'Hoàn thành chứng từ')
+
+    def test_hkv_tra_gdv_sua_roi_hoan_thanh(self):
+        b1 = self.bias[0]
+        self._xu_ly(self.gdv, 'giao_ksv', [b1], nguoi_nhan_ksv=self.ksv.pk)
+        self._xu_ly(self.ksv, 'ksv_nhan', [b1])
+        self._xu_ly(self.ksv, 'ksv_ky', [b1])
+        self._xu_ly(self.gdv, 'giao_hk', [b1], nguoi_nhan_hk=self.hk.pk)
+        self._xu_ly(self.hk, 'hk_nhan', [b1])
+        self._xu_ly(self.hk, 'hk_tra', [b1])                       # thiếu lý do → không đổi
+        self.assertEqual(self._tt(b1), 'hk_da_nhan')
+        self._xu_ly(self.hk, 'hk_tra', [b1], ly_do='Thiếu chữ ký khách hàng')
+        self.assertEqual(self._tt(b1), 'hk_tra_sua')
+        self.assertIsNone(b1.nguoi_xu_ly)
+        self.client.force_login(self.gdv)                           # GDV thấy "HKV trả chứng từ để GDV sửa"
+        self.assertContains(self.client.get(reverse('bia_chung_tu_giao_nhan') + '?tab=cua_toi'), 'HKV trả chứng từ để GDV sửa')
+        self._xu_ly(self.gdv, 'giao_hk', [b1], nguoi_nhan_hk=self.hk.pk)   # sửa xong giao lại
+        self.assertEqual(self._tt(b1), 'cho_hk_nhan')
+        self._xu_ly(self.gdv, 'thu_hoi', [b1])                      # thu hồi → về "HKV trả sửa", không phải "chờ GĐ ký"
+        self.assertEqual(self._tt(b1), 'hk_tra_sua')
+        self._xu_ly(self.gdv, 'giao_hk', [b1], nguoi_nhan_hk=self.hk.pk)
+        self._xu_ly(self.hk, 'hk_hoan_thanh', [b1])                 # hoàn thành luôn (chưa bấm nhận cũng được)
+        self.assertEqual(self._tt(b1), 'hoan_thanh')
+        self._xu_ly(self.hk, 'hk_tra', [b1], ly_do='x')             # đã hoàn thành → không trả được nữa
+        self.assertEqual(self._tt(b1), 'hoan_thanh')
 
     def test_khong_dung_nguoi_hoac_trang_thai_bi_bo_qua(self):
         b1 = self.bias[0]

@@ -3,6 +3,33 @@
 Mỗi mục là một bản cập nhật (gói `CapNhat_MauBieu_<phiên bản>`), mới nhất ở trên.
 Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `tao_ban_cap_nhat.bat`, tiêu đề này được đổi thành số phiên bản và ngày.
 
+## Bản tiếp theo
+
+### Chức năng mới
+- **Kế toán Ngân quỹ → Đối chiếu Hóa đơn điện tử** (phòng KT&NQ, Hậu kiểm, Superuser) — thay cho file macro "DOI CHIEU HDDT.xlsm":
+  - Tải file **Einvoice** (xuất từ website / BKCT) và **IPCAS** (GLST30 – Day, SOLD), tên file theo ngày **DDMM** như trước; chọn nhiều ngày cùng lúc để đối chiếu theo lô (ghép cặp theo tên file).
+  - Xem trước: **đối chiếu theo user** (Einvoice / Ipcas / Chênh lệch / Số món lệch), **giao dịch IPCAS chưa có hoá đơn**, **lỗi hoá đơn Einvoice** (chưa ký, đảo doanh thu thành tổng thanh toán, sai tỷ giá, DN chưa có MST). Tải **file kết quả** (ketquaDDMMYYYY.xlsx, cùng bố cục file cũ) từng ngày hoặc cả lô (.zip).
+  - **Tạo file import HĐĐT** (LOAD DDMM.xlsx): gom chênh lệch — **7202CD → Phí thường niên**; **7202EI → Phí dịch vụ kiều hối** (USD, bắt buộc nhập **tỷ giá quy đổi**, trang nhắc khi có kiều hối); còn lại → **Phí dịch vụ chuyển tiền**. Chọn user đưa vào file (user chênh lệch âm từ 1 triệu trở lên — thường là HĐ lập riêng như đấu giá tài sản — mặc định không gom).
+  - **Hoá đơn riêng** khi khách hàng yêu cầu xuất riêng (vd **Thu lãi tiền vay** cho DN): chọn loại, nhập số tiền, thông tin khách hàng; tích "Xuất file riêng" thì tải về .zip gồm file chính + file riêng.
+  - Đã đối chiếu lại toàn bộ dữ liệu tháng 11: bảng theo user khớp 448/448 dòng với file kết quả cũ, file import khớp 38/38 dòng.
+  - **Kiểm tra lỗi hoá đơn bổ sung:** đơn giá ≠ doanh số chưa thuế, thuế suất khác 10% (trừ hàng không chịu thuế: lãi tiền vay, lãi thấu chi, phí trả nợ trước hạn, bảo lãnh…), tiền GTGT ≠ 10%, tổng thanh toán ≠ đơn giá + VAT, hoá đơn không có user.
+  - **Tra Khách hàng 360:** ở hoá đơn riêng gõ CIF bấm tra → tự điền tên, địa chỉ, cá nhân/tổ chức, số TK; tab lỗi hoá đơn gợi ý CIF cho HĐ "DN chưa có MST" (khớp theo Số cif hoặc tên tổ chức). Lưu ý: KH 360 hiện chưa có MST của tổ chức (DP01 không có) — MST vẫn nhập tay.
+  - Trang tải file chọn **Cách 1 – GLST30** (như cũ) hoặc **Cách 2 – GLCB06 + GLCB41** (theo cách làm file "DCHD", mỗi lần 1 ngày): 1 file Einvoice + **GLCB41** (bảng cân đối, bắt buộc) + các file **GLCB06 – Transaction List in Account** (mỗi lần search 1 tài khoản ra 1 file: 453101 và TK thu lãi 702…, đủ các loại tiền — chọn nhiều file cùng lúc); GLST30 tuỳ chọn (đơn giá thật). Tạm thời chưa đưa TK 711… vào GLCB06.
+    - Khớp theo user + bút toán + số tiền + loại tiền + TK; tổng hợp **theo user – loại tiền** (nguyên tệ / VND); bút toán chưa có HĐ (tô riêng **tiền vay** TK 702…, đánh dấu "Nhập đơn giá" khi VAT lẻ); HĐ không có bút toán bên IPCAS; **cân đối GLCB41** (453101 / 702 / 711 so với tổng hoá đơn gốc).
+    - File import: mặc định **kết hợp** — tổ chức (theo KH 360) và lãi vay lập 1 HĐ / bút toán có tên, địa chỉ (RefNo = user-số bút toán), cá nhân gom theo nhóm phí; hoặc chọn lập từng bút toán / gom tất cả. Ngoại tệ nhập tỷ giá theo từng loại tiền.
+    - Không cần xuất Msit81 / CMCC01 / DPCOM như file cũ (thông tin KH lấy từ Khách hàng 360). Đã kiểm lại với dữ liệu trong file DCHD: trạng thái 4.173/4.173 bút toán và bảng theo user – loại tiền 14/14 dòng khớp kết quả của file.
+
+### Chỉnh sửa
+- **Chứng từ → Giao/Nhận chứng từ – bước Hậu kiểm:** sau khi xác nhận đã nhận (trạng thái *"Hậu kiểm đã nhận – đang kiểm tra"*), Hậu kiểm viên bấm **"Hoàn thành chứng từ"** hoặc **"HKV trả chứng từ để GDV sửa"** (bắt buộc lý do). GDV sửa xong giao lại Hậu kiểm (hoặc giao KSV nếu cần ký lại); thu hồi thì về đúng trạng thái trước khi giao. Tập "HKV trả sửa" được đếm vào số việc của GDV.
+
+### Lưu ý
+- Có migration `templates_app/0099_bia_giao_nhan_hau_kiem` (thêm 2 trạng thái giao nhận; không đổi dữ liệu). Các tập đang ở "Hậu kiểm đã nhận" giữ nguyên — Hậu kiểm viên bấm "Hoàn thành chứng từ" để kết thúc.
+- Kết quả đối chiếu HĐĐT lưu tạm 24 giờ trong `tmp/hddt` (chỉ người tải xem được, tự xoá), không lưu dữ liệu khách hàng vào cơ sở dữ liệu.
+
+### File
+- Thêm: `templates_app/hddt_doi_chieu.py`, `templates_app/hddt_glcb06.py`, `templates_app/hddt_views.py`, `templates_app/test_hddt.py`, `templates_app/templates/templates_app/hddt/` (upload.html, ket_qua.html, ket_qua_glcb06.html, _dong_rieng.html, _dong_xem.html), `templates_app/migrations/0099_bia_giao_nhan_hau_kiem.py`
+- Sửa: `templates_app/urls.py`, `templates_app/templates/templates_app/base.html`, `templates_app/models/cash.py`, `templates_app/bia_giao_nhan_views.py`, `templates_app/test_bia_giao_nhan.py`, `templates_app/templates/templates_app/bia_chung_tu/` (giao_nhan.html, _bang_gn.html, _trang_thai_gn.html), `scripts/release/build_update.py`, `tao_ban_cap_nhat.bat`
+
 ## 2026.11.26 — 26/11/2026
 
 ### Chức năng mới
