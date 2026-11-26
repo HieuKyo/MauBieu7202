@@ -22,7 +22,7 @@ python manage.py add_tax_variables
 
 **Bước 2: Xác nhận biến đã được tạo**
 ```bash
-python check_all_tax_vars.py
+python scripts/tax_payment/check_all_tax_vars.py
 ```
 
 Kết quả mong đợi:
@@ -73,7 +73,7 @@ http://localhost:8000/admin/templates_app/variable/
 
 #### A. Chưa có dữ liệu trong database
 ```bash
-python check_tax_data.py
+python scripts/tax_payment/check_tax_data.py
 ```
 
 Nếu hiển thị:
@@ -132,7 +132,7 @@ python manage.py import_tax_data \
 
 **Debug script:**
 ```bash
-python debug_tax_locations.py
+python scripts/tax_payment/debug_tax_locations.py
 ```
 
 Kiểm tra:
@@ -157,7 +157,7 @@ for loc in TaxLocation.objects.all():
 ### 🧪 Test sau khi sửa
 
 ```bash
-python test_views.py
+python scripts/tax_payment/test_views.py
 ```
 
 Kết quả mong đợi:
@@ -224,22 +224,22 @@ python manage.py import_tax_data --locations file.xlsx --clear
 
 **1. Check biến:**
 ```bash
-python check_all_tax_vars.py
+python scripts/tax_payment/check_all_tax_vars.py
 ```
 
 **2. Check dữ liệu:**
 ```bash
-python check_tax_data.py
+python scripts/tax_payment/check_tax_data.py
 ```
 
 **3. Debug cascading dropdown:**
 ```bash
-python debug_tax_locations.py
+python scripts/tax_payment/debug_tax_locations.py
 ```
 
 **4. Test views:**
 ```bash
-python test_views.py
+python scripts/tax_payment/test_views.py
 ```
 
 ### Django Shell
@@ -278,9 +278,9 @@ python manage.py runserver
 
 3. Chạy tất cả debug scripts:
 ```bash
-python check_all_tax_vars.py
-python check_tax_data.py
-python test_views.py
+python scripts/tax_payment/check_all_tax_vars.py
+python scripts/tax_payment/check_tax_data.py
+python scripts/tax_payment/test_views.py
 ```
 
 4. Gửi kết quả các script trên khi báo lỗi.

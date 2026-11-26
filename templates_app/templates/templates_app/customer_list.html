@@ -23,6 +23,21 @@
         <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#importAgribankModal">
             <i class="bi bi-bank"></i> Import AGRIBANK
         </button>
+        <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#exportExcelModal">
+            <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+        </button>
+        <button type="button" class="btn btn-warning me-2" data-bs-toggle="modal" data-bs-target="#updateCodesModal">
+            <i class="bi bi-upload"></i> Cập nhật Mã KH
+        </button>
+        <button type="button" class="btn btn-outline-dark me-2" data-bs-toggle="modal" data-bs-target="#signatureFoldersModal">
+            <i class="bi bi-folder-plus"></i> Tạo Folder chữ ký
+        </button>
+        <button type="button" class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#studentImportModal">
+            <i class="bi bi-mortarboard"></i> Nhập DS học sinh
+        </button>
+        <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#batchPrintModal">
+            <i class="bi bi-printer"></i> In theo lô
+        </button>
         <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Quay lại
         </a>
@@ -86,7 +101,11 @@
                     <tr>
                         <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
                         <td><span class="badge bg-secondary">{{ customer.ma_khach_hang|default:"-" }}</span></td>
-                        <td class="fw-bold">{{ customer.ho_ten }}</td>
+                        <td class="fw-bold">{{ customer.ho_ten }}
+                            {% with note=customer.get_age_note %}{% if note %}
+                            <div><span class="badge {% if note.0 == 'under' %}bg-warning text-dark{% else %}bg-success{% endif %} fw-normal">{{ note.1 }}</span></div>
+                            {% endif %}{% endwith %}
+                        </td>
                         <td>{{ customer.so_cmnd }}</td>
                         <td>
                             {% if customer.ngay_cap_cmnd %}
@@ -112,12 +131,15 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'customer_capture_docs' customer.id %}" class="btn btn-sm btn-info me-1" title="Chụp ảnh CCCD">
-                                <i class="bi bi-camera-fill"></i>
-                            </a>
-                            <a href="{% url 'print_customer_docs' customer.id %}" class="btn btn-sm btn-success me-1" title="In hồ sơ">
-                                <i class="bi bi-printer-fill"></i>
-                            </a>
+                            <button class="btn btn-sm btn-outline-dark me-1 position-relative" onclick="openSignatureModal({{ customer.id|unlocalize }})" title="Chụp hình chữ ký">
+                                <i class="bi bi-pen"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success{% if not customer.signature_count %} d-none{% endif %}" data-sig-count="{{ customer.id|unlocalize }}">{{ customer.signature_count }}</span>
+                            </button>
+                            {% if customer.cccd_sides %}
+                            <button class="btn btn-sm btn-outline-success me-1" onclick="openCccdImages({{ customer.id|unlocalize }}, '{{ customer.ho_ten|escapejs }}', '{{ customer.cccd_sides|join:',' }}')" title="Ảnh 2 mặt thẻ (học sinh gửi online)">
+                                <i class="bi bi-person-vcard"></i>
+                            </button>
+                            {% endif %}
                             <button class="btn btn-sm btn-warning me-1" onclick="editCustomer({{ customer.id|unlocalize }})" title="Sửa">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
@@ -525,6 +547,276 @@
 </div>
 
 <!-- Modal: Import từ AGRIBANK (TSV) -->
+<!-- Modal: Xuất danh sách khách hàng ra Excel -->
+<div class="modal fade" id="exportExcelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="get" action="{% url 'customer_export' %}">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Xuất Excel khách hàng</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="q" value="{{ search_query }}">
+                    <label class="form-label fw-bold">Loại file</label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="kind" value="normal" id="exportNormal" checked>
+                        <label class="form-check-label" for="exportNormal">
+                            <strong>1. Excel thường</strong><br>
+                            <small class="text-muted">Danh sách thông tin khách hàng (họ tên, CCCD, SĐT, địa chỉ, tài khoản, thẻ, dịch vụ...)</small>
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="kind" value="cif" id="exportCif">
+                        <label class="form-check-label" for="exportCif">
+                            <strong>2. Mẫu mở CIF - dịch vụ đồng thời (Khách hàng mới) V7.1-1</strong><br>
+                            <small class="text-muted">Điền vào đúng file mẫu (tối đa 500 khách). Giữ nguyên các cột mã, công thức và danh mục của mẫu.</small>
+                        </label>
+                    </div>
+                    <label class="form-label fw-bold">Khách hàng in / cập nhật trong khoảng</label>
+                    <div class="row g-2">
+                        <div class="col"><input type="date" class="form-control" name="from" id="exportFrom"></div>
+                        <div class="col"><input type="date" class="form-control" name="to" id="exportTo"></div>
+                    </div>
+                    <small class="text-muted d-block mt-1">Mặc định: hôm nay. Xóa trống cả 2 ô để xuất tất cả{% if search_query %} (theo kết quả tìm kiếm "<strong>{{ search_query }}</strong>"){% endif %}.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-download"></i> Xuất file</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Cập nhật Mã khách hàng từ file Excel (sau khi mở CIF) -->
+<div class="modal fade" id="updateCodesModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-upload"></i> Cập nhật Mã khách hàng từ file Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="updateCodesForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" class="form-control" name="excel_file" accept=".xlsx,.xlsm" required>
+                    <small class="text-muted d-block mt-1">
+                        File Excel danh sách khách hàng đã mở CIF, cần có cột <strong>Số ID / CCCD</strong> và cột <strong>Mã KH / Mã khách hàng / CIF</strong>
+                        (tiêu đề ở dòng nào cũng được). Khách được ghép theo <strong>số CCCD</strong>; chỉ cập nhật <strong>Mã khách hàng</strong>, không đổi thông tin khác.
+                        <br>Dùng file <strong>Xuất Excel</strong> danh sách khách hàng (đã điền cột Mã khách hàng): khách <strong>chưa có</strong> trong danh sách sẽ được <strong>thêm mới</strong> với đủ thông tin trong file (họ tên, lớp, ngày sinh, CCCD…).
+                    </small>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="overwrite" value="1" id="updateCodesOverwrite">
+                        <label class="form-check-label" for="updateCodesOverwrite">Ghi đè khi khách hàng đã có Mã KH khác</label>
+                    </div>
+                </form>
+                <div id="updateCodesResult" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-outline-primary" onclick="submitUpdateCodes(false)"><i class="bi bi-eye"></i> Xem trước</button>
+                <button type="button" class="btn btn-warning" id="updateCodesApplyBtn" onclick="submitUpdateCodes(true)" disabled><i class="bi bi-check2-circle"></i> Cập nhật</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Chụp hình chữ ký của khách hàng (lưu trên máy chủ, đưa vào folder Mã KH khi tạo file ZIP) -->
+<div class="modal fade" id="signatureModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-pen"></i> Chụp hình chữ ký<span id="sigTitle"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="sigNoCode" class="alert alert-warning py-2 d-none">
+                    <i class="bi bi-exclamation-triangle"></i> Khách hàng chưa có <strong>Mã KH</strong>: ảnh vẫn được lưu, nhưng chỉ có trong file ZIP sau khi cập nhật Mã KH.
+                </div>
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                    <select class="form-select" id="sigCameraSelect" onchange="startSigCamera(this.value, true)"></select>
+                </div>
+                <div class="position-relative bg-dark rounded overflow-hidden" id="sigBox">
+                    <video id="sigVideo" playsinline muted style="width:100%; height:auto; display:block; min-height:200px;"></video>
+                    <div id="sigGuide" class="position-absolute border border-4 border-warning rounded" title="Kéo để di chuyển khung · lăn chuột để phóng to / thu nhỏ"
+                         style="box-shadow:0 0 0 2000px rgba(0,0,0,.45); cursor:move; touch-action:none;"></div>
+                    <img id="sigPreview" class="position-absolute top-0 start-0 w-100 h-100 d-none" alt="Ảnh chữ ký" style="object-fit:contain; background:#000;">
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-2 small">
+                    <span class="text-nowrap fw-bold"><i class="bi bi-arrows-angle-expand"></i> Cỡ khung</span>
+                    <input type="range" class="form-range" id="sigFrameSize" min="20" max="100" step="1" value="85">
+                    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" id="sigFrameReset">Đặt lại</button>
+                </div>
+                <div id="sigStatus" class="small text-muted mt-2"></div>
+                <div id="sigHelp"></div>
+                <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="btn btn-dark btn-lg flex-fill" id="sigShootBtn" onclick="shootSignature()" disabled><i class="bi bi-camera-fill"></i> Chụp</button>
+                    <button type="button" class="btn btn-outline-secondary btn-lg flex-fill d-none" id="sigRetakeBtn" onclick="showSigShot(null)"><i class="bi bi-arrow-counterclockwise"></i> Chụp lại</button>
+                    <button type="button" class="btn btn-success btn-lg flex-fill d-none" id="sigSaveBtn" onclick="saveSignature()"><i class="bi bi-save"></i> Lưu chữ ký</button>
+                </div>
+                <hr>
+                <div class="fw-bold small mb-2"><i class="bi bi-images"></i> Ảnh chữ ký đã lưu (sẽ có trong folder Mã KH khi tạo file ZIP)</div>
+                <div id="sigList" class="row g-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nhập danh sách học sinh tự đăng ký (file tải từ Google Sheet, dữ liệu mã hóa) -->
+<!-- Xem ảnh 2 mặt thẻ (học sinh gửi qua trang đăng ký online) -->
+<div class="modal fade" id="cccdImageModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-person-vcard"></i> Ảnh thẻ — <span id="cccdImageName"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body"><div class="row g-3" id="cccdImageBody"></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="studentImportModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-mortarboard"></i> Nhập danh sách học sinh tự đăng ký</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="studentImportForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" class="form-control" name="data_file" accept=".zip,.json,.xlsx,.xlsm,.csv" required>
+                    <small class="text-muted d-block mt-1">
+                        Chọn file <strong>.zip</strong> tải từ trang quản trị đăng ký (có ảnh 2 mặt thẻ), hoặc file <strong>.xlsx / .csv</strong> tải từ Google Sheet.
+                        Hồ sơ được giải mã trên máy chủ này; cùng một CCCD gửi nhiều lần thì lấy lần sau cùng; CCCD đã có thì cập nhật.
+                        {% if user.is_superuser %}<a href="{% url 'student_keys' %}">Quản lý khóa mã hóa</a>{% endif %}
+                    </small>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="use_suggestion" value="1" id="studentUseSuggestion">
+                        <label class="form-check-label" for="studentUseSuggestion">Dùng luôn <strong>địa chỉ gợi ý</strong> cho các dòng đổi địa chỉ không chắc chắn</label>
+                    </div>
+                </form>
+                <div id="studentImportResult" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-outline-primary" onclick="submitStudentImport(false)"><i class="bi bi-eye"></i> Xem trước</button>
+                <button type="button" class="btn btn-primary" id="studentImportApplyBtn" onclick="submitStudentImport(true)" disabled><i class="bi bi-check2-circle"></i> Nhập vào danh sách</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: In theo lô (1 file Word gộp hồ sơ nhiều khách) -->
+<div class="modal fade" id="batchPrintModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="get" action="{% url 'student_batch_print' %}" id="batchPrintForm">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-printer"></i> In theo lô</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="q" value="{{ search_query }}">
+                    <input type="hidden" name="ids" id="batchPrintIds">
+                    <div id="batchPrintIdsNote" class="alert alert-info py-2 d-none"></div>
+                    <label class="form-label fw-bold">Mẫu biểu</label>
+                    <select class="form-select mb-2" name="template">
+                        {% for t in batch_templates %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+                    </select>
+                    <label class="form-label fw-bold">Ngày in trên hồ sơ</label>
+                    <input type="date" class="form-control mb-2" name="ngay_in" id="batchPrintDate">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" role="switch" name="sort" value="lop" id="batchSortClass">
+                        <label class="form-check-label fw-bold" for="batchSortClass">Sắp xếp theo Lớp</label>
+                        <small class="text-muted d-block">Xếp hồ sơ theo lớp (10A1, 10A2 … 10A10), trong lớp theo họ tên; khách không có lớp ở cuối.</small>
+                    </div>
+                    <label class="form-label fw-bold mb-1">Kiểu tải về</label>
+                    <div class="mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="kieu" value="zip" id="batchKieuZip" checked>
+                            <label class="form-check-label" for="batchKieuZip"><strong>File nén (.zip)</strong> — mỗi hồ sơ 1 file Word riêng (khuyên dùng)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="kieu" value="gop" id="batchKieuGop">
+                            <label class="form-check-label" for="batchKieuGop"><strong>1 file Word gộp</strong> — tất cả hồ sơ trong 1 file</label>
+                        </div>
+                        <small class="text-muted d-block">In file nén: giải nén → chọn nhiều file (tối đa 15 / lần) → chuột phải → <strong>Print</strong>.</small>
+                    </div>
+                    <div id="batchPrintRange">
+                        <label class="form-label fw-bold">Khách hàng in / cập nhật trong khoảng</label>
+                        <div class="row g-2">
+                            <div class="col"><input type="date" class="form-control" name="from" id="batchFrom"></div>
+                            <div class="col"><input type="date" class="form-control" name="to" id="batchTo"></div>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            {% if search_query %}Theo kết quả tìm kiếm "<strong>{{ search_query }}</strong>" (vd. tìm "10A1" để in cả lớp). {% else %}Mẹo: tìm theo lớp (vd. "10A1") rồi bấm In theo lô để in cả lớp. {% endif %}
+                            Xóa trống 2 ô ngày để lấy tất cả.
+                        </small>
+                    </div>
+                    <small class="text-muted d-block mt-2">Tối đa 300 hồ sơ / lô. File gộp: mỗi hồ sơ bắt đầu ở trang mới.</small>
+                    <!-- Bước 2: danh sách sẽ in (đúng thứ tự trong file) — bỏ tick những em đã in -->
+                    <div id="batchPreview" class="d-none mt-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong id="batchPreviewCount"></strong>
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" id="batchCheckAll">
+                                <label class="form-check-label" for="batchCheckAll">Chọn tất cả</label>
+                            </div>
+                        </div>
+                        <div class="border rounded" style="max-height: 45vh; overflow: auto;">
+                            <table class="table table-sm table-hover mb-0 small">
+                                <thead class="table-light" style="position: sticky; top: 0;">
+                                    <tr><th></th><th>#</th><th>Lớp</th><th>Họ tên</th><th>Ngày sinh</th><th>Số CCCD</th><th title="Đã có ảnh 2 mặt thẻ (dùng cho In lô CCCD)">Ảnh thẻ</th></tr>
+                                </thead>
+                                <tbody id="batchPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-success d-none" id="batchCccdBtn" title="Mỗi hồ sơ 1 trang A5 ngang: 2 mặt thẻ + Đã đối chiếu khớp đúng với bản gốc (các em đã tick, có ảnh thẻ)">
+                        <i class="bi bi-person-vcard"></i> In lô CCCD</button>
+                    <button type="submit" class="btn btn-primary" id="batchSubmitBtn"><i class="bi bi-file-earmark-word"></i> Tạo file in</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Tạo file nén các folder chữ ký (folder rỗng, đặt tên theo Mã KH) -->
+<div class="modal fade" id="signatureFoldersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="get" action="{% url 'customer_signature_folders' %}">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-folder-plus"></i> Tạo Folder chữ ký</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="q" value="{{ search_query }}">
+                    <p class="mb-2">Tạo file <strong>.zip</strong> gồm các folder đặt tên theo <strong>Mã khách hàng</strong>, chứa sẵn <strong>ảnh chữ ký</strong> đã chụp (chưa chụp → folder rỗng)
+                        (mã KH 9 số; bỏ qua khách chưa có Mã KH).</p>
+                    <label class="form-label fw-bold">Khách hàng in / cập nhật trong khoảng</label>
+                    <div class="row g-2">
+                        <div class="col"><input type="date" class="form-control" name="from" id="foldersFrom"></div>
+                        <div class="col"><input type="date" class="form-control" name="to" id="foldersTo"></div>
+                    </div>
+                    <small class="text-muted d-block mt-1">Mặc định: hôm nay. Xóa trống cả 2 ô để lấy tất cả{% if search_query %} (theo kết quả tìm kiếm "<strong>{{ search_query }}</strong>"){% endif %}.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-dark"><i class="bi bi-file-earmark-zip"></i> Tải file nén</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="importAgribankModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -655,7 +947,249 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Mở camera dùng chung + chụp chữ ký -->
+<script src="{% static 'js/cccd_qr_scanner.js' %}"></script>
+<script src="{% static 'js/signature_capture.js' %}?v=2"></script>
 <script>
+// Xuất Excel: mặc định khách hàng in / cập nhật hôm nay
+// Xuất Excel / Tạo Folder chữ ký: mặc định khách hàng in / cập nhật hôm nay
+function fillTodayIfEmpty(ids) {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    const today = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    ids.forEach(id => { const el = document.getElementById(id); if (!el.value) el.value = today; });
+}
+document.getElementById('exportExcelModal').addEventListener('show.bs.modal', () => fillTodayIfEmpty(['exportFrom', 'exportTo']));
+document.getElementById('signatureFoldersModal').addEventListener('show.bs.modal', () => fillTodayIfEmpty(['foldersFrom', 'foldersTo']));
+
+// In theo lô: mở từ nút trên đầu trang (theo tìm kiếm + ngày) hoặc từ kết quả nhập học sinh (theo danh sách id)
+function openBatchPrint(ids) {
+    document.getElementById('batchPrintIds').value = ids ? ids.join(',') : '';
+    const note = document.getElementById('batchPrintIdsNote');
+    note.classList.toggle('d-none', !ids);
+    note.textContent = ids ? `In ${ids.length} học sinh vừa nhập.` : '';
+    document.getElementById('batchPrintRange').classList.toggle('d-none', !!ids);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('batchPrintModal')).show();
+}
+document.getElementById('batchPrintModal').addEventListener('show.bs.modal', () => fillTodayIfEmpty(['batchFrom', 'batchTo', 'batchPrintDate']));
+document.getElementById('batchPrintModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('batchPrintIds').value = '';
+    document.getElementById('batchPrintIdsNote').classList.add('d-none');
+    document.getElementById('batchPrintRange').classList.remove('d-none');
+    resetBatchPreview();
+});
+
+// Bấm "Tạo file in" lần 1: hiện danh sách sẽ in (đúng thứ tự trong file) để bỏ tick những em đã in;
+// lần 2: tạo file với đúng những em còn tick, theo thứ tự đã xem
+const batchForm = document.getElementById('batchPrintForm');
+let batchMax = 300, batchShown = false;
+function resetBatchPreview() {
+    batchShown = false;
+    document.getElementById('batchPreview').classList.add('d-none');
+    const btn = document.getElementById('batchSubmitBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-file-earmark-word"></i> Tạo file in';
+    document.getElementById('batchCccdBtn').classList.add('d-none');
+}
+function updateBatchCount() {
+    const boxes = [...document.querySelectorAll('#batchPreviewBody input')];
+    const n = boxes.filter(b => b.checked).length;
+    document.getElementById('batchPreviewCount').textContent = `Đã chọn ${n} / ${boxes.length} hồ sơ`
+        + (n > batchMax ? ` — tối đa ${batchMax} hồ sơ / lô, hãy bỏ bớt` : '');
+    document.getElementById('batchCheckAll').checked = boxes.length > 0 && n === boxes.length;
+    const btn = document.getElementById('batchSubmitBtn');
+    btn.disabled = n === 0 || n > batchMax;
+    btn.innerHTML = `<i class="bi bi-file-earmark-word"></i> Tạo file in (${n} hồ sơ)`;
+    // In lô CCCD: chỉ các em đã tick và có ảnh 2 mặt thẻ
+    const nAnh = boxes.filter(b => b.checked && b.dataset.anh === '1').length;
+    const cccdBtn = document.getElementById('batchCccdBtn');
+    cccdBtn.classList.toggle('d-none', !boxes.some(b => b.dataset.anh === '1'));
+    cccdBtn.disabled = nAnh === 0 || n > batchMax;
+    cccdBtn.innerHTML = `<i class="bi bi-person-vcard"></i> In lô CCCD (${nAnh})`;
+}
+// In lô CCCD: mở trang in (tab mới) theo đúng thứ tự danh sách đã xem, ngày ký = Ngày in trên hồ sơ
+document.getElementById('batchCccdBtn').addEventListener('click', () => {
+    const ids = [...document.querySelectorAll('#batchPreviewBody input:checked')].filter(b => b.dataset.anh === '1').map(b => b.value);
+    const params = new URLSearchParams({ ids: ids.join(','), ngay_in: document.getElementById('batchPrintDate').value });
+    window.open(`{% url 'cccd_batch_print' %}?${params}`, '_blank');
+});
+// Đổi mẫu / ngày / sắp xếp / khoảng ngày sau khi đã xem → phải xem lại danh sách
+batchForm.addEventListener('change', e => {
+    if (!e.target.closest('#batchPreview') && e.target.name !== 'kieu') resetBatchPreview();   // đổi kiểu tải về không cần xem lại
+});
+document.getElementById('batchPreviewBody').addEventListener('change', updateBatchCount);
+document.getElementById('batchCheckAll').addEventListener('change', e => {
+    document.querySelectorAll('#batchPreviewBody input').forEach(b => { b.checked = e.target.checked; });
+    updateBatchCount();
+});
+batchForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const params = new URLSearchParams(new FormData(batchForm));
+    const btn = document.getElementById('batchSubmitBtn');
+    if (!batchShown) {
+        params.set('preview', '1');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang lấy danh sách…';
+        try {
+            const r = await fetch(`${batchForm.action}?${params}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await r.json();
+            const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+            batchMax = data.max;
+            document.getElementById('batchPreviewBody').innerHTML = data.rows.length
+                ? data.rows.map((x, i) => `<tr><td><input class="form-check-input" type="checkbox" value="${x.id}" data-anh="${x.anh ? 1 : 0}" checked></td>
+                    <td>${i + 1}</td><td>${esc(x.lop)}</td><td>${esc(x.ho_ten)}</td><td>${esc(x.ngay_sinh)}</td><td>${esc(x.cccd)}</td>
+                    <td class="text-center">${x.anh ? '<i class="bi bi-person-vcard text-success"></i>' : '<span class="text-muted">—</span>'}</td></tr>`).join('')
+                : '<tr><td colspan="7" class="text-center text-muted py-3">Không có khách hàng nào trong phạm vi đã chọn.</td></tr>';
+            document.getElementById('batchPreview').classList.remove('d-none');
+            batchShown = true;
+            updateBatchCount();
+        } catch (err) {
+            resetBatchPreview();
+            alert('Không lấy được danh sách khách hàng. Vui lòng thử lại.');
+        }
+        return;
+    }
+    const ids = [...document.querySelectorAll('#batchPreviewBody input:checked')].map(b => b.value);
+    params.set('ids', ids.join(','));
+    params.set('keep_order', '1');
+    window.location = `${batchForm.action}?${params}`;
+});
+
+// Nhập danh sách học sinh: Xem trước → Nhập
+function openCccdImages(id, name, sides) {
+    const label = { mat_truoc: 'Mặt trước', mat_sau: 'Mặt sau' };
+    document.getElementById('cccdImageName').textContent = name;
+    document.getElementById('cccdImageBody').innerHTML = sides.split(',').map(side => {
+        const url = `/customers/${id}/cccd-anh/${side}/`;
+        return `<div class="col-md-6 text-center"><div class="fw-bold mb-1">${label[side]}</div>
+            <img src="${url}" class="img-fluid border rounded">
+            <a class="btn btn-sm btn-outline-secondary mt-2" href="${url}" download="${name} - ${label[side]}.jpg"><i class="bi bi-download"></i> Tải ảnh</a></div>`;
+    }).join('');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cccdImageModal')).show();
+}
+
+const STUDENT_ADDR_LABEL = {
+    converted: ['success', 'Đã đổi địa chỉ mới'], suggest_used: ['warning', 'Dùng địa chỉ gợi ý'],
+    suggest: ['warning', 'Giữ như trên thẻ (có gợi ý)'], none: ['secondary', 'Giữ như trên thẻ'],
+};
+document.querySelector('#studentImportForm [name="data_file"]').addEventListener('change', () => {
+    document.getElementById('studentImportApplyBtn').disabled = true;
+    document.getElementById('studentImportResult').innerHTML = '';
+});
+document.getElementById('studentUseSuggestion').addEventListener('change', () => {
+    document.getElementById('studentImportApplyBtn').disabled = true;
+});
+
+function submitStudentImport(apply) {
+    const form = document.getElementById('studentImportForm');
+    const result = document.getElementById('studentImportResult');
+    if (!form.data_file.files.length) { alert('Vui lòng chọn file tải từ Google Sheet'); return; }
+    if (apply && !confirm('Nhập các học sinh này vào danh sách khách hàng?')) return;
+    const fd = new FormData(form);
+    fd.append('apply', apply ? '1' : '0');
+    result.innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+    fetch('{% url "student_import" %}', {
+        method: 'POST', body: fd,
+        headers: { 'X-CSRFToken': document.querySelector('#studentImportForm [name=csrfmiddlewaretoken]').value },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { result.innerHTML = `<div class="alert alert-danger">${esc(data.error)}</div>`; return; }
+        const s = data.summary;
+        const extra = [s.trung ? `${s.trung} hồ sơ gửi trùng (lấy lần sau cùng)` : '', s.loi_giai_ma ? `<span class="text-danger">${s.loi_giai_ma} hồ sơ không giải mã / không đọc được</span>` : '',
+            s.khong_qr ? `<span class="text-warning-emphasis fw-bold">${s.khong_qr} hồ sơ không đọc được QR — nhập tay (xem cuối)</span>` : '']
+            .filter(Boolean).join(' · ');
+        // Hồ sơ có ảnh nhưng không đọc được QR: hiện ảnh để cán bộ nhập tay (bấm ảnh để tải ảnh lớn)
+        const noQr = (data.no_qr || []).length ? `<h6 class="mt-3 text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i>
+            Không đọc được QR — cán bộ xem ảnh và nhập tay (Thêm khách hàng)</h6>
+            <div class="table-responsive"><table class="table table-sm table-bordered align-middle">
+            <thead class="table-light"><tr><th>Trường</th><th>Lớp</th><th>Họ tên (học sinh gõ)</th><th>SĐT</th><th>Ảnh thẻ (bấm để tải ảnh lớn)</th></tr></thead><tbody>
+            ${data.no_qr.map(r => `<tr><td>${esc(r.truong)}</td><td>${esc(r.lop)}</td><td class="fw-bold">${esc(r.ho_ten) || '-'}</td><td>${esc(r.sdt) || '-'}</td>
+                <td>${r.anh.map(a => `<a href="${a.full}" download="${esc((r.ho_ten || 'hoc_sinh') + ' - ' + a.mat)}.jpg" class="me-2 d-inline-block text-center small">
+                    <img src="${a.thumb}" style="height:90px" class="border rounded d-block">${esc(a.mat)}</a>`).join('')}</td></tr>`).join('')}
+            </tbody></table></div>` : '';
+        const head = data.applied
+            ? `<div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> Đã nhập <strong>${data.saved_ids.length}</strong> học sinh
+                ${s.loi_luu ? `· <span class="text-danger">${s.loi_luu} không lưu được (xem cột Lỗi)</span>` : ''}
+                ${data.saved_ids.length ? `<button type="button" class="btn btn-sm btn-primary ms-2" onclick='openBatchPrint(${JSON.stringify(data.saved_ids)})'>
+                    <i class="bi bi-printer"></i> In theo lô ${data.saved_ids.length} học sinh này</button>` : ''}
+                <a class="btn btn-sm btn-outline-secondary ms-2" href="">Tải lại danh sách</a>${extra ? '<br>' + extra : ''}</div>`
+            : `<div class="alert alert-info">Xem trước: <strong>${s.new}</strong> học sinh mới · ${s.update} đã có (sẽ cập nhật) ·
+                ${s.suggest} địa chỉ chưa chắc chắn${extra ? ' · ' + extra : ''}. Kiểm tra rồi bấm <strong>Nhập vào danh sách</strong>.</div>`;
+        const rows = data.rows.map(r => {
+            const [color, label] = STUDENT_ADDR_LABEL[r.dia_chi_status];
+            return `<tr class="${r.loi ? 'table-danger' : ''}"><td>${esc(r.truong)}</td><td>${esc(r.lop)}</td><td class="fw-bold">${esc(r.ho_ten)}</td>
+                <td>${esc(r.cccd)}</td><td>${esc(r.ngay_sinh)}${r.tuoi !== null && r.tuoi < 15 ? ` <span class="badge bg-warning text-dark">${r.tuoi} tuổi</span>` : ''}</td>
+                <td>${esc(r.sdt) || '-'}</td>
+                <td class="small">${esc(r.dia_chi)}<br><span class="badge bg-${color}">${label}</span>${r.goi_y && r.dia_chi_status === 'suggest' ? `<div class="text-muted">Gợi ý: ${esc(r.goi_y)}</div>` : ''}</td>
+                <td><span class="badge bg-${r.trang_thai === 'new' ? 'primary' : 'info'}">${r.trang_thai === 'new' ? 'Mới' : 'Cập nhật'}</span></td>
+                <td class="text-center">${r.co_anh ? '<i class="bi bi-person-vcard text-success" title="Có ảnh 2 mặt thẻ"></i>' : '-'}</td>
+                <td class="small text-danger">${esc(r.loi)}</td></tr>`;
+        }).join('');
+        result.innerHTML = head + `<div class="table-responsive" style="max-height:420px"><table class="table table-sm table-bordered align-middle">
+            <thead class="table-light sticky-top"><tr><th>Trường</th><th>Lớp</th><th>Họ tên</th><th>CCCD</th><th>Ngày sinh</th><th>SĐT</th>
+            <th>Địa chỉ</th><th>Trạng thái</th><th>Ảnh</th><th>Lỗi</th></tr></thead><tbody>${rows}</tbody></table></div>` + noQr;
+        document.getElementById('studentImportApplyBtn').disabled = data.applied || !data.rows.length;
+    })
+    .catch(err => { result.innerHTML = `<div class="alert alert-danger">Lỗi: ${esc(err.message)}</div>`; });
+}
+
+// Cập nhật Mã KH từ Excel: Xem trước (apply=false) → Cập nhật (apply=true)
+const UPDATE_CODE_STATUS = {
+    update: ['success', 'Sẽ cập nhật'], new: ['primary', 'Sẽ thêm mới'], same: ['secondary', 'Đã đúng'],
+    no_code: ['secondary', 'Chưa có Mã KH trong file'],
+    conflict: ['warning', 'Đã có mã khác (bỏ qua)'], not_found: ['danger', 'Không có trong danh sách'],
+    invalid: ['danger', 'Mã KH không đúng 9 số (bỏ qua)'], error: ['danger', 'Lỗi, chưa thêm'],
+};
+document.querySelector('#updateCodesForm [name="excel_file"]').addEventListener('change', () => {
+    document.getElementById('updateCodesApplyBtn').disabled = true;
+    document.getElementById('updateCodesResult').innerHTML = '';
+});
+document.getElementById('updateCodesOverwrite').addEventListener('change', () => {
+    document.getElementById('updateCodesApplyBtn').disabled = true;   // đổi lựa chọn → xem trước lại
+});
+
+function submitUpdateCodes(apply) {
+    const form = document.getElementById('updateCodesForm');
+    const result = document.getElementById('updateCodesResult');
+    if (!form.excel_file.files.length) { alert('Vui lòng chọn file Excel'); return; }
+    if (apply && !confirm('Cập nhật Mã KH cho khách ở trạng thái "Sẽ cập nhật" và thêm khách ở trạng thái "Sẽ thêm mới"?')) return;
+    const fd = new FormData(form);
+    fd.append('apply', apply ? '1' : '0');
+    result.innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+    fetch('{% url "customer_update_codes" %}', {
+        method: 'POST', body: fd,
+        headers: { 'X-CSRFToken': document.querySelector('#updateCodesForm [name=csrfmiddlewaretoken]').value },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) { result.innerHTML = `<div class="alert alert-danger">${esc(data.error)}</div>`; return; }
+        const s = data.summary;
+        const head = data.applied
+            ? `<div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> Đã cập nhật Mã KH cho <strong>${s.update}</strong> khách hàng${data.created_ids.length ? `, thêm mới <strong>${data.created_ids.length}</strong> khách hàng` : ''}.${s.error ? ` <span class="text-danger">${s.error} dòng lỗi (xem cột Trạng thái).</span>` : ''}
+                ${data.updated_ids.length ? `<a class="btn btn-sm btn-dark ms-2" href="{% url 'customer_signature_folders' %}?ids=${data.updated_ids.join(',')}">
+                    <i class="bi bi-folder-plus"></i> Tạo Folder chữ ký cho ${data.updated_ids.length} khách vừa cập nhật</a>` : ''}
+                <a class="btn btn-sm btn-outline-secondary ms-2" href="">Tải lại danh sách</a></div>`
+            : `<div class="alert alert-info">Xem trước: <strong>${s.update}</strong> sẽ cập nhật · <strong>${s.new}</strong> sẽ thêm mới · ${s.same} đã đúng ·${s.no_code ? ` ${s.no_code} chưa có Mã KH ·` : ''}
+                ${s.conflict} đã có mã khác · ${s.not_found} không có trong danh sách khách hàng${s.invalid ? ` · <span class="text-danger">${s.invalid} mã KH không đúng 9 số</span>` : ''}. Kiểm tra rồi bấm <strong>Cập nhật</strong>.</div>`;
+        const rows = data.rows.map(r => {
+            const [color, label] = UPDATE_CODE_STATUS[r.trang_thai];
+            const shown = data.applied && r.trang_thai === 'update' ? ['success', 'Đã cập nhật']
+                : data.applied && r.trang_thai === 'new' ? ['primary', 'Đã thêm mới'] : [color, label];
+            return `<tr><td>${esc(r.cccd)}</td><td>${esc(r.ho_ten) || '-'}${r.lop ? ` <span class="text-muted small">(${esc(r.lop)})</span>` : ''}</td><td>${esc(r.ma_cu) || '-'}</td>
+                <td class="fw-bold">${esc(r.ma_moi)}</td><td><span class="badge bg-${shown[0]}">${shown[1]}</span>${r.loi ? `<div class="small text-danger">${esc(r.loi)}</div>` : ''}</td>
+                <td class="small text-muted">${esc(r.nguon)}</td></tr>`;
+        }).join('');
+        result.innerHTML = head + `<div class="table-responsive" style="max-height:420px">
+            <table class="table table-sm table-bordered"><thead class="table-light sticky-top"><tr>
+            <th>Số CCCD</th><th>Họ tên</th><th>Mã KH hiện tại</th><th>Mã KH trong file</th><th>Trạng thái</th><th>Vị trí trong file</th>
+            </tr></thead><tbody>${rows}</tbody></table></div>`;
+        document.getElementById('updateCodesApplyBtn').disabled = data.applied || !(s.update || s.new);
+    })
+    .catch(err => { result.innerHTML = `<div class="alert alert-danger">Lỗi: ${esc(err.message)}</div>`; });
+}
+
 // Add Customer
 function submitAddCustomer() {
     const form = document.getElementById('addCustomerForm');
@@ -1041,18 +1575,10 @@ function submitAgribankImport() {
 // Address Selector Component Initialization
 // ============================================
 let addAddressSelector, editAddressSelector;
-let addressConversionData = {}; // Store conversion mapping
 
-// Load address conversion data
-fetch('{% static "data/chuyen_doi.json" %}')
-    .then(response => response.json())
-    .then(data => {
-        addressConversionData = data;
-        console.log('Address conversion data loaded:', Object.keys(data).length, 'mappings');
-    })
-    .catch(error => {
-        console.error('Error loading address conversion data:', error);
-    });
+// Load address conversion data (biến addressConversionData khai báo trong cccd_qr_scanner.js — không khai báo lại,
+// khai báo trùng làm hỏng cả đoạn script này: nút Sửa / Xóa khách hàng không chạy)
+loadAddressConversionData('{% static "data/chuyen_doi.json" %}');
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Address Selector for Add Customer Modal

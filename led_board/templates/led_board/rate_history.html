@@ -1,0 +1,48 @@
+{% extends "templates_app/base.html" %}
+
+{% block title %}Lịch sử tỷ giá{% endblock %}
+
+{% block content %}
+<div class="container main-container" style="max-width:1100px;">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h3 class="fw-bold text-agribank mb-0"><i class="bi bi-clock-history"></i> Lịch sử tỷ giá</h3>
+        {% include "led_board/_nav.html" %}
+    </div>
+
+    {% if page.object_list %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Thời gian</th><th>Người sửa</th><th>Ngoại tệ</th><th>Thao tác</th>
+                    {% for label in labels %}<th>{{ label }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in page %}
+                <tr>
+                    <td class="text-nowrap">{{ entry.changed_at|date:"H:i d/m/Y" }}</td>
+                    <td>{{ entry.changed_by.username|default:"—" }}</td>
+                    <td>{{ entry.code }}</td>
+                    <td>{{ entry.action }}</td>
+                    {% for cell in entry.cells %}
+                    <td class="text-nowrap">
+                        {% if cell.changed and cell.old and cell.new %}<span class="text-muted">{{ cell.old }}</span> → <strong>{{ cell.new }}</strong>
+                        {% else %}{{ cell.new|default:cell.old }}{% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        {% if page.has_previous %}<a class="btn btn-outline-secondary btn-sm" href="?page={{ page.previous_page_number }}">Trang trước</a>{% endif %}
+        <span class="text-muted small">Trang {{ page.number }}/{{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a class="btn btn-outline-secondary btn-sm" href="?page={{ page.next_page_number }}">Trang sau</a>{% endif %}
+    </div>
+    {% else %}
+    <p class="text-muted">Chưa có thay đổi nào.</p>
+    {% endif %}
+</div>
+{% endblock %}

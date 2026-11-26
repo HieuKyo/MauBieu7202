@@ -72,6 +72,16 @@ class Task(models.Model):
         verbose_name='Người được giao'
     )
 
+    # Liên kết tới task gốc đã sinh ra task này (dùng để tránh tạo trùng khi tự động lặp lại)
+    recurrence_parent = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recurrence_children',
+        verbose_name='Sinh ra từ công việc'
+    )
+
     # Metadata
     created_by = models.ForeignKey(
         User,

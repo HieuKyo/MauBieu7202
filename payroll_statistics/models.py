@@ -3,7 +3,6 @@ Models cho app Payroll Statistics
 Quản lý thống kê lương và thu hộ
 """
 from django.db import models
-from decimal import Decimal
 
 
 class PayingUnit(models.Model):

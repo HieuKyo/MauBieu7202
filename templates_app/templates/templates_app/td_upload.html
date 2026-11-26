@@ -1,0 +1,167 @@
+{% extends "templates_app/base.html" %}
+{% block title %}Upload file MSIT80{% endblock %}
+
+{% block extra_head %}
+<style>
+.upload-zone {
+  border: 2px dashed #1976D2;
+  border-radius: 12px;
+  padding: 60px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: background .2s;
+  background: #f8fbff;
+}
+.upload-zone:hover, .upload-zone.dragover { background: #e3f0fd; }
+.upload-zone i { font-size: 3.5rem; color: #1976D2; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+
+      <div class="text-center mb-4">
+        <h4 class="fw-bold"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Phân tích Danh mục Tín dụng</h4>
+        <p class="text-muted">Upload file MSIT80 từ hệ thống core banking AGRIBANK</p>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+
+          <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <i class="bi bi-cloud-upload d-block mb-3"></i>
+            <div class="fw-semibold mb-1">Kéo thả file vào đây hoặc bấm để chọn</div>
+            <div class="text-muted" style="font-size:.85rem;">Hỗ trợ: .xls, .xlsx (định dạng MSIT80)</div>
+            <div id="fileNameDisplay" class="mt-2 text-primary fw-semibold" style="display:none;"></div>
+          </div>
+
+          <input type="file" id="fileInput" accept=".xls,.xlsx" style="display:none;">
+
+          <div id="progressWrap" style="display:none;" class="mt-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span style="font-size:.85rem;" id="progressLabel">Đang phân tích...</span>
+              <span style="font-size:.85rem;" id="progressPct">0%</span>
+            </div>
+            <div class="progress" style="height:8px;">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width:0%;"></div>
+            </div>
+          </div>
+
+          <div id="resultSection" style="display:none;" class="mt-3 alert alert-success">
+            <i class="bi bi-check-circle me-2"></i><span id="resultMsg">Phân tích thành công!</span>
+          </div>
+          <div id="errorSection" style="display:none;" class="mt-3 alert alert-danger">
+            <i class="bi bi-x-circle me-2"></i><span id="errorMsg"></span>
+          </div>
+
+          <button class="btn btn-primary w-100 mt-4" id="uploadBtn" disabled onclick="doUpload()">
+            <i class="bi bi-upload me-2"></i>Phân tích ngay
+          </button>
+
+          <div class="text-center mt-3">
+            <a href="{% url 'td_dashboard' %}" class="text-secondary" style="font-size:.85rem;">
+              <i class="bi bi-speedometer2 me-1"></i>Xem dashboard lần phân tích trước
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-4 border-0 bg-light">
+        <div class="card-body py-3 px-4">
+          <div class="fw-semibold mb-2" style="font-size:.9rem;"><i class="bi bi-info-circle me-2 text-info"></i>Yêu cầu file</div>
+          <ul class="mb-0 ps-3" style="font-size:.83rem; color:#555;">
+            <li>Định dạng MSIT80 xuất từ hệ thống core banking AGRIBANK</li>
+            <li>Phải có đủ các cột: <code>custnm, ofcnm, dsbsbal, sprd, grpno, nxtintschddt, nxtrpmtschddt...</code></li>
+            <li>File .xls (xlrd) hoặc .xlsx (openpyxl), không giới hạn số dòng</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+let selectedFile = null;
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) setFile(fileInput.files[0]);
+});
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+
+function setFile(f) {
+  selectedFile = f;
+  const disp = document.getElementById('fileNameDisplay');
+  disp.textContent = f.name + ' (' + (f.size/1024/1024).toFixed(2) + ' MB)';
+  disp.style.display = 'block';
+  document.getElementById('uploadBtn').disabled = false;
+  document.getElementById('errorSection').style.display = 'none';
+  document.getElementById('resultSection').style.display = 'none';
+}
+
+function doUpload() {
+  if (!selectedFile) return;
+  document.getElementById('uploadBtn').disabled = true;
+  document.getElementById('errorSection').style.display = 'none';
+  document.getElementById('resultSection').style.display = 'none';
+
+  const wrap = document.getElementById('progressWrap');
+  const bar  = document.getElementById('progressBar');
+  const pct  = document.getElementById('progressPct');
+  const lbl  = document.getElementById('progressLabel');
+  wrap.style.display = 'block';
+
+  let progress = 0;
+  const timer = setInterval(() => {
+    progress = Math.min(progress + 5, 85);
+    bar.style.width = progress + '%';
+    pct.textContent = progress + '%';
+    lbl.textContent = progress < 30 ? 'Đọc file...' : progress < 60 ? 'Phân tích dữ liệu...' : 'Tính toán KPI...';
+  }, 200);
+
+  const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  const form = new FormData();
+  form.append('msit80_file', selectedFile);
+
+  fetch('{% url "td_analysis" %}', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrf },
+    body: form,
+  })
+  .then(r => r.json())
+  .then(data => {
+    clearInterval(timer);
+    bar.style.width = '100%';
+    pct.textContent = '100%';
+    if (data.error) {
+      document.getElementById('errorMsg').textContent = data.error;
+      document.getElementById('errorSection').style.display = 'block';
+      wrap.style.display = 'none';
+      document.getElementById('uploadBtn').disabled = false;
+      return;
+    }
+    lbl.textContent = 'Hoàn tất!';
+    document.getElementById('resultMsg').textContent = 'Phân tích thành công! Đang chuyển đến dashboard...';
+    document.getElementById('resultSection').style.display = 'block';
+    setTimeout(() => { window.location.href = data.redirect || '{% url "td_dashboard" %}'; }, 800);
+  })
+  .catch(err => {
+    clearInterval(timer);
+    wrap.style.display = 'none';
+    document.getElementById('errorMsg').textContent = 'Lỗi kết nối: ' + err.message;
+    document.getElementById('errorSection').style.display = 'block';
+    document.getElementById('uploadBtn').disabled = false;
+  });
+}
+</script>
+{% endblock %}

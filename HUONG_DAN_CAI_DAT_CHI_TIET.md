@@ -295,7 +295,7 @@ Mode                 LastWriteTime         Length Name
 ### **7.1. Chạy script validate**
 
 ```powershell
-python validate_templates.py C:\maubieumoi
+python scripts/validate_templates.py C:\maubieumoi
 ```
 
 **Kết quả mong đợi:**
@@ -331,7 +331,7 @@ python validate_templates.py C:\maubieumoi
 ### **8.1. Chạy test**
 
 ```powershell
-python test_hybrid_storage.py
+python scripts/test_hybrid_storage.py
 ```
 
 **Kết quả mong đợi:**
@@ -525,7 +525,7 @@ Get-ChildItem "C:\maubieumoi\*.docx"
 **Giải pháp:**
 ```powershell
 # Validate template
-python validate_templates.py C:\maubieumoi
+python scripts/validate_templates.py C:\maubieumoi
 
 # Nếu file corrupt → Thay bằng file .docx mới
 ```
@@ -548,8 +548,8 @@ C:\HIEU\MauBieu7202\
 │   └── settings.py             ← Đã update OFFLINE_TEMPLATE_PATH
 ├── manage.py
 ├── requirements.txt
-├── validate_templates.py       ← Script kiểm tra templates
-├── test_hybrid_storage.py      ← Script test storage
+├── scripts/validate_templates.py   ← Script kiểm tra templates
+├── scripts/test_hybrid_storage.py  ← Script test storage
 └── db.sqlite3                  ← Database
 
 C:\maubieumoi\                  ← Offline templates (tạo thủ công)

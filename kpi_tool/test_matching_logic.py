@@ -68,12 +68,12 @@ def test_matching_priority():
     print("\n🎯 Kết quả với logic MỚI:")
     print(f"  Quy tắc được chọn: {rule_specific.code} ({quality_specific} > {quality_general})")
     print(f"  Điểm được tính: {rule_specific.score_1}")
-    print(f"  ✅ Đúng! Ưu tiên quy tắc cụ thể hơn")
+    print("  ✅ Đúng! Ưu tiên quy tắc cụ thể hơn")
 
     print("\n⚠️  Kết quả với logic CŨ (trước khi fix):")
     print(f"  Quy tắc được chọn: {rule_general.code} (quy tắc đầu tiên khớp)")
     print(f"  Điểm được tính: {rule_general.score_1}")
-    print(f"  ❌ SAI! 'Nộp tiền' bị tính thành 'Mở tài khoản'")
+    print("  ❌ SAI! 'Nộp tiền' bị tính thành 'Mở tài khoản'")
 
     # Test case 2: Giao dịch chỉ khớp quy tắc chung
     print("\n" + "-" * 80)
@@ -97,7 +97,7 @@ def test_matching_priority():
     print("\n🎯 Kết quả:")
     print(f"  Quy tắc được chọn: {rule_general.code}")
     print(f"  Điểm được tính: {rule_general.score_1}")
-    print(f"  ✅ Đúng! Chỉ có quy tắc này khớp")
+    print("  ✅ Đúng! Chỉ có quy tắc này khớp")
 
     # Test case 3: So sánh độ cụ thể
     print("\n" + "-" * 80)

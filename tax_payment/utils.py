@@ -88,9 +88,20 @@ def number_to_vietnamese_words(number):
 
     # Đọc từng nhóm
     result_parts = []
+    top_index = len(groups) - 1
     for i in range(len(groups) - 1, -1, -1):
         if groups[i] > 0:
-            group_text = read_three_digits(groups[i])
+            # Nhóm không phải nhóm đầu (cao nhất) mà thiếu hàng trăm (< 100)
+            # phải đọc "không trăm..." để không bị hụt hàng, VD 1.045.000 phải
+            # đọc "một triệu không trăm bốn mươi lăm nghìn", không phải
+            # "một triệu bốn mươi lăm nghìn".
+            if i != top_index and groups[i] < 100:
+                if groups[i] < 10:
+                    group_text = "không trăm lẻ " + read_one_digit(groups[i])
+                else:
+                    group_text = "không trăm " + read_two_digits(groups[i])
+            else:
+                group_text = read_three_digits(groups[i])
             if i > 0:
                 group_text += " " + units_large[i]
             result_parts.append(group_text)

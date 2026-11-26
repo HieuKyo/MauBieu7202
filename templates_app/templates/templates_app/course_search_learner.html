@@ -1,0 +1,118 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Tra cứu khóa học theo người học{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-person-search"></i> Tra cứu theo người học</h2>
+        <a href="{% url 'course_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            {% if not is_full_manager and dept_filter %}
+            <div class="alert alert-info mb-2 py-2">
+                <i class="bi bi-lock-fill"></i> Tìm kiếm giới hạn trong phòng ban của bạn.
+            </div>
+            {% endif %}
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label">Tìm theo tên hoặc mã nhân viên</label>
+                    <input type="text" name="q" class="form-control" value="{{ query }}"
+                           placeholder="Nhập tên hoặc mã nhân viên..." autofocus>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Tìm kiếm
+                    </button>
+                </div>
+                {% if query %}
+                <div class="col-md-2">
+                    <a href="{% url 'course_search_by_learner' %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Xóa bộ lọc
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    {% if query %}
+        {% if results %}
+            <p class="text-muted">Tìm thấy <strong>{{ results|length }}</strong> người học với từ khóa "<strong>{{ query }}</strong>".</p>
+            {% for item in results %}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-person-fill"></i>
+                        <strong>{{ item.profile.full_name }}</strong>
+                        {% if item.profile.employee_code %}
+                        <span class="text-muted ms-2">({{ item.profile.employee_code }})</span>
+                        {% endif %}
+                        {% if item.profile.department %}
+                        <span class="badge bg-secondary ms-2">{{ item.profile.get_department_display }}</span>
+                        {% endif %}
+                    </div>
+                    <span class="badge {% if item.completed == item.total and item.total > 0 %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                        Hoàn thành: {{ item.completed }}/{{ item.total }}
+                    </span>
+                </div>
+                {% if item.enrollments %}
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;">#</th>
+                                    <th>Tên khóa học</th>
+                                    <th>Ngày bắt đầu</th>
+                                    <th>Ngày kết thúc</th>
+                                    <th style="width: 130px;">Trạng thái</th>
+                                    <th>Ngày hoàn thành</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for enrollment in item.enrollments %}
+                                <tr class="{% if not enrollment.is_completed %}table-danger{% endif %}">
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ enrollment.course.name }}</td>
+                                    <td>{{ enrollment.course.start_date|date:"d/m/Y" }}</td>
+                                    <td>{{ enrollment.course.end_date|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% if enrollment.is_completed %}
+                                        <span class="badge bg-success">Hoàn thành</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Chưa xong</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if enrollment.completion_date %}
+                                        {{ enrollment.completion_date|date:"d/m/Y" }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <div class="card-body">
+                    <p class="text-muted mb-0">Chưa tham gia khóa học nào.</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> Không tìm thấy người học nào với từ khóa "<strong>{{ query }}</strong>".
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

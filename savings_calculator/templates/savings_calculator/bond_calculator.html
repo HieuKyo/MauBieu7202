@@ -1,0 +1,341 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Tính lãi Trái phiếu - Agribank{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calc-card { border: none; box-shadow: 0 2px 12px rgba(0,0,0,.08); border-radius: 12px; }
+    .calc-card .card-header { background: linear-gradient(135deg, #AE1C3F 0%, #8a1230 100%); color: #fff; border-radius: 12px 12px 0 0 !important; }
+    .result-card { border-left: 4px solid #D69D26; }
+    .result-number { font-size: 1.25rem; font-weight: 700; color: #AE1C3F; }
+    .year-table th { background: #f8f0e3; color: #333; font-weight: 600; white-space: nowrap; }
+    .year-table td { vertical-align: middle; }
+    .year-table input.form-control { min-width: 90px; }
+    #resultSection { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Trang chủ</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'savings_calculator:calculator' %}">Tính lãi Tiết kiệm</a></li>
+                <li class="breadcrumb-item active">Tính lãi Trái phiếu</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-5 mb-4">
+        <div class="card calc-card">
+            <div class="card-header py-3">
+                <h5 class="mb-0"><i class="bi bi-calculator"></i> Nhập thông tin đầu tư trái phiếu</h5>
+            </div>
+            <div class="card-body">
+                <form id="bondForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Số tiền mua trái phiếu (VNĐ)</label>
+                        <div class="input-group">
+                            <input type="text" id="principalInput" class="form-control" value="300,000,000" required>
+                            <span class="input-group-text">đ</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Kỳ hạn (năm)</label>
+                        <input type="number" id="termYearsInput" class="form-control" min="1" max="30" value="10" required>
+                        <small class="text-muted">Biên độ tự động: +2,0%/năm (5 năm đầu), +2,5%/năm (các năm tiếp theo).</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Thuế TNCN trên lãi (%)</label>
+                        <input type="number" id="taxRateInput" class="form-control" step="0.1" min="0" value="5" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ngày đầu tư</label>
+                        <input type="date" id="startDateInput" class="form-control" required>
+                    </div>
+
+                    <hr>
+                    <p class="fw-semibold mb-2">Tái đầu tư lãi hằng năm - gửi tiết kiệm 12 tháng</p>
+                    <div class="mb-3">
+                        <label class="form-label">Sản phẩm tiết kiệm dùng để tái đầu tư</label>
+                        <select id="reinvestProductSelect" class="form-select" required>
+                            <option value="">-- Chọn sản phẩm --</option>
+                            {% for p in products %}
+                            <option value="{{ p.id }}">{{ p.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Lãi suất tiết kiệm 12 tháng (%/năm)</label>
+                        <div class="input-group">
+                            <input type="number" id="reinvestRateInput" class="form-control" step="0.001" min="0" required>
+                            <span class="input-group-text">%/năm</span>
+                        </div>
+                        <small class="text-muted">Tự động lấy từ bảng lãi suất tiết kiệm 12 tháng của sản phẩm đã chọn. Có thể sửa tay.</small>
+                    </div>
+
+                    <hr>
+                    <p class="fw-semibold mb-2">Lãi suất tham chiếu từng năm</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm year-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Năm</th>
+                                    <th>LS tham chiếu (%)</th>
+                                    <th>Biên độ (%)</th>
+                                    <th>LS áp dụng (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="yearRatesBody"></tbody>
+                        </table>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100 py-2 fw-semibold mt-3">
+                        <i class="bi bi-calculator"></i> Tính lãi trái phiếu
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7 mb-4" id="resultSection">
+        <div class="card result-card mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-3"><i class="bi bi-info-circle"></i> Kết quả sau <span id="resTermYears"></span> năm</h5>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted d-block">Ngày đầu tư</small>
+                            <strong id="resStartDate">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted d-block">Ngày đáo hạn</small>
+                            <strong id="resMaturityDate">-</strong>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center g-3">
+                    <div class="col-4">
+                        <small class="text-muted d-block">Gốc đầu tư</small>
+                        <div class="result-number" id="resPrincipal">0</div>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Lãi lũy kế sau thuế</small>
+                        <div class="result-number text-success" id="resTotalNetInterest">0</div>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Tổng giá trị tích lũy</small>
+                        <div class="result-number" id="resTotalValue">0</div>
+                    </div>
+                </div>
+                <div class="text-center text-muted mt-2" style="font-size:.9rem;">
+                    Tổng lãi gộp trước thuế: <span id="resTotalGross">0</span> đ
+                    — Tổng thuế TNCN đã khấu trừ: <span id="resTotalTax">0</span> đ
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-table"></i> Chi tiết từng năm</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0 year-table">
+                        <thead>
+                            <tr>
+                                <th class="text-center">Năm</th>
+                                <th class="text-center">LS tham chiếu</th>
+                                <th class="text-center">Biên độ</th>
+                                <th class="text-center">LS áp dụng</th>
+                                <th class="text-end">Lãi gộp</th>
+                                <th class="text-end">Thuế TNCN</th>
+                                <th class="text-end">Lãi tái đầu tư</th>
+                                <th class="text-end">Lãi thực nhận</th>
+                                <th class="text-end">Số dư cuối năm</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <p class="text-muted" style="font-size:.85rem;">
+            Kết quả chỉ mang tính chất minh họa. Lãi tái đầu tư dùng lãi suất tiết kiệm 12 tháng hiện hành của sản phẩm đã chọn,
+            giữ nguyên qua các năm. Lãi suất thực tế của trái phiếu và tiền gửi tiết kiệm do Agribank công bố theo từng thời kỳ.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const csrfToken = '{{ csrf_token }}';
+    document.getElementById('startDateInput').value = new Date().toISOString().slice(0, 10);
+
+    function formatCurrency(n) {
+        return Math.round(n).toLocaleString('vi-VN');
+    }
+
+    const principalInput = document.getElementById('principalInput');
+    principalInput.addEventListener('input', function() {
+        let raw = this.value.replace(/[^0-9]/g, '');
+        this.value = raw ? parseInt(raw).toLocaleString('vi-VN') : '';
+    });
+    function getPrincipalValue() {
+        return parseInt(principalInput.value.replace(/[^0-9]/g, '')) || 0;
+    }
+
+    // === Tái đầu tư: chọn sản phẩm -> lấy lãi suất 12 tháng ===
+    const reinvestProductSelect = document.getElementById('reinvestProductSelect');
+    const reinvestRateInput = document.getElementById('reinvestRateInput');
+
+    reinvestProductSelect.addEventListener('change', function() {
+        const pid = this.value;
+        reinvestRateInput.value = '';
+        if (!pid) return;
+
+        fetch(`{% url 'savings_calculator:api_rates' %}?product_id=${pid}`)
+            .then(r => r.json())
+            .then(data => {
+                const rates = data.rates || [];
+                const match = rates.find(r => r.term_month_min <= 12 && 12 <= r.term_month_max);
+                if (match) {
+                    reinvestRateInput.value = match.interest_rate_yearly;
+                }
+            });
+    });
+
+    // === Bảng lãi suất tham chiếu từng năm (sinh động theo kỳ hạn) ===
+    const termYearsInput = document.getElementById('termYearsInput');
+    const yearRatesBody = document.getElementById('yearRatesBody');
+
+    function marginForYear(year) {
+        return year <= 5 ? 2.0 : 2.5;
+    }
+
+    function updateAppliedRate(row) {
+        const refInput = row.querySelector('.ref-rate-input');
+        const appliedCell = row.querySelector('.applied-rate-cell');
+        const ref = parseFloat(refInput.value) || 0;
+        const margin = parseFloat(row.dataset.margin);
+        appliedCell.textContent = (ref + margin).toFixed(2);
+    }
+
+    function buildYearRows() {
+        const termYears = Math.max(1, parseInt(termYearsInput.value) || 0);
+        const existingValues = Array.from(yearRatesBody.querySelectorAll('.ref-rate-input')).map(i => i.value);
+        yearRatesBody.innerHTML = '';
+
+        for (let year = 1; year <= termYears; year++) {
+            const margin = marginForYear(year);
+            const tr = document.createElement('tr');
+            tr.dataset.margin = margin;
+
+            let defaultValue = existingValues[year - 1];
+            if (defaultValue === undefined) {
+                defaultValue = year === 1 ? '5.90' : (existingValues[existingValues.length - 1] || '7.00');
+            }
+
+            tr.innerHTML = `
+                <td class="text-center">${year}</td>
+                <td><input type="number" step="0.01" min="0" class="form-control form-control-sm ref-rate-input" value="${defaultValue}"></td>
+                <td class="text-center">+${margin.toFixed(1)}</td>
+                <td class="text-center applied-rate-cell fw-semibold">-</td>
+            `;
+            yearRatesBody.appendChild(tr);
+
+            const refInput = tr.querySelector('.ref-rate-input');
+            refInput.addEventListener('input', () => updateAppliedRate(tr));
+            updateAppliedRate(tr);
+        }
+    }
+
+    termYearsInput.addEventListener('change', buildYearRows);
+    buildYearRows();
+
+    // === Submit tính toán ===
+    document.getElementById('bondForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const principal = getPrincipalValue();
+        const taxRate = parseFloat(document.getElementById('taxRateInput').value) || 0;
+        const reinvestRate = parseFloat(reinvestRateInput.value) || 0;
+        const startDate = document.getElementById('startDateInput').value;
+        const referenceRates = Array.from(yearRatesBody.querySelectorAll('.ref-rate-input'))
+            .map(i => parseFloat(i.value) || 0);
+
+        if (principal <= 0 || referenceRates.length === 0 || !reinvestProductSelect.value || !reinvestRate) {
+            alert('Vui lòng nhập đầy đủ thông tin hợp lệ, bao gồm sản phẩm tái đầu tư.');
+            return;
+        }
+
+        fetch("{% url 'savings_calculator:api_bond_calculate' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                principal: principal,
+                tax_rate: taxRate,
+                reinvest_rate: reinvestRate,
+                start_date: startDate,
+                reference_rates: referenceRates,
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            renderResult(data);
+        });
+    });
+
+    function renderResult(data) {
+        document.getElementById('resTermYears').textContent = data.rows.length;
+        document.getElementById('resStartDate').textContent = data.start_date;
+        document.getElementById('resMaturityDate').textContent = data.maturity_date;
+        document.getElementById('resPrincipal').textContent = formatCurrency(data.principal) + ' đ';
+        document.getElementById('resTotalNetInterest').textContent = formatCurrency(data.total_net_interest) + ' đ';
+        document.getElementById('resTotalValue').textContent = formatCurrency(data.total_value) + ' đ';
+        document.getElementById('resTotalGross').textContent = formatCurrency(data.total_gross_interest);
+        document.getElementById('resTotalTax').textContent = formatCurrency(data.total_tax);
+
+        const tbody = document.getElementById('resultBody');
+        tbody.innerHTML = '';
+        data.rows.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-center">${row.year}</td>
+                <td class="text-center">${row.reference_rate.toFixed(2)}%</td>
+                <td class="text-center">+${row.margin.toFixed(1)}%</td>
+                <td class="text-center fw-semibold">${row.applied_rate.toFixed(2)}%</td>
+                <td class="text-end">${formatCurrency(row.gross_interest)}</td>
+                <td class="text-end text-danger">-${formatCurrency(row.tax)}</td>
+                <td class="text-end">${formatCurrency(row.reinvest_interest_net)}</td>
+                <td class="text-end fw-semibold">${formatCurrency(row.net_received)}</td>
+                <td class="text-end">${formatCurrency(row.year_end_balance)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('resultSection').style.display = 'block';
+        document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+})();
+</script>
+{% endblock %}

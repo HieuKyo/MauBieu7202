@@ -1,0 +1,27 @@
+{# Bảng tập chứng từ có ô chọn — dùng cho tab Chờ tôi xử lý / Tập chứng từ của tôi #}
+<div class="table-responsive">
+<table class="table table-sm table-hover mb-0 gn">
+    <thead class="table-light"><tr>
+        <th><input type="checkbox" class="form-check-input" id="chkAllGn"></th>
+        <th>Số hồ sơ</th><th>Ngày CT</th><th>Tập</th><th>Số tờ</th>{% if tab == 'cho_toi' %}<th>GDV</th>{% endif %}
+        <th>Trạng thái</th><th>Đang ở</th><th>Lần cập nhật cuối</th>
+    </tr></thead>
+    <tbody>
+    {% for b in bias %}
+    <tr>
+        <td><input type="checkbox" class="form-check-input gn-chk" name="ids" value="{{ b.pk }}" data-tt="{{ b.trang_thai_gn }}" {% if b.trang_thai_gn == 'hk_da_nhan' %}disabled{% endif %}></td>
+        <td class="fw-semibold">{{ b.so_ho_so }}</td>
+        <td>{{ b.ngay_chung_tu|date:"d/m/Y" }}</td>
+        <td>{{ b.tap_so }}/{{ b.tong_tap }}</td>
+        <td>{{ b.so_to_tap|default:b.so_to }}</td>
+        {% if tab == 'cho_toi' %}<td>{{ b.gdv.profile.full_name|default:b.user_ipcas }}</td>{% endif %}
+        <td>{% include 'templates_app/bia_chung_tu/_trang_thai_gn.html' %}</td>
+        <td>{{ b.dang_o }}</td>
+        <td class="small">{% if b.lan_cuoi %}{{ b.lan_cuoi.thoi_diem|date:"H:i d/m/Y" }} · {{ b.lan_cuoi.hanh_dong }}{% if b.lan_cuoi.ghi_chu %}<br><em class="text-danger">Lý do: {{ b.lan_cuoi.ghi_chu }}</em>{% endif %}{% else %}<span class="text-muted">Cấp số {{ b.created_at|date:"H:i d/m/Y" }}</span>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="9" class="text-center text-muted py-4">{% if tab == 'cho_toi' %}Không có tập chứng từ nào đang chờ bạn{% else %}Chưa có tập chứng từ nào của bạn trong luồng giao nhận.<br><small>Tập chứng từ = bìa Trưởng/Phó phòng KT&amp;NQ cấp số cho bạn (tab Tạo bìa chứng từ → Cấp số theo ngày). Bìa cấp trước khi có chức năng này cần được Trưởng/Phó phòng bấm "Đưa vào giao nhận".</small>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>

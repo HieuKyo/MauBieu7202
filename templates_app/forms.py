@@ -2,7 +2,7 @@
 Dynamic form generation based on Template variables
 """
 from django import forms
-from .models import Template, TemplateVariable, Customer, Business, GlobalConfig, Category
+from .models import TemplateVariable, Customer, Business, GlobalConfig, Category, ATM, Vehicle, Person, ATMReplenishment, ATMDiscrepancy
 
 
 class DynamicTemplateForm(forms.Form):
@@ -346,7 +346,6 @@ class CategoryAdminForm(forms.ModelForm):
 # ATM Management Forms
 # ====================
 
-from .models import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy
 
 
 class ATMReplenishmentForm(forms.ModelForm):

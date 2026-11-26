@@ -1,0 +1,267 @@
+{% extends "templates_app/base.html" %}
+{% load static %}
+
+{% block title %}Bảng kê thanh toán & Giấy đi đường ATM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'atm_dashboard' %}">Quản lý ATM</a></li>
+                    <li class="breadcrumb-item active">Bảng kê thanh toán & Giấy đi đường</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h2><i class="bi bi-cash-coin"></i> Bảng kê thanh toán & Giấy đi đường Ban quản lý ATM</h2>
+                    <p class="text-muted mb-0">Chỉ tính chuyến tiếp quỹ ATM04 ({{ atm_trip_config.7202ATM04.label }}, {{ atm_trip_config.7202ATM04.unit_price|floatformat:0 }}đ/chuyến) và ATM06 ({{ atm_trip_config.7202ATM06.label }}, {{ atm_trip_config.7202ATM06.unit_price|floatformat:0 }}đ/chuyến). Tài xế trực ngày nào đi tiếp quỹ ngày đó sẽ không được tính thêm tiền.</p>
+                </div>
+                <a href="{% url 'vehicle_duty_schedule' %}" class="btn btn-outline-warning text-nowrap">
+                    <i class="bi bi-calendar-check"></i> Lịch trực xe
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3 align-items-end">
+                        <div class="col-auto">
+                            <label class="form-label">Từ ngày</label>
+                            <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label">Đến ngày</label>
+                            <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label">Trưởng ban</label>
+                            <select name="team_leader" id="team-leader-select" class="form-select">
+                                <option value="">-- Theo khoảng ngày --</option>
+                                {% for leader in team_leaders %}
+                                <option value="{{ leader.pk }}" data-from="{{ leader.effective_from|date:'Y-m-d' }}" data-to="{{ leader.effective_to|date:'Y-m-d' }}" {% if team_leader and team_leader.pk == leader.pk %}selected{% endif %}>
+                                    {{ leader.full_name }} ({{ leader.effective_from|date:"d/m/Y"|default:"?" }} - {{ leader.effective_to|date:"d/m/Y"|default:"nay" }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="bi bi-search"></i> Xem trước
+                            </button>
+                        </div>
+                        <div class="col-auto ms-auto">
+                            <a href="{% url 'atm_payment_statement_word' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% if team_leader %}&team_leader={{ team_leader.pk }}{% endif %}" class="btn btn-success"{% if overlap_exports %} onclick="return confirm('Khoảng ngày này đã từng xuất Bảng kê ({{ overlap_exports|length }} lần) — có thể thanh toán trùng. Vẫn xuất?')"{% endif %}>
+                                <i class="bi bi-file-earmark-word"></i> Xuất Bảng kê thanh toán (Word)
+                            </a>
+                            <a href="{% url 'atm_travel_log_zip' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% if team_leader %}&team_leader={{ team_leader.pk }}{% endif %}" class="btn btn-warning">
+                                <i class="bi bi-file-earmark-zip"></i> Xuất Giấy đi đường (ZIP)
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if overlap_exports %}
+    <div class="alert alert-danger">
+        <strong><i class="bi bi-exclamation-octagon"></i> Khoảng ngày này đã từng xuất Bảng kê thanh toán — kiểm tra tránh thanh toán trùng:</strong>
+        <ul class="mb-0 mt-1">
+            {% for log in overlap_exports %}
+            <li>{{ log.start_date|date:"d/m/Y" }} – {{ log.end_date|date:"d/m/Y" }}: {{ log.total_amount|floatformat:0 }}đ, {{ log.person_count }} người — xuất lúc {{ log.exported_at|date:"H:i d/m/Y" }} bởi {{ log.exported_by.get_full_name|default:log.exported_by.username|default:"?" }}</li>
+            {% endfor %}
+        </ul>
+        <div class="small mt-1">Nếu lần xuất trước bị nhầm, xoá bản ghi trong trang quản trị (Lịch sử xuất Bảng kê ATM).</div>
+    </div>
+    {% endif %}
+
+    {% if board_warnings %}
+    <div class="alert alert-warning">
+        <strong><i class="bi bi-exclamation-triangle"></i> Kiểm tra dữ liệu Ban quản lý ATM trước khi xuất:</strong>
+        <ul class="mb-0 mt-1">
+            {% for w in board_warnings %}<li>{{ w }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if segments|length > 1 %}
+    <div class="alert alert-info">
+        <strong><i class="bi bi-people"></i> Ban quản lý ATM đổi người trong khoảng ngày này ({{ segments|length }} giai đoạn).</strong>
+        Nên xuất Bảng kê riêng cho từng giai đoạn (Giấy đi đường đã tự tách tờ khi đổi người):
+        <div class="table-responsive mt-2">
+        <table class="table table-sm table-bordered bg-white mb-0 align-middle">
+            <thead class="table-light"><tr><th>Giai đoạn</th>{% for label in position_labels %}<th>{{ label }}</th>{% endfor %}<th></th></tr></thead>
+            <tbody>
+            {% for seg in segments %}
+            <tr>
+                <td class="text-nowrap">{{ seg.start|date:"d/m/Y" }} – {{ seg.end|date:"d/m/Y" }}</td>
+                {% for label, name in seg.holders %}<td>{{ name }}</td>{% endfor %}
+                <td class="text-nowrap">
+                    <a href="?start_date={{ seg.start|date:'Y-m-d' }}&end_date={{ seg.end|date:'Y-m-d' }}" class="btn btn-sm btn-outline-primary">Xem</a>
+                    <a href="{% url 'atm_payment_statement_word' %}?start_date={{ seg.start|date:'Y-m-d' }}&end_date={{ seg.end|date:'Y-m-d' }}" class="btn btn-sm btn-success">Bảng kê</a>
+                    <a href="{% url 'atm_travel_log_zip' %}?start_date={{ seg.start|date:'Y-m-d' }}&end_date={{ seg.end|date:'Y-m-d' }}" class="btn btn-sm btn-warning">Giấy đi đường</a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <strong>Bảng kê thanh toán</strong> — {{ start_date|date:"d/m/Y" }} đến {{ end_date|date:"d/m/Y" }}
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0 text-center align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>TT</th>
+                                    <th>Họ và tên</th>
+                                    <th>Chức vụ</th>
+                                    <th>Số chuyến<br>{{ atm_trip_config.7202ATM06.label }}</th>
+                                    <th>Thành tiền</th>
+                                    <th>Số chuyến<br>{{ atm_trip_config.7202ATM04.label }}</th>
+                                    <th>Thành tiền</th>
+                                    <th>Số tiền thanh toán</th>
+                                    <th>Tài khoản</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in rows %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td class="text-start">{{ row.full_name }}</td>
+                                    <td class="text-start">{{ row.position_display }}<br><small class="text-muted">{{ row.term_start|date:"d/m" }} - {{ row.term_end|date:"d/m" }}</small></td>
+                                    <td>{{ row.trips_atm06|default_if_none:"" }}</td>
+                                    <td class="text-end">{{ row.amount_atm06|floatformat:0 }}</td>
+                                    <td>{{ row.trips_atm04|default_if_none:"" }}</td>
+                                    <td class="text-end">{{ row.amount_atm04|floatformat:0 }}</td>
+                                    <td class="text-end"><strong>{{ row.total|floatformat:0 }}</strong></td>
+                                    <td>{{ row.account_number|default:"—" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-muted py-4">Không có chuyến tiếp quỹ ATM04/ATM06 nào trong khoảng ngày đã chọn</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            {% if rows %}
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th colspan="3" class="text-end">Tổng cộng</th>
+                                    <th>{{ totals.trips_atm06 }}</th>
+                                    <th class="text-end">{{ totals.amount_atm06|floatformat:0 }}</th>
+                                    <th>{{ totals.trips_atm04 }}</th>
+                                    <th class="text-end">{{ totals.amount_atm04|floatformat:0 }}</th>
+                                    <th class="text-end">{{ totals.total|floatformat:0 }}</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <strong>Giấy đi đường sẽ được tạo</strong> — tổng {{ sheet_count }} tờ (mỗi tờ tối đa 6 chuyến; mỗi tờ 1 người cho mỗi chức vụ)
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered mb-0 align-middle small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tên file</th>
+                                    <th>Máy ATM</th>
+                                    <th>Ngày tiếp quỹ</th>
+                                    {% for label in position_labels %}<th>{{ label }}</th>{% endfor %}
+                                    <th>Tài xế</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in sheets %}
+                                <tr>
+                                    <td class="text-nowrap">{{ s.filename }}</td>
+                                    <td>{{ s.machine_label }}</td>
+                                    <td>{% for t in s.trips %}<span class="badge bg-light text-dark border">{{ t.replenishment_date|date:"d/m" }}</span> {% endfor %}</td>
+                                    {% for name in s.board_names %}<td>{{ name|default:"—" }}</td>{% endfor %}
+                                    <td>{{ s.driver_name|default:"—" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-muted text-center py-4">Không có giấy đi đường nào cần tạo</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><strong>Chuyến tài xế không được tính tiền</strong> — tài xế trực ngày đó đi tiếp quỹ ({{ duty_excluded|length }} chuyến)</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light"><tr><th>Ngày</th><th>Máy ATM</th><th>Tài xế (trực ngày đó)</th></tr></thead>
+                        <tbody>
+                        {% for t in duty_excluded %}
+                        <tr><td>{{ t.replenishment_date|date:"d/m/Y" }}</td><td>{{ t.atm_id }}</td><td>{{ t.driver.full_name }}</td></tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-muted text-center py-3">Không có</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer small"><a href="{% url 'vehicle_duty_schedule' %}">Mở Lịch trực xe</a> để đối chiếu.</div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><strong>Lịch sử xuất Bảng kê</strong> (10 lần gần nhất)</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light"><tr><th>Kỳ</th><th class="text-end">Tổng tiền</th><th>Số người</th><th>Xuất lúc</th></tr></thead>
+                        <tbody>
+                        {% for log in recent_exports %}
+                        <tr><td>{{ log.start_date|date:"d/m/Y" }} – {{ log.end_date|date:"d/m/Y" }}</td><td class="text-end">{{ log.total_amount|floatformat:0 }}</td><td>{{ log.person_count }}</td><td>{{ log.exported_at|date:"H:i d/m/Y" }} · {{ log.exported_by.username|default:"?" }}</td></tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-muted text-center py-3">Chưa xuất lần nào</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Chọn Trưởng ban -> tự điền khoảng ngày theo nhiệm kỳ (vẫn sửa lại được)
+document.getElementById('team-leader-select').addEventListener('change', function () {
+    var opt = this.options[this.selectedIndex];
+    if (opt.dataset.from) document.querySelector('input[name="start_date"]').value = opt.dataset.from;
+    if (opt.dataset.to) document.querySelector('input[name="end_date"]').value = opt.dataset.to;
+});
+</script>
+{% endblock %}

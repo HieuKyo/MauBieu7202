@@ -1,0 +1,69 @@
+{# Hướng dẫn sử dụng KH 360 — include trong _header.html (cần biến quyen) #}
+<div class="modal fade" id="kh360HuongDanModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-question-circle"></i> Hướng dẫn sử dụng Khách hàng 360</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6 class="fw-bold text-agribank">1. Giới thiệu</h6>
+                <ul>
+                    <li>Khách hàng 360 gom thông tin một khách hàng từ nhiều báo cáo (CN05, DP01, LN01, Loa Thần tài, QR, Ebanking tổ chức, BC06) vào một hồ sơ.</li>
+                    <li>Dòng "Đã cập nhật vào ngày … – dữ liệu ngày …" ở đầu trang cho biết dữ liệu đang xem là của ngày nào.</li>
+                    <li>Mọi người dùng được <strong>Tra cứu</strong>. Ban giám đốc, GĐ/PGĐ phòng giao dịch, trưởng/phó phòng, hậu kiểm viên được thêm <strong>Thống kê</strong> và <strong>Biến động</strong>. Chỉ Admin được <strong>Cập nhật dữ liệu</strong>.</li>
+                </ul>
+
+                <h6 class="fw-bold text-agribank">2. Tra cứu khách hàng</h6>
+                <ul>
+                    <li>Gõ mã KH, tên, số CCCD, số điện thoại hoặc số tài khoản rồi bấm <strong>Tra cứu</strong>.</li>
+                    <li>Tên không cần gõ dấu (vd. "nguyen van a"). Số tài khoản gõ một phần cũng được, tối thiểu 6 số.</li>
+                    <li>Bấm vào tiêu đề cột để sắp xếp (bấm lần nữa để đảo chiều). Mỗi trang 10 khách hàng.</li>
+                    <li>Bấm vào một dòng để mở hồ sơ. Nếu chỉ tìm thấy 1 khách hàng, hồ sơ tự mở.</li>
+                </ul>
+
+                <h6 class="fw-bold text-agribank">3. Hồ sơ khách hàng</h6>
+                <ul>
+                    <li><strong>Hồ sơ 360°</strong>: thông tin định danh, xếp hạng và chỉ số lợi ích (BC06), các sản phẩm dịch vụ đã có / chưa có, ghi chú.</li>
+                    <li><strong>Tiền gửi</strong>: các tài khoản tiền gửi, số dư, kỳ hạn, lãi suất, ngày đến hạn. Tài khoản đã đóng hiện chữ gạch ngang.</li>
+                    <li><strong>Khoản vay</strong>: dư nợ, nhóm nợ, kỳ trả tiếp, cán bộ tín dụng.</li>
+                    <li><strong>Dịch vụ</strong>: TKTT, TK số đẹp, thẻ, Agribank Plus, OTT, SMS Banking…</li>
+                    <li><strong>Loa &amp; QR</strong>: doanh số Loa Thần tài theo từng kỳ, mã QR, Ebanking tổ chức.</li>
+                    <li><strong>Biến động</strong>: lịch sử thay đổi của khách hàng qua các lần cập nhật (mở/đóng TK, vay mới, đăng ký/hủy dịch vụ…).</li>
+                    <li><strong>Ghi chú</strong>: ghi nhu cầu, lịch hẹn, nội dung đã tư vấn rồi bấm <strong>Lưu ghi chú</strong>. Ghi chú dùng chung, mọi người tra cứu khách hàng này đều thấy, kèm tên người sửa lần cuối.</li>
+                </ul>
+
+                {% if quyen >= 2 %}
+                <h6 class="fw-bold text-agribank">4. Thống kê</h6>
+                <ul>
+                    <li>Bấm một nút <strong>Mẫu nhanh</strong> (vd. "Tiền gửi ≥ 1 tỷ, chưa có Agribank Plus") để lọc ngay danh sách khách hàng tiềm năng.</li>
+                    <li>Hoặc tự chọn điều kiện: số dư tiền gửi, dư nợ, loại KH, hạng BC06, điểm giao dịch, độ tuổi, Loa, QR, Ebanking, từng dịch vụ (<strong>Có</strong> / <strong>Chưa có</strong>). Chọn nhiều điều kiện thì khách hàng phải thoả tất cả.</li>
+                    <li>Kết quả hiện tổng số KH, tổng số dư, tổng dư nợ và danh sách. Bấm <strong>Xuất Excel</strong> để tải toàn bộ danh sách.</li>
+                    <li>Chỉ tính khách hàng đang hoạt động. Điều kiện dịch vụ chỉ áp dụng cho KH cá nhân có trong CN05.</li>
+                </ul>
+
+                <h6 class="fw-bold text-agribank">5. Biến động</h6>
+                <ul>
+                    <li>Chọn <strong>Kỳ cập nhật</strong> để xem các thay đổi so với lần cập nhật trước: KH mới/mất, TK mở mới/đóng, vay mới/tất toán, đăng ký/hủy dịch vụ, Loa, QR, Ebanking tổ chức mới/mất.</li>
+                    <li>Chọn <strong>Loại biến động</strong> để lọc; số trong ngoặc là số lượng từng loại. Bấm <strong>Xuất Excel</strong> để tải về.</li>
+                    <li>Bấm vào mã KH để mở hồ sơ khách hàng.</li>
+                </ul>
+                {% endif %}
+
+                {% if quyen >= 3 %}
+                <h6 class="fw-bold text-agribank">6. Cập nhật dữ liệu (Admin)</h6>
+                <ul>
+                    <li>Bắt buộc chọn file <strong>CN05</strong> và <strong>DP01</strong> (.zip hoặc .csv xuất từ IPCAS, ngày dữ liệu lấy từ tên file). Các file khác không bắt buộc.</li>
+                    <li>File nào không chọn thì giữ nguyên dữ liệu lần trước. Bấm <strong>Cập nhật</strong> và chờ 1–2 phút, không đóng trang.</li>
+                    <li>Lần đầu nạp mỗi loại file chỉ làm mốc, chưa tính biến động; từ lần sau mới so sánh để ra biến động.</li>
+                    <li>Mục <strong>Ebanking tổ chức chưa khớp mã KH</strong>: nhập mã KH cho từng tổ chức rồi bấm <strong>Gán</strong>. Hệ thống nhớ để các lần cập nhật sau tự khớp.</li>
+                    <li><strong>Nhật ký cập nhật</strong> ghi lại các lần nạp: thời điểm, người cập nhật, file đã nạp.</li>
+                </ul>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>

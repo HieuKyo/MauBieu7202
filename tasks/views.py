@@ -2,11 +2,10 @@ import json
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST, require_http_methods
-from django.contrib import messages
+from django.views.decorators.http import require_POST
 from django.db.models import Case, When, Value, IntegerField, Q
 from django.utils import timezone
 
@@ -16,6 +15,9 @@ from .forms import TaskForm
 
 # Chức vụ NHAN_VIEN không được giao việc
 EMPLOYEE_POSITION = 'NHAN_VIEN'
+
+# Số ngày trước hạn để tính là "sắp đến hạn" (dùng cho popup nhắc nhở)
+REMINDER_DAYS_AHEAD = 3
 
 
 def can_assign_tasks(user):
@@ -46,6 +48,9 @@ def task_list_view(request):
     Sắp xếp: Việc gấp lên đầu, sau đó đến hạn chót gần nhất.
     """
     user = request.user
+
+    # Tự động sinh công việc kế tiếp cho các task lặp lại đã quá hạn
+    generate_due_recurring_tasks()
 
     # User Isolation: Chỉ lấy task của user hoặc được giao cho user
     tasks = Task.objects.filter(
@@ -135,9 +140,11 @@ def task_toggle_api(request):
 
         new_task = None
 
-        # Nếu đánh dấu hoàn thành và task có recurring_type
+        # Nếu đánh dấu hoàn thành và task có recurring_type (và chưa có task kế tiếp
+        # được tự động sinh ra do quá hạn trước đó)
         if is_completed and task.recurring_type != Task.RECURRING_NONE:
-            new_task = create_recurring_task(task)
+            if not Task.objects.filter(recurrence_parent=task).exists():
+                new_task = create_recurring_task(task)
 
         task.save()
 
@@ -211,9 +218,63 @@ def create_recurring_task(original_task):
         recurring_type=original_task.recurring_type,
         created_by=original_task.created_by,
         assigned_to=original_task.assigned_to,  # Giữ nguyên người được giao
+        recurrence_parent=original_task,
     )
 
     return new_task
+
+
+def generate_due_recurring_tasks():
+    """
+    Tự động sinh công việc kế tiếp cho các task lặp lại đã quá hạn (due_date < hôm nay),
+    kể cả khi task đó chưa được đánh dấu hoàn thành.
+
+    Mỗi task gốc chỉ được sinh 1 lần (kiểm tra qua recurrence_children) nên gọi lại
+    hàm này nhiều lần trong ngày không tạo trùng. Lặp nhiều vòng để "bắt kịp" ngay cả
+    khi một chuỗi task đã bị bỏ quên nhiều kỳ liên tiếp (VD: quá hạn 3 tháng liền).
+    """
+    today = timezone.now().date()
+    for _ in range(60):  # giới hạn an toàn: đủ bắt kịp 5 năm với chu kỳ hàng tháng
+        due_tasks = list(Task.objects.filter(
+            recurring_type__in=[Task.RECURRING_MONTHLY, Task.RECURRING_QUARTERLY],
+            due_date__lt=today,
+            recurrence_children__isnull=True,
+        ))
+        if not due_tasks:
+            break
+        for task in due_tasks:
+            create_recurring_task(task)
+
+
+@login_required
+def task_reminder_api(request):
+    """
+    API cho popup nhắc nhở tự động: trả về các việc chưa hoàn thành của user
+    (do user tạo hoặc được giao) đã quá hạn hoặc sắp đến hạn trong
+    REMINDER_DAYS_AHEAD ngày tới.
+    """
+    generate_due_recurring_tasks()
+
+    user = request.user
+    today = timezone.now().date()
+    deadline = today + timedelta(days=REMINDER_DAYS_AHEAD)
+
+    tasks = Task.objects.filter(
+        Q(created_by=user) | Q(assigned_to=user),
+        is_completed=False,
+        due_date__isnull=False,
+        due_date__lte=deadline,
+    ).order_by('due_date')
+
+    items = [{
+        'id': t.id,
+        'title': t.title,
+        'due_date': t.due_date.strftime('%d/%m/%Y'),
+        'is_overdue': t.due_date < today,
+        'priority': t.priority,
+    } for t in tasks]
+
+    return JsonResponse({'items': items})
 
 
 @login_required

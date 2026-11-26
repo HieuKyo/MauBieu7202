@@ -1,0 +1,17 @@
+{# Phân trang dùng chung: cần page, sort, qs_base #}
+{% if page.has_other_pages %}
+<div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2 small">
+    <span>Trang {{ page.number }}/{{ page.paginator.num_pages }} – hiển thị {{ page.start_index }}–{{ page.end_index }} / {{ page.paginator.count }}</span>
+    <nav><ul class="pagination pagination-sm mb-0">
+        {% if page.has_previous %}
+        <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page=1">«</a></li>
+        <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.previous_page_number }}">‹</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page.number }}</span></li>
+        {% if page.has_next %}
+        <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.next_page_number }}">›</a></li>
+        <li class="page-item"><a class="page-link" href="?{{ qs_base }}&sort={{ sort }}&page={{ page.paginator.num_pages }}">»</a></li>
+        {% endif %}
+    </ul></nav>
+</div>
+{% endif %}

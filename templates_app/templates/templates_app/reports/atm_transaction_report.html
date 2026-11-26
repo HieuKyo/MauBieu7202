@@ -80,27 +80,56 @@
     <!-- Advanced Filter Section -->
     <div class="filter-section">
         <h5 class="mb-3"><i class="bi bi-funnel"></i> Bộ lọc nâng cao</h5>
-        <form method="get" class="row g-3">
-            <!-- Kỳ báo cáo -->
+        <form method="get" class="row g-3" id="atm-filter-form">
+            <!-- Loại chu kỳ — đặt trước để JS đọc giá trị -->
+            <div class="col-md-2">
+                <label class="form-label"><i class="bi bi-calendar-range"></i> Loại kỳ</label>
+                <select name="period_type" class="form-select" id="period_type_select" onchange="updatePeriodOptions()">
+                    <option value="month"   {% if period_type == 'month' %}selected{% endif %}>Theo tháng</option>
+                    <option value="6months" {% if period_type == '6months' %}selected{% endif %}>6 tháng</option>
+                    <option value="quarter" {% if period_type == 'quarter' %}selected{% endif %}>Theo quý</option>
+                    <option value="year"    {% if period_type == 'year' %}selected{% endif %}>Theo năm</option>
+                </select>
+            </div>
+
+            <!-- Kỳ báo cáo — thay đổi theo loại kỳ -->
             <div class="col-md-3">
                 <label class="form-label"><i class="bi bi-calendar3"></i> Kỳ báo cáo</label>
-                <select name="period" class="form-select">
+
+                <!-- Tháng / 6 tháng -->
+                <select name="period" class="form-select period-select" id="period_month"
+                        {% if period_type == 'quarter' or period_type == 'year' %}style="display:none" disabled{% endif %}>
                     <option value="">-- Tất cả --</option>
                     {% for upload in available_periods %}
                     <option value="{{ upload.report_period|date:'Y-m-d' }}"
-                            {% if selected_period == upload.report_period|date:'Y-m-d' %}selected{% endif %}>
+                            {% if selected_period == upload.report_period|date:'Y-m-d' and period_type != 'quarter' and period_type != 'year' %}selected{% endif %}>
                         {{ upload.report_period|date:'m/Y' }}
                     </option>
                     {% endfor %}
                 </select>
-            </div>
 
-            <!-- Loại chu kỳ -->
-            <div class="col-md-2">
-                <label class="form-label"><i class="bi bi-calendar-range"></i> Chu kỳ</label>
-                <select name="period_type" class="form-select">
-                    <option value="month" {% if period_type == 'month' %}selected{% endif %}>Theo tháng</option>
-                    <option value="6months" {% if period_type == '6months' %}selected{% endif %}>6 tháng</option>
+                <!-- Quý -->
+                <select name="period" class="form-select period-select" id="period_quarter"
+                        {% if period_type != 'quarter' %}style="display:none" disabled{% endif %}>
+                    <option value="">-- Tất cả --</option>
+                    {% for q in available_quarters %}
+                    <option value="{{ q.value }}"
+                            {% if selected_period == q.value and period_type == 'quarter' %}selected{% endif %}>
+                        {{ q.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <!-- Năm -->
+                <select name="period" class="form-select period-select" id="period_year"
+                        {% if period_type != 'year' %}style="display:none" disabled{% endif %}>
+                    <option value="">-- Tất cả --</option>
+                    {% for y in available_years %}
+                    <option value="{{ y.nam|date:'Y-m-d' }}"
+                            {% if selected_period == y.nam|date:'Y-m-d' and period_type == 'year' %}selected{% endif %}>
+                        {{ y.nam|date:'Y' }}
+                    </option>
+                    {% endfor %}
                 </select>
             </div>
 
@@ -339,4 +368,31 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+function updatePeriodOptions() {
+    const type = document.getElementById('period_type_select').value;
+    const selectors = {
+        month:    document.getElementById('period_month'),
+        '6months': document.getElementById('period_month'),
+        quarter:  document.getElementById('period_quarter'),
+        year:     document.getElementById('period_year'),
+    };
+    // Ẩn và disable tất cả
+    ['period_month', 'period_quarter', 'period_year'].forEach(id => {
+        const el = document.getElementById(id);
+        el.style.display = 'none';
+        el.disabled = true;
+    });
+    // Hiện và enable cái cần dùng
+    const active = (type === 'month' || type === '6months') ? 'period_month'
+                 : type === 'quarter' ? 'period_quarter'
+                 : 'period_year';
+    const el = document.getElementById(active);
+    el.style.display = '';
+    el.disabled = false;
+}
+// Đảm bảo trạng thái đúng khi tải trang
+document.addEventListener('DOMContentLoaded', updatePeriodOptions);
+</script>
 {% endblock %}

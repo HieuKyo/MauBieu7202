@@ -9,7 +9,11 @@
             <h2 class="text-center mb-3" style="color: var(--agri-red);">
                 <i class="bi bi-envelope-open"></i> BÁO CÁO BÌ THƯ
             </h2>
-            <p class="text-center text-muted">Tra cứu thông tin bì thư đã nhận</p>
+            <p class="text-center text-muted">Tra cứu thông tin bì thư đã nhận
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#biThuHuongDanModal">
+                    <i class="bi bi-question-circle"></i> Hướng dẫn
+                </button>
+            </p>
         </div>
     </div>
 
@@ -67,6 +71,9 @@
                                 <tr>
                                     <th>STT</th>
                                     <th>Mã bì thư</th>
+                                    <th>Loại thẻ</th>
+                                    <th>Ngày phát hành</th>
+                                    <th>CN gốc</th>
                                     <th>Ngày nhận</th>
                                     <th>Người nhận</th>
                                 </tr>
@@ -76,6 +83,9 @@
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
                                     <td><strong>{{ record.envelope_code }}</strong></td>
+                                    <td>{{ record.get_card_type_display }}</td>
+                                    <td>{{ record.issue_date|date:"d/m/Y" }}</td>
+                                    <td>{{ record.branch_code }}</td>
                                     <td>{{ record.receive_date|date:"d/m/Y" }}</td>
                                     <td>{{ record.receiver }}</td>
                                 </tr>
@@ -107,4 +117,5 @@
         </a>
     </div>
 </div>
+{% include "templates_app/reports/_mail_envelope_huong_dan.html" %}
 {% endblock %}

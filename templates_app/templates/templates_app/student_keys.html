@@ -1,0 +1,46 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Khóa đăng ký học sinh{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 900px;">
+    <h3><i class="bi bi-key"></i> Khóa mã hóa — Học sinh tự đăng ký</h3>
+    <p class="text-muted">
+        Trang web đăng ký mã hóa hồ sơ bằng <strong>khóa công khai</strong> trước khi gửi vào Google Sheet.
+        Chỉ máy chủ này (giữ <strong>khóa bí mật</strong>) giải mã được khi nhập danh sách.
+    </p>
+
+    {% if public_key %}
+    <div class="card mb-3">
+        <div class="card-header fw-bold">Khóa công khai — dán vào <code>PUBLIC_KEY</code> trong file <code>config.js</code> của trang web</div>
+        <div class="card-body">
+            <textarea id="publicKey" class="form-control font-monospace small" rows="7" readonly>{{ public_key }}</textarea>
+            <button type="button" class="btn btn-sm btn-primary mt-2"
+                    onclick="const t=document.getElementById('publicKey'); t.select(); document.execCommand('copy'); this.textContent='Đã sao chép';">
+                <i class="bi bi-clipboard"></i> Sao chép
+            </button>
+        </div>
+    </div>
+    <div class="alert alert-warning small">
+        <i class="bi bi-shield-lock"></i> Khóa bí mật lưu tại <code>{{ key_path }}</code>. <strong>Sao lưu file này</strong> và không gửi cho ai.
+        Mất file → không giải mã được hồ sơ đã gửi. Không đưa file lên GitHub / Google Drive.
+    </div>
+    <details class="mb-3">
+        <summary class="text-danger small">Tạo lại khóa (hồ sơ gửi bằng khóa cũ sẽ không giải mã được nữa)</summary>
+        <form method="post" class="mt-2 d-flex gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create">
+            <input class="form-control form-control-sm" name="confirm" placeholder='Gõ "TAO LAI" để xác nhận' style="max-width:240px">
+            <button class="btn btn-sm btn-outline-danger">Tạo lại khóa</button>
+        </form>
+    </details>
+    {% else %}
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <button class="btn btn-primary"><i class="bi bi-key"></i> Tạo khóa</button>
+    </form>
+    {% endif %}
+    <a href="{% url 'customer_list' %}" class="btn btn-outline-secondary mt-2"><i class="bi bi-arrow-left"></i> Về danh sách khách hàng</a>
+</div>
+{% endblock %}

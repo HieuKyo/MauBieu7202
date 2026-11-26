@@ -6,9 +6,14 @@
 {% block content %}
 <div class="container-fluid">
     <div class="row mb-4">
-        <div class="col">
-            <h2><i class="bi bi-credit-card-2-front"></i> Quản lý ATM</h2>
-            <p class="text-muted">Tạo và quản lý các phiếu tiếp quỹ ATM</p>
+        <div class="col d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h2><i class="bi bi-credit-card-2-front"></i> Quản lý ATM</h2>
+                <p class="text-muted mb-0">Tạo và quản lý các phiếu tiếp quỹ ATM</p>
+            </div>
+            <a href="{% url 'atm_guide_download' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-file-earmark-word"></i> Hướng dẫn sử dụng
+            </a>
         </div>
     </div>
 
@@ -113,6 +118,16 @@
                         <div class="col-md-2 mb-2">
                             <a href="/admin/templates_app/atmmanagementboard/" class="btn btn-outline-success w-100">
                                 <i class="bi bi-people"></i> Ban quản lý
+                            </a>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <a href="{% url 'atm_travel_claim' %}" class="btn btn-outline-dark w-100">
+                                <i class="bi bi-cash-coin"></i> Bảng kê thanh toán
+                            </a>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <a href="{% url 'vehicle_duty_schedule' %}" class="btn btn-outline-warning w-100">
+                                <i class="bi bi-calendar-check"></i> Lịch trực xe
                             </a>
                         </div>
                     </div>

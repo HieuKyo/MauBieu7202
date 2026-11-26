@@ -6,6 +6,8 @@
 {% block extra_head %}
 <!-- Address Selector Component -->
 <script src="{% static 'js/address_selector_component.js' %}"></script>
+<!-- jsQR: giải mã QR CCCD từ webcam (bản local, chạy offline) -->
+<script src="{% static 'js/jsQR.min.js' %}"></script>
 {% endblock %}
 
 {% block extra_css %}
@@ -148,12 +150,24 @@
                             <!-- Search results dropdown -->
                             <div id="search-results" class="list-group mt-2" style="display:none; max-height:200px; overflow-y:auto;"></div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <label class="form-label small">Import từ AGRIBANK</label>
                             <button type="button" class="btn btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#dashboardImportAgribankModal">
                                 <i class="bi bi-bank"></i> Paste từ AGRIBANK
                             </button>
                             <small class="text-muted d-block mt-1">Copy dữ liệu từ AGRIBANK và paste trực tiếp (nhanh nhất!)</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Quét QR CCCD / Căn cước</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-success flex-fill" data-bs-toggle="modal" data-bs-target="#cccdQrModal">
+                                    <i class="bi bi-qr-code-scan"></i> Quét QR
+                                </button>
+                                <button type="button" class="btn btn-outline-primary flex-fill" data-bs-toggle="modal" data-bs-target="#cccdPhotoModal">
+                                    <i class="bi bi-camera"></i> Chụp 2 mặt
+                                </button>
+                            </div>
+                            <small class="text-muted d-block mt-1">Quét QR để điền form · Chụp 2 mặt để in kèm (A5)</small>
                         </div>
                     </div>
                 </div>
@@ -778,9 +792,55 @@
     </div>
 </div>
 
+{% include 'templates_app/includes/cccd_photo_modal.html' %}
+
+<!-- Modal: Quét QR CCCD / Căn cước bằng Webcam -->
+<div class="modal fade" id="cccdQrModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-qr-code-scan"></i> Quét QR CCCD / Căn cước</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-camera-video"></i> Camera</span>
+                    <select class="form-select" id="cccdQrCameraSelect" onchange="startCccdQrScan(this.value, true)"></select>
+                </div>
+                <div class="position-relative bg-dark rounded overflow-hidden text-center">
+                    <video id="cccdQrVideo" playsinline muted style="width:100%; min-height:200px; max-height:420px; object-fit:contain;"></video>
+                    <div id="cccdQrSuccess" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center text-white" style="background:rgba(25,135,84,.93);">
+                        <i class="bi bi-check-circle-fill" style="font-size:72px;"></i>
+                        <div class="fs-3 fw-bold">QUÉT THÀNH CÔNG</div>
+                        <div class="fs-5" id="cccdQrSuccessName"></div>
+                    </div>
+                </div>
+                <div id="cccdQrStatus" class="small text-muted mt-2">
+                    <i class="bi bi-hourglass-split"></i> Đang khởi động camera...
+                </div>
+
+                <!-- Hướng dẫn xử lý lỗi camera (theo trình duyệt), do renderCameraHelp() tạo -->
+                <div id="cccdQrHelp"></div>
+                <hr>
+                <label class="form-label small mb-1">Hoặc dùng máy quét QR cầm tay / dán chuỗi QR:</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace" id="cccdQrManualInput"
+                           placeholder="012345678901|123456789|Nguyễn Văn A|01011990|Nam|Địa chỉ...|01012022"
+                           onkeydown="if (event.key === 'Enter') { event.preventDefault(); applyCccdQr(this.value); }">
+                    <button type="button" class="btn btn-outline-success" onclick="applyCccdQr(document.getElementById('cccdQrManualInput').value)">
+                        <i class="bi bi-arrow-down-circle"></i> Điền
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
+<!-- Quét QR CCCD + mở camera + đổi địa chỉ (dùng chung với trang Doanh nghiệp) -->
+<script src="{% static 'js/cccd_qr_scanner.js' %}"></script>
 <script>
 let selectedCategoryId = null;
 let selectedCategoryName = null;
@@ -836,8 +896,16 @@ function selectCategory(categoryId, categoryName) {
 }
 
 // Display templates
+// Cấu hình "nhập nhanh" của từng mẫu: { id: { preset_values, required_fields } }
+let templatePresets = {};
+let currentRequiredFields = [];
+
 function displayTemplates(templates) {
     const container = document.getElementById('templates-list');
+    templatePresets = {};
+    templates.forEach(t => {
+        templatePresets[t.id] = { preset_values: t.preset_values || {}, required_fields: t.required_fields || [] };
+    });
     if (templates.length === 0) {
         container.innerHTML = '<div class="col-12 text-center"><p class="text-muted">Chưa có mẫu biểu nào trong danh mục này</p></div>';
         return;
@@ -873,7 +941,52 @@ function selectTemplate(templateId, templateName) {
     // Show/hide field groups based on category config
     filterFieldGroups();
 
+    applyTemplatePreset(templateId);
+
     goToStep(3);
+}
+
+function fieldLabelText(el) {
+    const label = el.closest('div') && el.closest('div').querySelector('label');
+    return label ? label.textContent.replace('*', '').trim() : el.name;
+}
+
+// Mẫu "nhập nhanh" (vd. Phát hành thẻ Học sinh): chọn sẵn một số mục, đánh dấu * các trường bắt buộc.
+// GĐV vẫn sửa được các mục đã chọn sẵn.
+function applyTemplatePreset(templateId) {
+    const cfg = templatePresets[templateId] || { preset_values: {}, required_fields: [] };
+    const form = document.getElementById('customerForm');
+
+    Object.entries(cfg.preset_values).forEach(([name, value]) => {
+        form.querySelectorAll(`[name="${name}"]`).forEach(el => {
+            if (el.type === 'checkbox') el.checked = value === true || value === 'on';
+            else if (el.type === 'radio') el.checked = el.value === value;
+            else el.value = value;
+            el.dispatchEvent(new Event('change', { bubbles: true }));   // cập nhật ô phụ thuộc (vd. Số TK theo yêu cầu)
+        });
+    });
+
+    // Dấu * bắt buộc: bỏ của mẫu trước, gắn cho mẫu này
+    form.querySelectorAll('.preset-required-star').forEach(s => s.remove());
+    currentRequiredFields = cfg.required_fields;
+    currentRequiredFields.forEach(name => {
+        const el = form.querySelector(`[name="${name}"]`);
+        const label = el && el.closest('div') && el.closest('div').querySelector('label');
+        if (label) label.insertAdjacentHTML('beforeend', ' <span class="text-danger preset-required-star">*</span>');
+    });
+
+    document.getElementById('templatePresetAlert')?.remove();
+    const n = Object.keys(cfg.preset_values).length;
+    if (n || currentRequiredFields.length) {
+        const required = currentRequiredFields.map(name => form.querySelector(`[name="${name}"]`)).filter(Boolean).map(fieldLabelText);
+        const alertDiv = document.createElement('div');
+        alertDiv.id = 'templatePresetAlert';
+        alertDiv.className = 'alert alert-info alert-dismissible fade show';
+        alertDiv.innerHTML = `<i class="bi bi-lightning-charge-fill"></i> Mẫu này đã <strong>chọn sẵn ${n} mục</strong> (vẫn sửa được)`
+            + (required.length ? `. Bắt buộc nhập: <strong>${required.join(', ')}</strong>.` : '.')
+            + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        form.insertBefore(alertDiv, form.firstChild);
+    }
 }
 
 // Filter field groups based on category configuration
@@ -1200,6 +1313,60 @@ function fillFormFromAgribank() {
     }
 }
 
+// ============================================
+// Quét QR CCCD / Căn cước bằng Webcam
+// Phần dùng chung (đọc QR, đổi địa chỉ, mở camera, hướng dẫn lỗi camera) ở static/js/cccd_qr_scanner.js;
+// trang này chỉ có applyCccdQr() để điền vào form In mẫu biểu.
+// ============================================
+
+// Trả về true nếu chuỗi là QR CCCD hợp lệ và đã điền vào form
+function applyCccdQr(text) {
+    const data = parseCccdQr(text);
+    if (!data) {
+        setCccdQrStatus('<i class="bi bi-exclamation-triangle"></i> Mã QR không phải CCCD/Căn cước. Vui lòng quét mã QR ở <strong>mặt trước</strong> thẻ.', 'text-danger');
+        return false;
+    }
+
+    stopCccdQrScan();
+    fillFormWithData(data);
+    updateAutoCalcCard();
+    document.getElementById('cccdQrManualInput').value = '';
+
+    const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+
+    // Báo thành công ngay trên khung camera (kèm tiếng bíp), 1.5 giây sau tự đóng
+    document.getElementById('cccdQrSuccessName').textContent = data.ho_ten;
+    document.getElementById('cccdQrSuccess').classList.replace('d-none', 'd-flex');
+    beepCccdQr();
+    setTimeout(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('cccdQrModal'));
+        if (modal) modal.hide();
+    }, 1500);
+
+    const diaChiHtml = cccdAddressHtml(data, '#customerForm [name="dia_chi"]');
+
+    // Thông báo trên form: giữ đến khi GDV tự đóng, chỉ giữ 1 thông báo QR
+    document.getElementById('cccdQrResultAlert')?.remove();
+    const alertDiv = document.createElement('div');
+    alertDiv.id = 'cccdQrResultAlert';
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <div class="fs-5"><i class="bi bi-check-circle-fill"></i> <strong>QUÉT QR CCCD THÀNH CÔNG!</strong> Vui lòng kiểm tra lại thông tin.</div>
+        <ul class="mb-0 mt-2">
+            <li>Họ tên: <strong>${esc(data.ho_ten)}</strong></li>
+            <li>Số CCCD: <strong>${data.so_cmnd}</strong>${data.cmnd_cu ? ` (CMND cũ: ${esc(data.cmnd_cu)})` : ''}</li>
+            <li>Ngày hết hạn: <strong>${data.ngay_het_han_cmnd ? data.ngay_het_han_cmnd.split('-').reverse().join('/') : 'Không thời hạn'}</strong></li>
+            ${diaChiHtml}
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    const form = document.getElementById('customerForm');
+    form.insertBefore(alertDiv, form.firstChild);
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return true;
+}
+
+
 // Validation functions
 function validatePhoneNumber(phone) {
     if (!phone || phone.trim() === '') return { valid: true }; // Optional field
@@ -1262,7 +1429,7 @@ function validateBirthDate(dateStr) {
         };
     }
 
-    return { valid: true };
+    return { valid: true, date: date };   // trả kèm ngày sinh để validateCustomerForm kiểm tra tuổi
 }
 
 function validateIssuanceDate(dateStr) {
@@ -1308,6 +1475,15 @@ function validateExpiryDate(issueDate, expiryDate) {
 
 function validateCustomerForm() {
     const errors = [];
+    const warnings = [];
+
+    // Trường bắt buộc của mẫu đang chọn (vd. Số điện thoại với mẫu Phát hành thẻ Học sinh)
+    currentRequiredFields.forEach(name => {
+        const el = document.querySelector(`#customerForm [name="${name}"]`);
+        if (el && !String(el.value || '').trim()) {
+            errors.push(`${fieldLabelText(el)} là bắt buộc với mẫu "${selectedTemplateName}"`);
+        }
+    });
 
     // Validate phone number
     const phone = document.querySelector('[name="so_dien_thoai"]')?.value;
@@ -1322,10 +1498,10 @@ function validateCustomerForm() {
     if (!birthResult.valid) {
         errors.push(birthResult.message);
     } else if (birthResult.date) {
-        // Check age >= 15
+        // Dưới 15 tuổi: không chặn, chỉ cảnh báo (cần người giám hộ)
         const age = calculateAge(birthResult.date);
         if (age < 15) {
-            errors.push(`Khách hàng phải từ 15 tuổi trở lên (hiện tại: ${age} tuổi)`);
+            warnings.push(`Khách hàng ${age} tuổi (dưới 15 tuổi) — cần người giám hộ (Mẫu 1B).`);
         }
     }
 
@@ -1345,8 +1521,14 @@ function validateCustomerForm() {
 
     return {
         valid: errors.length === 0,
-        errors: errors
+        errors: errors,
+        warnings: warnings
     };
+}
+
+// Có cảnh báo (vd. khách dưới 15 tuổi) → hỏi GĐV có tiếp tục không
+function confirmFormWarnings(validation) {
+    return !validation.warnings.length || confirm(validation.warnings.join('\n') + '\n\nVẫn tiếp tục?');
 }
 
 // Form submission
@@ -1359,8 +1541,10 @@ document.getElementById('customerForm').addEventListener('submit', function(e) {
         alert('Vui lòng kiểm tra lại thông tin:\n\n' + validation.errors.join('\n'));
         return;
     }
+    if (!confirmFormWarnings(validation)) return;
 
     const formData = new FormData(this);
+    let customerSaveError = '';
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
     // Show loading
@@ -1377,7 +1561,13 @@ document.getElementById('customerForm').addEventListener('submit', function(e) {
         },
         body: formData
     })
-    .then(response => response.blob())
+    .then(response => {
+        // Máy chủ báo lỗi (thiếu trường bắt buộc, không có quyền...) → hiện thông báo, không tải file lỗi về
+        if (!response.ok) return response.text().then(text => { throw new Error(text); });
+        // Máy chủ báo không lưu được khách hàng (file Word vẫn được tạo)
+        customerSaveError = decodeURIComponent(response.headers.get('X-Customer-Save-Error') || '');
+        return response.blob();
+    })
     .then(blob => {
         // Download file
         const url = window.URL.createObjectURL(blob);
@@ -1394,7 +1584,8 @@ document.getElementById('customerForm').addEventListener('submit', function(e) {
         submitBtn.disabled = false;
 
         // Show success
-        alert('Đã tạo và tải mẫu biểu thành công!');
+        alert('Đã tạo và tải mẫu biểu thành công!'
+            + (customerSaveError ? '\n\n⚠ NHƯNG KHÔNG lưu được thông tin khách hàng:\n' + customerSaveError : ''));
 
         // Reset form for next use
         this.reset();
@@ -1404,7 +1595,7 @@ document.getElementById('customerForm').addEventListener('submit', function(e) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Lỗi khi tạo mẫu biểu');
+        alert('Lỗi khi tạo mẫu biểu' + (error.message ? ':\n' + error.message : ''));
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
     });
@@ -1418,6 +1609,7 @@ function previewDocument() {
         alert('Vui lòng kiểm tra lại thông tin:\n\n' + validation.errors.join('\n'));
         return;
     }
+    if (!confirmFormWarnings(validation)) return;
 
     if (!selectedTemplateId) {
         alert('Vui lòng chọn mẫu biểu trước');
@@ -1620,18 +1812,9 @@ if (originalFillFormWithData) {
 // Address Selector Component Initialization
 // ==========================================
 let dashboardAddressSelector;
-let addressConversionData = {}; // Store conversion mapping
 
-// Load address conversion data
-fetch('{% static "data/chuyen_doi.json" %}')
-    .then(response => response.json())
-    .then(data => {
-        addressConversionData = data;
-        console.log('Address conversion data loaded:', Object.keys(data).length, 'mappings');
-    })
-    .catch(error => {
-        console.error('Error loading address conversion data:', error);
-    });
+// Load address conversion data (addressConversionData khai báo trong cccd_qr_scanner.js)
+loadAddressConversionData('{% static "data/chuyen_doi.json" %}');
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Address Selector for Dashboard
@@ -1739,4 +1922,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
+<script src="{% static 'js/cccd_photo_capture.js' %}"></script>
 {% endblock %}

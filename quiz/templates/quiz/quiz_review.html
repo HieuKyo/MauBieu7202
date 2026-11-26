@@ -1,0 +1,137 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+
+{% block title %}Xem lại bài thi - {{ quiz.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .q-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.1s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .q-btn:hover { transform: scale(1.1); }
+    .q-btn.answered   { background: #198754; color: #fff; }
+    .q-btn.unanswered { background: #fff3cd; color: #856404; border: 2px solid #ffc107; }
+    .legend-dot {
+        width: 16px; height: 16px;
+        border-radius: 4px;
+        display: inline-block;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container main-container" style="max-width:700px;">
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header py-3" style="background:linear-gradient(90deg,#AE1C3F,#8a1230);border-bottom:3px solid #D69D26;">
+            <h5 class="mb-0 text-white fw-bold">
+                <i class="bi bi-flag-fill me-2"></i>Kết thúc bài thi
+            </h5>
+            <p class="mb-0 text-white-50 small mt-1">{{ quiz.title }}</p>
+        </div>
+
+        <div class="card-body">
+            <!-- Summary -->
+            <div class="row g-3 mb-4 text-center">
+                <div class="col-6">
+                    <div class="p-3 rounded" style="background:rgba(25,135,84,0.1);">
+                        <div class="fs-3 fw-bold text-success">{{ answered_count }}</div>
+                        <div class="small text-muted">
+                            <span class="legend-dot" style="background:#198754;"></span> Đã trả lời
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-3 rounded" style="background:#fff3cd;">
+                        <div class="fs-3 fw-bold" style="color:#856404;">{{ unanswered_count }}</div>
+                        <div class="small text-muted">
+                            <span class="legend-dot" style="background:#ffc107;"></span> Chưa trả lời
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question grid -->
+            <p class="text-muted small mb-2 fw-semibold">Nhấn vào số câu để quay lại làm:</p>
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                {% for q in questions_status %}
+                <a href="{% url 'quiz_question' quiz_id=quiz.id index=q.index %}"
+                   class="q-btn {% if q.answered %}answered{% else %}unanswered{% endif %}"
+                   title="Câu {{ q.number }}{% if not q.answered %} - Chưa trả lời{% endif %}">
+                    {{ q.number }}
+                </a>
+                {% endfor %}
+            </div>
+
+            {% if unanswered_count > 0 %}
+            <div class="alert alert-warning d-flex align-items-center mb-4">
+                <i class="bi bi-exclamation-triangle-fill me-2 flex-shrink-0"></i>
+                <span>Còn <strong>{{ unanswered_count }} câu chưa trả lời</strong>. Bạn có thể nhấn vào số câu phía trên để quay lại làm.</span>
+            </div>
+            {% else %}
+            <div class="alert alert-success d-flex align-items-center mb-4">
+                <i class="bi bi-check-circle-fill me-2 flex-shrink-0"></i>
+                <span>Bạn đã trả lời <strong>tất cả {{ total }} câu</strong>. Sẵn sàng nộp bài!</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+            <a href="{% url 'quiz_question' quiz_id=quiz.id index=0 %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại làm bài
+            </a>
+
+            <!-- Confirm submit -->
+            <button type="button" class="btn btn-danger btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#confirmModal">
+                <i class="bi bi-check2-circle me-1"></i> Xác nhận nộp bài
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(90deg,#AE1C3F,#8a1230);">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="bi bi-flag-fill me-2"></i>Xác nhận nộp bài
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-question-circle text-warning" style="font-size:3rem;"></i>
+                <p class="mt-3 mb-1 fw-semibold">Bạn chắc chắn muốn nộp bài?</p>
+                <p class="text-muted small">
+                    Đã trả lời: <strong class="text-success">{{ answered_count }}/{{ total }}</strong>
+                    {% if unanswered_count > 0 %}
+                    &nbsp;|&nbsp; Chưa trả lời: <strong class="text-warning">{{ unanswered_count }}</strong>
+                    {% endif %}
+                </p>
+                <p class="text-muted small">Sau khi nộp bài sẽ không thể sửa đáp án.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-arrow-left me-1"></i> Chưa, để làm tiếp
+                </button>
+                <a href="{% url 'quiz_result' quiz_id=quiz.id %}" class="btn btn-danger">
+                    <i class="bi bi-check2-circle me-1"></i> Nộp bài ngay
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

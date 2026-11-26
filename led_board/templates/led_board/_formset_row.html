@@ -1,0 +1,10 @@
+<tr>
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    {% for field in form.visible_fields %}
+    {% if field.name == 'DELETE' or field.name == 'is_active' %}
+    <td class="text-center">{{ field }}</td>
+    {% else %}
+    <td>{{ field }}{% for err in field.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}</td>
+    {% endif %}
+    {% endfor %}
+</tr>

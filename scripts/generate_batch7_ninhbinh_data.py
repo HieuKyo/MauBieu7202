@@ -261,7 +261,7 @@ def main():
         json.dump(chuyen_doi, f, ensure_ascii=False, indent=2)
 
     print(f"\nTotal new mappings: {len(province_chuyen_doi)}")
-    print(f"\nFinal totals:")
+    print("\nFinal totals:")
     print(f"  - dia_danh provinces: {len(dia_danh)}")
     print(f"  - chuyen_doi mappings: {len(chuyen_doi)}")
 

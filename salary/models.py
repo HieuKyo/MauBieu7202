@@ -156,6 +156,8 @@ class ProcessingHistory(models.Model):
         max_digits=15,
         decimal_places=2,
         default=Decimal('0.00'),
+        null=True,
+        blank=True,
         verbose_name="Tổng số tiền"
     )
     duplicate_accounts = models.TextField(

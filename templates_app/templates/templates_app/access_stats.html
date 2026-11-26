@@ -1,0 +1,132 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Thống kê truy cập{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 style="color: var(--agri-red);" class="mb-3"><i class="bi bi-bar-chart-steps"></i> THỐNG KÊ TRUY CẬP MENU</h2>
+
+    <form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-3">
+        <div class="btn-group" role="group">
+            {% for k, ten in kieu_ky %}
+            <input type="radio" class="btn-check" name="ky" id="ky_{{ k }}" value="{{ k }}" {% if k == kieu %}checked{% endif %} onchange="this.form.so_ky.value=''; this.form.submit()">
+            <label class="btn btn-outline-danger" for="ky_{{ k }}">Theo {{ ten|lower }}</label>
+            {% endfor %}
+        </div>
+        <div>
+            <label class="form-label small mb-0">Số {{ ten_kieu|lower }} gần nhất</label>
+            <input type="number" name="so_ky" class="form-control" value="{{ so_ky }}" min="1" max="60" style="width: 110px;">
+        </div>
+        <div>
+            <label class="form-label small mb-0">Người dùng</label>
+            <select name="user" class="form-select">
+                <option value="">Tất cả</option>
+                {% for u in users %}
+                <option value="{{ u.id }}" {% if u.id|stringformat:"s" == user_id %}selected{% endif %}>{{ u.username }}{% if u.profile.full_name %} — {{ u.profile.full_name }}{% endif %}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="btn btn-danger"><i class="bi bi-funnel"></i> Xem</button>
+        <div class="form-check ms-2 mb-2">
+            <input class="form-check-input" type="checkbox" id="chiMenu" checked>
+            <label class="form-check-label" for="chiMenu">Chỉ hiện các mục có trên menu</label>
+        </div>
+    </form>
+
+    <div class="card mb-4">
+        <div class="card-header"><strong>Lượt truy cập theo {{ ten_kieu|lower }}</strong> · tổng <strong>{{ tong }}</strong> lượt</div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-bordered mb-0 align-middle" id="bangTrang">
+                <thead class="table-light">
+                    <tr>
+                        <th style="min-width: 260px;">Menu / trang</th>
+                        {% for n in nhan_ky %}<th class="text-end text-nowrap small">{{ n }}</th>{% endfor %}
+                        <th class="text-end">Tổng</th>
+                        <th class="text-end text-nowrap">Số người</th>
+                        <th class="text-nowrap">Lần cuối</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in trang %}
+                    <tr data-url="{{ t.url }}">
+                        <td><span class="ten-menu">{{ t.view_name }}</span><div class="small text-muted">{{ t.url }}</div></td>
+                        {% for c in t.luot %}<td class="text-end {% if not c %}text-muted opacity-50{% endif %}">{{ c }}</td>{% endfor %}
+                        <td class="text-end fw-bold">{{ t.tong }}</td>
+                        <td class="text-end">{{ t.so_nguoi }}</td>
+                        <td class="text-nowrap small">{{ t.lan_cuoi|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="{{ nhan_ky|length|add:4 }}" class="text-muted text-center">Chưa có lượt truy cập nào trong khoảng thời gian này.</td></tr>
+                    {% endfor %}
+                </tbody>
+                {% if trang %}
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td>Tổng (tất cả trang)</td>
+                        {% for c in tong_ky %}<td class="text-end">{{ c }}</td>{% endfor %}
+                        <td class="text-end">{{ tong }}</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><strong>Theo người dùng</strong> (trong cùng khoảng thời gian)</div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Tài khoản</th><th>Họ tên</th><th class="text-end">Số lượt</th><th class="text-end">Số trang đã mở</th><th>Lần cuối</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for n in nguoi_dung %}
+                    <tr>
+                        <td>{{ n.user__username }}</td>
+                        <td>{{ n.user__profile__full_name|default:"" }}</td>
+                        <td class="text-end fw-bold">{{ n.tong }}</td>
+                        <td class="text-end">{{ n.so_trang }}</td>
+                        <td class="small">{{ n.lan_cuoi|date:"d/m/Y H:i" }}</td>
+                        <td><a href="?ky={{ kieu }}&so_ky={{ so_ky }}&user={{ n.user_id }}" class="btn btn-sm btn-outline-secondary">Xem riêng</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-muted text-center">Chưa có dữ liệu.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p class="small text-muted">
+        Mỗi lần mở một trang được tính 1 lượt (tải lại trang cũng tính). Không tính các lệnh chạy nền như kiểm tra tin nhắn, nhắc việc.
+        Dữ liệu chỉ Superuser xem được và tự xóa sau {{ luu_toi_da_ngay }} ngày.
+    </p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Đổi tên kỹ thuật của trang thành tên menu (lấy từ menu và ô Tìm chức năng) — tự đúng khi menu thay đổi
+(function () {
+    const menu = {};
+    (window.collectMenuFeatures ? window.collectMenuFeatures() : []).forEach(function (f) {
+        menu[f.url] = (f.group ? f.group + ' › ' : '') + f.name;
+    });
+    const rows = document.querySelectorAll('#bangTrang tbody tr[data-url]');
+    rows.forEach(function (tr) {
+        const ten = menu[tr.dataset.url];
+        tr.dataset.menu = ten ? '1' : '';
+        if (ten) tr.querySelector('.ten-menu').textContent = ten;
+    });
+    const chiMenu = document.getElementById('chiMenu');
+    function loc() { rows.forEach(function (tr) { tr.classList.toggle('d-none', chiMenu.checked && !tr.dataset.menu); }); }
+    try { chiMenu.checked = localStorage.getItem('accessStatsChiMenu') !== '0'; } catch (e) {}
+    chiMenu.addEventListener('change', function () {
+        try { localStorage.setItem('accessStatsChiMenu', chiMenu.checked ? '1' : '0'); } catch (e) {}
+        loc();
+    });
+    loc();
+})();
+</script>
+{% endblock %}

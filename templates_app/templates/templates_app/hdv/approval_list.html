@@ -1,0 +1,91 @@
+{% extends 'templates_app/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Duyệt đăng ký HĐV{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 style="color: var(--agri-red);"><i class="bi bi-check2-circle"></i> DUYỆT ĐĂNG KÝ HĐV</h2>
+            <p class="text-muted">Kiểm soát viên phê duyệt đăng ký của các cán bộ cùng Phòng giao dịch với bạn.</p>
+        </div>
+    </div>
+
+    {% include 'templates_app/hdv/_nav.html' with active='duyet' %}
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="btn-group" role="group">
+                <a href="?" class="btn btn-sm {% if trang_thai == 'cho_duyet' %}btn-danger{% else %}btn-outline-secondary{% endif %}">Chờ duyệt</a>
+                <a href="?trang_thai=da_duyet" class="btn btn-sm {% if trang_thai == 'da_duyet' %}btn-danger{% else %}btn-outline-secondary{% endif %}">Đã duyệt</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Tên KH/Tên KHPN</th>
+                            <th>Ngày dự kiến gửi tiền</th>
+                            <th class="text-end">Số tiền</th>
+                            <th>Người đăng ký</th>
+                            <th>Trạng thái duyệt</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg in page_obj %}
+                        <tr>
+                            <td>{{ reg.ten_kh }}</td>
+                            <td>{{ reg.ngay_dk_huy_dong|date:"d/m/Y" }}</td>
+                            <td class="text-end">{{ reg.so_tien|intcomma }} đ</td>
+                            <td>{{ reg.user_dk.get_full_name|default:reg.user_dk.username }}</td>
+                            <td>
+                                {% if reg.ngay_duyet %}
+                                <span class="badge text-bg-success" title="Duyệt bởi {{ reg.nguoi_duyet.get_full_name|default:reg.nguoi_duyet.username }} lúc {{ reg.ngay_duyet|date:'d/m/Y H:i' }}">
+                                    Đã duyệt
+                                </span>
+                                {% else %}
+                                <span class="badge text-bg-warning">Chờ duyệt</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not reg.ngay_duyet and is_ksv %}
+                                <form method="post" action="{% url 'hdv_approve' reg.id %}" class="d-inline"
+                                      onsubmit="return confirm('Phê duyệt đăng ký của {{ reg.ten_kh|escapejs }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Duyệt</button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted">Không có đăng ký nào</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}&trang_thai={{ trang_thai }}">{{ num }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
