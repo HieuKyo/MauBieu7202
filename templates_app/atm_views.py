@@ -16,9 +16,12 @@ from django.urls import reverse
 
 # Local application imports
 from .forms import ATMReplenishmentForm, ATMDiscrepancyForm
-from .models import Template, BranchConfig, remove_vietnamese_diacritics, ATM, ATMManagementBoard, ATMReplenishment, ATMDiscrepancy
+from .models import Template, BranchConfig, remove_vietnamese_diacritics, ATM, ATMManagementBoard, ATMReplenishment, ATMDiscrepancy, ATMPaymentExportLog
 from .utils import render_word_template
-from .atm_travel_claim import ATM_TRIP_CONFIG, MAX_TRIPS_PER_SHEET, build_payment_statement_rows, build_travel_log_groups, get_position_holder, team_leader_terms
+from .atm_travel_claim import (
+    ATM_TRIP_CONFIG, MAX_TRIPS_PER_SHEET, board_segments, board_warnings, build_payment_statement_rows,
+    build_travel_log_groups, get_duty_excluded_trips, get_position_holder,
+)
 
 
 # ============================================================================
@@ -910,6 +913,12 @@ def vehicle_duty_schedule(request):
     return render(request, 'templates_app/atm/vehicle_duty_schedule.html', context)
 
 
+def _travel_log_filename(sheet):
+    safe_name = remove_vietnamese_diacritics(sheet['driver_name']).replace(' ', '')
+    machine_short = sheet['machine_id'].replace('7202', '')
+    return f"GDD_{machine_short}_{safe_name}_to{sheet['sheet_index']}.docx"
+
+
 @login_required
 def atm_travel_claim(request):
     """Trang xem trước Bảng kê thanh toán + Giấy đi đường Ban quản lý ATM theo khoảng ngày"""
@@ -922,10 +931,12 @@ def atm_travel_claim(request):
     rows, totals = build_payment_statement_rows(start_date, end_date)
     sheets = build_travel_log_groups(start_date, end_date)
 
-    sheets_summary = {}
+    # Xem trước từng tờ: người giữ từng chức vụ trên tờ + tên file trong ZIP
+    position_labels = [label for _, label in ATMManagementBoard.POSITION_CHOICES]
     for s in sheets:
-        key = (s['machine_id'], s['driver_name'])
-        sheets_summary[key] = sheets_summary.get(key, 0) + 1
+        by_role = {r['role']: r['name'] for r in s['recipients']}
+        s['board_names'] = [by_role.get(label, '') for label in position_labels]
+        s['filename'] = _travel_log_filename(s)
 
     if team_leader and start_date > end_date:
         messages.warning(request, f'Khoảng ngày đã chọn nằm ngoài nhiệm kỳ của Trưởng ban {team_leader.full_name}')
@@ -935,13 +946,18 @@ def atm_travel_claim(request):
         'end_date': end_date,
         'team_leader': team_leader,
         'team_leaders': ATMManagementBoard.objects.filter(position='team_leader').order_by('-effective_from'),
-        # Nhiều nhiệm kỳ Trưởng ban trong khoảng ngày -> gợi ý xuất riêng từng nhiệm kỳ
-        'leader_terms': [] if team_leader else team_leader_terms(start_date, end_date),
+        # Ban đổi người (Trưởng ban / Phó ban / CB ATM) trong khoảng ngày -> gợi ý xuất riêng từng giai đoạn
+        'segments': board_segments(start_date, end_date) if start_date <= end_date else [],
+        'board_warnings': board_warnings(start_date, end_date, rows) if start_date <= end_date else [],
+        'duty_excluded': get_duty_excluded_trips(start_date, end_date),
+        'overlap_exports': ATMPaymentExportLog.objects.filter(
+            start_date__lte=end_date, end_date__gte=start_date).select_related('exported_by'),
+        'recent_exports': ATMPaymentExportLog.objects.select_related('exported_by')[:10],
         'rows': rows,
         'totals': totals,
         'sheets': sheets,
-        'sheets_summary': sheets_summary,
         'sheet_count': len(sheets),
+        'position_labels': position_labels,
         'atm_trip_config': ATM_TRIP_CONFIG,
     }
     return render(request, 'templates_app/atm/travel_claim.html', context)
@@ -1129,6 +1145,12 @@ def atm_payment_statement_word(request):
             output.read(),
             content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
+        # Ghi lịch sử xuất (chỉ khoảng ngày, tổng tiền, số người) để cảnh báo thanh toán trùng kỳ
+        ATMPaymentExportLog.objects.create(
+            start_date=start_date, end_date=end_date, total_amount=totals['total'],
+            person_count=sum(1 for r in rows if r['total']), exported_by=request.user,
+        )
+
         filename = f"BangKeThanhToan_ATM_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.docx"
         if team_leader:
             leader_short = remove_vietnamese_diacritics(team_leader.full_name).replace(' ', '')
@@ -1329,10 +1351,7 @@ def atm_travel_log_word(request):
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
             for sheet in sheets:
                 stream = build_sheet_doc(sheet)
-                safe_name = remove_vietnamese_diacritics(sheet['driver_name']).replace(' ', '')
-                machine_short = sheet['machine_id'].replace('7202', '')
-                filename = f"GDD_{machine_short}_{safe_name}_to{sheet['sheet_index']}.docx"
-                zf.writestr(filename, stream.read())
+                zf.writestr(_travel_log_filename(sheet), stream.read())
         zip_buffer.seek(0)
 
         response = HttpResponse(zip_buffer.read(), content_type='application/zip')

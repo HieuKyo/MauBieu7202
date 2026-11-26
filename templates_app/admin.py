@@ -9,7 +9,7 @@ from .models import (
     DetailedFeeTier, OnRequestFeeTier, BeautifulNumber,
     BankStatement, Transaction, AccountName,
     UserProfile, Course, CourseEnrollment,
-    ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy,
+    ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, ATMDiscrepancy, ATMPaymentExportLog,
     VehicleDutySchedule,
     SPDVKpiRecord, SPDVKpiTarget,
     Promotion,
@@ -902,6 +902,16 @@ class ATMAdmin(admin.ModelAdmin):
             'fields': ('is_active',)
         }),
     )
+
+
+@admin.register(ATMPaymentExportLog)
+class ATMPaymentExportLogAdmin(admin.ModelAdmin):
+    """Lịch sử xuất Bảng kê ATM — xoá bản ghi nếu xuất nhầm để hết cảnh báo trùng kỳ"""
+    list_display = ['start_date', 'end_date', 'total_amount', 'person_count', 'exported_by', 'exported_at']
+    readonly_fields = ['start_date', 'end_date', 'total_amount', 'person_count', 'exported_by', 'exported_at']
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(ATMManagementBoard)

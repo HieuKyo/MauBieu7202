@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import viec_can_lam, views
 
 app_name = 'kh360'
 
@@ -11,6 +11,8 @@ urlpatterns = [
     path('cap-nhat/', views.cap_nhat, name='cap_nhat'),
     path('cap-nhat/gan-to-chuc/', views.gan_to_chuc, name='gan_to_chuc'),
     path('bien-dong/', views.bien_dong, name='bien_dong'),
+    path('viec-can-lam/', viec_can_lam.viec_can_lam, name='viec_can_lam'),
+    path('viec-can-lam/ghi/', viec_can_lam.ghi_lien_he, name='ghi_lien_he'),
     path('thong-ke/', views.thong_ke, name='thong_ke'),
     path('thong-ke/so-tiet-kiem/', views.thong_ke_so, name='thong_ke_so'),
     path('thong-ke/tien-vay/', views.thong_ke_vay, name='thong_ke_vay'),

@@ -9,6 +9,7 @@
     <h2 class="text-agribank mb-0"><i class="bi bi-person-vcard"></i> Khách hàng 360</h2>
     <ul class="nav nav-pills kh360-nav">
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'tra_cuu' or request.resolver_match.url_name == 'ho_so' %}active{% endif %}" href="{% url 'kh360:tra_cuu' %}"><i class="bi bi-search"></i> Tra cứu</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'viec_can_lam' %}active{% endif %}" href="{% url 'kh360:viec_can_lam' %}"><i class="bi bi-list-check"></i> Việc cần làm</a></li>
         {% if quyen >= 2 %}
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name in 'thong_ke thong_ke_so thong_ke_vay' %}active{% endif %}" href="{% url 'kh360:thong_ke' %}"><i class="bi bi-bar-chart"></i> Thống kê</a></li>
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.url_name == 'bien_dong' %}active{% endif %}" href="{% url 'kh360:bien_dong' %}"><i class="bi bi-arrow-left-right"></i> Biến động</a></li>

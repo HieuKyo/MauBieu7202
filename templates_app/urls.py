@@ -29,6 +29,7 @@ from . import qr_reg_views
 from . import cash_drawer_views
 from . import can_doi_views
 from . import bia_chung_tu_views
+from . import bia_giao_nhan_views
 from . import spdv_kpi_views
 from . import customer_export
 from . import customer_cif_tools
@@ -280,10 +281,13 @@ urlpatterns = [
 
     # Tạo bìa chứng từ (Kế toán Ngân quỹ)
     path('bia-chung-tu/', bia_chung_tu_views.bia_list, name='bia_chung_tu_list'),
+    path('bia-chung-tu/giao-nhan/', bia_giao_nhan_views.bia_giao_nhan, name='bia_chung_tu_giao_nhan'),
+    path('bia-chung-tu/giao-nhan/xu-ly/', bia_giao_nhan_views.bia_giao_nhan_xu_ly, name='bia_chung_tu_giao_nhan_xu_ly'),
     path('bia-chung-tu/cap-so/', bia_chung_tu_views.bia_cap_so, name='bia_chung_tu_cap_so'),
     path('bia-chung-tu/<int:pk>/sua/', bia_chung_tu_views.bia_edit, name='bia_chung_tu_edit'),
     path('bia-chung-tu/<int:pk>/xoa/', bia_chung_tu_views.bia_delete, name='bia_chung_tu_delete'),
     path('bia-chung-tu/luu-so-to/', bia_chung_tu_views.bia_save_so_to, name='bia_chung_tu_save_so_to'),
+    path('bia-chung-tu/dua-vao-giao-nhan/', bia_chung_tu_views.bia_dua_vao_giao_nhan, name='bia_chung_tu_dua_vao_gn'),
     path('bia-chung-tu/import/', bia_chung_tu_views.bia_import, name='bia_chung_tu_import'),
     path('bia-chung-tu/import/xac-nhan/', bia_chung_tu_views.bia_import_confirm, name='bia_chung_tu_import_confirm'),
     path('bia-chung-tu/in/', bia_chung_tu_views.bia_print, name='bia_chung_tu_print'),

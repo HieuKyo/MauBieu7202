@@ -17,7 +17,7 @@ from .elearning import Course, CourseEnrollment
 # Phân tích sao kê
 from .bank_statement import BankStatement, AccountName, Transaction
 # ATM
-from .atm import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, VehicleDutySchedule, ATMDiscrepancy
+from .atm import ATM, ATMManagementBoard, Vehicle, Person, ATMReplenishment, VehicleDutySchedule, ATMDiscrepancy, ATMPaymentExportLog
 # Báo cáo
 from .report import MailEnvelopeTracking, ReportConfiguration, DongMoTaiKhoanHistory, ATMReportUpload, ATMTransactionReport
 # Tín dụng
@@ -25,7 +25,7 @@ from .credit import FTPConfig, TDSnapshot
 # Đăng ký HĐV / QR
 from .registration import HDVRegistration, HDVImportRecord, QRRegistration
 # Kế toán Ngân quỹ
-from .cash import CanDoiUpload, BiaChungTu, BiaThuTuIn, CASH_DENOMINATIONS, CashDrawerBalance, CashDrawerStatement, CashPrintConfigBase, CashPrintConfig, CashPrintConfigNopTien, CashPrintConfigChungTuBase, CashPrintConfigBangKeThu, CashPrintConfigBangKeChi, CashPrintConfigDeNghi
+from .cash import CanDoiUpload, BiaChungTu, BiaGiaoNhanLog, GIAO_NHAN_CHOICES, BiaThuTuIn, CASH_DENOMINATIONS, CashDrawerBalance, CashDrawerStatement, CashPrintConfigBase, CashPrintConfig, CashPrintConfigNopTien, CashPrintConfigChungTuBase, CashPrintConfigBangKeThu, CashPrintConfigBangKeChi, CashPrintConfigDeNghi
 # Chỉ tiêu SPDV
 from .spdv_kpi import SPDVKpiRecord, SPDVKpiTarget, SPDVKpiDetail
 # Hàm xử lý chữ tiếng Việt

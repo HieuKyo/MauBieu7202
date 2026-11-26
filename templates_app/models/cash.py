@@ -40,6 +40,17 @@ class CanDoiUpload(models.Model):
         return f"{self.file_name} - {self.uploaded_at.strftime('%d/%m/%Y %H:%M')}"
 
 
+GIAO_NHAN_CHOICES = [
+    ('', 'Không theo dõi'),
+    ('gdv_giu', 'GDV đang giữ (chưa giao)'),
+    ('cho_ksv_nhan', 'Đã giao KSV – chờ KSV nhận'),
+    ('ksv_dang_ky', 'KSV đã nhận – đang ký'),
+    ('cho_gd_ky', 'KSV trả chứng từ chờ GĐ ký'),
+    ('cho_hk_nhan', 'GĐ đã ký – chờ Hậu kiểm nhận'),
+    ('hk_da_nhan', 'Hậu kiểm đã nhận'),
+]
+
+
 class BiaChungTu(models.Model):
     """Bìa lưu trữ Nhật ký chứng từ (mẫu M01/LHS) — mỗi bản ghi là 1 tập chứng từ
     trong ngày, in kèm mã QR. Số hồ sơ đánh riêng theo từng đơn vị (UserProfile.branch)."""
@@ -65,6 +76,17 @@ class BiaChungTu(models.Model):
         related_name='bia_chung_tu_lap', verbose_name="Người lập"
     )
     ngay_in = models.DateTimeField(null=True, blank=True, verbose_name="Ngày in gần nhất")
+    # Giao/nhận tập chứng từ: GDV → KSV (Trưởng/Phó phòng) ký → GDV đem GĐ ký → Hậu kiểm nhận.
+    # '' = bìa cũ / import, không theo dõi giao nhận.
+    trang_thai_gn = models.CharField(
+        max_length=20, blank=True, default='gdv_giu', db_index=True,
+        choices=GIAO_NHAN_CHOICES, verbose_name="Trạng thái giao nhận",
+    )
+    nguoi_xu_ly = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bia_chung_tu_xu_ly',
+        verbose_name="KSV / Hậu kiểm đang giữ (trống = GDV đang giữ)",
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Ngày cập nhật")
 
@@ -78,6 +100,23 @@ class BiaChungTu(models.Model):
 
     def __str__(self):
         return f"{self.so_ho_so} - {self.ngay_chung_tu.strftime('%d/%m/%Y')} - Tập {self.tap_so}/{self.tong_tap}"
+
+
+class BiaGiaoNhanLog(models.Model):
+    """Lịch sử giao/nhận một tập chứng từ (bìa): ai làm gì, chuyển cho ai, lúc nào."""
+    bia = models.ForeignKey(BiaChungTu, on_delete=models.CASCADE, related_name='lich_su_gn')
+    tu_trang_thai = models.CharField(max_length=20, blank=True, choices=GIAO_NHAN_CHOICES)
+    den_trang_thai = models.CharField(max_length=20, choices=GIAO_NHAN_CHOICES)
+    hanh_dong = models.CharField(max_length=100, verbose_name="Hành động")
+    nguoi_thuc_hien = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='+')
+    nguoi_nhan = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    ghi_chu = models.CharField(max_length=300, blank=True, verbose_name="Ghi chú / lý do")
+    thoi_diem = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Lịch sử giao nhận chứng từ"
+        verbose_name_plural = "Lịch sử giao nhận chứng từ"
+        ordering = ['thoi_diem', 'id']
 
 
 class BiaThuTuIn(models.Model):

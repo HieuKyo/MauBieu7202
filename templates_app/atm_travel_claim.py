@@ -2,6 +2,8 @@
 Tính toán Bảng kê thanh toán công tác phí + Giấy đi đường cho Ban quản lý ATM.
 Chỉ áp dụng cho 2 máy ATM04 (PGD Láng Tròn) và ATM06 (Chi cục Thuế Giá Rai).
 """
+from datetime import date, timedelta
+
 from .models import ATMReplenishment, ATMManagementBoard, VehicleDutySchedule
 
 ATM_TRIP_CONFIG = {
@@ -42,18 +44,130 @@ def get_counted_trips(start_date, end_date):
     return counted
 
 
-def get_position_holder(position, on_date):
-    """Tra người giữ vị trí `position` tại ngày `on_date`."""
-    qs = ATMManagementBoard.objects.filter(position=position)
-    for record in qs:
-        if record.effective_from and record.effective_from > on_date:
-            continue
-        if record.effective_to and record.effective_to < on_date:
-            continue
-        if record.effective_from or record.effective_to:
+def _covers(record, on_date):
+    """Bản ghi có khoảng hiệu lực (ít nhất 1 đầu) chứa on_date."""
+    if not (record.effective_from or record.effective_to):
+        return False
+    if record.effective_from and record.effective_from > on_date:
+        return False
+    if record.effective_to and record.effective_to < on_date:
+        return False
+    return True
+
+
+def _pick_holder(records, on_date):
+    for record in records:
+        if _covers(record, on_date):
             return record
     # Fallback: không có bản ghi nào có khoảng ngày khớp -> dùng bản ghi is_active
-    return qs.filter(is_active=True).first()
+    return next((r for r in records if r.is_active), None)
+
+
+def get_position_holder(position, on_date):
+    """Tra người giữ vị trí `position` tại ngày `on_date`."""
+    return _pick_holder(list(ATMManagementBoard.objects.filter(position=position)), on_date)
+
+
+def _board_records():
+    return {p: list(ATMManagementBoard.objects.filter(position=p)) for p in BOARD_POSITIONS}
+
+
+def _days(start_date, end_date):
+    d = start_date
+    while d <= end_date:
+        yield d
+        d += timedelta(days=1)
+
+
+def board_segments(start_date, end_date):
+    """
+    Chia [start_date, end_date] thành các giai đoạn mà cả Ban (Trưởng ban, Phó ban/TP KTNQ,
+    CB phụ trách ATM) không đổi người. Mỗi phần tử: {start, end, holders: [(chức vụ, tên)]}.
+    """
+    records = _board_records()
+    labels = dict(ATMManagementBoard.POSITION_CHOICES)
+    segments = []
+    for d in _days(start_date, end_date):
+        holders = [_pick_holder(records[p], d) for p in BOARD_POSITIONS]
+        key = tuple(getattr(h, 'pk', None) for h in holders)
+        if segments and segments[-1]['key'] == key:
+            segments[-1]['end'] = d
+        else:
+            segments.append({
+                'key': key, 'start': d, 'end': d,
+                'holders': [(labels[p], h.full_name if h else '(chưa có)')
+                            for p, h in zip(BOARD_POSITIONS, holders)],
+            })
+    return segments
+
+
+def _fmt(d):
+    return d.strftime('%d/%m/%Y')
+
+
+def _ranges(days):
+    """List ngày tăng dần → list (từ, đến) liên tục."""
+    out = []
+    for d in days:
+        if out and out[-1][1] + timedelta(days=1) == d:
+            out[-1][1] = d
+        else:
+            out.append([d, d])
+    return out
+
+
+def board_warnings(start_date, end_date, rows):
+    """Cảnh báo dữ liệu Ban quản lý ATM / số tài khoản trước khi xuất."""
+    warnings = []
+    labels = dict(ATMManagementBoard.POSITION_CHOICES)
+    records = _board_records()
+    for position in BOARD_POSITIONS:
+        recs, label = records[position], labels[position]
+        dated = [r for r in recs if r.effective_from or r.effective_to]
+        undated_active = [r for r in recs if not (r.effective_from or r.effective_to) and r.is_active]
+        # Chỉ mơ hồ khi còn người khác cùng chức vụ có thể được chọn (đang hoạt động hoặc có ngày hiệu lực)
+        if len(dated) + len(undated_active) > 1:
+            for r in undated_active:
+                warnings.append(f'{label} {r.full_name}: chưa nhập "Hiệu lực từ / đến ngày" — có nhiều người '
+                                f'cùng chức vụ nên chương trình không xác định được ai giữ chức vụ vào ngày nào.')
+        for i, a in enumerate(dated):
+            for b in dated[i + 1:]:
+                lo = max(a.effective_from or date.min, b.effective_from or date.min)
+                hi = min(a.effective_to or date.max, b.effective_to or date.max)
+                if lo <= hi and lo <= end_date and hi >= start_date:
+                    warnings.append(f'{label}: nhiệm kỳ của {a.full_name} và {b.full_name} chồng nhau '
+                                    f'({_fmt(max(lo, start_date))} – {_fmt(min(hi, end_date))}).')
+        if not recs:
+            warnings.append(f'Chưa khai báo {label} trong Ban quản lý ATM.')
+            continue
+        if dated:
+            uncovered = [d for d in _days(start_date, end_date) if not any(_covers(r, d) for r in dated)]
+            fallback = next((r for r in recs if r.is_active), None)
+            for lo, hi in _ranges(uncovered):
+                if fallback:
+                    warnings.append(f'{label}: {_fmt(lo)} – {_fmt(hi)} không có nhiệm kỳ nào khớp, '
+                                    f'đang tạm lấy người "Đang hoạt động" ({fallback.full_name}).')
+                else:
+                    warnings.append(f'{label}: {_fmt(lo)} – {_fmt(hi)} không có ai giữ chức vụ.')
+    for row in rows:
+        if row['total'] and not row['account_number']:
+            warnings.append(f"{row['position_display']} {row['full_name']}: chưa có số tài khoản (được thanh toán {row['total']:,}đ).")
+    return warnings
+
+
+def _duty_by_date(start_date, end_date):
+    """{ngày: id tài xế trực}"""
+    return {
+        s.date: s.driver_id
+        for s in VehicleDutySchedule.objects.filter(date__range=(start_date, end_date))
+    }
+
+
+def get_duty_excluded_trips(start_date, end_date):
+    """Chuyến (đã tính) mà tài xế đi chính là tài xế trực ngày đó -> tài xế không được tính tiền."""
+    duty = _duty_by_date(start_date, end_date)
+    return [t for t in get_counted_trips(start_date, end_date)
+            if t.driver_id and duty.get(t.replenishment_date) == t.driver_id]
 
 
 def _term_ranges_for_position(position, start_date, end_date):
@@ -81,11 +195,6 @@ def _term_ranges_for_position(position, start_date, end_date):
 
     terms.sort(key=lambda t: t[1])
     return terms
-
-
-def team_leader_terms(start_date, end_date):
-    """Các nhiệm kỳ Trưởng ban chồng lấp khoảng ngày: list (holder, term_start, term_end)."""
-    return _term_ranges_for_position('team_leader', start_date, end_date)
 
 
 def build_payment_statement_rows(start_date, end_date):
@@ -139,10 +248,7 @@ def build_payment_statement_rows(start_date, end_date):
 
     # Tài xế: chỉ tính tiền cho chuyến mà tài xế đi KHÔNG PHẢI là tài xế trực ngày đó
     # (tài xế trực đã được trả tiền trực rồi, đi tiếp quỹ thêm không cộng dồn)
-    duty_by_date = {
-        s.date: s.driver_id
-        for s in VehicleDutySchedule.objects.filter(date__range=(start_date, end_date))
-    }
+    duty_by_date = _duty_by_date(start_date, end_date)
 
     driver_counts = {}
     for trip in trips:
@@ -189,21 +295,25 @@ def build_travel_log_groups(start_date, end_date):
     """
     Trả về list "tờ" giấy đi đường, mỗi tờ tối đa MAX_TRIPS_PER_SHEET chuyến,
     gộp chung Ban quản lý ATM + tài xế của các chuyến đó vào 1 tờ.
-    Gom nhóm theo (Trưởng ban, machine_id, driver) — đổi Trưởng ban (nhiệm kỳ mới)
-    hoặc đổi tài xế thì tách tờ riêng, không gộp 2 Trưởng ban vào 1 tờ.
+    Gom nhóm theo (thành viên Ban, machine_id, driver) — đổi bất kỳ thành viên Ban nào
+    (Trưởng ban, Phó ban/TP KTNQ, CB phụ trách ATM) hoặc đổi tài xế thì tách tờ riêng:
+    mỗi tờ chỉ có 1 người cho mỗi chức vụ.
     Mỗi tờ: {machine_id, machine_label, driver_name, recipients: [{role, name, title}],
              trips: [...], sheet_index, sheet_count}
     """
     trips = get_counted_trips(start_date, end_date)
 
-    # (team_leader_id, machine_id, driver_id) -> list trip
+    # (id người giữ từng chức vụ, machine_id, driver_id) -> list trip
     groups = {}
     for trip in trips:
-        leader = get_position_holder('team_leader', trip.replenishment_date)
-        groups.setdefault((leader.pk if leader else None, trip.atm_id, trip.driver_id), []).append(trip)
+        board = tuple(
+            getattr(get_position_holder(position, trip.replenishment_date), 'pk', None)
+            for position in BOARD_POSITIONS
+        )
+        groups.setdefault((board, trip.atm_id, trip.driver_id), []).append(trip)
 
     sheets = []
-    for (leader_id, machine_id, driver_id), machine_trips in groups.items():
+    for (board, machine_id, driver_id), machine_trips in groups.items():
         machine_trips.sort(key=lambda t: t.replenishment_date)
         chunks = [
             machine_trips[i:i + MAX_TRIPS_PER_SHEET]
@@ -231,7 +341,6 @@ def build_travel_log_groups(start_date, end_date):
                 })
 
             sheets.append({
-                'leader_id': leader_id,
                 'first_date': chunk[0].replenishment_date,
                 'machine_id': machine_id,
                 'machine_label': ATM_TRIP_CONFIG[machine_id]['label'],

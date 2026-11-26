@@ -295,3 +295,32 @@ class BienDong(models.Model):
     @property
     def la_moi(self):
         return self.loai in self.LOAI_MOI
+
+
+class LienHeKH(models.Model):
+    """Kết quả cán bộ liên hệ KH trong trang Việc cần làm (sổ đến hạn / khoản vay sắp trả /
+    KH chưa dùng dịch vụ). Mỗi lần ghi là 1 dòng; trang lấy lần mới nhất của từng việc."""
+    LOAI_CHOICES = [
+        ('den_han', 'Sổ tiết kiệm đến hạn'),
+        ('tra_no', 'Khoản vay sắp đến kỳ trả'),
+        ('ngu_dong', 'KH chưa dùng dịch vụ'),
+    ]
+    KET_QUA_CHOICES = [
+        ('thanh_cong', 'Thành công (tái tục / hứa trả / đăng ký dịch vụ)'),
+        ('chua_quyet', 'Đã liên hệ – KH chưa quyết định'),
+        ('tu_choi', 'KH rút tiền / từ chối'),
+        ('khong_lien_lac', 'Không liên lạc được'),
+    ]
+
+    loai = models.CharField(max_length=10, choices=LOAI_CHOICES)
+    doi_tuong = models.CharField('Số TK / Số giải ngân / Mã KH', max_length=30)
+    moc = models.DateField('Ngày đến hạn / ngày trả', null=True, blank=True)
+    ma_kh = models.CharField(max_length=20, blank=True, db_index=True)
+    ket_qua = models.CharField(max_length=20, choices=KET_QUA_CHOICES)
+    ghi_chu = models.CharField(max_length=300, blank=True)
+    nguoi = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    thoi_diem = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-thoi_diem']
+        indexes = [models.Index(fields=['loai', 'doi_tuong', 'moc'])]

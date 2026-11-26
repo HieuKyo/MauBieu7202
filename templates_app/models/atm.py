@@ -460,6 +460,27 @@ class VehicleDutySchedule(models.Model):
         return f"{self.date.strftime('%d/%m/%Y')} - {self.driver.full_name}"
 
 
+class ATMPaymentExportLog(models.Model):
+    """Lịch sử xuất Bảng kê thanh toán công tác phí ATM — để cảnh báo thanh toán trùng kỳ.
+    Chỉ lưu khoảng ngày, tổng tiền, số người; không lưu họ tên / số tài khoản."""
+    start_date = models.DateField(verbose_name="Từ ngày")
+    end_date = models.DateField(verbose_name="Đến ngày")
+    total_amount = models.BigIntegerField(default=0, verbose_name="Tổng tiền")
+    person_count = models.PositiveIntegerField(default=0, verbose_name="Số người")
+    exported_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Người xuất"
+    )
+    exported_at = models.DateTimeField(auto_now_add=True, verbose_name="Thời điểm xuất")
+
+    class Meta:
+        verbose_name = "Lịch sử xuất Bảng kê ATM"
+        verbose_name_plural = "Lịch sử xuất Bảng kê ATM"
+        ordering = ['-exported_at']
+
+    def __str__(self):
+        return f"{self.start_date:%d/%m/%Y} - {self.end_date:%d/%m/%Y}: {self.total_amount:,}đ"
+
+
 class ATMDiscrepancy(models.Model):
     """Quản lý các giao dịch thừa/thiếu quỹ ATM"""
 

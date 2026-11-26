@@ -1,0 +1,35 @@
+{% load kh360_tags %}{# 1 dòng Việc cần làm — cần: r, tab, key, page, forloop, ket_qua_choices #}
+<tr>
+    <td>{{ page.start_index|add:forloop.counter0 }}</td>
+    <td><a href="{% url 'kh360:ho_so' r.ma_kh %}" data-kh360="{% url 'kh360:ho_so' r.ma_kh %}">{{ r.ma_kh }}</a><br>{% if tab == 'ngu_dong' %}{{ r.ten }}{% else %}{{ r.ten_kh }}{% endif %}</td>
+    <td class="text-nowrap">{{ r.sdt|default:"—" }}</td>
+    {% if tab == 'den_han' %}
+    <td>{{ r.so_so|default:"" }}<br><small class="text-muted">{{ r.so_tk }}</small></td>
+    <td class="text-end text-nowrap">{{ r.so_du|tien }} {% if r.ccy != 'VND' %}{{ r.ccy }}{% endif %}</td>
+    <td>{{ r.ky_han }} th<br><small class="text-muted">{{ r.lai_suat }}%</small></td>
+    <td class="text-nowrap">{{ r.ngay_den_han|date:"d/m/Y" }}</td>
+    {% elif tab == 'tra_no' %}
+    <td>{{ r.so_giai_ngan }}<br><small class="text-muted">Nhóm {{ r.nhom_no|default:"?" }}</small></td>
+    <td class="text-end text-nowrap">{{ r.du_no|tien }}</td>
+    <td class="text-end text-nowrap">{{ r.so_tien_tra_tiep|tien }}</td>
+    <td class="text-nowrap">{{ r.ngay_tra_tiep|date:"d/m/Y" }}</td>
+    {% else %}
+    <td class="text-end text-nowrap">{{ r.tong_so_du|tien }}</td>
+    <td class="text-end text-nowrap">{{ r.so_du_kkh|tien }}</td>
+    <td class="text-end text-nowrap">{{ r.so_du_ckh|tien }}</td>
+    {% endif %}
+    <td>{{ r.can_bo|default:"—" }}<br><small class="text-muted">{{ r.pgd }}</small></td>
+    <td>
+        <div class="lh-info small mb-1">{% if r.lien_he %}<span class="badge {% if r.lien_he.ket_qua == 'thanh_cong' %}bg-success{% elif r.lien_he.ket_qua == 'tu_choi' %}bg-danger{% else %}bg-secondary{% endif %}">{{ r.lien_he.get_ket_qua_display }}</span> <span class="text-muted">{{ r.lien_he.nguoi.get_full_name|default:r.lien_he.nguoi.username }} · {{ r.lien_he.thoi_diem|date:"H:i d/m/Y" }}</span>{% if r.lien_he.ghi_chu %}<br><em>{{ r.lien_he.ghi_chu }}</em>{% endif %}{% else %}<span class="text-muted">Chưa liên hệ</span>{% endif %}</div>
+        <form class="lh-form d-flex gap-1">
+            <input type="hidden" name="loai" value="{{ tab }}">
+            <input type="hidden" name="doi_tuong" value="{{ key }}">
+            <select name="ket_qua" class="form-select form-select-sm" required>
+                <option value="">Kết quả…</option>
+                {% for v, n in ket_qua_choices %}<option value="{{ v }}">{{ n }}</option>{% endfor %}
+            </select>
+            <input type="text" name="ghi_chu" class="form-control form-control-sm" placeholder="Ghi chú" maxlength="300">
+            <button class="btn btn-sm btn-outline-primary" title="Lưu"><i class="bi bi-check-lg"></i></button>
+        </form>
+    </td>
+</tr>

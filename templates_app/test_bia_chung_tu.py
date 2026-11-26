@@ -101,8 +101,10 @@ class BiaChungTuTests(TestCase):
         self.assertEqual(resp.context['so_goi_y'], 1)
 
     def test_gdv_khong_duoc_vao(self):
+        # GDV không tạo bìa: vào "Chứng từ" thì sang tab Giao/Nhận, các trang tạo bìa vẫn bị chặn
         self.client.force_login(self.gdvs[0])
-        self.assertRedirects(self.client.get(reverse('bia_chung_tu_list')), reverse('dashboard'), fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(reverse('bia_chung_tu_list')), reverse('bia_chung_tu_giao_nhan'), fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(reverse('bia_chung_tu_cap_so')), reverse('dashboard'), fetch_redirect_response=False)
 
     def test_sua_trung_so_ho_so_bi_chan(self):
         self._cap_so(date(2026, 10, 26), 30, {self.gdvs[0]: 2})

@@ -34,7 +34,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-from .models import BiaChungTu, BiaThuTuIn, BranchConfig, UserProfile
+from .models import BiaChungTu, BiaGiaoNhanLog, BiaThuTuIn, BranchConfig, UserProfile
 
 # Mẫu Word dùng Times New Roman; không có thì rơi về Helvetica (không dấu).
 FONT_REGULAR = 'Helvetica'
@@ -182,7 +182,8 @@ def _qr_text(bia, ma_cn, tap):
 def bia_list(request):
     branch = _manager_branch(request.user)
     if not branch:
-        return _deny(request)
+        # GDV / Hậu kiểm… không tạo bìa — vào thẳng tab Giao/Nhận chứng từ
+        return redirect('bia_chung_tu_giao_nhan')
 
     qs = BiaChungTu.objects.filter(branch=branch).select_related('gdv__profile')
     filters = {k: request.GET.get(k, '').strip() for k in ('tu_ngay', 'den_ngay', 'gdv', 'trang_thai', 'q')}
@@ -365,6 +366,33 @@ def bia_delete(request, pk):
 
 @login_required
 @require_POST
+def bia_dua_vao_giao_nhan(request):
+    """Đưa bìa "không theo dõi" (bìa cũ / import) đã chọn vào luồng giao nhận: GDV đang giữ."""
+    branch = _manager_branch(request.user)
+    if not branch:
+        return _deny(request)
+    ids = [int(i) for i in request.POST.getlist('ids') if i.isdigit()]
+    chon = BiaChungTu.objects.filter(branch=branch, pk__in=ids)
+    hop_le = list(chon.filter(trang_thai_gn='', gdv__isnull=False))
+    with transaction.atomic():
+        for bia in hop_le:
+            bia.trang_thai_gn, bia.nguoi_xu_ly = 'gdv_giu', None
+            bia.save(update_fields=['trang_thai_gn', 'nguoi_xu_ly', 'updated_at'])
+            BiaGiaoNhanLog.objects.create(bia=bia, tu_trang_thai='', den_trang_thai='gdv_giu',
+                                          hanh_dong='Đưa vào theo dõi giao nhận', nguoi_thuc_hien=request.user,
+                                          nguoi_nhan=bia.gdv)
+    if hop_le:
+        messages.success(request, f'Đã đưa {len(hop_le)} bìa vào giao nhận — GDV thấy ở "Giao/Nhận chứng từ → Tập chứng từ của tôi".')
+    bo_qua = chon.count() - len(hop_le)
+    if bo_qua:
+        messages.warning(request, f'Bỏ qua {bo_qua} bìa đã trong luồng giao nhận hoặc chưa gắn GDV.')
+    if not ids:
+        messages.error(request, 'Chưa chọn bìa nào.')
+    return _back(request)
+
+
+@login_required
+@require_POST
 def bia_save_so_to(request):
     """Lưu nhanh Số tờ nhập trực tiếp trên danh sách (input name="so_to_<id>")."""
     branch = _manager_branch(request.user)
@@ -508,6 +536,7 @@ def bia_import_confirm(request):
                 tap_so=r['tap_so'], tong_tap=r['tong_tap'], so_to=r['so_to'], don_vi=r['don_vi'],
                 thoi_han_bao_quan=r['thoi_han'], so_to_tap=r['so_to_tap'],
                 user_ipcas=r['user'] or ipcas, gdv_id=gdv_ipcas.get(r['user']), nguoi_lap=request.user,
+                trang_thai_gn='',  # bìa cũ in bù — không theo dõi giao nhận
             ))
             continue
         if r['user']:

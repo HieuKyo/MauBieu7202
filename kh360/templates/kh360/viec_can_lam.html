@@ -1,0 +1,169 @@
+{% extends "templates_app/base.html" %}
+{% load kh360_tags %}
+
+{% block title %}Khách hàng 360 - Việc cần làm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .vcl td, .vcl th { font-size: .86rem; vertical-align: middle; }
+    .vcl .lh-form select { min-width: 150px; }
+    .vcl .lh-form input { min-width: 120px; }
+    .td-bar { height: 6px; border-radius: 3px; background: #e9ecef; }
+    .td-bar > div { height: 6px; border-radius: 3px; background: #198754; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "kh360/_header.html" %}
+
+<ul class="nav nav-tabs mb-3">
+    {% for key, name in tabs %}
+    <li class="nav-item"><a class="nav-link {% if tab == key %}active{% endif %}" href="?tab={{ key }}">{{ name }}</a></li>
+    {% endfor %}
+</ul>
+
+<form method="get" class="card card-body py-2 mb-3">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <div class="row g-2 align-items-end">
+        {% if tab != 'ngu_dong' %}
+        <div class="col-auto">
+            <label class="form-label small mb-0">{% if tab == 'den_han' %}Đến hạn{% else %}Kỳ trả{% endif %}</label>
+            <select name="so_ngay" class="form-select form-select-sm">
+                {% for v, n in so_ngay_loc %}<option value="{{ v }}" {% if g.so_ngay == v or not g.so_ngay and v == '7' %}selected{% endif %}>{{ n }}</option>{% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="col-auto">
+            <label class="form-label small mb-0">Tổng số dư từ</label>
+            <input type="text" name="nguong" class="form-control form-control-sm" style="width:130px" value="{{ g.nguong|default:nguong_mac_dinh }}">
+        </div>
+        {% endif %}
+        {% if pgd_scope is None %}
+        <div class="col-auto">
+            <label class="form-label small mb-0">PGD</label>
+            <select name="pgd" class="form-select form-select-sm">
+                <option value="">Toàn chi nhánh</option>
+                {% for p in ds_pgd %}<option value="{{ p }}" {% if g.pgd == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="col-auto small text-muted pb-1"><i class="bi bi-building"></i> Đơn vị: <strong>{{ pgd_scope|default:"(chưa khai báo)" }}</strong></div>
+        {% endif %}
+        <div class="col-auto">
+            <label class="form-label small mb-0">Cán bộ</label>
+            <select name="can_bo" class="form-select form-select-sm" style="max-width:200px">
+                <option value="">Tất cả</option>
+                <option value="(chưa gán)" {% if g.can_bo == '(chưa gán)' %}selected{% endif %}>(chưa gán cán bộ)</option>
+                {% for c in ds_can_bo %}<option value="{{ c }}" {% if g.can_bo == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-auto form-check ms-1 pb-1">
+            <input class="form-check-input" type="checkbox" name="cua_toi" value="1" id="cua_toi" {% if g.cua_toi == '1' %}checked{% endif %}>
+            <label class="form-check-label small" for="cua_toi">Chỉ KH của tôi</label>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">Liên hệ</label>
+            <select name="lien_he" class="form-select form-select-sm">
+                <option value="">Tất cả</option>
+                {% for v, n in lien_he_loc %}<option value="{{ v }}" {% if g.lien_he == v %}selected{% endif %}>{{ n }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0">Mã / tên KH</label>
+            <input type="text" name="q" class="form-control form-control-sm" style="width:140px" value="{{ g.q }}">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i> Lọc</button>
+            <a href="?tab={{ tab }}" class="btn btn-sm btn-outline-secondary">Bỏ lọc</a>
+            <a href="?{{ tham_so }}&xuat=excel" class="btn btn-sm btn-success"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        </div>
+    </div>
+    <div class="form-text mt-1">
+        {% if tab == 'den_han' %}Sổ tiết kiệm (có kỳ hạn) đang hoạt động có ngày đến hạn trong khoảng đã chọn, tính từ hôm nay.
+        {% elif tab == 'tra_no' %}Khoản vay còn dư nợ có kỳ trả gốc/lãi tiếp theo trong khoảng đã chọn — nhắc KH trả đúng hạn.
+        {% else %}KH cá nhân (theo CN05) có tiền gửi nhưng không có thẻ, Agribank Plus, SMS Banking, SMS tiền gửi, tiền gửi trực tuyến — tư vấn bán chéo.{% endif %}
+        "Chỉ KH của tôi": khớp tên cán bộ trong dữ liệu IPCAS với họ tên trong hồ sơ người dùng.
+        {% if ky %}Dữ liệu ngày {{ ky.ngay_du_lieu|date:"d/m/Y" }} — sổ/khoản vay đã xử lý sau ngày này vẫn có thể còn trong danh sách.{% endif %}
+    </div>
+</form>
+
+<div class="row g-3">
+    <div class="col-xl-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span><strong>{{ so_dong }}</strong> việc</span>
+            </div>
+            <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 vcl">
+                <thead class="table-light"><tr>
+                    <th>#</th><th>Khách hàng</th><th>SĐT</th>
+                    {% if tab == 'den_han' %}<th>Sổ / Số TK</th><th class="text-end">Số dư</th><th>Kỳ hạn</th><th>Đến hạn</th>
+                    {% elif tab == 'tra_no' %}<th>Số giải ngân</th><th class="text-end">Dư nợ</th><th class="text-end">Số tiền trả</th><th>Ngày trả</th>
+                    {% else %}<th class="text-end">Tổng số dư</th><th class="text-end">KKH</th><th class="text-end">CKH</th>{% endif %}
+                    <th>Cán bộ / PGD</th><th style="min-width:330px">Kết quả liên hệ</th>
+                </tr></thead>
+                <tbody>
+                {% for r in page %}
+                {% if tab == 'den_han' %}{% with key=r.so_tk %}{% include "kh360/_viec_dong.html" %}{% endwith %}
+                {% elif tab == 'tra_no' %}{% with key=r.so_giai_ngan %}{% include "kh360/_viec_dong.html" %}{% endwith %}
+                {% else %}{% with key=r.ma_kh %}{% include "kh360/_viec_dong.html" %}{% endwith %}{% endif %}
+                {% empty %}
+                <tr><td colspan="10" class="text-center text-muted py-4">Không có việc nào trong bộ lọc này</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% if page.has_other_pages %}
+            <div class="card-footer d-flex justify-content-between align-items-center small">
+                <span>Trang {{ page.number }}/{{ page.paginator.num_pages }}</span>
+                <nav><ul class="pagination pagination-sm mb-0">
+                    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?{{ tham_so }}&page={{ page.previous_page_number }}">‹</a></li>{% endif %}
+                    <li class="page-item active"><span class="page-link">{{ page.number }}</span></li>
+                    {% if page.has_next %}<li class="page-item"><a class="page-link" href="?{{ tham_so }}&page={{ page.next_page_number }}">›</a></li>{% endif %}
+                </ul></nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-xl-3">
+        <div class="card">
+            <div class="card-header"><strong>Tiến độ liên hệ</strong> <small class="text-muted">(theo bộ lọc)</small></div>
+            <ul class="list-group list-group-flush small">
+                {% for d in tien_do %}
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between"><span>{{ d.ten }}</span><span><strong>{{ d.da }}</strong>/{{ d.tong }} · <span class="text-success">{{ d.thanh_cong }} ✓</span></span></div>
+                    <div class="td-bar mt-1"><div style="width: {{ d.pct }}%"></div></div>
+                </li>
+                {% empty %}<li class="list-group-item text-muted">—</li>{% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% include "kh360/_assets.html" %}
+{% csrf_token %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('submit', function (e) {
+    var f = e.target.closest('.lh-form');
+    if (!f) return;
+    e.preventDefault();
+    var btn = f.querySelector('button'), info = f.parentNode.querySelector('.lh-info');
+    btn.disabled = true;
+    var data = new FormData(f);
+    data.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    fetch("{% url 'kh360:ghi_lien_he' %}", {method: 'POST', body: data, credentials: 'same-origin'})
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+            if (j.ok) {
+                info.innerHTML = '<span class="badge bg-success">' + j.ket_qua + '</span> <span class="text-muted">' + j.nguoi + ' · ' + j.thoi_diem + '</span>';
+                f.querySelector('[name=ghi_chu]').value = '';
+            } else { info.innerHTML = '<span class="text-danger">' + (j.loi || 'Lỗi') + '</span>'; }
+        })
+        .catch(function () { info.innerHTML = '<span class="text-danger">Không lưu được</span>'; })
+        .finally(function () { btn.disabled = false; });
+});
+</script>
+{% endblock %}

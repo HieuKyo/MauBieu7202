@@ -1,6 +1,6 @@
 {% extends 'templates_app/base.html' %}
 
-{% block title %}Tạo bìa chứng từ{% endblock %}
+{% block title %}Chứng từ - Tạo bìa chứng từ{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -58,6 +58,10 @@
                     <button type="submit" class="btn btn-outline-secondary btn-sm" formaction="{% url 'bia_chung_tu_save_so_to' %}">
                         <i class="bi bi-save"></i> Lưu số tờ
                     </button>
+                    <button type="submit" class="btn btn-outline-primary btn-sm" formaction="{% url 'bia_chung_tu_dua_vao_gn' %}"
+                            title="Bìa cấp trước khi có Giao/Nhận (trạng thái —): đưa vào luồng, GDV sẽ thấy để giao KSV">
+                        <i class="bi bi-arrow-left-right"></i> Đưa vào giao nhận
+                    </button>
                     <span class="text-muted small ms-auto">Tổng: {{ page_obj.paginator.count }} bìa</span>
                 </div>
                 <div class="table-responsive">
@@ -73,6 +77,7 @@
                                 <th style="width: 100px;" title="Chứng từ ngày ... (n tờ) — trên nhãn QR; trống = ….">Tờ của tập</th>
                                 <th>UserIPCAS</th>
                                 <th>Đã in</th>
+                                <th>Giao nhận</th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
@@ -91,6 +96,7 @@
                                 <td><input type="number" min="1" class="form-control form-control-sm" name="so_to_tap_{{ b.pk }}" value="{{ b.so_to_tap|default_if_none:'' }}" placeholder="…."></td>
                                 <td>{{ b.user_ipcas }}</td>
                                 <td>{% if b.ngay_in %}<span class="badge bg-success" title="{{ b.ngay_in|date:'d/m/Y H:i' }}">Đã in</span>{% else %}<span class="badge bg-secondary">Chưa in</span>{% endif %}</td>
+                                <td>{% include 'templates_app/bia_chung_tu/_trang_thai_gn.html' %}</td>
                                 <td class="text-nowrap">
                                     <a href="{% url 'bia_chung_tu_print' %}?id={{ b.pk }}" target="_blank" class="btn btn-outline-danger btn-sm" title="In bìa"><i class="bi bi-printer"></i></a>
                                     <a href="{% url 'bia_chung_tu_edit' b.pk %}" class="btn btn-outline-primary btn-sm" title="Sửa"><i class="bi bi-pencil"></i></a>
@@ -99,7 +105,7 @@
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="10" class="text-center text-muted py-4">Chưa có bìa chứng từ nào.</td></tr>
+                            <tr><td colspan="11" class="text-center text-muted py-4">Chưa có bìa chứng từ nào.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

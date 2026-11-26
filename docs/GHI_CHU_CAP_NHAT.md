@@ -6,6 +6,38 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 ## Bản tiếp theo
 
 ### Chức năng mới
+- **Khách hàng 360 → Việc cần làm** (mọi người dùng; nhân viên chỉ thấy KH của đơn vị mình theo hồ sơ người dùng, cấp quản lý KH 360 và Superuser thấy toàn chi nhánh). 3 danh sách để liên hệ KH, mỗi dòng ghi được **kết quả liên hệ** (Thành công / Chưa quyết định / KH rút – từ chối / Không liên lạc được + ghi chú), có cột **Tiến độ liên hệ** theo cán bộ và xuất Excel:
+  - **Sổ đến hạn:** sổ tiết kiệm đến hạn trong 7 / 15 / 30 ngày tới, hoặc đã đến hạn kể từ ngày dữ liệu.
+  - **Khoản vay sắp trả:** khoản vay có kỳ trả gốc/lãi tiếp theo trong 7 / 15 / 30 ngày tới (số tiền trả, dư nợ, nhóm nợ, cán bộ tín dụng).
+  - **KH chưa dùng dịch vụ:** KH cá nhân có tiền gửi từ ngưỡng chọn (mặc định 10 triệu) nhưng chưa có thẻ, Agribank Plus, SMS Banking, SMS tiền gửi, tiền gửi trực tuyến — để tư vấn bán chéo.
+  - Lọc theo PGD, cán bộ, "Chỉ KH của tôi" (khớp họ tên trong hồ sơ người dùng), tình trạng liên hệ, mã/tên KH; bấm mã KH mở hồ sơ KH 360.
+- **Kế toán Ngân quỹ → Chứng từ** (đổi tên từ "Tạo bìa chứng từ"), gồm 2 tab:
+  - **Tạo bìa chứng từ** (như cũ, Trưởng/Phó phòng KT&NQ) — danh sách có thêm cột trạng thái giao nhận.
+  - **Giao/Nhận chứng từ** (mọi người dùng): mỗi bìa đã cấp số là 1 tập chứng từ của GDV. Luồng: **GDV giao KSV** (Trưởng/Phó phòng) → **KSV xác nhận đã nhận** → **KSV ký xong trả GDV** (trạng thái *"KSV trả chứng từ chờ GĐ ký"*) → GDV đem GĐ ký xong **giao Hậu kiểm** → **Hậu kiểm xác nhận đã nhận**. KSV / Hậu kiểm trả lại được (bắt buộc lý do); GDV thu hồi được khi bên nhận chưa nhận. Chọn nhiều tập để xử lý cùng lúc.
+  - Mục **Chờ tôi xử lý** (KSV / Hậu kiểm), **Tập chứng từ của tôi** (GDV, có nút chọn nhanh "Chưa giao" / "Chờ GĐ ký"), **Tra cứu** (theo ngày, trạng thái, số hồ sơ, GDV) kèm **lịch sử ngày giờ** từng lần giao / nhận / trả lại. Tab có số đếm việc đang chờ.
+  - GDV / Hậu kiểm vào menu "Chứng từ" được chuyển thẳng sang tab Giao/Nhận (không thấy tab Tạo bìa). GDV chỉ tra cứu tập của mình; Trưởng/Phó phòng KT&NQ xem cả đơn vị; Hậu kiểm và Superuser xem tất cả.
+  - Bìa đã cấp trước bản này và bìa import (in bù) **không theo dõi** giao nhận; bìa cấp số từ nay tự vào trạng thái "GDV đang giữ". Muốn theo dõi bìa cũ: ở tab Tạo bìa chứng từ chọn bìa → **Đưa vào giao nhận** (GDV sẽ thấy ở "Tập chứng từ của tôi").
+
+### Chỉnh sửa
+- **ATM – Bảng kê thanh toán & Giấy đi đường** (trang Công tác phí ATM):
+  - **Tách theo giai đoạn Ban:** khi Trưởng ban, Phó ban (Trưởng phòng KTNQ) hoặc Cán bộ phụ trách ATM đổi người trong khoảng ngày đã chọn, trang liệt kê từng giai đoạn (ai giữ chức vụ nào) kèm nút Xem / Bảng kê / Giấy đi đường riêng cho từng giai đoạn.
+  - **Kiểm tra dữ liệu Ban trước khi xuất:** cảnh báo nhiệm kỳ 2 người cùng chức vụ chồng ngày, khoảng ngày không có nhiệm kỳ khớp (đang tạm lấy người "Đang hoạt động") hoặc không có ai, người chưa nhập "Hiệu lực từ / đến ngày" khi chức vụ có nhiều người, người được thanh toán chưa có số tài khoản.
+  - **Chống thanh toán trùng:** mỗi lần xuất Bảng kê được ghi lại (khoảng ngày, tổng tiền, số người, người xuất — không lưu họ tên / số tài khoản). Khoảng ngày đang xem trùng với lần xuất trước thì hiện cảnh báo đỏ và hỏi lại khi bấm xuất. Có bảng 10 lần xuất gần nhất; xuất nhầm thì xóa bản ghi trong trang quản trị (Lịch sử xuất Bảng kê ATM).
+  - **Xem trước từng tờ Giấy đi đường:** tên file, máy ATM, các ngày tiếp quỹ, Trưởng ban / Phó ban / CB phụ trách ATM / tài xế trên tờ.
+  - **Chuyến tài xế không được tính tiền** (tài xế trực ngày đó đi tiếp quỹ) hiện thành danh sách để đối chiếu Lịch trực xe.
+
+### Lưu ý
+- Có migration `templates_app/0097_atmpaymentexportlog` (bảng lịch sử xuất Bảng kê ATM). Lịch sử bắt đầu ghi từ lúc cập nhật; các lần xuất trước đó không có.
+- Có migration `templates_app/0098_bia_giao_nhan` (trạng thái + lịch sử giao nhận bìa chứng từ; bìa cũ đặt về "không theo dõi") và `kh360/0006_lien_he_kh` (kết quả liên hệ Việc cần làm).
+- Việc cần làm lọc theo đơn vị trong hồ sơ người dùng (Hội sở / PGD Phường 1 / PGD Láng Tròn): người dùng chưa khai báo đơn vị sẽ không thấy danh sách — Admin cần cập nhật hồ sơ. KH thuộc PGD Tân Phong chỉ cấp quản lý xem được.
+
+### File
+- Thêm: `templates_app/migrations/0097_atmpaymentexportlog.py`, `templates_app/migrations/0098_bia_giao_nhan.py`, `templates_app/bia_giao_nhan_views.py`, `templates_app/templatetags/bia_tags.py`, `templates_app/test_bia_giao_nhan.py`, `templates_app/templates/templates_app/bia_chung_tu/` (giao_nhan.html, _bang_gn.html, _trang_thai_gn.html), `kh360/migrations/0006_lien_he_kh.py`, `kh360/viec_can_lam.py`, `kh360/templates/kh360/viec_can_lam.html`, `kh360/templates/kh360/_viec_dong.html`
+- Sửa: `templates_app/atm_travel_claim.py`, `templates_app/atm_views.py`, `templates_app/templates/templates_app/atm/travel_claim.html`, `templates_app/models/atm.py`, `templates_app/models/__init__.py`, `templates_app/admin.py`, `templates_app/urls.py`, `templates_app/templates/templates_app/base.html`, `templates_app/models/cash.py`, `templates_app/bia_chung_tu_views.py`, `templates_app/test_bia_chung_tu.py`, `templates_app/templates/templates_app/bia_chung_tu/_nav.html`, `templates_app/templates/templates_app/bia_chung_tu/list.html`, `kh360/models.py`, `kh360/urls.py`, `kh360/templates/kh360/_header.html`
+
+## 2026.11.25 — 25/11/2026
+
+### Chức năng mới
 - **So sánh HĐV theo file (theo kỳ)** (mọi người dùng, menu **Kế toán Ngân quỹ**): chọn kiểu so sánh **file DP01 / MSIT81 (file TG) / RT13**, chọn từ 2 file trở lên (.csv, .zip, .xlsx, .xls; tự sắp theo ngày trong tên file) → xem kết quả ngay trên trang và xuất Excel theo bộ lọc. So khớp theo **Mã KH + Loại tiền** (cộng số dư mọi TK của KH — tất toán rồi mở lại sổ sinh số TK mới vẫn tính đúng KH); **ngoại tệ tách riêng** từng loại tiền. Các phần:
   - **Tổng hợp** theo loại tiền (tách Không kỳ hạn / Có kỳ hạn), số KH Mới / Tăng / Giảm / Tất toán / Không đổi; top 5 cán bộ tăng / giảm nhiều nhất.
   - **Cán bộ huy động** (cột EMPLOYEE_NAME) và **PGD**: mỗi cán bộ / PGD tăng hay giảm bao nhiêu (có thanh so sánh), chênh lệch KKH / CKH, số KH mới / tăng / giảm / tất toán.
@@ -17,7 +49,7 @@ Mục "Bản tiếp theo" là các thay đổi chưa đóng gói. Khi chạy `ta
 
 ### Chỉnh sửa
 - **ATM – Bảng kê thanh toán & Giấy đi đường: xuất theo Trưởng ban.** Có ô chọn **Trưởng ban**; chọn xong thì khoảng ngày tự điền theo nhiệm kỳ người đó (vẫn sửa được), và Bảng kê / Giấy đi đường chỉ gồm các chuyến trong nhiệm kỳ đó. Tên file có thêm tên Trưởng ban.
-- Giấy đi đường không còn gộp 2 Trưởng ban vào 1 tờ: đổi Trưởng ban (sang nhiệm kỳ mới) thì tự tách tờ mới. Nếu khoảng ngày đã chọn có từ 2 nhiệm kỳ trở lên, trang hiện cảnh báo kèm nút xem / xuất riêng cho từng nhiệm kỳ.
+- Giấy đi đường: mỗi tờ chỉ có **1 Trưởng ban, 1 Phó ban (Trưởng phòng KTNQ), 1 Cán bộ phụ trách ATM** — đổi người ở bất kỳ chức vụ nào (sang nhiệm kỳ mới) thì tự tách tờ mới (trước đây tờ có thể có 2 Phó ban khi Phó ban đổi giữa kỳ). Nếu khoảng ngày đã chọn có từ 2 nhiệm kỳ trở lên, trang hiện cảnh báo kèm nút xem / xuất riêng cho từng nhiệm kỳ.
 
 ### File
 - Thêm: `templates_app/hdv_so_sanh.py`, `templates_app/hdv_so_sanh_views.py`, `templates_app/templates/templates_app/hdv/so_sanh_file.html`, `templates_app/templates/templates_app/hdv/so_sanh_ket_qua.html`

@@ -1,0 +1,147 @@
+{% extends 'templates_app/base.html' %}
+
+{% block title %}Chứng từ - Giao/Nhận chứng từ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gn td, .gn th { vertical-align: middle; font-size: .9rem; }
+    .gn-ls { font-size: .82rem; }
+    .gn-bar { position: sticky; top: 0; z-index: 5; background: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% include 'templates_app/bia_chung_tu/_nav.html' with active='giao_nhan' %}
+
+    <ul class="nav nav-pills mb-3">
+        {% for key, name in tabs %}
+        <li class="nav-item"><a class="nav-link {% if tab == key %}active{% endif %}" href="?tab={{ key }}">
+            {{ name }}
+            {% if key == 'cho_toi' and so_cho_toi %} <span class="badge bg-danger">{{ so_cho_toi }}</span>{% endif %}
+            {% if key == 'cua_toi' and so_cho_gd_ky %} <span class="badge bg-primary" title="KSV đã trả, chờ đem GĐ ký">{{ so_cho_gd_ky }}</span>{% endif %}
+        </a></li>
+        {% endfor %}
+    </ul>
+
+    {% if tab == 'cho_toi' %}
+    {# ── KSV / Hậu kiểm: các tập đang chờ mình ── #}
+    <form method="post" action="{% url 'bia_chung_tu_giao_nhan_xu_ly' %}" class="card shadow-sm">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ next }}">
+        <div class="card-body gn-bar border-bottom d-flex flex-wrap gap-2 align-items-center">
+            <button name="hanh_dong" value="ksv_nhan" class="btn btn-sm btn-info"><i class="bi bi-box-arrow-in-down"></i> KSV: Đã nhận</button>
+            <button name="hanh_dong" value="ksv_ky" class="btn btn-sm btn-primary"><i class="bi bi-pen"></i> KSV: Đã ký – trả GDV chờ GĐ ký</button>
+            <button name="hanh_dong" value="hk_nhan" class="btn btn-sm btn-success"><i class="bi bi-check2-all"></i> Hậu kiểm: Xác nhận đã nhận</button>
+            <span class="vr"></span>
+            <input type="text" name="ly_do" class="form-control form-control-sm" style="width:240px" placeholder="Lý do trả lại (thiếu, sai chứng từ…)">
+            <button name="hanh_dong" value="ksv_tra" class="btn btn-sm btn-outline-danger">KSV trả lại</button>
+            <button name="hanh_dong" value="hk_tra" class="btn btn-sm btn-outline-danger">Hậu kiểm trả lại</button>
+        </div>
+        {% include 'templates_app/bia_chung_tu/_bang_gn.html' %}
+    </form>
+
+    {% elif tab == 'cua_toi' %}
+    {# ── GDV: tập chứng từ của mình ── #}
+    <form method="post" action="{% url 'bia_chung_tu_giao_nhan_xu_ly' %}" class="card shadow-sm">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ next }}">
+        <div class="card-body gn-bar border-bottom">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                <span class="small text-muted">Chọn nhanh:</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-chon="gdv_giu">Chưa giao</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-chon="cho_gd_ky">Chờ GĐ ký</button>
+                <a href="?tab=cua_toi{% if an_xong %}&xong=1{% endif %}" class="btn btn-sm btn-link ms-auto">{% if an_xong %}Hiện cả tập Hậu kiểm đã nhận{% else %}Ẩn tập Hậu kiểm đã nhận{% endif %}</a>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <select name="nguoi_nhan_ksv" class="form-select form-select-sm" style="width:220px">
+                    <option value="">— Chọn KSV (Trưởng/Phó phòng) —</option>
+                    {% for uid, ten in ksv_choices %}<option value="{{ uid }}">{{ ten }}</option>{% endfor %}
+                </select>
+                <button name="hanh_dong" value="giao_ksv" class="btn btn-sm btn-warning"><i class="bi bi-send"></i> Giao KSV</button>
+                <span class="vr"></span>
+                <select name="nguoi_nhan_hk" class="form-select form-select-sm" style="width:220px">
+                    <option value="">— Chọn Hậu kiểm viên —</option>
+                    {% for uid, ten in hk_choices %}<option value="{{ uid }}">{{ ten }}</option>{% endfor %}
+                </select>
+                <button name="hanh_dong" value="giao_hk" class="btn btn-sm btn-success"><i class="bi bi-send-check"></i> GĐ đã ký – giao Hậu kiểm</button>
+                <span class="vr"></span>
+                <button name="hanh_dong" value="thu_hoi" class="btn btn-sm btn-outline-secondary" onclick="return confirm('Thu hồi các tập đã chọn (bên nhận chưa nhận)?')"><i class="bi bi-arrow-counterclockwise"></i> Thu hồi</button>
+            </div>
+        </div>
+        {% include 'templates_app/bia_chung_tu/_bang_gn.html' %}
+    </form>
+
+    {% else %}
+    {# ── Tra cứu ── #}
+    <form method="get" class="card card-body py-2 mb-3">
+        <input type="hidden" name="tab" value="tra_cuu">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto"><label class="form-label small mb-0">Từ ngày CT</label><input type="text" name="tu_ngay" class="form-control form-control-sm" style="width:120px" value="{{ f.tu_ngay }}" placeholder="dd/mm/yyyy"></div>
+            <div class="col-auto"><label class="form-label small mb-0">Đến ngày CT</label><input type="text" name="den_ngay" class="form-control form-control-sm" style="width:120px" value="{{ f.den_ngay }}" placeholder="dd/mm/yyyy"></div>
+            <div class="col-auto"><label class="form-label small mb-0">Trạng thái</label>
+                <select name="trang_thai" class="form-select form-select-sm">
+                    <option value="">Tất cả</option>
+                    {% for v, n in trang_thai_choices %}<option value="{{ v }}" {% if f.trang_thai == v %}selected{% endif %}>{{ n }}</option>{% endfor %}
+                </select></div>
+            <div class="col-auto"><label class="form-label small mb-0">Số hồ sơ</label><input type="text" name="q" class="form-control form-control-sm" style="width:140px" value="{{ f.q }}" placeholder="VD: 2026.0030"></div>
+            <div class="col-auto"><label class="form-label small mb-0">GDV (tên / IPCAS)</label><input type="text" name="gdv" class="form-control form-control-sm" style="width:150px" value="{{ f.gdv }}"></div>
+            <div class="col-auto"><button class="btn btn-sm btn-primary"><i class="bi bi-search"></i> Tìm</button> <a href="?tab=tra_cuu" class="btn btn-sm btn-outline-secondary">Bỏ lọc</a></div>
+        </div>
+    </form>
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 gn">
+            <thead class="table-light"><tr><th>Số hồ sơ</th><th>Ngày CT</th><th>Tập</th><th>GDV</th><th>Trạng thái</th><th>Đang ở</th><th>Cập nhật</th><th></th></tr></thead>
+            <tbody>
+            {% for b in bias %}
+            <tr>
+                <td class="fw-semibold">{{ b.so_ho_so }}</td>
+                <td>{{ b.ngay_chung_tu|date:"d/m/Y" }}</td>
+                <td>{{ b.tap_so }}/{{ b.tong_tap }}</td>
+                <td>{{ b.gdv.profile.full_name|default:b.user_ipcas }}</td>
+                <td>{% include 'templates_app/bia_chung_tu/_trang_thai_gn.html' %}</td>
+                <td>{{ b.dang_o }}</td>
+                <td class="small text-muted">{% if b.lan_cuoi %}{{ b.lan_cuoi.thoi_diem|date:"H:i d/m/Y" }}{% else %}{{ b.created_at|date:"H:i d/m/Y" }}{% endif %}</td>
+                <td><button type="button" class="btn btn-sm btn-link p-0" data-bs-toggle="collapse" data-bs-target="#ls{{ b.pk }}">Lịch sử ({{ b.lich_su|length }})</button></td>
+            </tr>
+            <tr class="collapse" id="ls{{ b.pk }}"><td colspan="8" class="bg-light">
+                <ol class="mb-0 gn-ls">
+                    <li>{{ b.created_at|date:"H:i d/m/Y" }} — Cấp số bìa{% if b.gdv %} cho {{ b.gdv.profile.full_name }}{% endif %}</li>
+                    {% for lg in b.lich_su %}
+                    <li>{{ lg.thoi_diem|date:"H:i d/m/Y" }} — <strong>{{ lg.hanh_dong }}</strong> · {{ lg.ten_thuc_hien }}{% if lg.ten_nhan %} → {{ lg.ten_nhan }}{% endif %}
+                        <span class="text-muted">({{ lg.get_den_trang_thai_display }})</span>{% if lg.ghi_chu %} — <em class="text-danger">{{ lg.ghi_chu }}</em>{% endif %}</li>
+                    {% endfor %}
+                </ol>
+            </td></tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-4">Không có tập chứng từ nào</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% if page.has_other_pages %}
+        <div class="card-footer"><ul class="pagination pagination-sm mb-0">
+            {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?{{ query }}&page={{ page.previous_page_number }}">‹</a></li>{% endif %}
+            <li class="page-item active"><span class="page-link">{{ page.number }}/{{ page.paginator.num_pages }}</span></li>
+            {% if page.has_next %}<li class="page-item"><a class="page-link" href="?{{ query }}&page={{ page.next_page_number }}">›</a></li>{% endif %}
+        </ul></div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var all = document.getElementById('chkAllGn');
+    if (all) all.addEventListener('change', function () {
+        document.querySelectorAll('.gn-chk').forEach(function (c) { c.checked = all.checked; });
+    });
+    document.querySelectorAll('[data-chon]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.gn-chk').forEach(function (c) { c.checked = c.dataset.tt === btn.dataset.chon; });
+        });
+    });
+})();
+</script>
+{% endblock %}
